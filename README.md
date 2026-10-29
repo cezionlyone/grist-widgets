@@ -23,7 +23,7 @@ Everything is configured inside the widget, no code required.
 
 1. In your Grist document, add a **Custom** widget.
 2. Choose **Custom URL** and paste:
-   `https://YOUR-USERNAME.github.io/grist-widgets/gristcity/`
+   `https://cezionlyone.github.io/grist-widgets/gristcity/`
 3. In the right panel, under **Access**, select **Full document access**.
 4. Follow the setup wizard: pick a world, then start from a ready-made template or connect the widget to one of your tables.
 
