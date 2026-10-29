@@ -3,7 +3,7 @@
   ============================================================================
   READ ME - Gristverse
   ============================================================================
-  Version     : 1.0.0
+  Version     : 1.1.0
   Date        : 29/10/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -133,6 +133,24 @@
 
   HISTORIQUE
   ----------
+  1.1.0 - 29/10/2026 - madeXcé - Absences, relevé et ouverture.
+          - Bureau, onglet « Où je travaille » : liste de toutes les périodes
+            enregistrées (jours ouvrés, passée, en cours ou à venir), doublons
+            signalés « en double » ; une période identique n'est plus enregistrée.
+          - Relevé du mois : les jours d'absence comptent pour HEURES_PAR_JOUR
+            heures ; le total est comparé aux jours ouvrés du mois (week-ends et
+            jours fériés retirés), avec les jours manquants ; un jour d'absence
+            avec des activités est signalé. Absences aussi dans la copie, le CSV
+            et le relevé PDF. Jamais de motif.
+          - Carte vide corrigée : si la table visée par la colonne responsable
+            des tâches n'est pas lisible (règles d'accès), tout s'affiche quand
+            même et les tâches sont retrouvées par le nom ou l'emoji.
+          - Ouverture robuste aux lenteurs de Grist : la carte s'affiche dès les
+            tables légères lues, projets et ressources arrivent ensuite ; une
+            lecture lente n'est plus relancée en boucle ; la bibliothèque des
+            projets est dessinée dès l'ouverture.
+          - Tâches triées par statut partout (en cours, à faire, autres, en
+            attente), puis par échéance.
   1.0.0 - 29/10/2026 - madeXcé - Première version publique.
   ============================================================================
 -->
@@ -778,7 +796,7 @@
    ========================================================================== */
 
 // [MODIFIABLE] Numero de version : a incrementer a chaque livraison.
-var VERSION_WIDGET = '1.0.0';
+var VERSION_WIDGET = '1.1.0';
 var NOM_WIDGET = 'Gristverse';
 
 /* [INTOUCHABLE] Bibliotheque de Gristverse : table technique des reglages,
@@ -1372,22 +1390,52 @@ function gristAvecTimeout(promesse, delaiMs) {
   })]);
 }
 
-/* Une lecture sans reponse (message perdu au demarrage, cadre
-   intermediaire) ou refusee de facon passagere est relancee, avec un delai
-   croissant, avant d'etre signalee. Les ecritures ne sont jamais rejouees. */
-async function lireTable(tid) {
-  var delais = [10000, 20000, DELAI_API_MS];
-  var derniere = null;
-  for (var essai = 0; essai < delais.length; essai++) {
-    try {
-      return await gristAvecTimeout(grist.docApi.fetchTable(tid), delais[essai]);
-    } catch (e) {
-      derniere = e;
-      logSecurite('AVERTISSEMENT', 'Lecture de ' + tid + ' sans réponse, nouvel essai', e);
-      if (essai < delais.length - 1) { await new Promise(function (ok) { setTimeout(ok, 1000); }); }
-    }
-  }
-  throw derniere;
+/* Lecture d'une table [INTOUCHABLE]
+   Une demande de lecture partie n'est JAMAIS abandonnée :
+   - si Grist n'a pas répondu au bout de DELAI_RELANCE_MS (30 s), une seconde demande part
+     (cas du message perdu au démarrage), et la première reste attendue ;
+   - la première réponse arrivée, de l'une ou de l'autre, est prise ;
+   - un vrai refus (droits, erreur) est retenté une fois, 1 s plus tard ;
+   - jamais plus de 2 demandes pour une même table ; au-delà de DELAI_LECTURE_MAX_MS (3 min)
+     sans réponse, la lecture est signalée en échec (« Délai dépassé »), comme avant.
+   Avant : chaque nouvel essai jetait la réponse de l'essai précédent, même arrivée une seconde
+   plus tard, et une grosse table était lue trois fois de suite (30 s perdues à l'ouverture).
+   Les écritures ne sont jamais rejouées. */
+/* La seconde demande ne sert qu'au tout début (message perdu avant que le lien avec
+   Grist soit établi). Dès que Grist a répondu une fois, le lien marche : une lecture lente est
+   seulement attendue, sans la doubler (une seconde demande ne ferait que charger Grist). */
+var _gristARepondu = false;
+var DELAI_RELANCE_MS = 30000;        // [MODIFIABLE] attente avant d'envoyer la seconde demande (30 s, Grist peut être lent)
+var DELAI_LECTURE_MAX_MS = 180000;   // [MODIFIABLE] attente totale maximale pour une table (3 min, au lieu de 60 s)
+function lireTable(tid) {
+  return new Promise(function (resolve, reject) {
+    var fini = false, envoyees = 0, echecs = 0, derniere = null, minuteries = [];
+    // Fin de la lecture : une seule fois, et toutes les minuteries sont arrêtées
+    var terminer = function (ok, valeur) {
+      if (fini) { return; }
+      fini = true;
+      minuteries.forEach(function (m) { clearTimeout(m); });
+      if (ok) { resolve(valeur); } else { reject(valeur); }
+    };
+    var envoyer = function () {
+      envoyees++;
+      var p;
+      try { p = Promise.resolve(grist.docApi.fetchTable(tid)); } catch (e) { p = Promise.reject(e); }
+      p.then(function (d) { _gristARepondu = true; terminer(true, d); }, function (e) {
+        derniere = e; echecs++;
+        if (fini) { return; }
+        logSecurite('AVERTISSEMENT', 'Lecture de ' + tid + ' en échec', e);
+        if (envoyees < 2) { minuteries.push(setTimeout(function () { if (!fini && envoyees < 2) { envoyer(); } }, 1000)); }   // un nouvel essai, 1 s plus tard (jamais plus de 2 demandes)
+        else if (echecs >= envoyees) { terminer(false, derniere); }                                           // les deux demandes ont échoué
+      });
+    };
+    envoyer();
+    // Pas de réponse au bout de 30 s : une seconde demande, la première reste attendue
+    minuteries.push(setTimeout(function () {
+      if (!fini && envoyees < 2 && !_gristARepondu) { logSecurite('AVERTISSEMENT', 'Lecture de ' + tid + ' lente : seconde demande envoyée, la première reste attendue'); envoyer(); }
+    }, DELAI_RELANCE_MS));
+    minuteries.push(setTimeout(function () { terminer(false, derniere || new Error('Délai dépassé')); }, DELAI_LECTURE_MAX_MS));
+  });
 }
 
 /* Refus pour droits insuffisants : la personne consulte en lecture seule
@@ -1426,8 +1474,13 @@ function colonneDe(donnees, col, i) {
 /* === SECTION : METADONNEES DU DOCUMENT === */
 async function chargerMeta() {
   etat.metaLueA = Date.now();
-  var t = await lireTable('_grist_Tables');
-  var c = await lireTable('_grist_Tables_column');
+  /* Les quatre tables de description partent en même temps, au lieu de l'une après
+     l'autre. Chaque échec est traité plus bas (les deux premières obligatoires, les
+     noms de pages facultatifs). */
+  var pT = lireTable('_grist_Tables'), pC = lireTable('_grist_Tables_column'), pVS = lireTable('_grist_Views_section'), pV = lireTable('_grist_Views');
+  [pT, pC, pVS, pV].forEach(function (p) { p.catch(function () {}); });   // évite une alerte « rejet non capturé » pendant l'attente
+  var t = await pT;
+  var c = await pC;
   var tables = {};
   var parRef = {};
   for (var i = 0; i < t.id.length; i++) {
@@ -1460,11 +1513,11 @@ async function chargerMeta() {
      donne a la table), sinon nom de sa page, sinon identifiant sans
      soulignes. L'identifiant technique n'est jamais montre tel quel. */
   try {
-    var vs = await lireTable('_grist_Views_section');
+    var vs = await pVS;
     var titres = {};
     for (var v = 0; v < vs.id.length; v++) { titres[vs.id[v]] = vs.title ? vs.title[v] : ''; }
     var vues = {};
-    try { var vw = await lireTable('_grist_Views'); for (var w = 0; w < vw.id.length; w++) { vues[vw.id[w]] = vw.name ? vw.name[w] : ''; } } catch (e2) { vues = {}; }
+    try { var vw = await pV; for (var w = 0; w < vw.id.length; w++) { vues[vw.id[w]] = vw.name ? vw.name[w] : ''; } } catch (e2) { vues = {}; }
     Object.keys(tables).forEach(function (k) { tables[k].libelle = titres[tables[k].rawViewSectionRef] || vues[tables[k].primaryViewId] || ''; });
   } catch (e) {
     logSecurite('AVERTISSEMENT', 'Noms des tables illisibles : identifiants affichés sans soulignés', e);
@@ -2517,6 +2570,8 @@ function etiquettesCarte(couche, carte) {
         var Kp = ECHELLE_BUREAUX, pb = positionPaperboard(a, carte), gens = a.places.filter(function (q) { return q.m; }).map(function (q) { return q.m; });
         var taches = [];
         gens.forEach(function (m) { tachesDe(m).forEach(function (t) { taches.push({ m: m, t: t }); }); });
+        // Toutes les tâches du bureau ensemble (en cours, à faire... en attente en dernier), puis les 4 premières sont écrites
+        taches.sort(function (x, y) { return comparerTaches(x.t, y.t); });
         var feuille = creer('button', { classe: 'dv-paperboard dv-info', id: 'dvPb_' + String(a.site).replace(/[^A-Za-z0-9]/g, '_'), attrs: { type: 'button', 'data-info': '📝 Paperboard de ' + nomSite(a.site) + ' : cliquer pour cocher ou ajouter une tâche', 'aria-label': 'Paperboard de ' + nomSite(a.site) + ' : ' + accord(taches.length, 'tâche ouverte', 'tâches ouvertes') + '. Entrée : voir et cocher les tâches' } },
           [creer('b', { texte: '📝 ' + accord(taches.length, 'tâche', 'tâches') })].concat(taches.slice(0, 4).map(function (x) { return creer('span', { texte: nomAffiche(x.m) + ' ' + x.t.description }); })));
         feuille.style.width = (2.75 * Kp / L * 100) + '%'; feuille.style.height = (2.6 * Kp / H * 100) + '%';
@@ -2573,7 +2628,9 @@ function etiquettesCarte(couche, carte) {
       // Une étiquette sous chaque étagère : son statut et son nombre de projets (clic : la liste)
       (etat.donnees.statuts || []).forEach(function (s, k) {
         var e = positionEtagere(p, carte, k);
-        var b = creer('button', { classe: 'dv-etagere dv-info', texte: s.projets.length + ' · ' + s.nom, attrs: { type: 'button', 'data-info': '🗄️ ' + s.nom + ' : ' + accord(s.projets.length, 'projet') + ', cliquer pour la liste', 'aria-label': 'Étagère « ' + s.nom + ' » : ' + accord(s.projets.length, 'projet') + '. Entrée : voir la liste' } });
+        // Étagère provisoire (projets pas encore lus) : « … » à la place du nombre
+        var combien = s.provisoire ? '…' : String(s.projets.length), detail = s.provisoire ? 'projets en cours de chargement' : accord(s.projets.length, 'projet');
+        var b = creer('button', { classe: 'dv-etagere dv-info', texte: combien + ' · ' + s.nom, attrs: { type: 'button', 'data-info': '🗄️ ' + s.nom + ' : ' + detail + ', cliquer pour la liste', 'aria-label': 'Étagère « ' + s.nom + ' » : ' + detail + '. Entrée : voir la liste' } });
         b.addEventListener('click', function () { ouvrirEtagere(s.nom); });
         poser(b, (e.x * T + 29) / T, e.y + 1.95);
       });
@@ -2966,12 +3023,16 @@ function estWeekend(jour) { return JOURS_OUVRES.indexOf(new Date(jour * 1000).ge
 /* --------------------------------------------------------------------------
    Lecture des réglages
    -------------------------------------------------------------------------- */
+var _prelectureBiblio = null;   // lecture des réglages lancée dès l'ouverture (ou null)
 async function lireConfig() {
   etat.config = null;
   etat.cleLigne = null;
   etat.biblio = trouverTable(ID_BIBLIO.replace(/_$/, ''));
+  // Lecture faite à l'avance par initialiser() (en même temps que la description), utilisée une seule fois
+  var pre = _prelectureBiblio; _prelectureBiblio = null;
   if (!etat.biblio) { return; }
-  var d = await lireTable(etat.biblio);
+  var d = pre && etat.biblio === ID_BIBLIO ? await pre : null;
+  if (!d) { d = await lireTable(etat.biblio); }
   for (var i = 0; i < d.id.length; i++) {
     if (d.CLE && d.CLE[i] === CLE_CONFIG) {
       try { etat.config = JSON.parse(d.VALEUR[i]); etat.cleLigne = d.id[i]; } catch (e) { logSecurite('ERREUR', 'Réglages de Gristverse illisibles', e); }
@@ -3040,7 +3101,7 @@ function chargerDonnees(opt) {
   return _lectureEnCours;
 }
 // Tables lourdes trop anciennes ? (pour les fenêtres qui en affichent le détail)
-function lourdesPerimees() { return !_lourdes || Date.now() - _lourdes.quand > AGE_MAX_LOURDES_MS; }
+function lourdesPerimees() { if (_sansRelecture) { return false; } return !_lourdes || Date.now() - _lourdes.quand > AGE_MAX_LOURDES_MS; }
 async function lireToutesDonnees(opt) {
   var debut = Date.now();   // les modifications faites après ce moment peuvent manquer dans ce qu'on va lire
   var c = etat.config;
@@ -3049,16 +3110,30 @@ async function lireToutesDonnees(opt) {
   if (reu && reu.colStatut === undefined) { reu.colStatut = deviner(reu.table, /statut|etat/, TYPES.choix); }
   if (reu && reu.colStatut && !infoColonne(reu.table, reu.colStatut)) { reu.colStatut = null; }
   var tac = pieceActive('paperboards') && pieceValide(c.taches, ['colDescription', 'colResponsable']) ? c.taches : null;
-  var avecLourdes = opt.lourdes || !_lourdes;
+  // opt.sansLourdes (ouverture) : seules les tables légères sont lues ; les lourdes arrivent ensuite (chargerLourdesEnFond)
+  var avecLourdes = opt.lourdes || (!_lourdes && !opt.sansLourdes && !_lourdesEnCours);   // pas de doublon pendant la lecture en arrière-plan
   // Toutes les lectures partent en même temps (légères, et lourdes si besoin)
   /* Si la colonne responsable des tâches est une référence (ou une liste de
      références), la table visée est lue aussi : on en a besoin pour savoir qui est le
      responsable de chaque tâche. */
   var colResp = tac ? infoColonne(tac.table, tac.colResponsable) : null, cibleResp = colResp ? tableCibleRef(colResp.type) : null;
-  var legeres = Promise.all([lireOuVide(c.equipe), lireOuVide(c.presences), lireOuVide(reu && reu.table), lireOuVide(tac && tac.table), lireOuVide(pieceActive('activites') ? c.activites : null), lireOuVide(cibleResp)]);
-  var lourdes = avecLourdes ? lireLourdes() : Promise.resolve(_lourdes);
-  var lus = await legeres, L = await lourdes;
-  _lourdes = L;
+  /* [INTOUCHABLE] Cette lecture est FACULTATIVE : si la personne n'a pas le droit de lire la
+     table visée (règles d'accès), elle renvoie « rien » au lieu de faire échouer tout le
+     chargement (sinon la carte reste vide : « il n'y a plus personne »). Les tâches sont
+     alors retrouvées par le nom ou l'emoji. La table Équipe, déjà lue, n'est pas relue. */
+  var lireCibleResp = function (cible, equipe) {
+    if (!cible || cible === equipe) { return Promise.resolve(null); }
+    if (!etat.meta.tables[cible]) { return Promise.resolve(null); }
+    // Un seul essai, 30 secondes au plus : un refus de droits ne sert à rien d'être retenté
+    return gristAvecTimeout(grist.docApi.fetchTable(cible), 30000).catch(function (e) { logSecurite('INFO', 'Table des responsables non lisible : tâches retrouvées par le nom ou l\'emoji', e); return null; });
+  };
+  var legeres = Promise.all([lireOuVide(c.equipe), lireOuVide(c.presences), lireOuVide(reu && reu.table), lireOuVide(tac && tac.table), lireOuVide(pieceActive('activites') ? c.activites : null), lireCibleResp(cibleResp, c.equipe)]);
+  var lourdes = avecLourdes ? lireLourdes() : null;
+  var lus = await legeres;
+  /* Sans lecture des lourdes, on prend celles connues À LA FIN de la lecture (elles ont pu
+     arriver entre-temps), sinon des tables lourdes vides. */
+  var L = lourdes ? await lourdes : (_lourdes || lourdesVides());
+  if (lourdes) { _lourdes = L; }
   var eq = lus[0] || { id: [] };
   var membres = eq.id.map(function (id, i) {
     return { id: id, nom: String(eq.NOM ? eq.NOM[i] || '' : '').trim(), emoji: String(eq.EMOJI ? eq.EMOJI[i] || '' : '').trim(), site: String(eq.SITE ? eq.SITE[i] || '' : '').trim(),
@@ -3077,7 +3152,7 @@ async function lireToutesDonnees(opt) {
   }).filter(function (a) { return a.personne && typeof a.date === 'number' && a.date; });
   // Remplacement d'un seul bloc, une fois tout lu
   // refs : tables visées par une référence, rangées par nom de table (pour lire le nom affiché)
-  var refs = {}; if (cibleResp && lus[5]) { refs[cibleResp] = lus[5]; }
+  var refs = {}; if (cibleResp && lus[5]) { refs[cibleResp] = lus[5]; } else if (cibleResp && cibleResp === c.equipe && lus[0]) { refs[cibleResp] = lus[0]; }
   etat.donnees = { membres: membres, presences: presences, reunions: lus[2], taches: lus[3], ressources: L.ressources, reu: reu, tac: tac, res: L.res, activites: activites,
     projets: L.projets, projetsBruts: L.projetsBruts, statuts: L.statuts, prestas: L.prestas, refs: refs };
   etat.tableProjets = L.tableProjets;
@@ -3096,15 +3171,73 @@ async function lireToutesDonnees(opt) {
 // Empreinte des données affichées (calculée de la même façon après une lecture et après une mise à jour sur place)
 function empreinteDe(d) {
   // Des tables lourdes, seul ce que la carte montre compte : étagères (statuts et nombre de projets) et nombre de ressources
-  var lourd = (d.statuts || []).map(function (s) { return s.nom + ':' + s.projets.length; }).join(',') + '|' + (d.ressources && d.ressources.id ? d.ressources.id.length : 0);
+  var lourd = (d.statuts || []).map(function (s) { return s.nom + ':' + (s.provisoire ? '?' : s.projets.length); }).join(',') + '|' + (d.ressources && d.ressources.id ? d.ressources.id.length : 0);
   return JSON.stringify([d.membres, d.presences, d.reunions, d.taches, d.activites]) + '|' + lourd;
 }
+/* ---------- Tables lourdes en arrière-plan [INTOUCHABLE] ----------
+   Projets, prestataires et ressources sont longs à lire quand Grist est lent : ils ne
+   bloquent plus l'ouverture. Ils sont lus derrière, puis ajoutés aux données affichées,
+   et la carte est redessinée (tout de suite, ou à la fermeture de la fenêtre ouverte). */
+// Tables lourdes vides (pas encore lues) : quand = 0, donc « à relire »
+function lourdesVides() { return { quand: 0, projets: [], projetsBruts: null, statuts: statutsProvisoires(), prestas: null, tableProjets: null, listeProjets: null, ressources: null, res: null }; }
+/* [INTOUCHABLE] Étagères provisoires de la bibliothèque des projets, en attendant
+   la table des projets : une étagère par choix de la colonne statut (lu dans la description du
+   document, déjà chargée), dans le même ordre et avec les mêmes couleurs que les vraies.
+   Sans choix dans la colonne : une seule étagère « Chargement ». Sans table des projets : rien.
+   Ainsi la pièce est sur la carte dès l'ouverture ; elle se remplit à l'arrivée des projets. */
+function statutsProvisoires() {
+  var C = etat.meta && etat.meta.tables && etat.config && pieceActive('projets') ? reglagesProjets() : null;
+  if (!C) { return []; }
+  var colS = C.colStatut ? infoColonne(C.table, C.colStatut) : null;
+  var noms = colS ? choixDe(colS) : [];
+  if (!noms.length) { noms = ['Chargement']; }
+  return noms.map(function (n, k) { return { nom: n, couleur: COULEURS_CLASSEURS[k % COULEURS_CLASSEURS.length], projets: [], provisoire: true }; });
+}
+// Ajoute les tables lourdes aux données affichées (les mêmes champs qu'une lecture complète)
+function appliquerLourdes(d, L) {
+  d.ressources = L.ressources; d.res = L.res; d.projets = L.projets; d.projetsBruts = L.projetsBruts; d.statuts = L.statuts; d.prestas = L.prestas;
+  etat.tableProjets = L.tableProjets;
+  if (L.listeProjets) { etat.projets = L.listeProjets; }
+}
+var _lourdesEnCours = null, _essaisLourdes = 0;
+function chargerLourdesEnFond() {
+  if (_lourdesEnCours) { return _lourdesEnCours; }   // une seule lecture des lourdes à la fois
+  if (!etat.config) { return Promise.resolve(); }
+  _lourdesEnCours = lireLourdes().then(function (L) {
+    if (L.echecProjets) {
+      // Projets non lus : on garde ceux déjà connus, et on réessaie dans 30 s (deux fois au plus)
+      if (_lourdes && !_lourdes.echecProjets) { ['projets', 'projetsBruts', 'statuts', 'prestas', 'tableProjets', 'listeProjets'].forEach(function (k) { L[k] = _lourdes[k]; }); }
+      else { L.statuts = statutsProvisoires(); }   // Jamais lus : les étagères provisoires restent (la pièce ne disparaît pas)
+      L.quand = 0;
+      if (_essaisLourdes < 2) { _essaisLourdes++; setTimeout(function () { relayer(chargerLourdesEnFond(), 'Nouvel essai de lecture des projets'); }, 30000); }
+    } else { _essaisLourdes = 0; }
+    _lourdes = L;
+    if (!etat.donnees) { return; }
+    appliquerLourdes(etat.donnees, L);
+    var e = empreinteDe(etat.donnees), change = e !== etat.empreinteDonnees;
+    etat.empreinteDonnees = e;
+    if (!change || etat.vue !== 'plan') { return; }
+    // Fenêtre ouverte ou personnage en train de courir : on redessinera après
+    if (etat.modaleOuverte || etat.enRoute) { etat.rafraichirEnAttente = true; return; }
+    var actif = document.activeElement, idA = actif && actif.id ? actif.id : null;
+    afficherVue('plan');
+    if (idA && $(idA)) { $(idA).focus(); }
+  }).catch(function (e) { logSecurite('AVERTISSEMENT', 'Lecture des projets et ressources non aboutie', e); })
+    .finally(function () { _lourdesEnCours = null; });
+  return _lourdesEnCours;
+}
 /* Avant d'ouvrir une fenêtre qui montre le détail des projets ou des ressources :
-   si les tables lourdes ont plus d'une minute, on les relit d'abord. */
+   - données déjà lues (même un peu anciennes) : la fenêtre s'ouvre TOUT DE SUITE, et elles
+     sont relues derrière ;
+   - rien encore de lu : on attend la lecture (voile « Chargement des projets… »).
+   _sansRelecture empêche la fenêtre de redemander une relecture en s'ouvrant (pas de boucle). */
+var _sansRelecture = false;
 function relireLourdesPuis(ouvrir) {
-  afficherLoader('Mise à jour des projets…');
-  chargerDonnees({ lourdes: true }).catch(function (e) { logSecurite('AVERTISSEMENT', 'Relecture des projets non aboutie', e); })
-    .then(function () { masquerLoader(); ouvrir(); });
+  var ouvrirSansRelire = function () { _sansRelecture = true; try { ouvrir(); } finally { _sansRelecture = false; } };
+  var enFond = chargerLourdesEnFond();
+  if (_lourdes && (_lourdes.projetsBruts || _lourdes.ressources)) { ouvrirSansRelire(); return; }
+  afficherLoader('Chargement des projets…');
+  enFond.then(function () { masquerLoader(); ouvrirSansRelire(); });
 }
 // Lecture des tables lourdes, sans toucher aux données affichées (elles sont remplacées d'un bloc ensuite)
 async function lireLourdes() {
@@ -3117,7 +3250,7 @@ async function lireLourdes() {
     if (!p) { return; }
     L.projets = p.projets; L.projetsBruts = p.projetsBruts; L.statuts = p.statuts; L.tableProjets = p.tableProjets; L.listeProjets = p.listeProjets;
     return lirePrestas(p.tableProjets).then(function (x) { L.prestas = x; });
-  }).catch(function (e) { logSecurite('AVERTISSEMENT', 'Projets non lus', e); }));
+  }).catch(function (e) { L.echecProjets = true; logSecurite('AVERTISSEMENT', 'Projets non lus', e); }));   // l'échec est noté (projets gardés, nouvel essai)
   await Promise.all(lectures);
   return L;
 }
@@ -3200,6 +3333,25 @@ function correspond(membre, texte) {
   var prenom = n.split(' ')[0];
   return t === n || t.indexOf(n) !== -1 || (prenom.length > 2 && (' ' + t + ' ').indexOf(' ' + prenom + ' ') !== -1);
 }
+/* ---------- Ordre des tâches ----------
+   Rang de chaque statut : plus le rang est petit, plus la tâche est haut dans la liste.
+   [MODIFIABLE] les mots cherchés (entre les barres obliques) et les rangs (0, 1, 2, 3).
+   Les statuts sont comparés sans accents ni majuscules (« À faire » = « a faire »).
+   Ordre utilisé partout : feuille du paperboard, fenêtre du paperboard, onglet Mes tâches. */
+function rangStatut(statut) {
+  var s = normaliser(statut);
+  if (/en cours/.test(s)) { return 0; }      // En cours, En cours de réalisation...
+  if (/attente/.test(s)) { return 3; }       // En attente, En attente de validation... : toujours en dernier
+  if (/^a /.test(s)) { return 1; }           // À faire, À réaliser, À définir, À traiter...
+  return 2;                                  // Autres statuts, ou tâche sans statut
+}
+/* [INTOUCHABLE] Compare deux tâches : d'abord le rang du statut, puis l'échéance
+   (la plus proche d'abord ; sans échéance, ou échéance mal saisie : à la fin). */
+function comparerTaches(a, b) {
+  var ea = typeof a.echeance === 'number' && a.echeance ? a.echeance : 9e12;
+  var eb = typeof b.echeance === 'number' && b.echeance ? b.echeance : 9e12;
+  return (rangStatut(a.statut) - rangStatut(b.statut)) || (ea - eb);
+}
 function tachesDe(membre) {
   var d = etat.donnees, tc = d.tac;
   if (!tc || !d.taches) { return []; }
@@ -3217,7 +3369,7 @@ function tachesDe(membre) {
     res.push({ id: t.id[i], description: String(t[tc.colDescription][i] || '').trim() || 'Tâche sans description', statut: statut,
       echeance: tc.colEcheance && t[tc.colEcheance] ? t[tc.colEcheance][i] : null, priorite: tc.colPriorite && t[tc.colPriorite] ? String(t[tc.colPriorite][i] || '') : '' });
   }
-  return res.sort(function (a, b) { return (a.echeance || 9e12) - (b.echeance || 9e12); });
+  return res.sort(comparerTaches);   // statut d'abord (en cours, à faire... en attente), puis échéance
 }
 
 /* --------------------------------------------------------------------------
@@ -3654,6 +3806,9 @@ async function declarerPeriode(m, du, au, lieu) {
   var d1 = saisieVersDate(du), d2 = au ? saisieVersDate(au) : d1;
   if (!d1) { afficherErreur('Indiquez au moins la date de début de la période.'); return; }
   if (!d2 || d2 < d1) { afficherErreur('La date de fin doit suivre la date de début.'); return; }
+  // [INTOUCHABLE] Période identique déjà enregistrée (même début, même fin, même lieu) : on n'ajoute rien
+  var deja = etat.donnees.presences.filter(function (x) { return x.personne === m.id && x.du === d1 && (x.au || x.du) === d2 && x.lieu === lieu; })[0];
+  if (deja) { afficherErreur('Cette période est déjà enregistrée : rien n\'a été ajouté.'); return; }
   try { await agir([['AddRecord', etat.config.presences, null, { PERSONNE: m.id, DU: d1, AU: d2, LIEU: lieu }]]); }
   catch (e) { afficherErreur(estRefusDroits(e) ? 'Vos droits ne permettent pas de déclarer cette période.' : 'L\'enregistrement n\'a pas abouti.', e); return; }
   await chargerDonnees();
@@ -3923,6 +4078,7 @@ function ongletOu(z, m, modifiable) {
   table.appendChild(tb);
   z.appendChild(creer('p', { classe: 'w-mention', texte: modifiable ? 'Un clic par jour, ou une période d\'un coup. On ne demande jamais le motif d\'une absence.' : 'Consultation seule.' }));
   z.appendChild(creer('div', { classe: 'dv-table-defile' }, [table]));
+  listePeriodes(z, m);   // les périodes déjà enregistrées, avant le formulaire (évite les doublons)
   if (modifiable) {
     var du = saisie('dvDu', '', { type: 'date' }), au = saisie('dvAu', '', { type: 'date' });
     var lieuP = liste('dvLieuP', lieuxDe(m).map(function (l) { return { valeur: l, libelle: emojiLieu(l) + ' ' + nomChoix(m, l) }; }), LIEU_ABSENT);
@@ -3932,6 +4088,54 @@ function ongletOu(z, m, modifiable) {
   }
 }
 
+/* ---------- 🗂️ Périodes enregistrées ----------
+   [MODIFIABLE] les textes entre apostrophes (libellés affichés).
+   [INTOUCHABLE] le reste : lecture des périodes et détection des doublons.
+   Montre TOUTES les périodes de plusieurs jours de la personne, sans limite
+   de date (passées, en cours, à venir), la plus récente en haut.
+   Les déclarations d'un seul jour ne sont pas listées : le tableau des jours
+   les montre déjà. Rien n'est relu dans Grist : on utilise les données déjà chargées. */
+
+// Les périodes de la personne : plusieurs jours (date de fin différente de la date de début)
+function periodesDe(m) {
+  return etat.donnees.presences.filter(function (x) {
+    return x.personne === m.id && typeof x.au === 'number' && x.au && x.au !== x.du;
+  }).sort(function (a, b) { return (b.du - a.du) || (b.id - a.id); });   // la plus récente en haut
+}
+
+// Nombre de jours ouvrés (hors week-end) entre deux dates incluses. Les jours fériés ne sont pas retirés.
+function joursOuvresEntre(du, au) {
+  var n = 0, fin = Math.min(au, du + 3660 * 86400);   // garde-fou : 10 ans au plus (date de fin mal saisie)
+  for (var j = du; j <= fin; j += 86400) { if (!estWeekend(j)) { n++; } }
+  return n;
+}
+
+function listePeriodes(z, m) {
+  var periodes = periodesDe(m), auj = aujourdhui();
+  // Comptage des doublons : même début, même fin, même lieu
+  var compte = {};
+  periodes.forEach(function (p) { var cle = p.du + '|' + p.au + '|' + p.lieu; compte[cle] = (compte[cle] || 0) + 1; });
+  var contenuListe;
+  if (!periodes.length) {
+    contenuListe = creer('p', { classe: 'w-mention', texte: 'Aucune période enregistrée pour l\'instant.' });
+  } else {
+    contenuListe = creer('ul', { classe: 'dv-taches' }, periodes.map(function (p) {
+      var double = compte[p.du + '|' + p.au + '|' + p.lieu] > 1;
+      // Où en est la période par rapport à aujourd'hui
+      var quandP = p.au < auj ? 'passée' : (p.du > auj ? 'à venir' : 'en cours');
+      var lieuTexte = p.lieu ? emojiLieu(p.lieu) + ' ' + nomChoix(m, p.lieu) : 'Lieu non précisé';
+      return creer('li', { classe: 'dv-tache' }, [
+        creer('span', { texte: lieuTexte + ' · du ' + formaterDate(p.du) + ' au ' + formaterDate(p.au) }),
+        double ? document.createTextNode(' ') : null,
+        double ? badge('en double', 'warning') : null,
+        creer('span', { classe: 'fr-hint-text', texte: accord(joursOuvresEntre(p.du, p.au), 'jour ouvré', 'jours ouvrés') + ' · ' + quandP })]);
+    }));
+  }
+  // Bloc dépliant, ouvert par défaut ; le nombre de périodes est dans le titre
+  z.appendChild(creer('details', { classe: 'dv-periode fr-mt-2w', attrs: { open: 'open' } }, [
+    creer('summary', { texte: '🗂️ Périodes enregistrées (' + periodes.length + ')' }),
+    creer('div', { classe: 'fr-mt-1w' }, [contenuListe])]));
+}
 /* ---------- 📝 Mes tâches ---------- */
 function ongletTaches(z, m, modifiable) {
   if (!etat.donnees.tac) { z.appendChild(creer('p', { classe: 'w-mention', texte: 'Aucune table de tâches n\'est branchée : choisissez-la dans Paramétrer, étape « Les bureaux ».' })); return; }
@@ -4128,6 +4332,48 @@ function bornesMois(cle) {
 function libelleMois(cle) { var p = cle.split('-'); return MOIS_LONGS[Number(p[1]) - 1] + ' ' + p[0]; }
 function moisCourant() { var d = new Date(aujourdhui() * 1000); return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0'); }
 
+/* ---------- 🏖️ Absences du mois et jours ouvrés ----------
+   Le relevé du mois additionne les activités ET les absences, pour arriver au mois complet :
+   - une absence = un jour ouvré déclaré « Absent » dans les présences (jour par jour ou
+     par période) ; elle compte pour HEURES_PAR_JOUR heures (7 h) ;
+   - les jours ouvrés du mois = du lundi au vendredi, jours fériés retirés ;
+   - une absence tombant un jour férié ou un week-end ne compte pas (elle n'est pas due).
+   Le motif d'une absence n'est jamais demandé ni écrit (RGPD). */
+// [MODIFIABLE] Jours fériés à date fixe (mois-jour) : 1er janvier, 1er mai, 8 mai, 14 juillet, 15 août, 1er et 11 novembre, 25 décembre
+var FERIES_FIXES = ['01-01', '05-01', '05-08', '07-14', '08-15', '11-01', '11-11', '12-25'];
+// [MODIFIABLE] Jours fériés qui suivent Pâques (nombre de jours après le dimanche de Pâques) : lundi de Pâques, Ascension, lundi de Pentecôte
+var FERIES_APRES_PAQUES = [1, 39, 50];
+// [INTOUCHABLE] Date du dimanche de Pâques (calcul astronomique classique, dit de Meeus), en secondes comme les dates du document
+function dimanchePaques(an) {
+  var a = an % 19, b = Math.floor(an / 100), c = an % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+  var h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, mm = Math.floor((a + 11 * h + 22 * l) / 451);
+  var mois = Math.floor((h + l - 7 * mm + 114) / 31), jour = ((h + l - 7 * mm + 114) % 31) + 1;
+  return Date.UTC(an, mois - 1, jour) / 1000;
+}
+// [INTOUCHABLE] Le jour est-il férié ? (les jours fériés de chaque année sont calculés une fois, puis gardés)
+var _feries = {};
+function estFerie(jour) {
+  var an = new Date(jour * 1000).getUTCFullYear();
+  if (!_feries[an]) {
+    var l = FERIES_FIXES.map(function (md) { var p = md.split('-'); return Date.UTC(an, Number(p[0]) - 1, Number(p[1])) / 1000; });
+    var paq = dimanchePaques(an);
+    FERIES_APRES_PAQUES.forEach(function (n) { l.push(paq + n * 86400); });
+    _feries[an] = l;
+  }
+  return _feries[an].indexOf(jour) !== -1;
+}
+/* [INTOUCHABLE] Le mois vu du calendrier : jours ouvrés (hors week-ends et jours fériés),
+   jours fériés tombant en semaine, et jours d'absence de la personne. */
+function calendrierMois(m, du, au) {
+  var r = { ouvres: [], feries: [], absences: [] };
+  for (var j = du; j <= au; j += 86400) {
+    if (estWeekend(j)) { continue; }
+    if (estFerie(j)) { r.feries.push(j); continue; }
+    r.ouvres.push(j);
+    if (lieuDu(m, j) === LIEU_ABSENT) { r.absences.push(j); }
+  }
+  return r;
+}
 function releve(z, m) {
   // Le mois choisi est gardé tant que le widget reste ouvert (etat.releve)
   if (!etat.releve || !etat.releve.mois) { var b0 = bornesMois(moisCourant()); etat.releve = { mois: moisCourant(), du: b0.du, au: b0.au }; }
@@ -4156,17 +4402,43 @@ function donneesReleve(m) {
      peut chevaucher deux années. */
   activitesDe(m, 1, r.au).forEach(function (a) { var l = libelleActivite(a); cumuls[l] = (cumuls[l] || 0) + (Number(a.heures) || 0); });
   var totalCumul = Object.keys(cumuls).reduce(function (s, k) { return s + cumuls[k]; }, 0);
+  /* Absences du mois (7 h par jour d'absence), total du mois complet, jours ouvrés.
+     total reste le total des seules activités (inchangé) ; totalMois = activités + absences. */
+  var cal = calendrierMois(m, r.du, r.au), heuresAbsences = cal.absences.length * HEURES_PAR_JOUR;
+  // Jours d'absence où des activités sont aussi déclarées (une demi-journée ? un oubli ?) : signalés à l'écran
+  var conflits = cal.absences.filter(function (j) { return lignes.some(function (a) { return a.date === j; }); });
   return { lignes: lignes, totalCumul: totalCumul,
-    totaux: Object.keys(totaux).sort(function (a, b) { return totaux[b] - totaux[a]; }).map(function (k) { return { libelle: k, heures: totaux[k], cumul: cumuls[k] || 0 }; }), total: total };
+    totaux: Object.keys(totaux).sort(function (a, b) { return totaux[b] - totaux[a]; }).map(function (k) { return { libelle: k, heures: totaux[k], cumul: cumuls[k] || 0 }; }), total: total,
+    absences: cal.absences, heuresAbsences: heuresAbsences, totalMois: total + heuresAbsences, joursOuvres: cal.ouvres.length, feries: cal.feries, conflits: conflits };
 }
+/* [INTOUCHABLE] Le mois est-il complet ? Compare le total du mois (activités + absences)
+   aux jours ouvrés : « ✓ Mois complet », « Il manque … » ou « … de plus ». Arrondi au centième de jour. */
+function bilanMois(d) {
+  var ecart = Math.round((d.totalMois / HEURES_PAR_JOUR - d.joursOuvres) * 100) / 100;
+  if (ecart === 0) { return { complet: true, texte: '✓ Mois complet : ' + d.joursOuvres + ' jours ouvrés sur ' + d.joursOuvres + '.' }; }
+  if (ecart < 0) { return { complet: false, texte: 'Il manque ' + joursTexte(-ecart * HEURES_PAR_JOUR) + ' (' + heuresTexte(nombreFr(-ecart * HEURES_PAR_JOUR).replace(',', '.')) + ') pour arriver aux ' + d.joursOuvres + ' jours ouvrés du mois.' }; }
+  return { complet: false, texte: nombreFr(ecart) + (ecart >= 2 ? ' jours' : ' jour') + ' de plus que les ' + d.joursOuvres + ' jours ouvrés du mois : vérifiez les heures déclarées.' };
+}
+// Dates écrites en court, séparées par des virgules (« 3 nov., 4 nov. »)
+function listeDatesCourtes(jours) { return jours.map(function (j) { var x = new Date(j * 1000); return x.getUTCDate() + ' ' + MOIS_COURTS[x.getUTCMonth()]; }).join(', '); }
 function dessinerReleve(zone, m) {
   vider(zone);
   var d = donneesReleve(m), r = etat.releve;
   zone.appendChild(creer('p', { classe: 'w-mention', texte: 'Du ' + formaterDate(r.du) + ' au ' + formaterDate(r.au) + ' : ' + heuresTexte(nombreFr(d.total).replace(',', '.')) + ' déclarées, soit ' + joursTexte(d.total) + ' (1 jour = ' + HEURES_PAR_JOUR + ' h).' }));
-  if (!d.lignes.length) { zone.appendChild(creer('p', { classe: 'w-mention', texte: 'Aucune activité sur ce mois.' })); return; }
+  // Absences du mois et bilan du mois complet
+  var bilan = bilanMois(d);
+  zone.appendChild(creer('p', { classe: 'w-mention', texte: '🏖️ Absences : ' + (d.absences.length ? accord(d.absences.length, 'jour') + ' (' + listeDatesCourtes(d.absences) + ')' : 'aucune') + '.' + (d.feries.length ? ' Jours fériés retirés des jours ouvrés (' + listeDatesCourtes(d.feries) + ').' : '') }));
+  zone.appendChild(creer('p', { classe: 'dv-statut' + (bilan.complet ? '' : ' dv-statut--erreur'), texte: bilan.texte }));
+  if (d.conflits.length) { zone.appendChild(alerte('warning', null, 'Activités déclarées un jour d\'absence (' + listeDatesCourtes(d.conflits) + ') : ces jours comptent deux fois dans le total, vérifiez (demi-journée ?).')); }
+  if (!d.lignes.length && !d.absences.length) { zone.appendChild(creer('p', { classe: 'w-mention', texte: 'Aucune activité sur ce mois.' })); return; }
   var tb = creer('tbody');
   d.totaux.forEach(function (t) { tb.appendChild(creer('tr', {}, [creer('td', { texte: t.libelle }), creer('td', { classe: 'dv-nombre', texte: nombreFr(t.heures) }), creer('td', { classe: 'dv-nombre', texte: nombreFr(t.heures / HEURES_PAR_JOUR) }), creer('td', { classe: 'dv-nombre', texte: nombreFr(t.cumul / HEURES_PAR_JOUR) })])); });
-  tb.appendChild(creer('tr', { classe: 'dv-synthese' }, [creer('th', { attrs: { scope: 'row' }, texte: 'Total' }), creer('td', { classe: 'dv-nombre', texte: nombreFr(d.total) }), creer('td', { classe: 'dv-nombre', texte: nombreFr(d.total / HEURES_PAR_JOUR) }), creer('td', { classe: 'dv-nombre', texte: nombreFr(d.totalCumul / HEURES_PAR_JOUR) })]));
+  tb.appendChild(creer('tr', { classe: 'dv-synthese' }, [creer('th', { attrs: { scope: 'row' }, texte: d.absences.length ? 'Total activités' : 'Total' }), creer('td', { classe: 'dv-nombre', texte: nombreFr(d.total) }), creer('td', { classe: 'dv-nombre', texte: nombreFr(d.total / HEURES_PAR_JOUR) }), creer('td', { classe: 'dv-nombre', texte: nombreFr(d.totalCumul / HEURES_PAR_JOUR) })]));
+  // Les absences, puis le total du mois complet (pas de cumul « depuis le début » pour ces deux lignes)
+  if (d.absences.length) {
+    tb.appendChild(creer('tr', {}, [creer('td', { texte: '🏖️ Absences' }), creer('td', { classe: 'dv-nombre', texte: nombreFr(d.heuresAbsences) }), creer('td', { classe: 'dv-nombre', texte: nombreFr(d.absences.length) }), creer('td', { classe: 'dv-nombre', texte: '-' })]));
+    tb.appendChild(creer('tr', { classe: 'dv-synthese' }, [creer('th', { attrs: { scope: 'row' }, texte: 'Total du mois' }), creer('td', { classe: 'dv-nombre', texte: nombreFr(d.totalMois) }), creer('td', { classe: 'dv-nombre', texte: nombreFr(d.totalMois / HEURES_PAR_JOUR) }), creer('td', { classe: 'dv-nombre', texte: '-' })]));
+  }
   zone.appendChild(creer('div', { classe: 'fr-table fr-table--sm dv-releve' }, [creer('div', { classe: 'fr-table__wrapper' }, [creer('div', { classe: 'fr-table__container' }, [creer('div', { classe: 'fr-table__content' }, [
     creer('table', {}, [creer('caption', { classe: 'fr-sr-only', texte: 'Total des heures et des jours par projet' }), creer('thead', {}, [creer('tr', {}, [creer('th', { attrs: { scope: 'col' }, texte: 'Projet' }), creer('th', { classe: 'dv-nombre', attrs: { scope: 'col' }, texte: 'Heures' }), creer('th', { classe: 'dv-nombre', attrs: { scope: 'col' }, texte: 'Jours' }), creer('th', { classe: 'dv-nombre', attrs: { scope: 'col' }, texte: 'Jours depuis le début' })])]), tb])])])])]));
   zone.appendChild(creer('div', { classe: 'dv-actions dv-actions--gauche' }, [
@@ -4181,8 +4453,15 @@ function texteReleve(m, sep) {
   d.lignes.forEach(function (a) { l.push([formaterDate(a.date), libelleActivite(a), nombreFr(a.heures), a.precision || ''].map(q).join(sep)); });
   l.push('', ['Total par projet', '', 'Heures', 'Jours'].join(sep));
   d.totaux.forEach(function (t) { l.push([q(t.libelle), '', nombreFr(t.heures), nombreFr(t.heures / HEURES_PAR_JOUR)].join(sep)); });
-  l.push(['Total', '', nombreFr(d.total), nombreFr(d.total / HEURES_PAR_JOUR)].join(sep));
-  l.push('', q('1 jour = ' + HEURES_PAR_JOUR + ' heures (35 heures par semaine)'));
+  l.push([d.absences.length ? 'Total activités' : 'Total', '', nombreFr(d.total), nombreFr(d.total / HEURES_PAR_JOUR)].join(sep));
+  // Absences (dates, jamais de motif), total du mois complet et jours ouvrés
+  if (d.absences.length) {
+    l.push([q('Absences (' + listeDatesCourtes(d.absences) + ')'), '', nombreFr(d.heuresAbsences), nombreFr(d.absences.length)].join(sep));
+    l.push(['Total du mois', '', nombreFr(d.totalMois), nombreFr(d.totalMois / HEURES_PAR_JOUR)].join(sep));
+  }
+  l.push([q('Jours ouvrés du mois (week-ends et jours fériés retirés)'), '', '', String(d.joursOuvres)].join(sep));
+  l.push(q(bilanMois(d).texte));
+  l.push('', q('1 jour = ' + HEURES_PAR_JOUR + ' heures (35 heures par semaine). Une journée d\'absence compte pour ' + HEURES_PAR_JOUR + ' heures.'));
   return l.join('\r\n');
 }
 function copierReleve(m) {
@@ -4221,7 +4500,7 @@ function imprimerReleve(m) {
   // Le nom complet est obligatoire sur un document envoyé à l'employeur
   if (!/[A-Za-zÀ-ÿ]/.test(m.nom || '')) { afficherErreur('Le nom de cette personne n\'est pas renseigné : écrivez « Prénom Nom » dans la colonne NOM de la table Équipe, puis recommencez.'); return; }
   var d = donneesReleve(m), r = etat.releve;
-  if (!d.lignes.length) { afficherErreur('Aucune activité sur ce mois : il n\'y a rien à mettre dans le relevé.'); return; }
+  if (!d.lignes.length && !d.absences.length) { afficherErreur('Aucune activité ni absence sur ce mois : il n\'y a rien à mettre dans le relevé.'); return; }
   var ancienne = $('dvFeuille'); if (ancienne) { ancienne.remove(); }
   var mois = libelleMois(r.mois), edite = new Date();
   var dateLongue = function (s) { var x = new Date(s * 1000); return x.getUTCDate() + ' ' + MOIS_LONGS[x.getUTCMonth()] + ' ' + x.getUTCFullYear(); };
@@ -4233,11 +4512,19 @@ function imprimerReleve(m) {
     creer('thead', {}, [creer('tr', {}, [creer('th', { attrs: { scope: 'col', rowspan: '2' }, texte: 'Projet' }), creer('th', { classe: 'dv-f-nombre', attrs: { scope: 'colgroup', colspan: '2' }, texte: mois.charAt(0).toUpperCase() + mois.slice(1) }), creer('th', { classe: 'dv-f-nombre', attrs: { scope: 'colgroup', colspan: '2' }, texte: 'Depuis le début (au ' + dateLongue(r.au) + ')' })]),
       ligne([{ t: 'Heures', nombre: true }, { t: 'Jours', nombre: true }, { t: 'Heures', nombre: true }, { t: 'Jours', nombre: true }], true)]),
     creer('tbody', {}, d.totaux.map(function (t) { return ligne([t.libelle, { t: nombreFr(t.heures), nombre: true }, { t: nombreFr(t.heures / HEURES_PAR_JOUR), nombre: true }, { t: nombreFr(t.cumul), nombre: true }, { t: nombreFr(t.cumul / HEURES_PAR_JOUR), nombre: true }]); })),
-    creer('tfoot', {}, [creer('tr', {}, [creer('th', { attrs: { scope: 'row' }, texte: 'Total' }), creer('td', { classe: 'dv-f-nombre', texte: nombreFr(d.total) }), creer('td', { classe: 'dv-f-nombre', texte: nombreFr(d.total / HEURES_PAR_JOUR) }), creer('td', { classe: 'dv-f-nombre', texte: nombreFr(d.totalCumul) }), creer('td', { classe: 'dv-f-nombre', texte: nombreFr(d.totalCumul / HEURES_PAR_JOUR) })])])]);
+    creer('tfoot', {}, [creer('tr', {}, [creer('th', { attrs: { scope: 'row' }, texte: d.absences.length ? 'Total activités' : 'Total' }), creer('td', { classe: 'dv-f-nombre', texte: nombreFr(d.total) }), creer('td', { classe: 'dv-f-nombre', texte: nombreFr(d.total / HEURES_PAR_JOUR) }), creer('td', { classe: 'dv-f-nombre', texte: nombreFr(d.totalCumul) }), creer('td', { classe: 'dv-f-nombre', texte: nombreFr(d.totalCumul / HEURES_PAR_JOUR) })])]
+      // Les absences, puis le total du mois complet (pas de cumul « depuis le début » pour ces lignes)
+      .concat(d.absences.length ? [
+        creer('tr', {}, [creer('th', { attrs: { scope: 'row' }, texte: 'Absences' }), creer('td', { classe: 'dv-f-nombre', texte: nombreFr(d.heuresAbsences) }), creer('td', { classe: 'dv-f-nombre', texte: nombreFr(d.absences.length) }), creer('td', { classe: 'dv-f-nombre', texte: '-' }), creer('td', { classe: 'dv-f-nombre', texte: '-' })]),
+        creer('tr', {}, [creer('th', { attrs: { scope: 'row' }, texte: 'Total du mois' }), creer('td', { classe: 'dv-f-nombre', texte: nombreFr(d.totalMois) }), creer('td', { classe: 'dv-f-nombre', texte: nombreFr(d.totalMois / HEURES_PAR_JOUR) }), creer('td', { classe: 'dv-f-nombre', texte: '-' }), creer('td', { classe: 'dv-f-nombre', texte: '-' })])] : []))]);
   /* Tableau 2 : détail semaine par semaine. Chaque semaine (du lundi au vendredi) a son
      titre, ses lignes jour par jour, puis son sous-total en heures et en jours. */
   var semaines = [];
-  d.lignes.forEach(function (a) {
+  /* Chaque jour d'absence a sa ligne « Absence » (7 h) dans sa semaine, pour que les
+     sous-totaux de semaine soient complets. Rangement par date, l'absence après les activités du même jour. */
+  var lignesDetail = d.lignes.concat(d.absences.map(function (j) { return { date: j, absence: true, heures: HEURES_PAR_JOUR, precision: '' }; }))
+    .sort(function (a, b) { return a.date - b.date || (a.absence ? 1 : 0) - (b.absence ? 1 : 0); });
+  lignesDetail.forEach(function (a) {
     var lundi = lundiDe(a.date, 0), s = semaines[semaines.length - 1];
     if (!s || s.lundi !== lundi) { s = { lundi: lundi, lignes: [], heures: 0 }; semaines.push(s); }
     s.lignes.push(a); s.heures += Number(a.heures) || 0;
@@ -4245,7 +4532,7 @@ function imprimerReleve(m) {
   var detail = creer('table', { classe: 'dv-f-table' }, [creer('caption', { texte: 'Détail semaine par semaine' }),
     creer('thead', {}, [ligne(['Date', 'Projet', { t: 'Heures', nombre: true }, 'Précision'], true)])].concat(semaines.map(function (s) {
       return creer('tbody', { classe: 'dv-f-semaine' }, [creer('tr', { classe: 'dv-f-semaine__titre' }, [creer('th', { attrs: { colspan: '4', scope: 'colgroup' }, texte: 'Semaine du ' + dateLongue(s.lundi) })])]
-        .concat(s.lignes.map(function (a) { return ligne([formaterDate(a.date), libelleActivite(a), { t: nombreFr(a.heures), nombre: true }, a.precision || '']); }))
+        .concat(s.lignes.map(function (a) { return ligne([formaterDate(a.date), a.absence ? 'Absence' : libelleActivite(a), { t: nombreFr(a.heures), nombre: true }, a.precision || '']); }))
         .concat([creer('tr', { classe: 'dv-f-semaine__total' }, [creer('td', { attrs: { colspan: '2' }, texte: 'Sous-total de la semaine' }), creer('td', { classe: 'dv-f-nombre', texte: nombreFr(s.heures) }), creer('td', { texte: joursTexte(s.heures) })])]));
     })));
   var champ = function (titre, valeur) { return [creer('dt', { texte: titre }), creer('dd', { texte: valeur })]; };
@@ -4258,9 +4545,13 @@ function imprimerReleve(m) {
       employeurDe(m) ? champ('Titulaire', employeurDe(m)) : [],   // « Titulaire » (le titulaire du bon de commande)
       MISSION_POUR ? champ('Mission réalisée pour', MISSION_POUR) : [],
       champ('Période', 'du ' + dateLongue(r.du) + ' au ' + dateLongue(r.au)),
-      champ('Temps déclaré', nombreFr(d.total) + ' heures, soit ' + joursTexte(d.total)))),
+      champ('Temps déclaré', nombreFr(d.total) + ' heures, soit ' + joursTexte(d.total)),
+      // Absences et total du mois complet, comparé aux jours ouvrés
+      d.absences.length ? champ('Absences', accord(d.absences.length, 'jour') + ', soit ' + nombreFr(d.heuresAbsences) + ' heures') : [],
+      d.absences.length ? champ('Total du mois', nombreFr(d.totalMois) + ' heures, soit ' + joursTexte(d.totalMois)) : [],
+      champ('Jours ouvrés du mois', d.joursOuvres + ' jours (week-ends et jours fériés retirés)'))),
     synthese, detail,
-    creer('p', { classe: 'dv-f-note', texte: 'Base de calcul : 1 jour = ' + HEURES_PAR_JOUR + ' heures (35 heures par semaine). Document édité le ' + edite.getDate() + ' ' + MOIS_LONGS[edite.getMonth()] + ' ' + edite.getFullYear() + ', à partir des déclarations du prestataire.' }),
+    creer('p', { classe: 'dv-f-note', texte: 'Base de calcul : 1 jour = ' + HEURES_PAR_JOUR + ' heures (35 heures par semaine). Une journée d\'absence compte pour ' + HEURES_PAR_JOUR + ' heures.' + (d.feries.length ? ' Jours fériés du mois (' + listeDatesCourtes(d.feries) + ') retirés des jours ouvrés.' : '') + ' Document édité le ' + edite.getDate() + ' ' + MOIS_LONGS[edite.getMonth()] + ' ' + edite.getFullYear() + ', à partir des déclarations du prestataire.' }),
     creer('div', { classe: 'dv-f-signature' }, [creer('p', { texte: 'Signature du prestataire' }), creer('p', { classe: 'dv-f-signature__nom', texte: m.nom }), creer('p', { classe: 'dv-f-signature__fait', texte: 'Fait le :' })])]);
   document.body.appendChild(feuille);
   // Nom du fichier PDF proposé par le navigateur : le titre de la page pendant l'impression
@@ -5395,7 +5686,8 @@ async function remplirExemples(c, ks, equipe) {
    SECTION 7 : CHARGEMENT, RAFRAICHISSEMENT ET DEMARRAGE [INTOUCHABLE]
    ========================================================================== */
 async function chargerTout() {
-  await chargerMeta();
+  // À l'ouverture, la description du document vient d'être lue par initialiser() : on ne la relit pas
+  if (etat.metaFraiche) { etat.metaFraiche = false; } else { await chargerMeta(); }
   await lireConfig();
   // Réglages d'un ancien format mis à niveau : on les enregistre une fois (sans accès complet, on s'en sert sans les écrire)
   if (etat.reglagesAEnregistrer && etat.config && accesComplet()) {
@@ -5410,8 +5702,10 @@ async function chargerTout() {
     afficherVue('aucun');
     return;
   }
-  await chargerDonnees({ lourdes: true });   // à l'ouverture : toutes les tables, lourdes comprises
+  // La carte s'affiche avec les tables légères ; projets, prestataires et ressources suivent en arrière-plan
+  await chargerDonnees({ sansLourdes: true });
   if (!etat.brouillon) { afficherVue('plan'); }   // pendant l'assistant, on ne le quitte pas
+  relayer(chargerLourdesEnFond(), 'Lecture des projets et ressources');
 }
 
 /* Relecture : le plan est redessiné, sauf si une fenêtre est ouverte (elle
@@ -5445,7 +5739,10 @@ async function initialiser() {
   afficherLoader('Ouverture de Gristverse…');
   try {
     await attendreAcces();
+    // Les réglages de Gristverse sont lus EN MÊME TEMPS que la description du document
+    _prelectureBiblio = lireTable(ID_BIBLIO).catch(function () { return null; });
     await chargerMeta();
+    etat.metaFraiche = true;   // chargerTout() ne la relira pas
     await chargerTout();
     masquerLoader();
   } catch (e) {
