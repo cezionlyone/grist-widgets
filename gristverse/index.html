@@ -3,7 +3,7 @@
   ============================================================================
   READ ME - Gristverse
   ============================================================================
-  Version     : 1.1.0
+  Version     : 1.2.0
   Date        : 29/10/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -89,6 +89,9 @@
   - DSFR v1.13.1 (dsfr.min.css, utility.min.css)
   - Grist Plugin API (grist-plugin-api.js), origine imposée par la
     plateforme, URL non versionnée, donc non couverte par une empreinte SRI
+  - pdf.js v6.2.108, version legacy (aperçu des PDF joints), chargé à la
+    demande : chaque fichier n'est exécuté qu'après vérification de son
+    empreinte SHA-256 (l'équivalent de l'attribut integrity)
   Aucune police externe.
   Le Système de design de l'État (DSFR) est réservé par ses modalités
   d'utilisation aux sites de l'État : vérifiez qu'elles s'appliquent à
@@ -98,6 +101,9 @@
   ---------
   - Contenus insérés par textContent uniquement ; logo dessiné élément par
     élément (createElementNS).
+  - Pièces jointes : consultation seule ; fichiers récupérés en Blob, jeton
+    d'accès jamais dans un lien de la page ; aperçu limité aux images
+    matricielles et aux PDF, type imposé d'après l'extension.
   - Liens : https uniquement, ouverts par un lien temporaire avec noopener
     et noreferrer (pas de window.open).
   - Niveau d'accès accordé lu par grist.onOptions : sans accès complet,
@@ -133,6 +139,16 @@
 
   HISTORIQUE
   ----------
+  1.2.0 - 29/10/2026 - madeXcé - Pièces jointes.
+          - Fiche d'un projet : une colonne « Pièces jointes » choisie dans les
+            champs de la fiche affiche ses fichiers (avant : des numéros).
+          - Ressources de l'accueil : nouvelle colonne facultative « Fichier
+            joint » ; ses fichiers s'affichent sous la ressource.
+          - Visionneuse : aperçu des images et des PDF (dessinés par pdf.js,
+            aussi sous Firefox), plein écran, téléchargement des autres
+            fichiers. Consultation seule.
+          - Tables créées par Gristverse : colonne FICHIER (Ressources) et
+            DOCUMENTS (Projets, affichée dans la fiche).
   1.1.0 - 29/10/2026 - madeXcé - Absences, relevé et ouverture.
           - Bureau, onglet « Où je travaille » : liste de toutes les périodes
             enregistrées (jours ouvrés, passée, en cours ou à venir), doublons
@@ -218,6 +234,22 @@
     .w-overlay--lateral { justify-content: flex-end; align-items: stretch; padding: 0; }
     .w-dialogue--lateral { max-width: 42rem; height: 100%; animation: wGlisse .2s ease-out; }
     .w-dialogue--lateral .w-dialogue__corps { flex: 1; }
+    /* Pièces jointes : liste des fichiers et visionneuse (images, PDF) */
+    .w-overlay--visionneuse { z-index: 9993; }
+    /* Visionneuse : fenetre de 85 % de la hauteur, agrandissable en plein ecran. */
+    .w-dialogue--visionneuse { max-width: 72rem; height: 85vh; }
+    .w-dialogue--visionneuse.w-dialogue--plein { position: fixed; inset: 0; max-width: none; height: 100%; max-height: none; }
+    .w-visionneuse__contenu.w-visionneuse__contenu--pdf { display: block; overflow: auto; padding: 0; background: var(--background-contrast-grey); color: var(--text-default-grey); }
+    .w-pdf__pages { display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 1rem 0; }
+    .w-pdf__page { background: var(--background-default-grey); color: var(--text-default-grey); border: 1px solid var(--border-default-grey); }
+    .w-visionneuse__contenu { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 0 1.5rem 1.5rem;
+      background: var(--background-alt-grey); color: var(--text-default-grey); }
+    .w-visionneuse__contenu img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .w-pj__liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .375rem; }
+    .w-pj__fichier { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; padding: .5rem .75rem;
+      border: 1px solid var(--border-default-grey); background: var(--background-default-grey); color: var(--text-default-grey); }
+    .w-pj__nom { flex: 1; min-width: 8rem; font-size: .875rem; overflow-wrap: anywhere; }
+    .w-pj__taille { font-size: .75rem; color: var(--text-mention-grey); }
     @keyframes wGlisse { from { transform: translateX(2rem); opacity: 0; } to { transform: none; opacity: 1; } }
     @media (prefers-reduced-motion: reduce) { .w-dialogue--lateral { animation: none; } }
     .w-dialogue__tete { display: flex; align-items: flex-start; gap: .75rem; padding: 1.25rem 1.5rem .5rem; }
@@ -642,6 +674,7 @@
     .dv-ressources { list-style: none; padding: 0; margin: 0; }
     .dv-ressource { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; padding: .375rem 0; border-bottom: 1px solid var(--border-default-grey); }
     .dv-ressource__nom { flex: 1 1 12rem; }
+    .dv-ressource__fichiers { flex: 1 1 100%; }
     /* Accueil */
     .dv-nav-semaine { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-bottom: .5rem; }
     .dv-nav-semaine__titre { margin: 0; font-weight: 700; }
@@ -756,6 +789,19 @@
     </div>
   </div>
 
+  <!-- [INTOUCHABLE] Visionneuse des pièces jointes (images, PDF) -->
+  <div class="w-overlay w-overlay--visionneuse" id="wVisionneuse">
+    <div class="w-dialogue w-dialogue--visionneuse" role="dialog" aria-modal="true" aria-labelledby="wVisionneuseTitre">
+      <div class="w-dialogue__tete">
+        <div><h2 class="fr-h6 w-dialogue__titre" id="wVisionneuseTitre">Aperçu du fichier</h2></div>
+        <button type="button" class="fr-btn fr-btn--secondary fr-btn--sm fr-icon-zoom-in-line fr-btn--icon-left" id="wVisionneusePlein" aria-pressed="false">Plein écran</button>
+        <button type="button" class="fr-btn fr-btn--secondary fr-btn--sm fr-icon-download-line fr-btn--icon-left" id="wVisionneuseTelecharger">Télécharger</button>
+        <button type="button" class="fr-btn fr-btn--tertiary-no-outline fr-btn--sm fr-icon-close-line fr-btn--icon-left" id="wVisionneuseFermer">Fermer</button>
+      </div>
+      <div class="w-visionneuse__contenu" id="wVisionneuseContenu"></div>
+    </div>
+  </div>
+
   <!-- [INTOUCHABLE] Fenêtre de confirmation -->
   <div class="w-overlay w-overlay--haut" id="wConfirmOverlay">
     <div class="w-dialogue w-dialogue--etroit" role="alertdialog" aria-modal="true" aria-labelledby="wConfirmTitre" aria-describedby="wConfirmMsg">
@@ -796,7 +842,7 @@
    ========================================================================== */
 
 // [MODIFIABLE] Numero de version : a incrementer a chaque livraison.
-var VERSION_WIDGET = '1.1.0';
+var VERSION_WIDGET = '1.2.0';
 var NOM_WIDGET = 'Gristverse';
 
 /* [INTOUCHABLE] Bibliotheque de Gristverse : table technique des reglages,
@@ -827,6 +873,10 @@ var MOIS_COURTS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'a
 var MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 var JOURS_COURTS = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
 var JOURS_LONGS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+/* [MODIFIABLE] Pièces jointes : seuls les images matricielles et les PDF
+   s'affichent dans la visionneuse. Les SVG et pages HTML pourraient contenir
+   du code : ils se téléchargent. */
+var PJ_IMAGES = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'];
 var COULEURS_BADGES = ['green-menthe', 'blue-ecume', 'purple-glycine', 'orange-terre-battue', 'pink-tuile',
   'yellow-tournesol', 'brown-caramel', 'green-archipel'];
 
@@ -919,8 +969,9 @@ var TABLES_PIECES = {
       { DESCRIPTION: 'Mettre à jour le planning', qui: 0, STATUT: 'À faire', jour: 5, PRIORITE: 'Normale' }] },
   ressources: { id: 'RESSOURCES', titre: '📚 Ressources', colonnes: [
       { id: 'NOM', type: 'Text', label: 'Nom' }, { id: 'LIEN', type: 'Text', label: 'Lien' },
-      { id: 'TYPE', type: 'Choice', label: 'Type', widgetOptions: { choices: ['Guide', 'Outil', 'Modèle', 'Lien utile'] } }, { id: 'EPINGLEE', type: 'Bool', label: 'Épinglée' }],
-    reglages: { colNom: 'NOM', colLien: 'LIEN', colType: 'TYPE', colEpingle: 'EPINGLEE' },
+      { id: 'TYPE', type: 'Choice', label: 'Type', widgetOptions: { choices: ['Guide', 'Outil', 'Modèle', 'Lien utile'] } }, { id: 'EPINGLEE', type: 'Bool', label: 'Épinglée' },
+      { id: 'FICHIER', type: 'Attachments', label: 'Fichier' }],
+    reglages: { colNom: 'NOM', colLien: 'LIEN', colType: 'TYPE', colEpingle: 'EPINGLEE', colFichier: 'FICHIER' },
     exemples: [{ NOM: 'Système de design de l\'État', LIEN: 'https://www.systeme-de-design.gouv.fr', TYPE: 'Guide', EPINGLEE: true },
       { NOM: 'Charte de l\'équipe', LIEN: '', TYPE: 'Modèle', EPINGLEE: false },
       { NOM: 'Aide en ligne', LIEN: 'https://support.getgrist.com/fr/', TYPE: 'Lien utile', EPINGLEE: false }] },
@@ -928,8 +979,9 @@ var TABLES_PIECES = {
       { id: 'NUMERO', type: 'Int', label: 'Numéro' }, { id: 'NOM', type: 'Text', label: 'Nom du projet' },
       { id: 'STATUT', type: 'Choice', label: 'Statut', widgetOptions: { choices: ['À l\'étude', 'En cours', 'En recette', 'En service', 'Arrêté'] } },
       { id: 'DEV', type: 'Choice', label: 'Dev', widgetOptions: { choices: 'EQUIPE' } }, { id: 'DEBUT', type: 'Date', label: 'Début du développement' },
-      { id: 'FIN', type: 'Date', label: 'Fin du développement' }, { id: 'OBJET', type: 'Text', label: 'Objet' }, { id: 'LIEN', type: 'Text', label: 'Lien' }],
-    reglages: { colNom: 'NOM', colNum: 'NUMERO', colStatut: 'STATUT', colDev: 'DEV', colDevRef: null, colDebut: 'DEBUT', colFin: 'FIN', colObjet: 'OBJET', colLiens: ['LIEN'], champsFiche: [] },
+      { id: 'FIN', type: 'Date', label: 'Fin du développement' }, { id: 'OBJET', type: 'Text', label: 'Objet' }, { id: 'LIEN', type: 'Text', label: 'Lien' },
+      { id: 'DOCUMENTS', type: 'Attachments', label: 'Documents' }],
+    reglages: { colNom: 'NOM', colNum: 'NUMERO', colStatut: 'STATUT', colDev: 'DEV', colDevRef: null, colDebut: 'DEBUT', colFin: 'FIN', colObjet: 'OBJET', colLiens: ['LIEN'], champsFiche: ['DOCUMENTS'] },
     exemples: [{ NUMERO: 1, NOM: 'Annuaire de l\'équipe', STATUT: 'En service', qui: 0, debut: -60, fin: -20, OBJET: 'Retrouver qui fait quoi.' },
       { NUMERO: 2, NOM: 'Suivi des demandes', STATUT: 'En cours', qui: 1, debut: -10, fin: 30, OBJET: 'Suivre les demandes des métiers.' },
       { NUMERO: 3, NOM: 'Tableau de bord', STATUT: 'En recette', qui: 0, debut: -30, fin: 10, OBJET: 'Les chiffres clés en un coup d\'œil.' },
@@ -960,7 +1012,7 @@ var etat = {
   meta: { tables: {}, colonnes: {}, colParRef: {} }, metaLueA: 0,
   biblio: null, config: null, cleLigne: null, niveauAcces: null,
   peutModifier: false, peutParametrer: false,
-  vue: 'chargement', initEnCours: false, modaleOuverte: false, rafraichirEnAttente: false,
+  vue: 'chargement', pjMeta: {}, initEnCours: false, modaleOuverte: false, rafraichirEnAttente: false,
   donnees: null, decalageSemaine: 0, jourVu: null, ongletBureau: 'ou', jourActivite: null, projets: null, tableProjets: null, releve: null, releveOuvert: false, paperboard: null, carte: null, enRoute: null, confirmation: null, minuterieConfirmation: null, brouillon: null, nomDoc: '', listeAccessible: false
 };
 /* === SECTION : SOCLE COMMUN [INTOUCHABLE] ===
@@ -3429,9 +3481,279 @@ function ressources() {
     var nom = String(r[rs.colNom][i] || '').trim();
     if (!nom) { continue; }
     l.push({ id: r.id[i], nom: nom, lien: rs.colLien ? lienSur(r[rs.colLien][i]) || lienDansTexte(r[rs.colLien][i]) : null,
-      type: rs.colType ? texteCellule(rs.table, rs.colType, r[rs.colType][i]) : '', epingle: rs.colEpingle ? r[rs.colEpingle][i] === true : false });
+      type: rs.colType ? texteCellule(rs.table, rs.colType, r[rs.colType][i]) : '', epingle: rs.colEpingle ? r[rs.colEpingle][i] === true : false,
+      fichiers: rs.colFichier && r[rs.colFichier] ? r[rs.colFichier][i] : null });
   }
   return l.sort(function (a, b) { return (b.epingle - a.epingle) || a.nom.localeCompare(b.nom, 'fr'); });
+}
+
+/* ==========================================================================
+   SECTION : PIECES JOINTES (consultation) [INTOUCHABLE]
+   Fichiers des colonnes de type « Pièces jointes » : fiche d'un projet et
+   ressources de l'accueil. Consultation seule : aperçu des images et des PDF,
+   téléchargement des autres fichiers ; Gristverse n'envoie ni ne retire
+   aucun fichier.
+   - Les noms et tailles viennent de la table _grist_Attachments.
+   - Les fichiers sont récupérés en Blob avec un jeton d'accès demandé au
+     moment de l'appel : le jeton n'apparaît dans aucun lien ni attribut de
+     la page (il est transmis en paramètre de l'appel fetch, seule forme
+     acceptée par la plateforme depuis le cadre d'un widget).
+   - Les PDF sont dessinés par pdf.js et non par le lecteur du navigateur
+     (Firefox téléchargerait le fichier au lieu de l'afficher).
+   ========================================================================== */
+function idsPJ(v) {
+  return Array.isArray(v) && v[0] === 'L' ? v.slice(1).filter(function (x) { return typeof x === 'number'; }) : [];
+}
+
+async function chargerMetaPJ() {
+  try {
+    var d = await lireTable('_grist_Attachments');
+    var m = {};
+    for (var i = 0; i < d.id.length; i++) { m[d.id[i]] = { nom: colonneDe(d, 'fileName', i) || ('Fichier ' + d.id[i]), taille: colonneDe(d, 'fileSize', i) || 0 }; }
+    etat.pjMeta = m;
+  } catch (e) {
+    logSecurite('AVERTISSEMENT', 'Noms des pièces jointes illisibles', e);
+  }
+}
+
+async function obtenirJeton() {
+  var j = etat.jeton;
+  if (j && Date.now() < j.expire) { return j; }
+  var r = await gristAvecTimeout(grist.docApi.getAccessToken({ readOnly: false }), 15000);
+  etat.jeton = { token: r.token, baseUrl: r.baseUrl, expire: Date.now() + Math.max(0, (r.ttlMsecs || 60000) - 30000) };
+  return etat.jeton;
+}
+
+async function fetchDelai(url, options, delaiMs) {
+  var ctrl = new AbortController();
+  var minut = setTimeout(function () { ctrl.abort(); }, delaiMs);
+  try {
+    options.signal = ctrl.signal;
+    return await fetch(url, options);
+  } finally {
+    clearTimeout(minut);
+  }
+}
+
+function extensionDe(nom) {
+  var m = /\.([A-Za-z0-9]+)$/.exec(String(nom || ''));
+  return m ? m[1].toLowerCase() : '';
+}
+
+function formaterTaille(octets) {
+  if (!octets) { return ''; }
+  if (octets < 1024) { return octets + ' o'; }
+  if (octets < 1024 * 1024) { return Math.round(octets / 1024) + ' ko'; }
+  return (octets / (1024 * 1024)).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' Mo';
+}
+
+function iconePJ(nom) {
+  var ext = extensionDe(nom);
+  if (PJ_IMAGES.indexOf(ext) !== -1) { return 'fr-icon-image-line'; }
+  if (ext === 'pdf') { return 'fr-icon-file-pdf-line'; }
+  return 'fr-icon-file-line';
+}
+
+async function recupererPJ(id) {
+  var j = await obtenirJeton();
+  var rep = await fetchDelai(j.baseUrl + '/attachments/' + id + '/download?auth=' + encodeURIComponent(j.token), {}, DELAI_API_MS);
+  if (!rep.ok) { throw new Error('Réponse ' + rep.status); }
+  return rep.blob();
+}
+
+async function telechargerPJ(id) {
+  var nom = etat.pjMeta[id] ? etat.pjMeta[id].nom : 'fichier';
+  afficherLoader('Téléchargement…');
+  try {
+    var blob = await recupererPJ(id);
+    var url = URL.createObjectURL(blob);
+    var a = creer('a', { attrs: { href: url, download: nom } });
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+    masquerLoader();
+  } catch (e) {
+    masquerLoader();
+    afficherErreur('Le téléchargement du fichier n\'a pas abouti.', e);
+  }
+}
+
+var _visionneuse = { url: null, retour: null, pieger: null, id: null, pdf: null, tour: 0, plein: false };
+
+/* pdf.js : les PDF sont dessines par le widget, le lecteur integre du
+   navigateur n'etant pas utilisable partout dans le cadre d'un widget
+   (Firefox telecharge le fichier au lieu de l'afficher). Version legacy,
+   epinglee ; chaque fichier n'est execute qu'apres verification de son
+   empreinte SHA-256, l'equivalent de l'attribut integrity pour un module
+   charge par le script. */
+var PDFJS = {
+  version: '6.2.108',
+  base: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/',
+  lib: { fichier: 'pdf.min.mjs', empreinte: 'n6sMkQvxSEg1xcKuto9+s9/Of560NaAEUmxa+G1wiQw=' },
+  worker: { fichier: 'pdf.worker.min.mjs', empreinte: 'vA0biOoLZhlrHTalisJDxtkq3+clYk4qn904G9+O9DQ=' }
+};
+var _pdfjsChargement = null;
+
+async function moduleVerifie(ressource) {
+  var rep = await fetchDelai(PDFJS.base + ressource.fichier, { credentials: 'omit' }, DELAI_API_MS);
+  if (!rep.ok) { throw new Error('Réponse ' + rep.status + ' pour ' + ressource.fichier); }
+  var octets = await rep.arrayBuffer();
+  var hache = new Uint8Array(await crypto.subtle.digest('SHA-256', octets));
+  var b64 = btoa(String.fromCharCode.apply(null, Array.prototype.slice.call(hache)));
+  if (b64 !== ressource.empreinte) { throw new Error('Empreinte non conforme pour ' + ressource.fichier); }
+  return URL.createObjectURL(new Blob([octets], { type: 'text/javascript' }));
+}
+
+function chargerPdfJs() {
+  if (!_pdfjsChargement) {
+    _pdfjsChargement = Promise.all([moduleVerifie(PDFJS.lib), moduleVerifie(PDFJS.worker)]).then(function (urls) {
+      return import(urls[0]).then(function (lib) {
+        lib.GlobalWorkerOptions.workerSrc = urls[1];
+        return lib;
+      });
+    }).catch(function (e) {
+      _pdfjsChargement = null;
+      throw e;
+    });
+  }
+  return _pdfjsChargement;
+}
+
+/* Dessine toutes les pages a la largeur de la visionneuse. Un nouveau dessin
+   (plein ecran) interrompt le precedent. */
+async function dessinerPDF() {
+  var doc = _visionneuse.pdf;
+  var zone = document.getElementById('wVisionneuseContenu');
+  if (!doc || !zone) { return; }
+  var tour = ++_visionneuse.tour;
+  vider(zone);
+  zone.classList.add('w-visionneuse__contenu--pdf');
+  var pages = creer('div', { classe: 'w-pdf__pages' });
+  zone.appendChild(pages);
+  var largeur = Math.max(200, Math.min(zone.clientWidth - 48, 1400));
+  var ratio = window.devicePixelRatio || 1;
+  for (var n = 1; n <= doc.numPages; n++) {
+    if (_visionneuse.pdf !== doc || _visionneuse.tour !== tour) { return; }
+    var page = await doc.getPage(n);
+    var base = page.getViewport({ scale: 1 });
+    var vue = page.getViewport({ scale: (largeur / base.width) * ratio });
+    var canvas = creer('canvas', { classe: 'w-pdf__page', attrs: { role: 'img', 'aria-label': 'Page ' + n + ' sur ' + doc.numPages } });
+    canvas.width = Math.floor(vue.width);
+    canvas.height = Math.floor(vue.height);
+    canvas.style.width = Math.floor(vue.width / ratio) + 'px';
+    canvas.style.height = Math.floor(vue.height / ratio) + 'px';
+    if (_visionneuse.pdf !== doc || _visionneuse.tour !== tour) { return; }
+    pages.appendChild(canvas);
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vue }).promise;
+  }
+}
+
+function appliquerPleinEcranVisionneuse() {
+  var boite = document.querySelector('#wVisionneuse .w-dialogue--visionneuse');
+  if (boite) { boite.classList.toggle('w-dialogue--plein', _visionneuse.plein); }
+  var b = document.getElementById('wVisionneusePlein');
+  if (b) {
+    b.textContent = _visionneuse.plein ? 'Réduire' : 'Plein écran';
+    b.classList.toggle('fr-icon-zoom-in-line', !_visionneuse.plein);
+    b.classList.toggle('fr-icon-zoom-out-line', _visionneuse.plein);
+    b.setAttribute('aria-pressed', _visionneuse.plein ? 'true' : 'false');
+  }
+}
+
+function basculerPleinEcranVisionneuse() {
+  _visionneuse.plein = !_visionneuse.plein;
+  appliquerPleinEcranVisionneuse();
+  if (_visionneuse.pdf) { relayer(dessinerPDF(), 'Nouveau dessin du PDF'); }
+}
+
+async function consulterPJ(id) {
+  var nom = etat.pjMeta[id] ? etat.pjMeta[id].nom : 'Fichier';
+  var ext = extensionDe(nom);
+  if (PJ_IMAGES.indexOf(ext) === -1 && ext !== 'pdf') { return telechargerPJ(id); }
+  var ov = document.getElementById('wVisionneuse');
+  var zone = document.getElementById('wVisionneuseContenu');
+  document.getElementById('wVisionneuseTitre').textContent = nom;
+  _visionneuse.plein = false;
+  appliquerPleinEcranVisionneuse();
+  zone.classList.remove('w-visionneuse__contenu--pdf');
+  vider(zone);
+  zone.appendChild(creer('p', { classe: 'w-texte', texte: 'Chargement du fichier…' }));
+  _visionneuse.retour = document.activeElement;
+  _visionneuse.id = id;
+  ov.classList.add('actif');
+  void ov.offsetHeight;
+  _visionneuse.pieger = fabriquerPiege(ov, fermerVisionneuse);
+  ov.addEventListener('keydown', _visionneuse.pieger);
+  document.getElementById('wVisionneuseFermer').focus();
+  try {
+    var blob = await recupererPJ(id);
+    if (_visionneuse.id !== id) { return; }
+    /* Le type du Blob est impose d'apres l'extension verifiee, quel que soit
+       celui annonce par le serveur. */
+    var type = ext === 'pdf' ? 'application/pdf' : 'image/' + (ext === 'jpg' ? 'jpeg' : ext);
+    _visionneuse.url = URL.createObjectURL(new Blob([blob], { type: type }));
+    vider(zone);
+    if (ext === 'pdf') {
+      zone.appendChild(creer('p', { classe: 'w-texte', texte: 'Préparation de l\'aperçu…' }));
+      var lib = await chargerPdfJs();
+      var doc = await lib.getDocument({ data: new Uint8Array(await blob.arrayBuffer()), isEvalSupported: false, enableXfa: false }).promise;
+      if (_visionneuse.id !== id) { doc.destroy(); return; }
+      _visionneuse.pdf = doc;
+      await dessinerPDF();
+    } else {
+      zone.appendChild(creer('img', { attrs: { src: _visionneuse.url, alt: nom } }));
+    }
+  } catch (e) {
+    if (_visionneuse.id !== id) { return; }
+    zone.classList.remove('w-visionneuse__contenu--pdf');
+    vider(zone);
+    zone.appendChild(creer('p', { classe: 'w-texte', texte: 'L\'aperçu n\'a pas pu être affiché. Vous pouvez télécharger le fichier.' }));
+    logSecurite('ERREUR', 'Aperçu de pièce jointe', e);
+  }
+}
+
+function fermerVisionneuse() {
+  var ov = document.getElementById('wVisionneuse');
+  if (!ov.classList.contains('actif')) { return; }
+  ov.classList.remove('actif');
+  if (_visionneuse.pieger) { ov.removeEventListener('keydown', _visionneuse.pieger); _visionneuse.pieger = null; }
+  vider(document.getElementById('wVisionneuseContenu'));
+  if (_visionneuse.url) { URL.revokeObjectURL(_visionneuse.url); _visionneuse.url = null; }
+  if (_visionneuse.pdf) { try { _visionneuse.pdf.destroy(); } catch (e) { /* deja detruit */ } _visionneuse.pdf = null; }
+  _visionneuse.plein = false;
+  appliquerPleinEcranVisionneuse();
+  document.getElementById('wVisionneuseContenu').classList.remove('w-visionneuse__contenu--pdf');
+  _visionneuse.id = null;
+  var r = _visionneuse.retour;
+  _visionneuse.retour = null;
+  if (r && document.body.contains(r) && typeof r.focus === 'function') { r.focus(); }
+}
+
+/* Liste des fichiers d'une cellule « Pièces jointes » : consulter (images,
+   PDF) ou télécharger. prefixe : début des identifiants des boutons. */
+function listePJ(v, prefixe, libelle) {
+  var ids = idsPJ(v);
+  var ul = creer('ul', { classe: 'w-pj__liste', attrs: { 'aria-label': 'Fichiers : ' + libelle } });
+  if (!ids.length) { ul.appendChild(creer('li', { classe: 'w-mention', texte: 'Aucun fichier.' })); return ul; }
+  ids.forEach(function (fid, k) {
+    var meta = etat.pjMeta[fid] || { nom: 'Fichier ' + fid, taille: 0 };
+    var ext = extensionDe(meta.nom), apercu = PJ_IMAGES.indexOf(ext) !== -1 || ext === 'pdf';
+    ul.appendChild(creer('li', { classe: 'w-pj__fichier' }, [
+      creer('span', { classe: iconePJ(meta.nom), attrs: { 'aria-hidden': 'true' } }),
+      creer('span', { classe: 'w-pj__nom', texte: meta.nom }),
+      creer('span', { classe: 'w-pj__taille', texte: formaterTaille(meta.taille) }),
+      apercu ? bouton('Consulter', 'tertiaire', 'eye-line', function () { return consulterPJ(fid); }, { petit: true, id: prefixe + 'V' + k, aria: 'Consulter ' + meta.nom }) : null,
+      bouton('Télécharger', 'tertiaire', 'download-line', function () { return telechargerPJ(fid); }, { petit: true, iconeSeule: true, id: prefixe + 'T' + k, aria: 'Télécharger ' + meta.nom })]));
+  });
+  return ul;
+}
+/* Avant d'ouvrir une fenêtre qui montre des fichiers : leurs noms sont lus
+   s'ils ne sont pas encore connus (ouvrir est rappelée ensuite, une fois). */
+function nomsPJManquants(ids) { return ids.some(function (id) { return !etat.pjMeta[id]; }); }
+function lireNomsPJPuis(ouvrir) {
+  afficherLoader('Chargement des fichiers…');
+  chargerMetaPJ().then(function () { masquerLoader(); ouvrir(); });
 }
 
 /* ==========================================================================
@@ -3907,9 +4229,12 @@ function ouvrirSalleReunion() {
 }
 
 // Salle des bonnes idées : bibliothèque filtrable, épinglées d'abord
-function ouvrirSalleIdees() {
+function ouvrirSalleIdees(nomsLus) {
   if (lourdesPerimees()) { relireLourdesPuis(ouvrirSalleIdees); return; }   // ressources relues si elles ont plus d'une minute
   var tout = ressources();
+  // Noms des fichiers joints, lus avant d'ouvrir la fenêtre s'ils ne sont pas encore connus
+  var idsF = [].concat.apply([], tout.map(function (r) { return idsPJ(r.fichiers); }));
+  if (!nomsLus && nomsPJManquants(idsF)) { lireNomsPJPuis(function () { ouvrirSalleIdees(true); }); return; }
   var rech = saisie('dvRechIdees', '', { indice: 'Tapez quelques lettres…' });
   var zone = creer('div', { id: 'dvIdees' });
   var dessiner = function () {
@@ -3922,7 +4247,9 @@ function ouvrirSalleIdees() {
       ul.appendChild(creer('li', { classe: 'dv-ressource' }, [
         creer('span', { classe: 'dv-ressource__nom', texte: (r.epingle ? '📌 ' : '📘 ') + r.nom }),
         r.type ? badge(r.type, 'info') : null,
-        r.lien ? bouton('Ouvrir', 'tertiaire', 'external-link-line', function () { ouvrirAdresse(r.lien); }, { petit: true, id: 'dvRes' + i, aria: 'Ouvrir : ' + r.nom + ' (nouvelle fenêtre)' }) : null]));
+        r.lien ? bouton('Ouvrir', 'tertiaire', 'external-link-line', function () { ouvrirAdresse(r.lien); }, { petit: true, id: 'dvRes' + i, aria: 'Ouvrir : ' + r.nom + ' (nouvelle fenêtre)' }) : null,
+        // Fichiers joints à la ressource : à consulter ou télécharger
+        idsPJ(r.fichiers).length ? creer('div', { classe: 'dv-ressource__fichiers' }, [listePJ(r.fichiers, 'dvResF' + i + '_', r.nom)]) : null]));
     });
     zone.appendChild(ul);
   };
@@ -4718,18 +5045,23 @@ function ouvrirEtagere(statut) {
 }
 
 /* Fiche projet : les informations principales du projet, en lecture */
-function ouvrirFicheProjet(id) {
+function ouvrirFicheProjet(id, nomsLus) {
   var p = (etat.donnees.projets || []).filter(function (x) { return x.id === id; })[0];
   var C = reglagesProjets();
   if (!p || !C) { return; }
   var d = etat.donnees.projetsBruts, i = p.brut, tid = C.table;
+  // Colonnes « Pièces jointes » de la fiche : la liste de leurs fichiers, sous les autres champs
+  var estPJ = function (col) { var c = infoColonne(tid, col); return c && c.type === 'Attachments'; };
+  var colsPJ = (C.champsFiche || []).filter(estPJ);
+  var idsF = [].concat.apply([], colsPJ.map(function (col) { return idsPJ(valeurProjet(d, col, i)); }));
+  if (!nomsLus && nomsPJManquants(idsF)) { lireNomsPJPuis(function () { ouvrirFicheProjet(id, true); }); return; }
   var texte = function (col) { var v = valeurProjet(d, col, i); return v === null || v === undefined || v === '' ? '' : (infoColonne(tid, col) ? texteCellule(tid, col, v) : String(v)); };
   var date = function (col) { var v = enSecondes(valeurProjet(d, col, i)); return v ? formaterDate(v) : ''; };
   var estDate = function (col) { var c = infoColonne(tid, col); return c && (c.type === 'Date' || String(c.type).indexOf('DateTime') === 0); };
   // Les lignes de la fiche : statut, dev, dates, puis les champs choisis dans Paramétrer (dans leur ordre)
   var lignes = [['Statut', p.statut], ['Dev', devDuProjet(p).libelle],
     [C.colDebut ? libelleProjet(C, C.colDebut) : '', C.colDebut ? date(C.colDebut) : ''], [C.colFin ? libelleProjet(C, C.colFin) : '', C.colFin ? date(C.colFin) : '']]
-    .concat((C.champsFiche || []).filter(function (col) { return infoColonne(tid, col); }).map(function (col) { return [libelleProjet(C, col), estDate(col) ? date(col) : texte(col)]; }))
+    .concat((C.champsFiche || []).filter(function (col) { return infoColonne(tid, col) && !estPJ(col); }).map(function (col) { return [libelleProjet(C, col), estDate(col) ? date(col) : texte(col)]; }))
     .filter(function (l) { return l[0] && l[1]; });
   var dl = creer('dl', { classe: 'dv-fiche' });
   lignes.forEach(function (l) { dl.appendChild(creer('dt', { texte: l[0] })); dl.appendChild(creer('dd', { texte: l[1] })); });
@@ -4741,7 +5073,11 @@ function ouvrirFicheProjet(id) {
   });
   ouvrirModale({ titre: (p.num ? p.num + ' · ' : '') + p.nom, sousTitre: '🗄️ ' + p.statut, laterale: true, fermerDehors: true,
     corps: [dl, objet ? creer('h3', { classe: 'fr-h6 fr-mt-2w', texte: libelleProjet(C, C.colObjet) }) : null, objet ? creer('p', { classe: 'w-texte dv-fiche__objet', texte: objet }) : null,
-      creer('div', { classe: 'dv-actions dv-actions--gauche fr-mt-2w' }, liens)] });
+      creer('div', { classe: 'dv-actions dv-actions--gauche fr-mt-2w' }, liens)]
+      .concat([].concat.apply([], colsPJ.map(function (col, k) {
+        if (!idsPJ(valeurProjet(d, col, i)).length) { return []; }
+        return [creer('h3', { classe: 'fr-h6 fr-mt-2w fr-mb-0', texte: '📎 ' + libelleProjet(C, col) }), listePJ(valeurProjet(d, col, i), 'dvFicheF' + k + '_', libelleProjet(C, col))];
+      }))) });
 }
 
 /* Le responsable d'un projet : colonne emoji, sinon la référence vers une table de
@@ -5053,6 +5389,8 @@ function tablesDonnees() {
   }).sort(function (a, b) { return nomTable(a).localeCompare(nomTable(b), 'fr'); });
 }
 // Colonne la plus probable d'une table : nom qui évoque le rôle, type qui convient
+// Premières colonnes « Pièces jointes » d'une table (identifiants)
+function colonnesPJ(tid) { return tid ? colonnesDe(tid).filter(function (c) { return c.type === 'Attachments'; }).map(function (c) { return c.colId; }) : []; }
 function deviner(tid, motif, filtre) {
   if (!tid) { return null; }
   var l = colonnesDe(tid).filter(function (c) { return IDS_META.indexOf(c.colId) === -1 && c.colId.indexOf('gristHelper_') !== 0 && (!filtre || filtre(c)); });
@@ -5066,6 +5404,7 @@ var TYPES = {
   personne: function (c) { return ['Text', 'Choice', 'Any', 'ChoiceList'].indexOf(c.type) !== -1 || c.type.indexOf('Ref') === 0; },
   choix: function (c) { return c.type === 'Choice' || c.type === 'Text'; },
   oui: function (c) { return c.type === 'Bool'; },
+  pj: function (c) { return c.type === 'Attachments'; },
   tout: function () { return true; }
 };
 function tableProbable(motifTable, motifCol) {
@@ -5102,7 +5441,8 @@ function finisProposes(tid, colStatut) {
 }
 function proposerRessources(tid) {
   return { table: tid, colNom: deviner(tid, /nom|titre|ressource|intitule/, TYPES.texte), colLien: deviner(tid, /lien|url|adresse/, TYPES.texte),
-    colType: deviner(tid, /type|categorie|genre|outil/, TYPES.choix), colEpingle: deviner(tid, /epingl|favori|important/, TYPES.oui) };
+    colType: deviner(tid, /type|categorie|genre|outil/, TYPES.choix), colEpingle: deviner(tid, /epingl|favori|important/, TYPES.oui),
+    colFichier: deviner(tid, /fichier|document|piece|pj/, TYPES.pj) || colonnesPJ(tid)[0] || null };
 }
 
 /* --------------------------------------------------------------------------
@@ -5443,7 +5783,7 @@ function proposerProjets(tid) {
     colStatut: deviner(tid, /statut|etat|etape|phase/, TYPES.choix), colDev: deviner(tid, /\bdev\b|developpeu|presta|responsable|porteur|qui\b/, TYPES.personne), colDevRef: null,
     colDebut: deviner(tid, /debut/, TYPES.date), colFin: deviner(tid, /\bfin\b/, TYPES.date), colObjet: deviner(tid, /objet|description|resume/, TYPES.texte),
     colLiens: colonnesDe(tid).filter(function (c) { return TYPES.texte(c) && /lien|url|adresse web/.test(normaliser(c.colId + ' ' + c.label).replace(/_/g, ' ')); }).map(function (c) { return c.colId; }),
-    champsFiche: [] };
+    champsFiche: colonnesPJ(tid) };   // les colonnes « Pièces jointes » sont proposées d'office dans la fiche
   return p;
 }
 /* [MODIFIABLE libellés] Les pièces à table : la case qui les affiche, le titre,
@@ -5464,10 +5804,11 @@ var PIECES_TABLES = {
     champs: [['colDescription', 'Description de la tâche', TYPES.texte, false], ['colResponsable', 'Responsable', TYPES.personne, false],
       ['colStatut', 'Statut', TYPES.choix, true], ['colEcheance', 'Échéance', TYPES.date, true], ['colPriorite', 'Priorité', TYPES.choix, true]] },
   ressources: { pieces: ['ressources'], titre: '📚 Les ressources de l\'accueil', cles: ['colNom'],
-    intro: 'Vos documents et liens utiles, en livres sur les étagères de l\'accueil : on cherche, on ouvre le lien.',
+    intro: 'Vos documents et liens utiles, en livres sur les étagères de l\'accueil : on cherche, on ouvre le lien ou on consulte le fichier.',
     probable: function () { return tableProbable(/ressource/, null); }, proposer: function (t) { return proposerRessources(t); },
     champs: [['colNom', 'Nom de la ressource', TYPES.texte, false], ['colLien', 'Lien', TYPES.texte, true], ['colType', 'Type', TYPES.choix, true],
-      ['colEpingle', 'Épinglée', TYPES.oui, true, 'Facultatif : les ressources épinglées passent en premier']] },
+      ['colEpingle', 'Épinglée', TYPES.oui, true, 'Facultatif : les ressources épinglées passent en premier'],
+      ['colFichier', 'Fichier joint', TYPES.pj, true, 'Facultatif : une colonne « Pièces jointes » ; ses fichiers (PDF, images...) se consultent dans le widget']] },
   projets: { pieces: ['projets', 'planning', 'activites'], titre: '🗄️ Les projets', cles: ['colNom'],
     intro: 'La bibliothèque des projets (une étagère par statut), le planning et la déclaration des activités lisent cette table.',
     probable: function () { return tableProbable(/projet/, null); }, proposer: function (t) { return proposerProjets(t); },
@@ -5576,6 +5917,7 @@ function completerProjets(sec, p) {
     p.colLiens = (p.colLiens || []).filter(function (id) { return id !== c.colId; }); if (v) { p.colLiens.push(c.colId); }
   }));
   var d2 = creer('details', { classe: 'dv-details fr-mt-1w' }, [creer('summary', { texte: '🗂️ Autres champs de la fiche (' + (p.champsFiche || []).length + ')' })]);
+  d2.appendChild(creer('p', { classe: 'w-mention', texte: 'Une colonne « Pièces jointes » s\'affiche avec la liste de ses fichiers, à consulter ou télécharger.' }));
   d2.appendChild(casesValeurs('Champs affichés dans la fiche du projet, en plus du statut, du dev et des dates', 'dvChamp', cols.map(lib), (p.champsFiche || []).map(function (id) { var c = infoColonne(p.table, id); return c ? lib(c) : id; }), function (x, v) {
     var c = cols.filter(function (y) { return lib(y) === x; })[0]; if (!c) { return; }
     p.champsFiche = (p.champsFiche || []).filter(function (id) { return id !== c.colId; }); if (v) { p.champsFiche.push(c.colId); }
@@ -5759,6 +6101,11 @@ async function initialiser() {
 document.getElementById('bandeauVersion').textContent = 'v' + VERSION_WIDGET;
 dessinerLogo();
 document.getElementById('wErreurFermer').addEventListener('click', masquerErreur);
+document.getElementById('wVisionneuseFermer').addEventListener('click', fermerVisionneuse);
+document.getElementById('wVisionneusePlein').addEventListener('click', basculerPleinEcranVisionneuse);
+document.getElementById('wVisionneuseTelecharger').addEventListener('click', function () {
+  if (_visionneuse.id) { relayer(telechargerPJ(_visionneuse.id), 'Téléchargement depuis la visionneuse'); }
+});
 document.getElementById('wSuccesFermer').addEventListener('click', masquerSucces);
 document.getElementById('wModaleFermer').addEventListener('click', fermerModale);
 document.getElementById('wConfirmOui').addEventListener('click', function () { terminerConfirmation(true); });
@@ -5767,6 +6114,8 @@ document.getElementById('wConfirmNon').addEventListener('click', function () { t
    redessin de son contenu (sauf si une confirmation est affichée). */
 document.addEventListener('keydown', function (e) {
   if (e.key !== 'Escape' || !etat.modaleOuverte) { return; }
+  var vis = document.getElementById('wVisionneuse');
+  if (vis && (vis.classList.contains('actif') || (e.target && vis.contains(e.target)))) { return; }
   var conf = document.getElementById('wConfirmOverlay');
   if (conf && conf.classList.contains('actif')) { return; }
   fermerModale();
