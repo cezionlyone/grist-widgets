@@ -6,6 +6,9 @@ Chaque personne a son emoji, son bureau, sa maison et son île. On voit d'un cou
 
 Tout se paramètre dans le widget, sans toucher au code.
 
+<img width="1372" height="882" alt="image" src="https://github.com/user-attachments/assets/1e113daf-3988-4e66-a646-577edb7862ed" />
+
+
 ## Le plan
 
 - **Un bâtiment par site**, avec un bureau par personne. L'aménagement se fait automatiquement, ou case par case.
