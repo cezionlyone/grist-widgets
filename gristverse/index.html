@@ -3,7 +3,7 @@
   ============================================================================
   READ ME - Gristverse
   ============================================================================
-  Version     : 1.2.0
+  Version     : 1.2.1
   Date        : 29/10/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -29,8 +29,6 @@
   - Chaque personne a son emoji à ses trois places, grisé là où elle n'est
     pas : un clic sur son emoji grisé l'y déclare, et le personnage s'y
     rend (avec sa monture : à pied, vélo ou trottinette).
-  - Quelqu'un qui travaille dans un autre site que le sien apparaît dans un
-    poste invité de ce site.
 
   LES PIÈCES (chacune facultative, branchée sur une table du document)
   - Bureau de chacun : où il travaille, jour par jour ou par période ; ses
@@ -139,6 +137,11 @@
 
   HISTORIQUE
   ----------
+  1.2.1 - 29/10/2026 - madeXcé - Corrections issues de la relecture : tables
+          et colonnes supprimées ou renommées, heures des réunions dans le
+          fuseau de leur colonne, rappel 15 minutes avant, fichiers de la
+          bibliothèque des ressources, focus après rafraîchissement, message
+          sans accès complet, relevé et export CSV, jeton des pièces jointes.
   1.2.0 - 29/10/2026 - madeXcé - Pièces jointes.
           - Fiche d'un projet : une colonne « Pièces jointes » choisie dans les
             champs de la fiche affiche ses fichiers (avant : des numéros).
@@ -842,7 +845,7 @@
    ========================================================================== */
 
 // [MODIFIABLE] Numero de version : a incrementer a chaque livraison.
-var VERSION_WIDGET = '1.2.0';
+var VERSION_WIDGET = '1.2.1';
 var NOM_WIDGET = 'Gristverse';
 
 /* [INTOUCHABLE] Bibliotheque de Gristverse : table technique des reglages,
@@ -852,7 +855,8 @@ var LABEL_BIBLIO = '🌐 BIBLIOTHÈQUE GRISTVERSE ⚡';
 var CLE_CONFIG = 'CONFIG:GRISTVERSE';
 var DELAI_API_MS = 30000;
 /* Pas de relecture automatique à intervalles réguliers : la carte se met à jour quand
-   Grist signale un changement (onRecords) et après chaque action faite dans le widget. */
+   Grist signale un changement (onRecords) et après chaque action faite dans le widget.
+   Seule l'heure est vérifiée régulièrement (rappel de réunion, nouveau jour) : voir cleHorloge. */
 
 var COLONNES_META = [
   { id: 'CREE_LE', type: 'DateTime:Europe/Paris', label: 'CREE_LE', formula: 'NOW()', recalcWhen: 0 },
@@ -1931,7 +1935,7 @@ function fermerModale() {
       // Le bouton qui avait ouvert la fenêtre est recréé par le dessin : on retrouve le nouveau par son identifiant ou son libellé
       var idR = r && r.id, libR = r && r.getAttribute ? r.getAttribute('aria-label') : null;
       afficherVue('plan');
-      r = (idR && document.getElementById(idR)) || (libR && document.querySelector('[aria-label="' + libR.replace(/"/g, '\\"') + '"]')) || null;
+      r = (idR && document.getElementById(idR)) || (libR && document.querySelector('[aria-label="' + CSS.escape(libR) + '"]')) || null;
     } else { planifierRafraichissement(); }
   }
   if (r && document.body.contains(r) && typeof r.focus === 'function') { r.focus(); }
@@ -2075,7 +2079,11 @@ function stepper(n, noms, aller, actionFinale) {
    un texte (emoji et nom accessible des boutons).
    ========================================================================== */
 function $(id) { return document.getElementById(id); }
-function accord(n, singulier, pluriel) { return n + ' ' + (n >= 2 ? (pluriel || singulier + 's') : singulier); }
+// Valeur d'une clé propre à l'objet, jamais d'une clé héritée (« constructor », « __proto__ »...) : undefined sinon
+function propre(o, k) { return o && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined; }
+function accord(n, singulier, pluriel) { return compteLocal(n) + ' ' + (n >= 2 ? (pluriel || singulier + 's') : singulier); }
+// Un nombre d'éléments écrit en français : « 1 500 »
+function compteLocal(n) { try { return typeof n === 'number' ? n.toLocaleString('fr-FR') : String(n); } catch (e) { return String(n); } }
 
 var T = 16;   // [INTOUCHABLE] taille d'une tuile en pixels
 var _px = null;   // contexte de dessin en cours
@@ -2681,7 +2689,7 @@ function etiquettesCarte(couche, carte) {
       (etat.donnees.statuts || []).forEach(function (s, k) {
         var e = positionEtagere(p, carte, k);
         // Étagère provisoire (projets pas encore lus) : « … » à la place du nombre
-        var combien = s.provisoire ? '…' : String(s.projets.length), detail = s.provisoire ? 'projets en cours de chargement' : accord(s.projets.length, 'projet');
+        var combien = s.provisoire ? '…' : compteLocal(s.projets.length), detail = s.provisoire ? 'projets en cours de chargement' : accord(s.projets.length, 'projet');
         var b = creer('button', { classe: 'dv-etagere dv-info', texte: combien + ' · ' + s.nom, attrs: { type: 'button', 'data-info': '🗄️ ' + s.nom + ' : ' + detail + ', cliquer pour la liste', 'aria-label': 'Étagère « ' + s.nom + ' » : ' + detail + '. Entrée : voir la liste' } });
         b.addEventListener('click', function () { ouvrirEtagere(s.nom); });
         poser(b, (e.x * T + 29) / T, e.y + 1.95);
@@ -2972,7 +2980,13 @@ function jourOuvre(jour, sens) { var j = jour; while (estWeekend(j)) { j += (sen
 function estAujourdhui() { return jourVu() === aujourdhui(); }
 // Le jour montré par défaut (aujourd'hui, ou le lundi qui suit un week-end)
 function jourParDefaut() { return jourOuvre(aujourdhui(), 1); }
-function jourDeSec(sec) { var d = new Date(sec * 1000); return jourDe(d); }   // DateTime → jour local
+/* Les réunions sont lues dans le fuseau de leur colonne de début, comme Grist les
+   affiche (colonne Date : temps universel, ses valeurs sont à minuit UTC). */
+function fuseauReunions() {
+  var rc = etat.donnees ? etat.donnees.reu : null, col = rc ? infoColonne(rc.table, rc.colDebut) : null;
+  return col && col.type === 'Date' ? 'UTC' : fuseauDe(col);
+}
+function jourDeSec(sec) { var p = partiesDansFuseau(sec, fuseauReunions()); return Date.UTC(p.a, p.m - 1, p.j) / 1000; }   // DateTime → jour dans le fuseau des réunions
 function lundiDe(jour, decalageSemaines) {
   var d = new Date(jour * 1000);
   var js = d.getUTCDay();
@@ -2992,8 +3006,8 @@ function libelleJour(jour, long) {
   return (long ? JOURS_LONGS : JOURS_COURTS)[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + (long ? MOIS_LONGS : MOIS_COURTS)[d.getUTCMonth()];
 }
 function heureDe(sec) {
-  var d = new Date(sec * 1000);
-  return d.getHours() + ' h ' + String(d.getMinutes()).padStart(2, '0');
+  var p = partiesDansFuseau(sec, fuseauReunions());
+  return p.h + ' h ' + String(p.mi).padStart(2, '0');
 }
 
 /* --------------------------------------------------------------------------
@@ -3004,7 +3018,7 @@ function emojiLieu(lieu) {
   if (lieu === LIEU_TELETRAVAIL) { return '🏡'; }
   if (lieu === LIEU_ABSENT || lieu === LIEU_WEEKEND) { return '🏖️'; }
   if (lieu === LIEU_NON_DECLARE) { return '❔'; }
-  return EMOJIS_SITES[lieu] || '🏢';
+  return propre(EMOJIS_SITES, lieu) || '🏢';
 }
 /* [INTOUCHABLE] Les trois choix d'une personne : son bureau (son site habituel),
    le télétravail, ou absent. Jamais d'autre site, jamais de motif. */
@@ -3031,7 +3045,7 @@ function cfg() { return etat.config || {}; }
 // Une pièce optionnelle est-elle affichée ? (absente des réglages = affichée)
 function pieceActive(cle) { var p = cfg().pieces; return !p || p[cle] !== false; }
 // Nom affiché d'un bâtiment (réglages), sinon le nom du site
-function nomSite(s) { var n = cfg().nomsSites; return (n && n[s]) || s; }
+function nomSite(s) { return propre(cfg().nomsSites, s) || s; }
 // Ordre des ailes de gauche à droite : celui des réglages, puis les autres sites
 function ordreSites() {
   var o = (cfg().ordreSites || []).filter(function (s) { return sitesConfig().indexOf(s) !== -1; });
@@ -3045,7 +3059,7 @@ function canalEquipe() {
   return pieceActive('tele') && u ? { nom: String(c.nom || '').trim() || 'Canal', lien: u } : null;
 }
 // Aménagement réel d'un bâtiment (placé dans l'éditeur), ou null : disposition automatique
-function amenagementDe(site) { var a = cfg().amenagements; return a && a[site] && a[site].places ? a[site] : null; }
+function amenagementDe(site) { var a = propre(cfg().amenagements, site); return a && a.places ? a : null; }
 
 /* Mise à niveau de réglages d'un ancien format : les réglages manquants reçoivent
    leur valeur par défaut, et on note qu'il faut enregistrer. */
@@ -3090,11 +3104,14 @@ async function lireConfig() {
       try { etat.config = JSON.parse(d.VALEUR[i]); etat.cleLigne = d.id[i]; } catch (e) { logSecurite('ERREUR', 'Réglages de Gristverse illisibles', e); }
       // Réglages d'une ancienne installation : repris (enregistrés ensuite, voir chargerTout)
       if (etat.config && migrerConfig(etat.config)) { etat.reglagesAEnregistrer = true; }
+      // Tables et colonnes renommées dans Grist depuis l'enregistrement des réglages
+      retrouverRenommages(etat.config);
       break;
     }
   }
 }
 async function ecrireConfig(cfg) {
+  noterReferencesConfig(cfg);
   var valeur = JSON.stringify(cfg);
   if (etat.cleLigne) {
     await agir([['UpdateRecord', etat.biblio, etat.cleLigne, { VALEUR: valeur, VERSION_MODIF: VERSION_WIDGET }]]);
@@ -3107,6 +3124,85 @@ async function ecrireConfig(cfg) {
 // Une pièce n'est montrée que si sa table et ses colonnes principales existent
 function pieceValide(p, cles) {
   return !!(p && p.table && etat.meta.tables[p.table] && cles.every(function (k) { return !!infoColonne(p.table, p[k]); }));
+}
+/* Colonnes facultatives supprimées ou renommées dans Grist depuis l'enregistrement des
+   réglages : elles sont ignorées (copie des réglages, rien n'est enregistré), la pièce reste affichée. */
+function sansColonnesDisparues(p, champs) {
+  var q = Object.assign({}, p);
+  champs.forEach(function (k) { if (q[k] && !infoColonne(q.table, q[k])) { q[k] = null; } });
+  return q;
+}
+/* Table ou colonne renommée dans Grist : l'identifiant suit le libellé (« Équipe »
+   renommée « Personnes » devient Personnes, la colonne « Nom » renommée « Nom complet »
+   devient Nom_complet). Les réglages gardent les références internes des tables et des
+   colonnes, qui ne changent jamais, et les retrouvent sous leurs nouveaux identifiants. */
+// [INTOUCHABLE] Colonnes des tables créées par Gristverse, lues et écrites sous ces identifiants
+var COLONNES_FIXES = { equipe: ['NOM', 'EMOJI', 'SITE', 'EMPLOYEUR'], presences: ['PERSONNE', 'DU', 'AU', 'LIEU'], activites: ['PERSONNE', 'DATE', 'PROJET', 'HORS_PROJET', 'HEURES', 'PRECISION'] };
+// Identifiant actuel d'une colonne d'une table de Gristverse (k : equipe, presences, activites) ; id : son identifiant à la création
+function cf(k, id) { var m = cfg().colonnesFixes, x = m && m[k] ? m[k][id] : null; return x && typeof x.id === 'string' && x.id ? x.id : id; }
+// Un enregistrement d'une table de Gristverse, ses champs renommés selon les identifiants actuels des colonnes
+function versColonnes(k, o) { var r = {}; Object.keys(o).forEach(function (x) { r[cf(k, x)] = o[x]; }); return r; }
+function idFixe(c, k, id) {
+  var x = c.colonnesFixes && c.colonnesFixes[k] ? c.colonnesFixes[k][id] : null;
+  if (x && typeof x.id === 'string' && infoColonne(c[k], x.id)) { return x.id; }
+  var col = x && typeof x.ref === 'number' ? etat.meta.colParRef[x.ref] : null;
+  return col && col.tableId === c[k] ? col.colId : id;
+}
+// Identifiants des colonnes utilisées par les réglages d'une pièce branchée
+function colonnesDePiece(p) {
+  return Object.keys(p).filter(function (k) { return /^col/.test(k) && typeof p[k] === 'string'; }).map(function (k) { return p[k]; })
+    .concat(Array.isArray(p.colLiens) ? p.colLiens : [], Array.isArray(p.champsFiche) ? p.champsFiche : [], p.libelles && typeof p.libelles === 'object' ? Object.keys(p.libelles) : [])
+    .filter(function (x) { return typeof x === 'string' && x; });
+}
+function noterReferencesConfig(c) {
+  if (!c || !etat.meta || !etat.meta.tables) { return; }
+  c.tablesRefs = c.tablesRefs && typeof c.tablesRefs === 'object' ? c.tablesRefs : {};
+  c.colonnesFixes = c.colonnesFixes && typeof c.colonnesFixes === 'object' ? c.colonnesFixes : {};
+  Object.keys(COLONNES_FIXES).forEach(function (k) {
+    var t = typeof c[k] === 'string' ? etat.meta.tables[c[k]] : null;
+    if (!t) { return; }
+    c.tablesRefs[k] = t.ref;
+    var m = {};
+    COLONNES_FIXES[k].forEach(function (id) { var act = idFixe(c, k, id), col = infoColonne(c[k], act); if (col) { m[id] = { id: act, ref: col.ref }; } });
+    c.colonnesFixes[k] = m;
+  });
+  Object.keys(PIECES_TABLES).forEach(function (k) {
+    var p = c[k], t = p && typeof p.table === 'string' ? etat.meta.tables[p.table] : null;
+    if (!t) { return; }
+    p.tableRef = t.ref;
+    p.colRefs = {};
+    colonnesDePiece(p).forEach(function (id) { var col = infoColonne(p.table, id); if (col) { p.colRefs[id] = col.ref; } });
+  });
+}
+// À l'ouverture : les identifiants actuels sont retrouvés par les références (en mémoire ; enregistrés au prochain changement des réglages)
+function retrouverRenommages(c) {
+  if (!c || typeof c !== 'object' || !etat.meta || !etat.meta.colParRef) { return; }
+  var parRef = {};
+  Object.keys(etat.meta.tables).forEach(function (t) { parRef[etat.meta.tables[t].ref] = t; });
+  var tableActuelle = function (tid, ref) {
+    if (typeof tid !== 'string' || !tid || etat.meta.tables[tid] || typeof ref !== 'number' || !parRef[ref]) { return tid; }
+    logSecurite('INFO', 'Table renommée : ' + tid + ' est maintenant ' + parRef[ref]);
+    return parRef[ref];
+  };
+  var R = c.tablesRefs && typeof c.tablesRefs === 'object' ? c.tablesRefs : {};
+  Object.keys(COLONNES_FIXES).forEach(function (k) { c[k] = tableActuelle(c[k], R[k]); });
+  Object.keys(PIECES_TABLES).forEach(function (k) {
+    var p = c[k];
+    if (!p || typeof p !== 'object') { return; }
+    p.table = tableActuelle(p.table, p.tableRef);
+    var refs = p.colRefs && typeof p.colRefs === 'object' ? p.colRefs : null;
+    if (!refs) { return; }
+    var actuel = function (id) {
+      if (typeof id !== 'string' || !id || infoColonne(p.table, id) || !Object.prototype.hasOwnProperty.call(refs, id)) { return id; }
+      var col = etat.meta.colParRef[refs[id]];
+      return col && col.tableId === p.table ? col.colId : id;
+    };
+    Object.keys(p).forEach(function (x) { if (/^col/.test(x) && typeof p[x] === 'string') { p[x] = actuel(p[x]); } });
+    if (Array.isArray(p.colLiens)) { p.colLiens = p.colLiens.map(actuel); }
+    if (Array.isArray(p.champsFiche)) { p.champsFiche = p.champsFiche.map(actuel); }
+    if (p.libelles && typeof p.libelles === 'object') { var L = {}; Object.keys(p.libelles).forEach(function (x) { L[actuel(x)] = p.libelles[x]; }); p.libelles = L; }
+  });
+  noterReferencesConfig(c);
 }
 
 /* --------------------------------------------------------------------------
@@ -3157,11 +3253,10 @@ function lourdesPerimees() { if (_sansRelecture) { return false; } return !_lour
 async function lireToutesDonnees(opt) {
   var debut = Date.now();   // les modifications faites après ce moment peuvent manquer dans ce qu'on va lire
   var c = etat.config;
-  var reu = pieceActive('reunion') && pieceValide(c.reunions, ['colObjet', 'colDebut']) ? c.reunions : null;
+  var reu = pieceActive('reunion') && pieceValide(c.reunions, ['colObjet', 'colDebut']) ? sansColonnesDisparues(c.reunions, ['colFin', 'colLieu', 'colVisio', 'colParticipants', 'colStatut']) : null;
   // Réglages sans colonne statut des réunions : elle est devinée, sans rien enregistrer
   if (reu && reu.colStatut === undefined) { reu.colStatut = deviner(reu.table, /statut|etat/, TYPES.choix); }
-  if (reu && reu.colStatut && !infoColonne(reu.table, reu.colStatut)) { reu.colStatut = null; }
-  var tac = pieceActive('paperboards') && pieceValide(c.taches, ['colDescription', 'colResponsable']) ? c.taches : null;
+  var tac = pieceActive('paperboards') && pieceValide(c.taches, ['colDescription', 'colResponsable']) ? sansColonnesDisparues(c.taches, ['colStatut', 'colEcheance', 'colPriorite']) : null;
   // opt.sansLourdes (ouverture) : seules les tables légères sont lues ; les lourdes arrivent ensuite (chargerLourdesEnFond)
   var avecLourdes = opt.lourdes || (!_lourdes && !opt.sansLourdes && !_lourdesEnCours);   // pas de doublon pendant la lecture en arrière-plan
   // Toutes les lectures partent en même temps (légères, et lourdes si besoin)
@@ -3187,20 +3282,24 @@ async function lireToutesDonnees(opt) {
   var L = lourdes ? await lourdes : (_lourdes || lourdesVides());
   if (lourdes) { _lourdes = L; }
   var eq = lus[0] || { id: [] };
+  // Colonnes des tables de Gristverse sous leurs identifiants actuels (renommées dans Grist : voir retrouverRenommages)
+  var eNom = eq[cf('equipe', 'NOM')], eEmoji = eq[cf('equipe', 'EMOJI')], eSite = eq[cf('equipe', 'SITE')], eEmp = eq[cf('equipe', 'EMPLOYEUR')];
   var membres = eq.id.map(function (id, i) {
-    return { id: id, nom: String(eq.NOM ? eq.NOM[i] || '' : '').trim(), emoji: String(eq.EMOJI ? eq.EMOJI[i] || '' : '').trim(), site: String(eq.SITE ? eq.SITE[i] || '' : '').trim(),
-      employeur: String(eq.EMPLOYEUR ? eq.EMPLOYEUR[i] || '' : '').trim() };   // Colonne facultative, pour le relevé PDF (ligne « Titulaire »)
+    return { id: id, nom: String(eNom ? eNom[i] || '' : '').trim(), emoji: String(eEmoji ? eEmoji[i] || '' : '').trim(), site: String(eSite ? eSite[i] || '' : '').trim(),
+      employeur: String(eEmp ? eEmp[i] || '' : '').trim() };   // Colonne facultative, pour le relevé PDF (ligne « Titulaire »)
   }).filter(function (m) { return m.nom || m.emoji; });
   membres.sort(function (a, b) { return a.nom.localeCompare(b.nom, 'fr'); });
   var pr = lus[1] || { id: [] };
+  var pQui = pr[cf('presences', 'PERSONNE')], pDu = pr[cf('presences', 'DU')], pAu = pr[cf('presences', 'AU')], pLieu = pr[cf('presences', 'LIEU')];
   var presences = pr.id.map(function (id, i) {
-    return { id: id, personne: pr.PERSONNE ? pr.PERSONNE[i] : 0, du: pr.DU ? pr.DU[i] : 0, au: pr.AU ? pr.AU[i] : 0, lieu: pr.LIEU ? pr.LIEU[i] : '' };
+    return { id: id, personne: pQui ? pQui[i] : 0, du: pDu ? pDu[i] : 0, au: pAu ? pAu[i] : 0, lieu: pLieu ? pLieu[i] : '' };
   }).filter(function (x) { return x.personne && typeof x.du === 'number' && x.du; });
   // Activités déclarées (en heures, par projet ou hors projet)
-  var ac = lus[4] || { id: [] };
+  var ac = lus[4] || { id: [] }, aC = function (id) { return ac[cf('activites', id)]; };
+  var aQui = aC('PERSONNE'), aDate = aC('DATE'), aProj = aC('PROJET'), aHors = aC('HORS_PROJET'), aH = aC('HEURES'), aDet = aC('PRECISION');
   var activites = ac.id.map(function (id, i) {
-    return { id: id, personne: ac.PERSONNE ? ac.PERSONNE[i] : 0, date: ac.DATE ? ac.DATE[i] : 0, projet: ac.PROJET ? ac.PROJET[i] || 0 : 0,
-      horsProjet: ac.HORS_PROJET ? String(ac.HORS_PROJET[i] || '') : '', heures: ac.HEURES ? Number(ac.HEURES[i]) || 0 : 0, precision: ac.PRECISION ? String(ac.PRECISION[i] || '') : '' };
+    return { id: id, personne: aQui ? aQui[i] : 0, date: aDate ? aDate[i] : 0, projet: aProj ? aProj[i] || 0 : 0,
+      horsProjet: aHors ? String(aHors[i] || '') : '', heures: aH ? Number(aH[i]) || 0 : 0, precision: aDet ? String(aDet[i] || '') : '' };
   }).filter(function (a) { return a.personne && typeof a.date === 'number' && a.date; });
   // Remplacement d'un seul bloc, une fois tout lu
   // refs : tables visées par une référence, rangées par nom de table (pour lire le nom affiché)
@@ -3295,7 +3394,7 @@ function relireLourdesPuis(ouvrir) {
 async function lireLourdes() {
   var c = etat.config, L = { quand: Date.now(), projets: [], projetsBruts: null, statuts: [], prestas: null, tableProjets: null, listeProjets: null, ressources: null, res: null };
   // Ressources : la table choisie dans Paramétrer, sinon une table « ...RESSOURCES... » trouvée d'office
-  L.res = pieceActive('ressources') && pieceValide(c.ressources, ['colNom']) ? c.ressources : null;
+  L.res = pieceActive('ressources') && pieceValide(c.ressources, ['colNom']) ? sansColonnesDisparues(c.ressources, ['colLien', 'colType', 'colEpingle', 'colFichier']) : null;
   var lectures = [lireOuVide(L.res && L.res.table).then(function (d) { L.ressources = d; })];
   // Projets (bibliothèque, planning, activités), puis leurs prestataires : sans bloquer la carte si la lecture échoue
   lectures.push(lireProjets().then(function (p) {
@@ -3364,7 +3463,7 @@ function texteCellule(tid, colId, v) {
   var nomRef = function (id) {
     var cible = tableCibleRef(col.type), cache = etat.donnees && etat.donnees.refs ? etat.donnees.refs[cible] : null;
     if (!cache || typeof id !== 'number') { return ''; }
-    var aff = colAffichageRef(col) || (cache.NOM ? 'NOM' : null), k = cache.id.indexOf(id);
+    var nm = cible === cfg().equipe ? cf('equipe', 'NOM') : 'NOM', aff = colAffichageRef(col) || (cache[nm] ? nm : null), k = cache.id.indexOf(id);
     return aff && cache[aff] && k >= 0 ? String(cache[aff][k] || '') : '';
   };
   if (Array.isArray(v)) {
@@ -3460,7 +3559,7 @@ function etatSalleReunion() {
   var enCours = l.filter(function (x) { return x.enCours; })[0];
   var prochaine = l.filter(function (x) { return !x.passee && !x.enCours; })[0];
   // Texte court de l'écran de la salle : « 9:30 » aujourd'hui, « LUN 9:30 » un autre jour
-  var court = function (s) { var h = heureDe(s).replace(' h ', ':'); return jourDeSec(s) === jourVu() ? h : JOURS_COURTS[new Date(s * 1000).getDay()].replace('.', '').toUpperCase() + ' ' + h; };
+  var court = function (s) { var h = heureDe(s).replace(' h ', ':'); return jourDeSec(s) === jourVu() ? h : JOURS_COURTS[new Date(jourDeSec(s) * 1000).getUTCDay()].replace('.', '').toUpperCase() + ' ' + h; };
   var ecran = enCours ? 'EN COURS' : (prochaine ? court(prochaine.debut) : 'LIBRE');
   // Réunions du jour (panneau et bandeau), et celle qui commence dans moins de RAPPEL_MINUTES
   var duJour = l.filter(function (x) { return jourDeSec(x.debut) === jourVu(); });
@@ -3516,12 +3615,13 @@ async function chargerMetaPJ() {
   }
 }
 
-async function obtenirJeton() {
-  var j = etat.jeton;
+async function obtenirJeton(complet) {
+  var cle = complet ? 'jetonComplet' : 'jeton';
+  var j = etat[cle];
   if (j && Date.now() < j.expire) { return j; }
-  var r = await gristAvecTimeout(grist.docApi.getAccessToken({ readOnly: false }), 15000);
-  etat.jeton = { token: r.token, baseUrl: r.baseUrl, expire: Date.now() + Math.max(0, (r.ttlMsecs || 60000) - 30000) };
-  return etat.jeton;
+  var r = await gristAvecTimeout(grist.docApi.getAccessToken({ readOnly: !complet }), 15000);
+  etat[cle] = { token: r.token, baseUrl: r.baseUrl, expire: Date.now() + Math.max(0, (r.ttlMsecs || 60000) - 30000) };
+  return etat[cle];
 }
 
 async function fetchDelai(url, options, delaiMs) {
@@ -3555,8 +3655,17 @@ function iconePJ(nom) {
 }
 
 async function recupererPJ(id) {
-  var j = await obtenirJeton();
-  var rep = await fetchDelai(j.baseUrl + '/attachments/' + id + '/download?auth=' + encodeURIComponent(j.token), {}, DELAI_API_MS);
+  var essai = async function (complet) {
+    var j = await obtenirJeton(complet);
+    return fetchDelai(j.baseUrl + '/attachments/' + id + '/download?auth=' + encodeURIComponent(j.token), {}, DELAI_API_MS);
+  };
+  var rep = await essai(etat.pjJetonComplet === true);
+  /* Certaines instances de Grist refusent un jeton en lecture seule pour les fichiers, même
+     pour les consulter : nouvel essai, une fois, avec un jeton complet, gardé pour la session. */
+  if ((rep.status === 401 || rep.status === 403) && etat.pjJetonComplet !== true) {
+    etat.pjJetonComplet = true;
+    rep = await essai(true);
+  }
   if (!rep.ok) { throw new Error('Réponse ' + rep.status); }
   return rep.blob();
 }
@@ -3781,10 +3890,10 @@ function afficherVueSansGarde(vue) {
   else if (vue === 'echec') { z.appendChild(creer('div', { classe: 'w-centre' }, [titreVue('Gristverse n\'a pas pu se charger'), creer('p', { classe: 'w-texte', texte: 'Rechargez la page. Si le problème continue, signalez-le à un propriétaire du document.' })])); }
 }
 function rendreAucun(z) {
-  z.appendChild(creer('div', { classe: 'w-centre' }, [titreVue('Gristverse n\'est pas encore installé'),
+  z.appendChild(creer('div', { classe: 'w-centre' }, [titreVue(accesComplet() ? 'Gristverse n\'est pas encore installé' : 'Gristverse a besoin de l\'accès complet au document'),
     creer('p', { classe: 'w-texte', texte: accesComplet()
       ? 'Un propriétaire du document doit d\'abord créer l\'équipe et brancher les pièces.'
-      : 'Pour l\'installer, accordez l\'accès complet au widget : dans le panneau de droite de la page, rubrique Accès, choisissez « Accès complet ».' })]));
+      : 'Gristverse lit plusieurs tables du document : dans le panneau de droite de la page, rubrique Accès, choisissez « Accès complet ».' })]));
 }
 
 /* --------------------------------------------------------------------------
@@ -3827,7 +3936,7 @@ async function declarerIci(m, lieu) {
   if (!accesComplet()) { afficherErreur('Consultation seule : le widget n\'a pas l\'accès complet au document.'); return; }
   var jour = jourVu(), tid = etat.config.presences;
   var dj = etat.donnees.presences.filter(function (x) { return x.personne === m.id && x.du === jour && (!x.au || x.au === jour); })[0];
-  var actions = dj ? [['UpdateRecord', tid, dj.id, { LIEU: lieu }]] : [['AddRecord', tid, null, { PERSONNE: m.id, DU: jour, AU: jour, LIEU: lieu }]];
+  var actions = dj ? [['UpdateRecord', tid, dj.id, versColonnes('presences', { LIEU: lieu })]] : [['AddRecord', tid, null, versColonnes('presences', { PERSONNE: m.id, DU: jour, AU: jour, LIEU: lieu })]];
   // Le personnage court de sa place actuelle à la nouvelle, pendant l'enregistrement
   var carte = etat.carte, avant = lieuDu(m, jour), vers = carte ? placeSurCarte(carte, m, lieu) : null;
   // Rien de déclaré : la personne arrive de l'extérieur, par le bord gauche de l'allée (sinon elle partirait de son bureau)
@@ -3905,6 +4014,7 @@ function rendrePlan(z) {
   // Un bandeau vert resté ouvert (assistant de paramétrage) se ferme tout de suite : il ferait sauter la carte en se fermant plus tard
   masquerSucces();
   etat.empreinteDessinee = etat.empreinteDonnees;   // ce que la carte va montrer
+  etat.cleHorlogeDessinee = cleHorloge();           // et les états liés à l'heure qu'elle montre (voir cleHorloge)
   var plan = calculerPlan();
   var jour = jourVu();
   var tete = creer('div', { classe: 'w-identite dv-identite' }, [
@@ -3927,6 +4037,7 @@ function rendrePlan(z) {
   // Au-dessus de la carte, un seul texte possible : le rappel orange 15 minutes avant une réunion
   var rappel = bandeauReunions(); if (rappel) { z.appendChild(rappel); }
   if (!accesComplet()) { z.appendChild(alerte('info', null, 'Consultation seule : le widget n\'a pas l\'accès complet au document. Pour déclarer vos présences ou cocher vos tâches, choisissez « Accès complet » dans la rubrique Accès du panneau de droite de la page.')); }
+  var manques = elementsManquants(); if (manques) { z.appendChild(manques); }
   if (!etat.donnees.membres.length) { z.appendChild(alerte('info', null, 'L\'équipe est vide : ajoutez des personnes dans la table « ' + nomTable(etat.config.equipe) + ' ».')); }
   if (etat.listeAccessible) { z.appendChild(listeAccessible(plan)); return; }
   // La carte : le dessin en pixel art (canvas) et, par-dessus, les emojis et les salles (boutons)
@@ -4044,9 +4155,35 @@ function animerMer(cv, carte) {
   }, 700);
 }
 
+/* Colonnes principales supprimées dans Grist depuis l'enregistrement des réglages (les
+   renommées sont suivies, voir retrouverRenommages) : la pièce est masquée, ou les déclarations
+   ne peuvent pas être enregistrées. Dit en clair, avec la façon d'y remédier ; null si tout est là. */
+function elementsManquants() {
+  var c = cfg(), pieces = [], colonnes = [];
+  Object.keys(PIECES_TABLES).forEach(function (k) {
+    var p = c[k], P = PIECES_TABLES[k];
+    if (p && p.table && P.pieces.some(pieceActive) && !pieceValide(p, P.cles)) { pieces.push(P.titre); }
+  });
+  var verifier = function (k, ids) {
+    if (!c[k] || !etat.meta.tables[c[k]]) { return; }
+    ids.forEach(function (id) { if (!infoColonne(c[k], cf(k, id))) { colonnes.push('« ' + cf(k, id) + ' » (table « ' + nomTable(c[k]) + ' »)'); } });
+  };
+  verifier('equipe', ['NOM']);
+  if (!c.presences || !etat.meta.tables[c.presences]) { colonnes.push('la table des présences'); } else { verifier('presences', ['PERSONNE', 'DU', 'AU', 'LIEU']); }
+  if (pieceActive('activites')) { verifier('activites', ['PERSONNE', 'DATE', 'HEURES']); }
+  if (!pieces.length && !colonnes.length) { return null; }
+  var corps = creer('div');
+  if (pieces.length) {
+    corps.appendChild(creer('p', { texte: 'Non affiché : ' + pieces.join(', ') + '. Sa table ou une de ses colonnes principales n\'existe plus dans le document. Choisissez-les à nouveau dans Paramétrer, étape « Les pièces ».' }));
+    if (etat.peutParametrer) { corps.appendChild(bouton('Choisir les tables et colonnes', 'secondaire', 'settings-5-line', function () { ouvrirAssistant(3); }, { petit: true, id: 'dvReparer' })); }
+  }
+  if (colonnes.length) { corps.appendChild(creer('p', { texte: 'Manque dans le document : ' + colonnes.join(', ') + '. Gristverse en a besoin pour afficher l\'équipe et enregistrer les présences et les activités : annulez la suppression dans Grist (pour une colonne, vous pouvez aussi la recréer sous ce nom).' })); }
+  return alerte('warning', null, corps);
+}
+
 /* Bandeau des réunions du jour, sous la date. RAPPEL_MINUTES avant une
    réunion, il passe en orange avec « Dans 12 min » et le bouton de la visio.
-   Le plan est relu toutes les 20 secondes : le bandeau suit l'heure. */
+   L'heure est vérifiée toutes les 30 secondes (cleHorloge) : le bandeau suit l'heure. */
 function bandeauReunions() {
   var es = etatSalleReunion();
   var imm = es.imminente;
@@ -4084,7 +4221,7 @@ function listeAccessible(plan) {
       d.appendChild(creer('div', { classe: 'dv-actions dv-actions--gauche' }, [
         bouton('🚪 Accueil : planning de la semaine', 'secondaire', null, ouvrirAccueil, { petit: true }),
         etat.donnees.reu ? bouton('📺 Salle de réunion', 'secondaire', null, ouvrirSalleReunion, { petit: true }) : null,
-        etat.donnees.res ? bouton('💡 Salle des bonnes idées', 'secondaire', null, ouvrirSalleIdees, { petit: true }) : null]));
+        etat.donnees.res ? bouton('📚 Bibliothèque des ressources', 'secondaire', null, ouvrirSalleIdees, { petit: true }) : null]));
     }
   });
   return d;
@@ -4113,7 +4250,7 @@ function statut(texte, erreur) { var s = $('dvStatut'); if (s) { s.textContent =
 async function declarer(m, jour, lieu) {
   var tid = etat.config.presences;
   var dj = etat.donnees.presences.filter(function (x) { return x.personne === m.id && x.du === jour && (!x.au || x.au === jour); })[0];
-  var actions = dj ? [['UpdateRecord', tid, dj.id, { LIEU: lieu }]] : [['AddRecord', tid, null, { PERSONNE: m.id, DU: jour, AU: jour, LIEU: lieu }]];
+  var actions = dj ? [['UpdateRecord', tid, dj.id, versColonnes('presences', { LIEU: lieu })]] : [['AddRecord', tid, null, versColonnes('presences', { PERSONNE: m.id, DU: jour, AU: jour, LIEU: lieu })]];
   statut('Enregistrement…');
   var resultat;
   try { resultat = await agir(actions); }
@@ -4131,7 +4268,7 @@ async function declarerPeriode(m, du, au, lieu) {
   // [INTOUCHABLE] Période identique déjà enregistrée (même début, même fin, même lieu) : on n'ajoute rien
   var deja = etat.donnees.presences.filter(function (x) { return x.personne === m.id && x.du === d1 && (x.au || x.du) === d2 && x.lieu === lieu; })[0];
   if (deja) { afficherErreur('Cette période est déjà enregistrée : rien n\'a été ajouté.'); return; }
-  try { await agir([['AddRecord', etat.config.presences, null, { PERSONNE: m.id, DU: d1, AU: d2, LIEU: lieu }]]); }
+  try { await agir([['AddRecord', etat.config.presences, null, versColonnes('presences', { PERSONNE: m.id, DU: d1, AU: d2, LIEU: lieu })]]); }
   catch (e) { afficherErreur(estRefusDroits(e) ? 'Vos droits ne permettent pas de déclarer cette période.' : 'L\'enregistrement n\'a pas abouti.', e); return; }
   await chargerDonnees();
   remplirBureau(m);
@@ -4234,7 +4371,8 @@ function ouvrirSalleIdees(nomsLus) {
   var tout = ressources();
   // Noms des fichiers joints, lus avant d'ouvrir la fenêtre s'ils ne sont pas encore connus
   var idsF = [].concat.apply([], tout.map(function (r) { return idsPJ(r.fichiers); }));
-  if (!nomsLus && nomsPJManquants(idsF)) { lireNomsPJPuis(function () { ouvrirSalleIdees(true); }); return; }
+  // nomsLus vaut strictement true : utilisée comme action d'un clic, cette fonction reçoit l'événement du clic
+  if (nomsLus !== true && nomsPJManquants(idsF)) { lireNomsPJPuis(function () { ouvrirSalleIdees(true); }); return; }
   var rech = saisie('dvRechIdees', '', { indice: 'Tapez quelques lettres…' });
   var zone = creer('div', { id: 'dvIdees' });
   var dessiner = function () {
@@ -4460,7 +4598,7 @@ function listePeriodes(z, m) {
   }
   // Bloc dépliant, ouvert par défaut ; le nombre de périodes est dans le titre
   z.appendChild(creer('details', { classe: 'dv-periode fr-mt-2w', attrs: { open: 'open' } }, [
-    creer('summary', { texte: '🗂️ Périodes enregistrées (' + periodes.length + ')' }),
+    creer('summary', { texte: '🗂️ Périodes enregistrées (' + compteLocal(periodes.length) + ')' }),
     creer('div', { classe: 'fr-mt-1w' }, [contenuListe])]));
 }
 /* ---------- 📝 Mes tâches ---------- */
@@ -4614,7 +4752,7 @@ async function ajouterActivite(m, jour, choix, heures, precision) {
   var b = $('dvActAjouter'); if (b) { b.disabled = true; }   // le bouton est grisé pendant l'enregistrement
   statut('Enregistrement…');
   try {
-    try { await agir([['AddRecord', etat.config.activites, null, champs]]); }
+    try { await agir([['AddRecord', etat.config.activites, null, versColonnes('activites', champs)]]); }
     catch (e) { statut('L\'activité n\'a pas été enregistrée.', true); afficherErreur(estRefusDroits(e) ? 'Vos droits ne permettent pas d\'ajouter cette activité.' : 'L\'activité n\'a pas été enregistrée.', e); return; }
     await chargerDonnees();
     remplirBureau(m);   // la fenêtre est redessinée : le nouveau bouton « Ajouter » est actif
@@ -4721,7 +4859,7 @@ function releve(z, m) {
   dessinerReleve(zone, m);
 }
 function donneesReleve(m) {
-  var r = etat.releve, lignes = activitesDe(m, r.du, r.au), totaux = {}, cumuls = {};
+  var r = etat.releve, lignes = activitesDe(m, r.du, r.au), totaux = Object.create(null), cumuls = Object.create(null);   // rangés par nom de projet
   lignes.forEach(function (a) { var l = libelleActivite(a); totaux[l] = (totaux[l] || 0) + (Number(a.heures) || 0); });
   var total = lignes.reduce(function (s, a) { return s + (Number(a.heures) || 0); }, 0);
   /* Cumul par projet depuis le début (toutes les déclarations de cette personne,
@@ -4743,7 +4881,9 @@ function donneesReleve(m) {
 function bilanMois(d) {
   var ecart = Math.round((d.totalMois / HEURES_PAR_JOUR - d.joursOuvres) * 100) / 100;
   if (ecart === 0) { return { complet: true, texte: '✓ Mois complet : ' + d.joursOuvres + ' jours ouvrés sur ' + d.joursOuvres + '.' }; }
-  if (ecart < 0) { return { complet: false, texte: 'Il manque ' + joursTexte(-ecart * HEURES_PAR_JOUR) + ' (' + heuresTexte(nombreFr(-ecart * HEURES_PAR_JOUR).replace(',', '.')) + ') pour arriver aux ' + d.joursOuvres + ' jours ouvrés du mois.' }; }
+  // Heures manquantes : calculées depuis les totaux exacts (l'écart arrondi en jours donnerait 93,03 h au lieu de 93 h)
+  var manque = d.joursOuvres * HEURES_PAR_JOUR - d.totalMois;
+  if (ecart < 0) { return { complet: false, texte: 'Il manque ' + joursTexte(manque) + ' (' + heuresTexte(nombreFr(manque).replace(',', '.')) + ') pour arriver aux ' + d.joursOuvres + ' jours ouvrés du mois.' }; }
   return { complet: false, texte: nombreFr(ecart) + (ecart >= 2 ? ' jours' : ' jour') + ' de plus que les ' + d.joursOuvres + ' jours ouvrés du mois : vérifiez les heures déclarées.' };
 }
 // Dates écrites en court, séparées par des virgules (« 3 nov., 4 nov. »)
@@ -4775,7 +4915,9 @@ function dessinerReleve(zone, m) {
 }
 // Texte du relevé (tabulations : se colle proprement dans un tableur, un e-mail ou un document)
 function texteReleve(m, sep) {
-  var d = donneesReleve(m), r = etat.releve, q = function (t) { t = String(t); return sep === ';' && /[;"\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+  /* CSV : un texte qui commence par = + - @ (ou une tabulation, un retour chariot) serait exécuté comme une
+     formule dans un tableur (injection CSV) : il est précédé d'une apostrophe, sauf s'il s'agit d'un simple nombre. */
+  var d = donneesReleve(m), r = etat.releve, q = function (t) { t = String(t); if (sep === ';' && /^[=+\-@\t\r]/.test(t) && !/^-?\d+([.,]\d+)?$/.test(t)) { t = '\'' + t; } return sep === ';' && /[;"\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
   var l = [['Relevé d\'activité', nomAccessible(m), 'du ' + formaterDate(r.du) + ' au ' + formaterDate(r.au)].map(q).join(sep), '', ['Date', 'Projet', 'Heures', 'Précision'].join(sep)];
   d.lignes.forEach(function (a) { l.push([formaterDate(a.date), libelleActivite(a), nombreFr(a.heures), a.precision || ''].map(q).join(sep)); });
   l.push('', ['Total par projet', '', 'Heures', 'Jours'].join(sep));
@@ -4908,8 +5050,8 @@ async function creerTableActivites(m) {
         { id: 'PRECISION', type: 'Text', label: 'Précision' }] }]))[0];
       await chargerMeta();
       // Noms affichés dans les références (sans bloquer si cela échoue)
-      var nomE = infoColonne(etat.config.equipe, 'NOM'), refP = infoColonne(tid, 'PERSONNE');
-      if (nomE && refP) { try { await agir([['ModifyColumn', tid, 'PERSONNE', { visibleCol: nomE.ref }]]); await agir([['SetDisplayFormula', tid, null, refP.ref, '$PERSONNE.NOM']]); } catch (e1) { logSecurite('INFO', 'Affichage de la personne non posé', e1); } }
+      var nomE = infoColonne(etat.config.equipe, cf('equipe', 'NOM')), refP = infoColonne(tid, 'PERSONNE');
+      if (nomE && refP) { try { await agir([['ModifyColumn', tid, 'PERSONNE', { visibleCol: nomE.ref }]]); await agir([['SetDisplayFormula', tid, null, refP.ref, '$PERSONNE.' + nomE.colId]]); } catch (e1) { logSecurite('INFO', 'Affichage de la personne non posé', e1); } }
       var colNomP = tP ? reglagesProjets().colNom : null, nomP = colNomP ? infoColonne(tP, colNomP) : null, refPr = infoColonne(tid, 'PROJET');
       if (nomP && refPr) { try { await agir([['ModifyColumn', tid, 'PROJET', { visibleCol: nomP.ref }]]); await agir([['SetDisplayFormula', tid, null, refPr.ref, '$PROJET.' + colNomP]]); } catch (e2) { logSecurite('INFO', 'Affichage du projet non posé', e2); } }
       var ids = await renommerTables([[tid, TABLE_ACTIVITES.titre]]);
@@ -5099,7 +5241,7 @@ async function lirePrestas(tid) {
   var cols = colonnesDe(cible).map(function (c) { return c.colId; }).filter(function (c) { return IDS_META.indexOf(c) === -1; });
   d.id.forEach(function (id, i) {
     var emoji = cols.map(function (c) { return String(d[c][i] || '').trim(); }).filter(function (v) { return v && v.length <= 8 && sansLettre(v); })[0];
-    var nom = d.NOM ? String(d.NOM[i] || '') : '';
+    var colN = d[cible === cfg().equipe ? cf('equipe', 'NOM') : 'NOM'], nom = colN ? String(colN[i] || '') : '';
     res[id] = emoji || nom;
   });
   return res;
@@ -5116,7 +5258,7 @@ function ouvrirPlanning() {
   var auj = aujourdhui(), dAuj = new Date(auj * 1000);
   var debut = Date.UTC(dAuj.getUTCFullYear(), dAuj.getUTCMonth() - 1, 1) / 1000, fin = Date.UTC(dAuj.getUTCFullYear(), dAuj.getUTCMonth() + 6, 1) / 1000;
   var duree = fin - debut, pct = function (s) { return Math.max(0, Math.min(100, (s - debut) / duree * 100)); };
-  var lignes = {};
+  var lignes = Object.create(null);   // rangées par nom de prestataire : aucune clé héritée (« constructor »...)
   (etat.donnees.projets || []).forEach(function (p) {
     var a = enSecondes(valeurProjet(d, C.colDebut, p.brut)), b = (C.colFin ? enSecondes(valeurProjet(d, C.colFin, p.brut)) : 0) || a;
     if (!a || b < debut || a > fin) { return; }
@@ -5124,7 +5266,7 @@ function ouvrirPlanning() {
     (lignes[dev.cle] = lignes[dev.cle] || { dev: dev, projets: [] }).projets.push({ p: p, a: a, b: Math.max(a + 86400, b) });
   });
   var cles = Object.keys(lignes).sort(function (x, y) { return lignes[x].dev.libelle.localeCompare(lignes[y].dev.libelle, 'fr'); });
-  var statutCouleur = {}; (etat.donnees.statuts || []).forEach(function (s) { statutCouleur[s.nom] = s.couleur; });
+  var statutCouleur = Object.create(null); (etat.donnees.statuts || []).forEach(function (s) { statutCouleur[s.nom] = s.couleur; });
   var frise = creer('div', { classe: 'dv-frise' });
   // En-tête : les mois
   var mois = creer('div', { classe: 'dv-frise__mois' }, [creer('span', { classe: 'dv-frise__dev' })]);
@@ -5240,7 +5382,7 @@ function editeurAmenagement(b) {
   return bloc;
 }
 function sectionBatiment(b, site, n) {
-  var c = b.cfg, am = c.amenagements[site], gens = gensDuSite(site), id = 'dvAm' + n;
+  var c = b.cfg, am = propre(c.amenagements, site), gens = gensDuSite(site), id = 'dvAm' + n;
   var sec = creer('section', { classe: 'dv-am fr-mt-3w', attrs: { 'aria-labelledby': id + 'Titre' } });
   sec.appendChild(creer('h3', { classe: 'fr-h6', id: id + 'Titre', texte: emojiLieu(site) + ' ' + nomSite(site) + ' · ' + accord(gens.length, 'personne') }));
   if (!am) {
@@ -5258,7 +5400,7 @@ function sectionBatiment(b, site, n) {
   });
   sec.appendChild(taille);
   // Qui placer d'un clic sur la grille
-  var aPlacer = b.selection[site] || (gens[0] ? cleQui(gens[0]) : null);
+  var aPlacer = propre(b.selection, site) || (gens[0] ? cleQui(gens[0]) : null);
   b.selection[site] = aPlacer;
   var choixQui = creer('fieldset', { classe: 'fr-fieldset dv-am__qui' }, [creer('legend', { classe: 'fr-fieldset__legend fr-text--regular', texte: 'Qui placer d\'un clic sur la grille' })]);
   gens.forEach(function (m, i) {
@@ -5309,7 +5451,7 @@ function sectionBatiment(b, site, n) {
 }
 // Clic sur une case : le bureau de la personne choisie s'y pose (ou y est déplacé)
 function poserBureau(b, site, x, y, id) {
-  var c = b.cfg, am = c.amenagements[site], qui = b.selection[site];
+  var c = b.cfg, am = propre(c.amenagements, site), qui = propre(b.selection, site);
   var m = gensDuSite(site).filter(function (g) { return cleQui(g) === qui; })[0];
   if (!m) { afficherErreur('Choisissez d\'abord qui placer.'); return; }
   var pl = placeDe(am, m), nouveau = !pl;
@@ -5328,7 +5470,7 @@ function poserBureau(b, site, x, y, id) {
 }
 // Bouton « Placer » (clavier) : première place libre, de haut en bas
 function placerPremiereLibre(b, site, m, id) {
-  var c = b.cfg, am = c.amenagements[site];
+  var c = b.cfg, am = propre(c.amenagements, site);
   var pl = { qui: cleQui(m), nom: m.nom, x: 0, y: 0, regard: 'haut' };
   am.places.push(pl);
   for (var y = 0; y < am.profondeur; y++) {
@@ -5342,7 +5484,7 @@ function placerPremiereLibre(b, site, m, id) {
 }
 // Champ du tableau modifié : la place change si elle reste possible
 function deplacer(b, site, pl, cle, valeur, focusId) {
-  var c = b.cfg, am = c.amenagements[site], avant = pl[cle];
+  var c = b.cfg, am = propre(c.amenagements, site), avant = pl[cle];
   if (cle !== 'regard' && isNaN(valeur)) { redessiner(focusId); return; }
   pl[cle] = valeur;
   var souci = problemePlace(c, site, am, pl);
@@ -5415,7 +5557,7 @@ function tableProbable(motifTable, motifCol) {
 // Propositions pour chaque pièce, d'après une table
 function proposerReunions(tid) {
   var p = { table: tid, colObjet: deviner(tid, /objet|titre|sujet|intitule|nom/, TYPES.texte), colDebut: deviner(tid, /debut|date|quand|heure/, TYPES.dateheure),
-    colFin: deviner(tid, /\bfin\b/, TYPES.dateheure), colLieu: deviner(tid, /lieu|salle|ou\b/, TYPES.texte),
+    colFin: deviner(tid, /\bfin\b|\bjusqu/, TYPES.dateheure), colLieu: deviner(tid, /lieu|salle|ou\b/, TYPES.texte),
     colVisio: deviner(tid, /visio|teams|zoom|webconf|tchap|lien|url/, TYPES.texte), colParticipants: deviner(tid, /participant|invite/, TYPES.tout),
     colStatut: deviner(tid, /statut|etat/, TYPES.choix), exclus: [] };
   p.exclus = exclusProposes(tid, p.colStatut);
@@ -5530,7 +5672,7 @@ function etapeModele(b) {
    Étape 2 : l'équipe (sites, noms affichés des bâtiments, personnes, montures)
    -------------------------------------------------------------------------- */
 function champNomBatiment(c, s, i) {
-  var e = saisie('dvNomBat' + i, (c.nomsSites || {})[s] || '', { indice: s });
+  var e = saisie('dvNomBat' + i, propre(c.nomsSites, s) || '', { indice: s });
   e.addEventListener('input', function () { c.nomsSites = c.nomsSites || {}; var v = e.value.trim(); if (v && v !== s) { c.nomsSites[s] = v; } else { delete c.nomsSites[s]; } });
   return groupeChamp('Nom affiché du bâtiment ' + (i + 1), e, 'Par exemple le nom de l\'immeuble. Vide : « ' + s + ' »', false);
 }
@@ -5781,7 +5923,7 @@ function choixCol(id, libelle, tid, filtre, valeur, facultatif, surChange, aideT
 function proposerProjets(tid) {
   var p = { table: tid, colNom: deviner(tid, /nom du projet|nom projet|^nom\b|titre|intitule/, TYPES.texte), colNum: deviner(tid, /numero|reference|\bref\b|\bn ?°/, TYPES.tout),
     colStatut: deviner(tid, /statut|etat|etape|phase/, TYPES.choix), colDev: deviner(tid, /\bdev\b|developpeu|presta|responsable|porteur|qui\b/, TYPES.personne), colDevRef: null,
-    colDebut: deviner(tid, /debut/, TYPES.date), colFin: deviner(tid, /\bfin\b/, TYPES.date), colObjet: deviner(tid, /objet|description|resume/, TYPES.texte),
+    colDebut: deviner(tid, /debut/, TYPES.date), colFin: deviner(tid, /\bfin\b|\bjusqu/, TYPES.date), colObjet: deviner(tid, /objet|description|resume/, TYPES.texte),
     colLiens: colonnesDe(tid).filter(function (c) { return TYPES.texte(c) && /lien|url|adresse web/.test(normaliser(c.colId + ' ' + c.label).replace(/_/g, ' ')); }).map(function (c) { return c.colId; }),
     champsFiche: colonnesPJ(tid) };   // les colonnes « Pièces jointes » sont proposées d'office dans la fiche
   return p;
@@ -5829,7 +5971,7 @@ function etapePieces(b) {
   // Le tableau du planning : dans un bureau, ou dans la salle de réunion
   if (c.pieces.planning !== false && c.pieces.projets !== false) {
     aucune = false;
-    var opts = c.sites.map(function (s) { return { valeur: s, libelle: 'Bureau ' + ((c.nomsSites || {})[s] || s) + ' (angle haut droit)' }; });
+    var opts = c.sites.map(function (s) { return { valeur: s, libelle: 'Bureau ' + (propre(c.nomsSites, s) || s) + ' (angle haut droit)' }; });
     if (c.pieces.reunion !== false) { opts.unshift({ valeur: '', libelle: 'Salle de réunion (à côté du tableau des réunions)' }); }
     var selP = liste('dvPlanningOu', opts, c.sitePlanning || (opts[0] ? opts[0].valeur : ''));
     selP.addEventListener('change', function () { c.sitePlanning = selP.value; });
@@ -5939,9 +6081,9 @@ function etapePrete(b) {
   };
   var modele = MODELES.filter(function (m) { return m.cle === c.modele; })[0];
   var lignes = [['🧩 Le modèle', (modele ? modele.titre : 'Sur mesure') + ' · ' + accord(PIECES_OPTIONNELLES.filter(function (p) { return c.pieces[p.cle] !== false; }).length, 'pièce cochée', 'pièces cochées'), 1],
-    ['👥 L\'équipe', c.equipe ? nomTable(c.equipe) + ' · ' + ordreDe(c).map(function (s) { return (c.nomsSites || {})[s] || s; }).join(', ') : 'à créer', 2]];
+    ['👥 L\'équipe', c.equipe ? nomTable(c.equipe) + ' · ' + ordreDe(c).map(function (s) { return propre(c.nomsSites, s) || s; }).join(', ') : 'à créer', 2]];
   Object.keys(PIECES_TABLES).forEach(function (k) { lignes.push([PIECES_TABLES[k].titre, etatPiece(k), 3]); });
-  lignes.push(['🪑 Les bureaux', c.sites.map(function (s) { return ((c.nomsSites || {})[s] || s) + ' : ' + (c.amenagements && c.amenagements[s] ? 'placés' : 'disposition automatique'); }).join(' · '), 4]);
+  lignes.push(['🪑 Les bureaux', c.sites.map(function (s) { return (propre(c.nomsSites, s) || s) + ' : ' + (propre(c.amenagements, s) ? 'placés' : 'disposition automatique'); }).join(' · '), 4]);
   var ul = creer('ul', { classe: 'dv-recap' });
   lignes.forEach(function (x) { ul.appendChild(creer('li', {}, [creer('strong', { texte: x[0] }), ' : ' + x[1] + ' ', bouton('Modifier', 'discret', null, function () { allerEtape(x[2]); }, { petit: true, aria: 'Modifier : ' + x[0] })])); });
   return creer('div', { classe: 'w-assistant__corps' }, [creer('p', { classe: 'w-texte', texte: '🎉 Tout est prêt. Gristverse crée les tables qui manquent, puis s\'ouvre sur le plan de vos bureaux.' }), ul,
@@ -6004,7 +6146,7 @@ function jourExemple(n) {
   return d;
 }
 function dateExemple(n) { var d = jourExemple(n); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 1000; }            // colonne Date
-function dateHeureExemple(n, h) { var d = jourExemple(n); d.setHours(Math.floor(h), Math.round((h % 1) * 60), 0, 0); return d.getTime() / 1000; }   // colonne DateTime
+function dateHeureExemple(n, h) { var d = jourExemple(n); return epochDansFuseau(d.getFullYear(), d.getMonth() + 1, d.getDate(), Math.floor(h), Math.round((h % 1) * 60), 'Europe/Paris'); }   // colonne DateTime (fuseau Europe/Paris, celui des colonnes créées par Gristverse)
 // Remplit les tables tout juste créées avec les exemples de TABLES_PIECES
 async function remplirExemples(c, ks, equipe) {
   var qui = function (n) { return equipe.length ? equipe[n % equipe.length] : ''; };
@@ -6062,11 +6204,31 @@ async function rafraichirMaintenant() {
     // Fenêtre ouverte ou personnage en train de courir : on redessinera après
     if (etat.modaleOuverte || etat.enRoute) { etat.rafraichirEnAttente = true; return; }
     etat.rafraichirEnAttente = false;
-    var actif = document.activeElement, libelle = actif && actif.getAttribute ? actif.getAttribute('aria-label') : null;
-    afficherVue('plan');
-    if (libelle) { var n = document.querySelector('.dv-zone[aria-label="' + libelle.replace(/"/g, '\\"') + '"]'); if (n) { n.focus(); } }
+    redessinerPlan();
   } catch (e) { logSecurite('AVERTISSEMENT', 'Relecture non aboutie', e); }
 }
+/* Redessine la carte et rend le focus au même élément (retrouvé par son identifiant,
+   sinon par son nom accessible) : un rafraîchissement ne renvoie jamais le clavier en haut de page. */
+function redessinerPlan() {
+  var actif = document.activeElement, idA = actif && actif.id ? actif.id : null, libelle = actif && actif.getAttribute ? actif.getAttribute('aria-label') : null;
+  afficherVue('plan');
+  var n = (idA && $(idA)) || (libelle && contenu().querySelector('[aria-label="' + CSS.escape(libelle) + '"]')) || null;
+  if (n && actif !== document.body) { n.focus(); }
+}
+/* [INTOUCHABLE] États qui dépendent de l'heure (le rappel RAPPEL_MINUTES avant une réunion, une
+   réunion qui commence ou se termine, un nouveau jour) : vérifiés toutes les 30 secondes SANS
+   lire Grist ; la carte n'est redessinée que si l'un d'eux a changé depuis son dessin. */
+var DELAI_HORLOGE_MS = 30000;   // [MODIFIABLE] intervalle de vérification, en millisecondes
+function cleHorloge() {
+  if (!etat.donnees || !etat.config) { return ''; }
+  var es = etatSalleReunion(), imm = es.imminente;
+  return [aujourdhui(), imm ? imm.id + ':' + Math.ceil((imm.debut - Date.now() / 1000) / 60) : '', es.enCours ? es.enCours.id : '', es.duJour.filter(function (x) { return x.passee; }).length].join('|');
+}
+setInterval(function () {
+  if (document.visibilityState === 'hidden' || etat.vue !== 'plan' || !etat.donnees || cleHorloge() === etat.cleHorlogeDessinee) { return; }
+  if (etat.modaleOuverte || etat.enRoute) { etat.rafraichirEnAttente = true; return; }
+  redessinerPlan();
+}, DELAI_HORLOGE_MS);
 // La carte affichée montre-t-elle les dernières données lues ?
 function carteAJour() { return etat.empreinteDessinee === etat.empreinteDonnees; }
 var _minuterieRafraichir = null;
@@ -6090,6 +6252,8 @@ async function initialiser() {
   } catch (e) {
     masquerLoader();
     logSecurite('ERREUR', 'Initialisation', e);
+    // Sans accès complet, le document ne peut pas être lu : on explique comment l'accorder
+    if (!accesComplet()) { afficherVue('aucun'); return; }
     afficherErreur('Le chargement n\'a pas abouti.');
     afficherVue('echec');
   } finally {
