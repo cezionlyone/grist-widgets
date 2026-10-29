@@ -3,7 +3,7 @@
   ============================================================================
   READ ME - Gristcity
   ============================================================================
-  Version     : 1.0.0
+  Version     : 1.0.1
   Date        : 29/10/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -147,12 +147,13 @@
     complet, la plateforme applique à chaque agent ses propres droits (rôle
     et règles d'accès) ; le widget les reflète
   - Pièces jointes : liste blanche des formats acceptés à l'envoi, jeton de
-    lecture seule pour consulter et télécharger
+    lecture seule pour consulter et télécharger (repli sur un jeton complet,
+    une fois par session, si l'instance refuse la lecture seule)
   - Journalisation via logSecurite(), messages d'erreur neutres
   - Navigateur (localStorage) : panneau replié et choix des étiquettes ;
     par document, dernière ville consultée et brouillon de création gardé
-    30 jours au plus (nom de la ville, table et réglages choisis, sans
-    aucune donnée des lignes), effacé à la construction de la ville ou à
+    30 jours au plus (nom de la ville, table et réglages choisis, noms des
+    tables créées pour un modèle, sans aucune donnée des lignes), effacé à la construction de la ville ou à
     l'abandon
 
   ICÔNES
@@ -170,6 +171,11 @@
   HISTORIQUE
   ----------
   1.0.0 - 29/10/2026 - madeXcé - Première version publique.
+  1.0.1 - 29/10/2026 - madeXcé - Corrections issues de la relecture : table
+    et colonnes renommées retrouvées, impasses levées (table supprimée,
+    reprise de création), valeurs spéciales des listes conservées, nombres
+    formatés, textes selon l'univers, redessins allégés, repli du jeton des
+    pièces jointes.
 
   THÈME
   ------
@@ -777,7 +783,7 @@
    ========================================================================== */
 
 // [MODIFIABLE] Numero de version : a incrementer a chaque livraison.
-var VERSION_WIDGET = '1.0.0';
+var VERSION_WIDGET = '1.0.1';
 var NOM_WIDGET = 'Gristcity';
 
 /* [INTOUCHABLE] Bibliotheque des villes : table technique creee avec la
@@ -1349,7 +1355,13 @@ function formatNombreDe(col) {
   var o = col && col.options ? col.options : {};
   var f = { style: 'decimal', maximumFractionDigits: 10 };
   if (o.numMode === 'percent') { f.style = 'percent'; f.maximumFractionDigits = 2; }
-  if (o.numMode === 'currency') { f.style = 'currency'; f.currency = o.currency || 'EUR'; f.minimumFractionDigits = 2; f.maximumFractionDigits = 2; }
+  if (o.numMode === 'currency') {
+    f.style = 'currency'; f.currency = o.currency || 'EUR';
+    /* Nombre de decimales propre a la devise de la colonne, comme Grist (JPY 0, EUR 2, KWD 3). */
+    var dc = 2;
+    try { dc = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: f.currency }).resolvedOptions().maximumFractionDigits; } catch (e) { dc = 2; }
+    f.minimumFractionDigits = dc; f.maximumFractionDigits = dc;
+  }
   if (typeof o.decimals === 'number') { f.minimumFractionDigits = o.decimals; if (f.maximumFractionDigits < o.decimals) { f.maximumFractionDigits = o.decimals; } }
   if (typeof o.maxDecimals === 'number') { f.maximumFractionDigits = Math.max(o.maxDecimals, f.minimumFractionDigits || 0); }
   if (col && col.type === 'Int' && f.style !== 'percent') { f.maximumFractionDigits = 0; f.minimumFractionDigits = 0; }
@@ -1707,8 +1719,9 @@ function genreDe(col, champ) {
 
 function libelleType(col) {
   var g = genreDe(col, null);
-  var noms = { texte: 'Texte', texte_long: 'Texte', nombre: 'Nombre', oui_non: 'Oui ou non', date: 'Date', dateheure: 'Date et heure',
-    choix: 'Liste de choix', etiquettes: 'Choix multiples', reference: 'Référence', references: 'Liste de références',
+  // « Choix » : nom du type Grist (« Liste de choix » y désigne le choix multiple)
+  var noms = { texte: 'Texte', texte_long: 'Texte', lien: 'Lien', nombre: 'Nombre', oui_non: 'Oui ou non', date: 'Date', dateheure: 'Date et heure',
+    choix: 'Choix', etiquettes: 'Choix multiples', reference: 'Référence', references: 'Liste de références',
     pj: 'Pièces jointes', autre: 'Autre' };
   var n = noms[g] || 'Autre';
   if (g === 'reference' || g === 'references') { n += ' vers ' + libelleTable(tableCibleRef(col.type)); }
@@ -2150,9 +2163,16 @@ function stepper(n, noms, aller, actionFinale) {
 var NS_SVG = 'http://www.w3.org/2000/svg';
 function $(id) { return document.getElementById(id); }
 function borner(v, min, max) { return Math.max(min, Math.min(max, v)); }
-// Accord singulier ou pluriel, sans parenthèses : « 1 immeuble », « 3 immeubles »
+// Accord singulier ou pluriel, sans parenthèses : « 1 immeuble », « 3 immeubles », « 5 000 immeubles »
 function accord(n, singulier, pluriel) {
-  return n + ' ' + (n >= 2 ? (pluriel || singulier + 's') : singulier);
+  return (typeof n === 'number' ? formaterNombre(n) : String(n)) + ' ' + (n >= 2 ? (pluriel || singulier + 's') : singulier);
+}
+// Comparaison de textes en français, avec un seul comparateur gardé pour toute la session
+// (même ordre que localeCompare, bien plus rapide dans les grands tris)
+var _collateurFr = null;
+function comparerTextes(a, b) {
+  if (_collateurFr === null) { try { _collateurFr = new Intl.Collator('fr'); } catch (e) { _collateurFr = false; } }
+  return _collateurFr ? _collateurFr.compare(a, b) : a.localeCompare(b, 'fr');
 }
 // Petit générateur pseudo-aléatoire stable (les arbres restent toujours au même endroit).
 function aleatoire(graine) {
@@ -2176,7 +2196,7 @@ const RUE = ROUTE * 0.45;   // demi-largeur de la rue qui entoure chaque emplace
 // Ordre des immeubles dans un quartier : les terminés au fond, les chantiers devant.
 function ordreDansQuartier(a, b) {
   const rang = { service: 0, chantier: 1, pause: 2, ferme: 3 };
-  return (rang[a.categorie] - rang[b.categorie]) || (b.niveau - a.niveau) || String(a.nom).localeCompare(String(b.nom), 'fr');
+  return (rang[a.categorie] - rang[b.categorie]) || (b.niveau - a.niveau) || comparerTextes(String(a.nom), String(b.nom));
 }
 
 // Parcelles « de respiration » d'une grille cols x rows (indices des cases) :
@@ -2202,6 +2222,8 @@ function dispositionQuartier(n, cw, ch, m, aerer) {
   const libreW = cw - 2 * RUE - 2 * m, libreH = ch - 2 * RUE - 2 * m;
   let mieux = null;
   for (let cols = 1; cols <= n + 2; cols++) {
+    // Trop large : écarté avant de compter les rangées (même résultat, bien plus rapide pour les grands quartiers)
+    if (cols * LOT > libreW + 1e-6) continue;
     // Nombre de rangées : assez pour les immeubles, en plus des parcelles de respiration
     let rows = Math.ceil(n / cols), resp = aerer ? parcellesRespiration(cols, rows, n) : new Set();
     while (cols * rows - resp.size < n) { rows++; resp = aerer ? parcellesRespiration(cols, rows, n) : new Set(); }
@@ -2231,7 +2253,7 @@ function calculerPlan(projets, ratioEcran, avecParcs) {
   });
   const cles = [...groupes.keys()].sort((a, b) => {
     const pa = groupes.get(a)[0], pb = groupes.get(b)[0];
-    return (pa.rangQuartier - pb.rangQuartier) || String(pa.quartierLibelle).localeCompare(String(pb.quartierLibelle), 'fr');
+    return (pa.rangQuartier - pb.rangQuartier) || comparerTextes(String(pa.quartierLibelle), String(pb.quartierLibelle));
   });
   const quartiers = cles.map((k) => ({ cle: k, libelle: groupes.get(k)[0].quartierLibelle, liste: groupes.get(k).slice().sort(ordreDansQuartier) }));
 
@@ -2472,7 +2494,9 @@ function grue(g, hauteurBat) {
 function panneauChantier(g, x, y, texte) {
   const [sx, sy] = proj(x, y, 0);
   ligne(g, [sx, sy], [sx, sy - 16], '#6B6B6B', 1.2);
-  svgEl('rect', { x: sx - 17, y: sy - 26, width: 34, height: 12, rx: 1.5, fill: '#FFFFFF', stroke: '#000091', 'stroke-width': 1 }, g);
+  // Le panneau s'élargit pour les mots longs (« PLAN DE VOL », « EN ATTENTE ») : le texte ne déborde jamais
+  const larg = Math.max(34, String(texte).length * 4.3 + 6);
+  svgEl('rect', { x: sx - larg / 2, y: sy - 26, width: larg, height: 12, rx: 1.5, fill: '#FFFFFF', stroke: '#000091', 'stroke-width': 1 }, g);
   const t = svgEl('text', { x: sx, y: sy - 17.5, 'text-anchor': 'middle', 'font-size': 6.5, 'font-weight': 700, fill: '#000091', 'font-family': 'Marianne, Arial, sans-serif' }, g);
   t.textContent = texte;
 }
@@ -3059,7 +3083,7 @@ function construireScene(monde, projets, ratioEcran, rotation, options) {
       utile.x0 = Math.min(utile.x0, x); utile.y0 = Math.min(utile.y0, y); utile.x1 = Math.max(utile.x1, x); utile.y1 = Math.max(utile.y1, y);
     });
     const pos = proj(r[0] + 0.35, r[3] - 0.35, HAUTEUR_SOL);
-    panneaux.push({ pos, libelle: q.libelle + ' · ' + q.liste.length, titre: q.libelle + ' : ' + accord(q.liste.length, mots().un) });
+    panneaux.push({ pos, libelle: q.libelle + ' · ' + formaterNombre(q.liste.length), titre: q.libelle + ' : ' + accord(q.liste.length, mots().un) });
   });
 
   objets.sort((a, b) => a.prof - b.prof).forEach((o) => o.dessiner(gObjets));
@@ -3198,7 +3222,7 @@ function dessinerSurcouche() {
   const astuce = $('vl-astuce');
   if (astuce) {
     astuce.hidden = !masquees;
-    astuce.textContent = masquees ? '🔎 Zoomez pour voir ' + (masquees >= 2 ? masquees + ' autres noms' : '1 autre nom') : '';
+    astuce.textContent = masquees ? '🔎 Zoomez pour voir ' + (masquees >= 2 ? formaterNombre(masquees) + ' autres noms' : '1 autre nom') : '';
   }
 }
 function mesurerEtiquette(c, k) {
@@ -5204,7 +5228,8 @@ async function allerALaVille(cle) {
     if (!sorti || cle === etat.cleConfig) { return; }
   }
   if (enCreation() && etat.brouillon.etape > 1) {
-    var ok = await confirmerAction('Abandonner la création ?', 'Rien n\'a été créé. Les choix faits pour la nouvelle ville ne sont pas conservés.', 'Abandonner');
+    // Tables d'un modèle déjà créées : le message ne dit pas « Rien n'a été créé » (même texte que « Annuler »)
+    var ok = await confirmerAction('Abandonner la création ?', etat.brouillon.tablesCreees ? 'La ville n\'est pas créée. Les choix faits pour la nouvelle ville ne sont pas conservés.' : 'Rien n\'a été créé. Les choix faits pour la nouvelle ville ne sont pas conservés.', 'Abandonner');
     if (!ok) { var f = document.getElementById('vOngletNouveau'); if (f) { f.focus(); } return; }
   }
   if (enCreation()) {
@@ -5247,24 +5272,25 @@ function rendreInvalide(zone) {
   var technique = etat.config && etat.config.table && etat.meta.tables[etat.config.table] && estTableExclue(etat.config.table);
   zone.appendChild(creer('div', { classe: 'w-centre' }, [titreVue(technique ? 'Cette ville dessine une table technique' : 'La ville ne trouve plus ses données'),
     creer('p', { classe: 'w-texte', texte: technique
-      ? 'La table « ' + nomTable(etat.config.table) + ' » contient les réglages des widgets (des codes comme « CONFIG:… »), pas des données : ses lignes ne peuvent pas devenir des immeubles. Supprimez cette ville, puis créez-en une sur une table de données.'
+      ? 'La table « ' + nomTable(etat.config.table) + ' » contient les réglages des widgets (des codes comme « CONFIG:… »), pas des données : ses lignes ne peuvent pas devenir des ' + mots().des + '. Supprimez cette ville, puis créez-en une sur une table de données.'
       : 'La table ou l\'une des colonnes principales de la ville (nom ou étape) n\'existe plus dans ce document, ou a été renommée.' }),
     etat.peutParametrer ? creer('div', { classe: 'w-tuile__bas' }, [
-      technique ? null : bouton('Corriger les paramétrages', 'secondaire', 'settings-5-line', function () { ouvrirParametrage(3); }),
+      // Table supprimée : le paramétrage ne peut pas rebrancher la ville sur une autre table, seule la suppression aide
+      technique || !etat.meta.tables[etat.config.table] ? null : bouton('Corriger les paramétrages', 'secondaire', 'settings-5-line', function () { ouvrirParametrage(3); }),
       bouton('Supprimer cette ville', null, 'delete-line', supprimerVille)])
       : creer('p', { classe: 'w-texte', texte: 'Signalez-le à un propriétaire du document.' })]));
 }
 function rendreAucun(zone) {
   zone.appendChild(creer('div', { classe: 'w-centre' }, [titreVue('Aucune ville pour l\'instant'),
     creer('p', { classe: 'w-texte', texte: accesComplet() ? 'Aucune ville n\'est encore configurée dans ce document. Sa création est réservée aux propriétaires du document.'
-      : 'Aucune ville n\'est encore configurée. Pour en créer une, accordez l\'accès complet au widget : dans le panneau de droite de la page, rubrique Accès, choisissez « Accès complet ».' })]));
+      : 'Aucune ville n\'est encore configurée. Pour en créer une, accordez l\'accès complet au widget : dans le panneau de droite de la page, rubrique Accès, choisissez « Accès complet au document ».' })]));
 }
 /* Sans accès complet, Grist ne peut pas appliquer à chacun ses propres
    droits : le widget l'explique au lieu d'afficher une erreur. */
 function rendreAcces(zone) {
   zone.appendChild(creer('div', { classe: 'w-centre' }, [titreVue('Gristcity a besoin de l\'accès complet'),
     creer('p', { classe: 'w-texte', texte: 'Pour appliquer à chacun ses propres droits (consultation, modification, paramétrage), Gristcity doit avoir l\'accès complet au document.' }),
-    creer('p', { classe: 'w-texte', texte: 'Une personne qui peut modifier le document peut l\'accorder : dans le panneau de droite de la page, rubrique Accès, choisissez « Accès complet ». Les règles d\'accès du document continuent de s\'appliquer à chaque agent.' })]));
+    creer('p', { classe: 'w-texte', texte: 'Une personne qui peut modifier le document peut l\'accorder : dans le panneau de droite de la page, rubrique Accès, choisissez « Accès complet au document ». Les règles d\'accès du document continuent de s\'appliquer à chaque agent.' })]));
 }
 function rendreEchec(zone) {
   zone.appendChild(creer('div', { classe: 'w-centre' }, [titreVue('Le chargement n\'a pas abouti'),
@@ -5619,7 +5645,7 @@ function rendre() {
    dernier visité, sinon le premier) ; les flèches suivent l'ordre de lecture
    de la vue en liste (quartier, puis rang dans le quartier). */
 function ordreLecture(projets) {
-  return projets.slice().sort(function (a, b) { return (a.rangQuartier - b.rangQuartier) || String(a.quartierLibelle).localeCompare(String(b.quartierLibelle), 'fr') || ordreDansQuartier(a, b); });
+  return projets.slice().sort(function (a, b) { return (a.rangQuartier - b.rangQuartier) || comparerTextes(String(a.quartierLibelle), String(b.quartierLibelle)) || ordreDansQuartier(a, b); });
 }
 function batsParId() {
   var m = Object.create(null);
@@ -5692,7 +5718,7 @@ function majCompteurs(projets) {
   z.appendChild(badge(k[0][0] + ' ' + accord(projets.length, k[0][1], k[0][2]), 'info'));
   z.appendChild(badge(k[1][0] + ' ' + accord(n.chantier, k[1][1], k[1][2]), 'warning'));
   z.appendChild(badge(k[2][0] + ' ' + accord(n.service, k[2][1], k[2][2]), 'success'));
-  if (n.alerte) { z.appendChild(badge('⚠️ ' + n.alerte + ' à surveiller', 'error')); }
+  if (n.alerte) { z.appendChild(badge('⚠️ ' + formaterNombre(n.alerte) + ' à surveiller', 'error')); }
 }
 
 function majLegende() {
@@ -5736,7 +5762,7 @@ function rendreListe(projets) {
     creer('caption', { classe: 'fr-sr-only', texte: majInitiale(mots().des) + ' de la ville ' + (cfg.nom || '') }),
     creer('thead', {}, [creer('tr', {}, entetes.map(function (t) { return creer('th', { texte: t, attrs: { scope: 'col' } }); }))])]);
   var corps = creer('tbody');
-  projets.slice().sort(function (a, b) { return (a.rangQuartier - b.rangQuartier) || String(a.quartierLibelle).localeCompare(String(b.quartierLibelle), 'fr') || ordreDansQuartier(a, b); }).forEach(function (p) {
+  projets.slice().sort(function (a, b) { return (a.rangQuartier - b.rangQuartier) || comparerTextes(String(a.quartierLibelle), String(b.quartierLibelle)) || ordreDansQuartier(a, b); }).forEach(function (p) {
     var cellules = [creer('td', {}, [creer('button', { classe: 'vl-lien-projet', texte: (p.ref ? p.ref + ' · ' : '') + p.nom, clic: function () { ouvrirFiche(p.id); } })])];
     if (cfg.colQuartier) { cellules.push(creer('td', { texte: p.quartierLibelle })); }
     cellules.push(creer('td', { texte: p.etape.libelle }));
@@ -6064,10 +6090,13 @@ async function demenagerVers(id, cleQ) {
   }
   etat.choisi = null;
   etat.flash = id;
-  await rafraichirMaintenant(false, true);
+  // Données seulement : afficherVue redessine juste après (évite de dessiner la ville deux fois)
+  await rafraichirMaintenant(false, true, true);
   afficherVue('ville', true);
-  annoncer(p.nom + ' ' + mots().deplace + ' ' + mots().dansQ + ' ' + nomQ + '.');
-  afficherSucces('🚚 ' + p.nom + ' ' + mots().deplace + ' ' + mots().dansQ + ' ' + nomQ + '.');
+  // « Tâche a déménagé dans le quartier Ventes », ou « Tâche a déménagé dans « Sans quartier » » (et non « dans le quartier Sans quartier »)
+  var phraseQ = p.nom + ' ' + mots().deplace + ' ' + (cleQ === CLE_VIDE ? 'dans « ' + nomQ + ' »' : mots().dansQ + ' ' + nomQ) + '.';
+  annoncer(phraseQ);
+  afficherSucces('🚚 ' + phraseQ);
   var b = document.querySelector('.vl-bat[data-id="' + id + '"]');
   if (b) { b.focus(); }
   setTimeout(function () {
@@ -6177,7 +6206,8 @@ async function construireImmeubleUneFois(nom, selQ, selE) {
   if (id && etat.derniersIds) { etat.derniersIds[id] = true; }
   etat.flash = id;
   etat.recentrer = false;
-  await rafraichirMaintenant(false, true);
+  // Données seulement : afficherVue redessine juste après
+  await rafraichirMaintenant(false, true, true);
   afficherVue('ville', true);
   var mm = mots();
   annoncer(mm.action + ' ' + texte + ' ' + mm.fait + '.');
@@ -6228,7 +6258,13 @@ function ouvrirFiche(id) {
     corps: [creer('div', { classe: 'vl-fiche-haut', id: 'vFicheHaut' }), creer('h3', { classe: 'vl-fiche-sous-titre', texte: 'Informations' }),
       etat.peutModifier ? creer('p', { classe: 'w-mention', texte: 'Chaque modification est enregistrée dès que vous quittez le champ.' }) : null, form],
     pied: pied,
-    surFermeture: function () { etat.ouvert = null; if (etat.vue === 'ville') { rendre(); } }
+    /* Seule la mise en évidence de l'élément ouvert change : pas de redessin complet
+       (plusieurs secondes pour des milliers de lignes). Des données modifiées entre-temps
+       sont redessinées par le rafraîchissement en attente. */
+    surFermeture: function () {
+      etat.ouvert = null;
+      document.querySelectorAll('#vl-svg .vl-bat.vl-actif').forEach(function (n) { n.classList.remove('vl-actif'); });
+    }
   });
   majFicheHaut(p);
   ameliorerListes(document.getElementById('wModaleCorps'));
@@ -6299,8 +6335,9 @@ async function chargerMetaPJ() {
   }
 }
 
-/* Jeton d'accès : en lecture seule pour consulter et télécharger, avec
-   écriture seulement pour envoyer un fichier. */
+/* Jeton d'accès : en lecture seule pour consulter et télécharger (avec repli
+   sur un jeton complet si l'instance le refuse, voir recupererPJ), avec
+   écriture pour envoyer un fichier. */
 async function obtenirJeton(ecriture) {
   var cle = ecriture ? 'jetonEcriture' : 'jeton';
   var j = etat[cle];
@@ -6341,8 +6378,18 @@ function iconePJ(nom) {
 }
 
 async function recupererPJ(id) {
-  var j = await obtenirJeton();
-  var rep = await fetchDelai(j.baseUrl + '/attachments/' + id + '/download?auth=' + encodeURIComponent(j.token), {}, DELAI_API_MS);
+  var essai = async function (complet) {
+    var j = await obtenirJeton(complet);
+    return fetchDelai(j.baseUrl + '/attachments/' + id + '/download?auth=' + encodeURIComponent(j.token), {}, DELAI_API_MS);
+  };
+  var rep = await essai(etat.pjJetonComplet === true);
+  /* Certaines instances Grist refusent un jeton en lecture seule pour les fichiers,
+     même pour les consulter : nouvel essai, une seule fois, avec un jeton complet,
+     gardé ensuite pour la session. */
+  if ((rep.status === 401 || rep.status === 403) && etat.pjJetonComplet !== true) {
+    etat.pjJetonComplet = true;
+    rep = await essai(true);
+  }
   if (!rep.ok) { throw new Error('Réponse ' + rep.status); }
   return rep.blob();
 }
@@ -6817,7 +6864,7 @@ function editeurChamp(p, colId) {
     // Valeurs présentes dans la cellule mais absentes de la liste des choix
     // (choix renommé ou retiré) : affichées et conservées, comme pour la
     // liste simple.
-    var vusHors = {};
+    var vusHors = Object.create(null);
     var horsListe = brutes.filter(function (x) {
       var k = String(x);
       if (declares.map(String).indexOf(k) !== -1 || vusHors[k]) { return false; }
@@ -7156,8 +7203,57 @@ function choisirVille() {
   return t;
 }
 
+/* Table ou colonne renommée dans Grist : l'identifiant suit le libellé
+   (« Projets » renommée « Liste des projets » devient Liste_des_projets). La
+   ville garde les références internes de sa table et de ses colonnes, qui ne
+   changent jamais, et les retrouve sous leurs nouveaux identifiants. */
+var CLES_COLONNES_CONFIG = ['colTitre', 'colEtape', 'colQuartier', 'colResponsable', 'colLien', 'colRef', 'colHauteur', 'colEcheance', 'colDebut', 'colToit', 'colAntennes'];
+function colonnesDeConfig(c) {
+  return CLES_COLONNES_CONFIG.map(function (k) { return c[k]; }).concat(c.champsFiche || [], c.filtres || [], (c.meteo || []).map(function (r) { return r && r.col; }))
+    .filter(function (x) { return typeof x === 'string' && x; });
+}
+function noterReferencesConfig(c) {
+  var t = c && etat.meta.tables[c.table];
+  if (!t) { return; }
+  c.tableRef = t.ref;
+  c.colRefs = {};
+  colonnesDeConfig(c).forEach(function (id) { var col = infoColonne(c.table, id); if (col) { c.colRefs[id] = col.ref; } });
+  // Colonne des emojis : elle appartient à la table visée par la colonne des responsables (la table des personnes)
+  var tE = tableDesEmojis(c);
+  var colE = tE && c.colEmoji ? infoColonne(tE, c.colEmoji) : null;
+  if (colE) { c.colEmojiRef = colE.ref; } else { delete c.colEmojiRef; }
+}
+function tableDesEmojis(c) {
+  var col = c && c.colResponsable ? infoColonne(c.table, c.colResponsable) : null;
+  return col ? tableCibleRef(col.type) : null;
+}
+function retrouverRenommages(c) {
+  if (!c || !c.table) { return; }
+  if (!etat.meta.tables[c.table] && typeof c.tableRef === 'number') {
+    Object.keys(etat.meta.tables).forEach(function (t) { if (etat.meta.tables[t].ref === c.tableRef) { logSecurite('INFO', 'Table renommée : ' + c.table + ' est devenue ' + t); c.table = t; } });
+  }
+  var refs = c.colRefs && typeof c.colRefs === 'object' ? c.colRefs : null;
+  if (!refs || !etat.meta.colParRef) { return; }
+  var actuel = function (id) {
+    if (typeof id !== 'string' || !id || infoColonne(c.table, id) || !Object.prototype.hasOwnProperty.call(refs, id)) { return id; }
+    var col = etat.meta.colParRef[refs[id]];
+    return col && col.tableId === c.table ? col.colId : id;
+  };
+  CLES_COLONNES_CONFIG.forEach(function (k) { if (c[k]) { c[k] = actuel(c[k]); } });
+  if (Array.isArray(c.champsFiche)) { c.champsFiche = c.champsFiche.map(actuel); }
+  if (Array.isArray(c.filtres)) { c.filtres = c.filtres.map(actuel); }
+  if (Array.isArray(c.meteo)) { c.meteo.forEach(function (r) { if (r && r.col) { r.col = actuel(r.col); } }); }
+  var tE = tableDesEmojis(c);
+  if (tE && typeof c.colEmoji === 'string' && !infoColonne(tE, c.colEmoji) && typeof c.colEmojiRef === 'number') {
+    var colE = etat.meta.colParRef[c.colEmojiRef];
+    if (colE && colE.tableId === tE) { c.colEmoji = colE.colId; }
+  }
+  noterReferencesConfig(c);
+}
+
 async function ecrireConfig(cfg, ligne, cle) {
   cfg.version = VERSION_CONFIG;
+  noterReferencesConfig(cfg);
   var valeur = JSON.stringify(cfg);
   if (ligne) {
     await agir([['UpdateRecord', etat.biblio, ligne, { VALEUR: valeur, VERSION_MODIF: VERSION_WIDGET }]]);
@@ -7171,6 +7267,7 @@ async function ecrireConfig(cfg, ligne, cle) {
    retirees de l'affichage, jamais recreees. Faux si la table, le nom ou
    l'etape manquent. */
 function verifierConfig(c) {
+  retrouverRenommages(c);
   if (!c || !c.table || !etat.meta.tables[c.table]) { return false; }
   if (estTableExclue(c.table)) { return false; }   // table technique : jamais dessinée
   if (!infoColonne(c.table, c.colTitre) || !infoColonne(c.table, c.colEtape)) { return false; }
@@ -7304,7 +7401,9 @@ function memoriserBrouillon() {
   if (!b || b.mode !== 'creation' || (!b.cfg && !b.univers) || !cleBrouillon()) { return; }
   try {
     window.localStorage.setItem(cleBrouillon(), JSON.stringify({ v: 1, date: Date.now(), etape: b.etape, max: b.max,
-      cfg: b.cfg || null, univers: b.univers || null, version: VERSION_CONFIG_BROUILLON }));
+      cfg: b.cfg || null, univers: b.univers || null, version: VERSION_CONFIG_BROUILLON,
+      // Tables créées pour un modèle : leur suppression reste proposée si la création reprise est abandonnée
+      tables: Array.isArray(b.tablesCreees) ? b.tablesCreees : null }));
   } catch (e) { /* mémoire du navigateur indisponible : sans brouillon */ }
 }
 function oublierBrouillon() {
@@ -7351,14 +7450,16 @@ async function proposerReprise(d, brouillonNeuf) {
   if (ok === null) { return; }
   // La personne a pu avancer entre-temps : on ne remplace qu'un brouillon neuf
   if (etat.brouillon !== brouillonNeuf || etat.vue !== 'assistant') { return; }
-  if (!ok) { oublierBrouillon(); return; }
+  var tablesCreees = Array.isArray(d.tables) ? d.tables.filter(function (t) { return typeof t === 'string' && !!etat.meta.tables[t]; }) : [];
+  // « Recommencer » abandonne la création : les tables du modèle qu'elle a créées sont proposées à la suppression, comme avec « Annuler »
+  if (!ok) { await proposerSuppressionTables({ tablesCreees: tablesCreees }); oublierBrouillon(); return; }
   var cfg = d.cfg ? normaliserBrouillon(d.cfg) : null;
   if (d.cfg && !cfg) {
     oublierBrouillon();
     afficherErreur('La table de la ville en cours de création n\'existe plus : la création reprend au début.');
     return;
   }
-  var b = { mode: 'creation', etape: 1, max: 1, cfg: cfg, univers: d.univers || undefined, apercu: null };
+  var b = { mode: 'creation', etape: 1, max: 1, cfg: cfg, univers: d.univers || undefined, apercu: null, tablesCreees: tablesCreees.length ? tablesCreees : null };
   etat.brouillon = b;
   etat.cacheAssistant = {};
   // Reprise à l'étape demandée, ou à la première étape incomplète
@@ -7562,7 +7663,7 @@ function configProposee(tid) {
    -------------------------------------------------------------------------- */
 function statsColonne(d, colId) {
   var vals = d && d[colId] ? d[colId] : [];
-  var nb = vals.length, remplies = 0, distincts = {}, nbDistincts = 0, longueur = 0, textes = 0, codes = 0, avecEspace = 0;
+  var nb = vals.length, remplies = 0, distincts = Object.create(null), nbDistincts = 0, longueur = 0, textes = 0, codes = 0, avecEspace = 0;
   vals.forEach(function (v) {
     v = valeurCellule(v);
     if (v === null || v === undefined || v === '' || v === 0 || (Array.isArray(v) && v.length <= 1)) { return; }
@@ -7759,7 +7860,7 @@ async function sauvegarderBrouillon(num) {
   if (!b || b.mode !== 'parametrage') { return true; }
   var c = b.cfg;
   if (!String(c.nom || '').trim()) { statutSauvegarde('Non enregistré : la ville doit avoir un nom.', true); return false; }
-  if (!c.colTitre || !c.colEtape) { statutSauvegarde('Non enregistré : choisissez le nom et l\'étape des immeubles.', true); return false; }
+  if (!c.colTitre || !c.colEtape) { statutSauvegarde('Non enregistré : choisissez le nom et l\'étape des ' + mots().des + '.', true); return false; }
   try {
     await ecrireConfig(cloner(c), b.ligne, b.cle);
     etat.config = cloner(c);
@@ -8146,7 +8247,7 @@ async function remplirToits(zone) {
     sel.setAttribute('aria-label', ((mots().toit || {}).pour || 'Couleur pour') + ' « ' + v + ' »');
     var temoin = creer('span', { classe: 'vl-pastille vl-pastille--grande', attrs: { 'aria-hidden': 'true' } });
     temoin.style.background = actuelle || jetonDsfr('--background-contrast-grey', '#EEEEEE');
-    sel.addEventListener('change', function () { c.toits = c.toits || {}; c.toits[v] = sel.value; temoin.style.background = sel.value || jetonDsfr('--background-contrast-grey', '#EEEEEE'); changement(false); });
+    sel.addEventListener('change', function () { c.toits = c.toits || {}; Object.defineProperty(c.toits, v, { value: sel.value, enumerable: true, writable: true, configurable: true }); temoin.style.background = sel.value || jetonDsfr('--background-contrast-grey', '#EEEEEE'); changement(false); });
     zone.appendChild(creer('div', { classe: 'w-ligne' }, [creer('span', { classe: 'w-ligne__nom', texte: v }), temoin, sel]));
   });
 }
@@ -8659,9 +8760,11 @@ function sectionModeles(b) {
   MODELES_VILLE.forEach(function (m, i) {
     if (b.univers && !duMeme(m) && !b.tousModeles) { return; }
     var choisi = b.cfg && b.cfg.depart === 'modele' && b.cfg.modele === m.id && etat.meta.tables[b.cfg.table];
+    // Mots de l'univers dans lequel le modèle sera dessiné (massifs, parkings, taille, gabarit...)
+    var mw = mots();
     var details = ['Étapes : ' + m.etape.valeurs.map(function (v) { return v[0]; }).join(', ')];
-    if (m.quartier) { details.push('Quartiers : ' + (m.quartier.ref ? 'une personne par quartier' : m.quartier.label.toLowerCase())); }
-    if (m.hauteur) { details.push('Hauteur : ' + m.hauteur.label.toLowerCase()); }
+    if (m.quartier) { details.push(majInitiale(mw.quartiers) + ' : ' + (m.quartier.ref ? 'une personne par ' + mw.quartier : m.quartier.label.toLowerCase())); }
+    if (m.hauteur) { details.push(mw.taille.selon.replace(/ selon$/, '') + ' : ' + m.hauteur.label.toLowerCase()); }
     var tables = 'Crée la table « ' + m.table.titre + ' »' + (m.personnes ? ' et la table « ' + m.personnes.table.titre + ' »' : '');
     tuiles.appendChild(creer('section', { classe: 'w-tuile' + (choisi ? ' w-tuile--existant' : ''), attrs: { 'aria-labelledby': 'aModeleTitre' + i } }, [
       creer('h4', { classe: 'fr-h6 fr-m-0', id: 'aModeleTitre' + i }, [creer('span', { classe: 'fr-icon-' + m.icone + ' fr-mr-1w', attrs: { 'aria-hidden': 'true' } }), m.emoji + ' ' + m.nom]),
@@ -8704,7 +8807,12 @@ function donneesBrouillon(b) {
     b.lectureDonnees = lireTableSource(b.cfg.table).then(function (d) {
       b.donnees = d;
       if (etat.brouillon === b) { redessinerEtape(); }
-    }).catch(function (e) { logSecurite('AVERTISSEMENT', 'Lecture de la table impossible', e); b.donnees = { id: [] }; });
+    }).catch(function (e) {
+      logSecurite('AVERTISSEMENT', 'Lecture de la table impossible', e);
+      b.donnees = { id: [] };
+      // Redessin quand même : l'étape ne doit pas rester sur « Lecture de votre table… »
+      if (etat.brouillon === b) { afficherErreur('La table « ' + nomTable(b.cfg.table) + ' » n\'a pas pu être lue.', e); redessinerEtape(); }
+    });
   }
   return null;
 }
@@ -9202,7 +9310,7 @@ function colonnesManquantes() {
   var cfg = etat.config;
   var d = etat.source && etat.source.lignes;
   if (!cfg || !d) { return false; }
-  var l = colonnesUtilisees(cfg).filter(function (c) { return c && c !== 'id' && !(c in d); });
+  var l = colonnesUtilisees(cfg).filter(function (c) { return c && c !== 'id' && !Object.prototype.hasOwnProperty.call(d, c); });
   // Une colonne masquée par une règle d'accès manque toujours : la
   // structure n'est relue que si la liste des manques a changé.
   var cle = l.join('|');
@@ -9213,8 +9321,9 @@ function colonnesManquantes() {
 
 /* silencieux : relecture automatique (sans message d'erreur, sans redessin
    si rien n'a change). forcer : redessine meme si une fiche est ouverte
-   (la ville se met a jour derriere la fiche). */
-async function rafraichirMaintenant(silencieux, forcer) {
+   (la ville se met a jour derriere la fiche). sansDessin : donnees seulement,
+   l'appelant redessine toute la vue juste apres (evite de dessiner la ville deux fois). */
+async function rafraichirMaintenant(silencieux, forcer, sansDessin) {
   if (etat.vue !== 'ville' || !etat.config) { return; }
   try {
     var avant = empreinteDonnees();
@@ -9234,6 +9343,7 @@ async function rafraichirMaintenant(silencieux, forcer) {
       await chargerDonneesVille();
     }
     etat.rafraichirEnAttente = false;
+    if (sansDessin) { return; }
     if (empreinteDonnees() === avant && !forcer && !enAttente) { return; }
     if (etat.modaleOuverte && !forcer) { etat.rafraichirEnAttente = true; return; }
     if (demenagement) { etat.rafraichirEnAttente = true; return; }
@@ -9261,7 +9371,10 @@ function demarrerActualisationAuto() {
 
 function planifierRafraichissement() {
   if (etat.vue !== 'ville') { return; }
-  if (etat.modaleOuverte || demenagement) { etat.rafraichirEnAttente = true; return; }
+  /* Fiche ouverte : les données sont relues quand même et le redessin n'est
+     reporté que si quelque chose a changé (voir rafraichirMaintenant) : fermer
+     la fiche ne redessine pas une ville inchangée. */
+  if (demenagement) { etat.rafraichirEnAttente = true; return; }
   if (etat.minuterieRafraichir) { clearTimeout(etat.minuterieRafraichir); }
   etat.minuterieRafraichir = setTimeout(function () {
     etat.minuterieRafraichir = null;
