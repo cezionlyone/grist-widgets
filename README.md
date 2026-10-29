@@ -6,6 +6,7 @@ Des widgets personnalisés pour [Grist](https://www.getgrist.com), libres d'util
 |---|---|---|
 | [Gristcity](gristcity/) | Dessine une table sous la forme d'une ville en 3D isométrique : chaque ligne devient un immeuble qui se construit au fil de ses étapes. | `https://cezionlyone.github.io/grist-widgets/gristcity/` |
 | [Gristverse](gristverse/) | Le bureau virtuel de l'équipe en pixel art : qui est au bureau, en télétravail ou absent, les réunions, les tâches et les projets. | `https://cezionlyone.github.io/grist-widgets/gristverse/` |
+| [Gristkanban](gristkanban/) | Des Kanbans pour tous, sans toucher à vos tables : onze modèles prêts à l'emploi, ou des Kanbans suggérés d'après les tables du document. Glisser-déposer, fiche, filtres, fil d'activité. | `https://cezionlyone.github.io/grist-widgets/gristkanban/` |
 
 ## Utiliser un widget
 
