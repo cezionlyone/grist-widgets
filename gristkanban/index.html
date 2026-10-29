@@ -3,7 +3,7 @@
   ============================================================================
   READ ME - Gristkanban
   ============================================================================
-  Version     : 1.0.0
+  Version     : 1.0.1
   Date        : 29/10/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -64,6 +64,13 @@
   HISTORIQUE
   ----------
   1.0.0 - 29/10/2026 - madeXcé - Première version publique.
+  1.0.1 - 29/10/2026 - madeXcé - Corrections issues de la relecture : saisie
+    des nombres avec séparateur de milliers, fil d'activité posé dès la
+    création, paramétrage modifié ailleurs relu, tables et colonnes
+    renommées retrouvées, valeurs "constructor" ou "__proto__" sans effet,
+    jeton en lecture seule pour les fichiers avec repli, date de création
+    dans le fuseau de la colonne, focus après ajout ou suppression,
+    compteurs et décimales des devises au format.
 
   DÉPENDANCES
   ------------
@@ -777,7 +784,7 @@
    Toutes les constantes sont declarees ici, au premier niveau et avant toute
    fonction : initialiser() peut etre declenchee par le premier onRecords
    avant la fin de l'evaluation du script. */
-var VERSION_WIDGET = '1.0.0';
+var VERSION_WIDGET = '1.0.1';
 var NOM_WIDGET = 'Gristkanban';
 var ID_BIBLIO = 'BIBLIOTHEQUE_KANBAN';
 var LABEL_BIBLIO = '📋 BIBLIOTHÈQUE KANBAN ⚡';
@@ -980,7 +987,7 @@ var etat = {
   meta: { tables: {}, colonnes: {} },
   etapes: [], cartes: [], refs: {},
   tableLiee: null, idsVisibles: null, derniersIds: null, finGlisser: 0, sortableAbsent: false,
-  valeursFiltres: {}, retardSeul: false, pjMeta: {}, jeton: null,
+  valeursFiltres: {}, retardSeul: false, pjMeta: {}, jeton: null, jetonEcriture: null,
   tableaux: [], cleConfig: null, tableauSession: null, tableauMemorise: null, nomDoc: null, brouillon: null, uidSeq: 0,
   regroupement: null, couvertures: {}, voletMobile: false, voletReplie: false, trisVue: {}, archivesOuvertes: false,
   vue: 'chargement',
@@ -1338,7 +1345,14 @@ function formatNombreDe(col) {
   var o = col && col.options ? col.options : {};
   var f = { style: 'decimal', maximumFractionDigits: 10 };
   if (o.numMode === 'percent') { f.style = 'percent'; f.maximumFractionDigits = 2; }
-  if (o.numMode === 'currency') { f.style = 'currency'; f.currency = o.currency || 'EUR'; f.minimumFractionDigits = 2; f.maximumFractionDigits = 2; }
+  if (o.numMode === 'currency') {
+    f.style = 'currency'; f.currency = o.currency || 'EUR';
+    /* Nombre de decimales propre a la devise, comme dans Grist : 2 pour
+       l'euro, 0 pour le yen. */
+    var dc = 2;
+    try { dc = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: f.currency }).resolvedOptions().maximumFractionDigits; } catch (e) { dc = 2; }
+    f.minimumFractionDigits = dc; f.maximumFractionDigits = dc;
+  }
   if (typeof o.decimals === 'number') { f.minimumFractionDigits = o.decimals; if (f.maximumFractionDigits < o.decimals) { f.maximumFractionDigits = o.decimals; } }
   if (typeof o.maxDecimals === 'number') { f.maximumFractionDigits = Math.max(o.maxDecimals, f.minimumFractionDigits || 0); }
   if (col && col.type === 'Int' && f.style !== 'percent') { f.maximumFractionDigits = 0; f.minimumFractionDigits = 0; }
@@ -1391,8 +1405,14 @@ function validerNombre(valeur, min, max, defaut) {
 }
 
 function lireNombreSaisi(texte) {
-  var t = String(texte || '').replace(/\s/g, '').replace(',', '.');
+  var t = String(texte || '').replace(/\s/g, '');
   if (t === '') { return null; }
+  /* Separateurs de milliers ("25 000" : espaces deja retires ; "1.500,75") :
+     le point n'est retire que s'il groupe les chiffres par trois avant une
+     eventuelle virgule decimale ; sinon une virgule ou un point isoles
+     restent lus comme separateur decimal. */
+  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) { t = t.split('.').join(''); }
+  t = t.replace(',', '.');
   if (!/^-?\d+(\.\d+)?$/.test(t)) { return undefined; }
   return validerNombre(t, -1e15, 1e15, null);
 }
@@ -1605,7 +1625,7 @@ function tableCartesBase() {
    ce qui produisait KANBAN_CARTES2. Retourne null s'il faut la creer. */
 async function preparerTableCartes() {
   var base = tableCartesBase();
-  if (base && infoColonne(base, COL_KANBAN)) { return base; }
+  if (base && estTableCartesPartagee(base)) { return base; }
   if (base && await adopterTableCartes(base)) { return base; }
   return tableCartesPartagee();
 }
@@ -1644,9 +1664,57 @@ async function adopterTableCartes(tid) {
 function tableCartesPartagee() {
   var ids = Object.keys(etat.meta.tables);
   for (var i = 0; i < ids.length; i++) {
-    if (ids[i].toUpperCase().indexOf(ID_TABLE_CARTES) === 0 && infoColonne(ids[i], COL_KANBAN)) { return ids[i]; }
+    if (estTableCartesPartagee(ids[i])) { return ids[i]; }
   }
   return null;
+}
+
+/* Table de cartes partagee : KANBAN_CARTES avec sa colonne KANBAN, ou la
+   table d'un Kanban cree par le widget, meme si l'agent a renomme la table
+   ou ses colonnes dans Grist. */
+function estTableCartesPartagee(tid) {
+  if (String(tid).toUpperCase().indexOf(ID_TABLE_CARTES) === 0 && infoColonne(tid, COL_KANBAN)) { return true; }
+  return (etat.tableaux || []).some(function (t) { return t.config && t.config.colKanban && t.config.tableCartes === tid && !!infoColonne(tid, t.config.colKanban); });
+}
+
+/* Colonnes principales de la table partagee sous leurs identifiants
+   actuels : celles d'un Kanban qui l'utilise deja (elles ont pu etre
+   renommees dans Grist), sinon les habituelles. */
+function colonnesTableCartes(tid) {
+  var r = { titre: 'TITRE', etape: 'COLONNE', ordre: 'ORDRE', kanban: COL_KANBAN };
+  (etat.tableaux || []).some(function (t) {
+    var c = t.config;
+    if (!c || !c.colKanban || c.tableCartes !== tid || !infoColonne(tid, c.colKanban) || !infoColonne(tid, c.colTitre) || !infoColonne(tid, c.colEtape)) { return false; }
+    r = { titre: c.colTitre, etape: c.colEtape, ordre: (c.colOrdreCartes && infoColonne(tid, c.colOrdreCartes)) ? c.colOrdreCartes : r.ordre, kanban: c.colKanban };
+    return true;
+  });
+  return r;
+}
+
+/* Colonnes du fil d'activite d'une table sous leurs identifiants actuels :
+   la colonne d'historique est celle qui porte la formule du fil (elle a pu
+   etre renommee dans Grist), la colonne des commentaires celle que cette
+   formule lit. */
+var SIGNATURE_HISTORIQUE = 'journal.append({"type": "commentaire"';
+function colonnesSuivi(tid) {
+  var r = { historique: COL_HISTORIQUE, commentaire: COL_COMMENTAIRE };
+  var l = (etat.meta && etat.meta.colonnes[tid]) || [];
+  for (var i = 0; i < l.length; i++) {
+    if (!l[i].formule && String(l[i].formula || '').indexOf(SIGNATURE_HISTORIQUE) !== -1) {
+      r.historique = l[i].colId;
+      var m = /\ncom = \$(\w+) or ""/.exec(l[i].formula);
+      if (m && infoColonne(tid, m[1])) { r.commentaire = m[1]; }
+      break;
+    }
+  }
+  return r;
+}
+
+/* Colonnes techniques, jamais proposees comme informations. */
+function estColonneTechnique(tid, colId) {
+  if (IDS_TECHNIQUES.indexOf(colId) !== -1) { return true; }
+  var s = colonnesSuivi(tid);
+  return colId === s.historique || colId === s.commentaire;
 }
 
 /* Valeurs proposees pour une information : celles du Kanban (une meme
@@ -1878,7 +1946,7 @@ async function lireTableaux() {
     if (cle !== CLE_CONFIG && !(typeof cle === 'string' && cle.indexOf(CLE_CONFIG + ':') === 0)) { continue; }
     try {
       var cfg = JSON.parse(colonneDe(d, 'VALEUR', i) || '{}');
-      if (cfg && cfg.tableCartes) { l.push({ cle: cle, ligne: d.id[i], config: cfg }); }
+      if (cfg && cfg.tableCartes) { retrouverRenommages(cfg); l.push({ cle: cle, ligne: d.id[i], config: cfg }); }
     } catch (e) {
       logSecurite('AVERTISSEMENT', 'Configuration illisible : ' + cle, e);
     }
@@ -1904,6 +1972,9 @@ function choisirTableau() {
   if (!t && etat.tableauMemorise) { t = chercher(function (x) { return x.cle === etat.tableauMemorise; }); }
   if (!t && l.length) { t = l[0]; }
   etat.config = t ? t.config : null;
+  /* Configuration telle que lue, avant tout controle : indique a un
+     rafraichissement si quelqu'un d'autre a modifie le parametrage entre-temps. */
+  etat.configBrute = t ? JSON.stringify(t.config) : null;
   etat.biblioLigne = t ? t.ligne : null;
   etat.cleConfig = t ? t.cle : null;
   return t;
@@ -2047,8 +2118,62 @@ function preparerNouveauTableau() {
   return etat.cleConfig;
 }
 
+/* Table ou colonne renommee dans Grist : l'identifiant suit le libelle
+   ("Taches" renommee "Liste des taches" devient Liste_des_taches). Le Kanban
+   garde les references internes de sa table et de ses colonnes, qui ne
+   changent jamais, et les retrouve sous leurs nouveaux identifiants. Les
+   anciens identifiants sont conserves avec leur reference : l'historique
+   des cartes note l'identifiant qu'avait une information au moment de la
+   modification. */
+var CLES_COLONNES_CONFIG = ['colTitre', 'colEtape', 'colKanban', 'colEcheance', 'colResponsable', 'colOrdreCartes', 'couverture', 'couleur'];
+function colonnesDeConfig(c) {
+  return CLES_COLONNES_CONFIG.map(function (k) { return c[k]; })
+    .concat((c.champs || []).map(function (ch) { return ch && ch.col; }), c.filtres || [], c.ordreFiche || [], [c.tri && c.tri.col])
+    .filter(function (x) { return typeof x === 'string' && x; });
+}
+function noterReferencesConfig(c) {
+  var t = c && etat.meta && etat.meta.tables[c.tableCartes];
+  if (!t || !etat.meta.colParRef) { return; }
+  var anciens = c.colRefs && typeof c.colRefs === 'object' ? c.colRefs : {};
+  var refs = {};
+  Object.keys(anciens).forEach(function (id) {
+    var col = etat.meta.colParRef[anciens[id]];
+    if (id !== '__proto__' && col && col.tableId === c.tableCartes) { refs[id] = anciens[id]; }
+  });
+  colonnesDeConfig(c).forEach(function (id) { var col = infoColonne(c.tableCartes, id); if (col && id !== '__proto__') { refs[id] = col.ref; } });
+  c.tableRef = t.ref;
+  c.colRefs = refs;
+  var s = c.sourceEtapes;
+  if (s && s.type === 'ref' && s.table) { var o = s.colOrdre ? infoColonne(s.table, s.colOrdre) : null; if (o) { s.colOrdreRef = o.ref; } }
+}
+/* Identifiant actuel d'une colonne de la table du Kanban, d'apres
+   l'identifiant note dans son parametrage. */
+function idColonneActuel(c, id) {
+  if (typeof id !== 'string' || !id || !c || infoColonne(c.tableCartes, id)) { return id; }
+  var refs = c.colRefs && typeof c.colRefs === 'object' ? c.colRefs : null;
+  if (!refs || !Object.prototype.hasOwnProperty.call(refs, id) || !etat.meta.colParRef) { return id; }
+  var col = etat.meta.colParRef[refs[id]];
+  return col && col.tableId === c.tableCartes ? col.colId : id;
+}
+function retrouverRenommages(c) {
+  if (!c || !c.tableCartes || !etat.meta || !etat.meta.tables) { return; }
+  if (!etat.meta.tables[c.tableCartes] && typeof c.tableRef === 'number') {
+    Object.keys(etat.meta.tables).forEach(function (t) {
+      if (etat.meta.tables[t].ref === c.tableRef) { logSecurite('INFO', 'Table renommée : ' + c.tableCartes + ' devient ' + t); c.tableCartes = t; }
+    });
+  }
+  var actuel = function (id) { return idColonneActuel(c, id); };
+  CLES_COLONNES_CONFIG.forEach(function (k) { if (c[k]) { c[k] = actuel(c[k]); } });
+  if (Array.isArray(c.champs)) { c.champs.forEach(function (ch) { if (ch && ch.col) { ch.col = actuel(ch.col); } }); }
+  if (Array.isArray(c.filtres)) { c.filtres = c.filtres.map(actuel); }
+  if (Array.isArray(c.ordreFiche)) { c.ordreFiche = c.ordreFiche.map(actuel); }
+  if (c.tri && c.tri.col) { c.tri.col = actuel(c.tri.col); }
+  noterReferencesConfig(c);
+}
+
 async function ecrireConfig(cfg) {
   cfg.version = VERSION_CONFIG;
+  noterReferencesConfig(cfg);
   var valeur = JSON.stringify(cfg);
   if (etat.biblioLigne) {
     await agir([['UpdateRecord', etat.biblio, etat.biblioLigne, { VALEUR: valeur, VERSION_MODIF: VERSION_WIDGET }]]);
@@ -2058,12 +2183,14 @@ async function ecrireConfig(cfg) {
     etat.biblioLigne = ret && ret.retValues ? ret.retValues[0] : null;
   }
   etat.config = cfg;
+  etat.configBrute = valeur;
 }
 
 /* Controle de la configuration au chargement : les colonnes disparues sont
    retirees de l'affichage, jamais recreees. */
 function verifierConfig() {
   var c = etat.config;
+  retrouverRenommages(c);
   if (!c || !c.tableCartes || !etat.meta.tables[c.tableCartes]) { return false; }
   if (!infoColonne(c.tableCartes, c.colTitre) || !infoColonne(c.tableCartes, c.colEtape)) { return false; }
   if (c.colKanban && !infoColonne(c.tableCartes, c.colKanban)) { return false; }
@@ -2091,8 +2218,16 @@ function verifierConfig() {
   var colE = infoColonne(c.tableCartes, c.colEtape);
   var cible = tableCibleRef(colE.type);
   if (cible && colE.type.indexOf('Ref:') === 0) {
-    c.sourceEtapes = { type: 'ref', table: cible, colAffichage: colAffichageRef(colE) || (c.sourceEtapes && c.sourceEtapes.colAffichage) || null,
-      colOrdre: (c.sourceEtapes && c.sourceEtapes.colOrdre && infoColonne(cible, c.sourceEtapes.colOrdre)) ? c.sourceEtapes.colOrdre : null };
+    /* Colonne d'ordre de la table des etapes, retrouvee si elle a ete renommee. */
+    var se = c.sourceEtapes || {};
+    var ordre = se.colOrdre || null;
+    if (ordre && !infoColonne(cible, ordre) && typeof se.colOrdreRef === 'number') {
+      var oc = etat.meta.colParRef[se.colOrdreRef];
+      if (oc && oc.tableId === cible) { ordre = oc.colId; }
+    }
+    c.sourceEtapes = { type: 'ref', table: cible, colAffichage: colAffichageRef(colE) || se.colAffichage || null,
+      colOrdre: (ordre && infoColonne(cible, ordre)) ? ordre : null };
+    c.sourceEtapes.colOrdreRef = c.sourceEtapes.colOrdre ? infoColonne(cible, c.sourceEtapes.colOrdre).ref : null;
   } else if (colE.type === 'Choice') {
     c.sourceEtapes = { type: 'choice' };
   } else {
@@ -2171,10 +2306,12 @@ async function chargerDonnees() {
     lectures.push(chargerRef(tableCibleRef(col.type), colAffichageRef(col)).catch(function (e2) { logSecurite('AVERTISSEMENT', 'Référence illisible : ' + col.colId, e2); }));
   });
   await Promise.all(lectures);
-  var cles = {};
+  /* Tables indexees par des valeurs de cellule ("constructor", "__proto__"...) : sans prototype. */
+  var cles = Object.create(null);
   etapes.forEach(function (x) { cles[x.cle] = true; });
   var cartes = [];
-  var textes = {};
+  var textes = Object.create(null);
+  var colHist = colonnesSuivi(c.tableCartes).historique;
   for (var k = 0; k < d.id.length; k++) {
     if (c.colKanban && colonneDe(d, c.colKanban, k) !== c.idKanban) { continue; }
     var brut = colonneDe(d, c.colEtape, k);
@@ -2189,7 +2326,7 @@ async function chargerDonnees() {
     if (c.colResponsable) { valeurs[c.colResponsable] = colonneDe(d, c.colResponsable, k); }
     c.filtres.forEach(function (f) { valeurs[f] = colonneDe(d, f, k); });
     IDS_META.forEach(function (m) { if (d[m]) { valeurs[m] = colonneDe(d, m, k); } });
-    if (c.historique && d[COL_HISTORIQUE]) { valeurs[COL_HISTORIQUE] = colonneDe(d, COL_HISTORIQUE, k); }
+    if (c.historique && d[colHist]) { valeurs[COL_HISTORIQUE] = colonneDe(d, colHist, k); }
     cartes.push({ id: d.id[k], titre: colonneDe(d, c.colTitre, k), cle: cle, brut: brut,
       ordre: c.colOrdreCartes ? colonneDe(d, c.colOrdreCartes, k) : null, valeurs: valeurs });
   }
@@ -2231,7 +2368,7 @@ function comparerCartes(a, b) {
    Le contenu est du JSON : {"etat": {...}, "journal": [...], "com": "..."}. */
 function exprSuivi(tid, colId) {
   var col = infoColonne(tid, colId);
-  if (!col || col.formule || IDS_META.indexOf(colId) !== -1 || IDS_TECHNIQUES.indexOf(colId) !== -1) { return null; }
+  if (!col || col.formule || IDS_META.indexOf(colId) !== -1 || estColonneTechnique(tid, colId)) { return null; }
   var t = String(col.type || '');
   var vis = colAffichageRef(col);
   if (t.indexOf('Ref:') === 0) { return '($' + colId + '.' + (vis || 'id') + ' if $' + colId + ' else "")'; }
@@ -2292,7 +2429,7 @@ function formuleHistorique(tid) {
     '  for k, v in etat.items():',
     '    if k in avant and avant[k] != v:',
     '      journal.append({"type": "modification", "champ": k, "de": avant[k], "a": v, "qui": qui, "le": quand})',
-    'com = $' + COL_COMMENTAIRE + ' or ""',
+    'com = $' + colonnesSuivi(tid).commentaire + ' or ""',
     'if com and com != h.get("com"):',
     '  try:',
     '    texte = json.loads(com).get("texte", "")',
@@ -2309,13 +2446,15 @@ function formuleHistorique(tid) {
 async function assurerHistorique(c) {
   var tid = c.tableCartes;
   try {
-    var manque = [COL_COMMENTAIRE, COL_HISTORIQUE].filter(function (id) { return !infoColonne(tid, id); });
-    for (var i = 0; i < manque.length; i++) { await ajouterColonne(tid, manque[i], 'Text', manque[i] === COL_HISTORIQUE ? { wrap: true } : null); }
+    /* Colonnes renommees dans Grist : retrouvees, jamais ajoutees une seconde fois. */
+    var suivi = colonnesSuivi(tid);
+    var manque = [suivi.commentaire, suivi.historique].filter(function (id) { return !infoColonne(tid, id); });
+    for (var i = 0; i < manque.length; i++) { await ajouterColonne(tid, manque[i], 'Text', manque[i] === suivi.historique ? { wrap: true } : null); }
     if (manque.length) { await chargerMeta(); }
-    var col = infoColonne(tid, COL_HISTORIQUE);
+    var col = infoColonne(tid, suivi.historique);
     var f = formuleHistorique(tid);
     if (col && (col.formula !== f || col.recalcWhen !== 2 || col.formule)) {
-      await agir([['ModifyColumn', tid, COL_HISTORIQUE, { isFormula: false, formula: f, recalcWhen: 2, recalcDeps: null }]]);
+      await agir([['ModifyColumn', tid, suivi.historique, { isFormula: false, formula: f, recalcWhen: 2, recalcDeps: null }]]);
       await chargerMeta();
     }
   } catch (e) {
@@ -2336,7 +2475,7 @@ async function reparerColonnesVides(c) {
        seulement la colonne technique des commentaires. */
     if (cfg.colKanban) { (cfg.champs || []).forEach(function (ch) { if (ids.indexOf(ch.col) === -1) { ids.push(ch.col); } }); }
   });
-  if (c.historique) { ids.push(COL_COMMENTAIRE); }
+  if (c.historique) { ids.push(colonnesSuivi(tid).commentaire); }
   var actions = [];
   ids.forEach(function (id) {
     var col = infoColonne(tid, id);
@@ -2391,7 +2530,7 @@ function groupesAffiches() {
   var info = colonneCartes(col);
   var g = genreDe(info, champDe(col));
   var res = [];
-  var vus = {};
+  var vus = Object.create(null);
   var ajouter = function (cle, libelle) { if (!vus[cle]) { vus[cle] = true; res.push({ cle: cle, libelle: libelle }); } };
   if (g === 'oui_non') { ajouter('Oui', 'Oui'); ajouter('Non', 'Non'); return res; }
   if (g === 'reference') {
@@ -2451,6 +2590,7 @@ function triVue() {
   var t = null;
   try { var v = window.localStorage.getItem(cleTriVue()); if (v !== null) { t = v ? JSON.parse(v) : null; } else { t = etat.trisVue[etat.cleConfig] || null; } }
   catch (e) { t = etat.trisVue[etat.cleConfig] || null; }
+  if (t && t.col) { t.col = idColonneActuel(etat.config, t.col); }
   if (!t || !t.col || !colonnesTriables().some(function (o) { return o.valeur === t.col; })) { return null; }
   return t;
 }
@@ -2619,7 +2759,7 @@ function valeursFiltre(colId) {
   var g = genreFiltre(colId);
   if (g === 'oui_non') { return ['Oui', 'Non']; }
   var res = [];
-  var vus = {};
+  var vus = Object.create(null);
   var ajouter = function (x) { var t = String(x); if (t && !vus[t]) { vus[t] = true; res.push(t); } };
   valeursProposees(colId).forEach(ajouter);
   var trouvees = [];
@@ -3032,7 +3172,7 @@ function brouillonDepuisConfig() {
     cols = c.champs.map(function (ch) { return colonneCartes(ch.col); }).filter(Boolean);
   } else {
     cols = colonnesDe(c.tableCartes).filter(function (col) {
-      return col.colId !== c.colEtape && col.colId !== c.colTitre && col.colId !== c.colOrdreCartes && IDS_META.indexOf(col.colId) === -1 && IDS_TECHNIQUES.indexOf(col.colId) === -1;
+      return col.colId !== c.colEtape && col.colId !== c.colTitre && col.colId !== c.colOrdreCartes && IDS_META.indexOf(col.colId) === -1 && !estColonneTechnique(c.tableCartes, col.colId);
     });
   }
   var parCol = {};
@@ -3227,7 +3367,7 @@ function planifierSauvegarde() {
 /* Une saisie incomplete n'est pas enregistree : la raison est affichee. */
 function raisonNonEnregistrable(b) {
   if (!b.nom.trim()) { return 'le Kanban n\'a pas de nom'; }
-  var vus = {};
+  var vus = Object.create(null);
   var act = b.colonnes.filter(function (x) { return !x.supprimee; });
   if (!act.length) { return 'le Kanban doit garder au moins une colonne'; }
   for (var i = 0; i < act.length; i++) {
@@ -3236,7 +3376,8 @@ function raisonNonEnregistrable(b) {
     if (vus[k]) { return 'deux colonnes portent le nom « ' + act[i].nom.trim() + ' »'; }
     vus[k] = true;
   }
-  var noms = { titre: true };
+  var noms = Object.create(null);
+  noms.titre = true;
   var infos = b.infos.filter(infoActive);
   for (var j = 0; j < infos.length; j++) {
     var n = normaliser(infos[j].libelle);
@@ -3436,7 +3577,7 @@ async function supprimerColonneParametrage(x) {
   }
   var sel = liste('kDestModale', autres.map(function (y) { return { valeur: y.uid, libelle: y.nom || 'Sans nom' }; }), autres[0].uid);
   ouvrirModale({ titre: 'Supprimer la colonne « ' + nom + ' » ?', etroite: true, focus: 'kDestModale',
-    corps: [creer('p', { classe: 'w-texte', texte: (x.nb > 1 ? 'Ses ' + x.nb + ' cartes seront déplacées' : 'Sa carte sera déplacée') + ' dans la colonne choisie ci-dessous. La suppression est enregistrée aussitôt.' }),
+    corps: [creer('p', { classe: 'w-texte', texte: (x.nb > 1 ? 'Ses ' + formaterNombre(x.nb) + ' cartes seront déplacées' : 'Sa carte sera déplacée') + ' dans la colonne choisie ci-dessous. La suppression est enregistrée aussitôt.' }),
       groupeChamp('Déplacer les cartes dans', sel)],
     pied: [creer('span', { classe: 'w-pousse' }), bouton('Annuler', 'secondaire', null, fermerModale),
       bouton('Supprimer la colonne', null, 'delete-line', async function () {
@@ -3500,7 +3641,7 @@ function etapeColonnes() {
         var autresC = colonnesActives();
         var sel = liste('kDest' + i, autresC.map(function (y) { return { valeur: y.uid, libelle: y.nom || 'Sans nom' }; }), x.dest);
         sel.addEventListener('change', function () { x.dest = sel.value; majAttente(); });
-        msg.appendChild(creer('label', { attrs: { 'for': 'kDest' + i }, texte: 'Cette colonne sera supprimée. ' + (x.nb > 1 ? 'Ses ' + x.nb + ' cartes iront' : 'Sa carte ira') + ' dans' }));
+        msg.appendChild(creer('label', { attrs: { 'for': 'kDest' + i }, texte: 'Cette colonne sera supprimée. ' + (x.nb > 1 ? 'Ses ' + formaterNombre(x.nb) + ' cartes iront' : 'Sa carte ira') + ' dans' }));
         msg.appendChild(sel);
       } else {
         msg.appendChild(creer('span', { texte: 'Cette colonne sera supprimée.' }));
@@ -4038,7 +4179,7 @@ function changementsParEtape(b) {
   b.colonnes.forEach(function (x) {
     if (x.supprimee && x.cle) {
       var d = colonneParUid(x.dest);
-      g[2].push({ t: '« ' + x.nomInitial + ' » supprimée' + (x.nb ? ' : ' + (x.nb > 1 ? 'ses ' + x.nb + ' cartes iront' : 'sa carte ira') + ' dans « ' + (d ? d.nom : '') + ' »' : ''), alerte: true });
+      g[2].push({ t: '« ' + x.nomInitial + ' » supprimée' + (x.nb ? ' : ' + (x.nb > 1 ? 'ses ' + formaterNombre(x.nb) + ' cartes iront' : 'sa carte ira') + ' dans « ' + (d ? d.nom : '') + ' »' : ''), alerte: true });
     } else if (!x.supprimee && !x.cle) {
       g[2].push({ t: 'Nouvelle colonne « ' + x.nom.trim() + ' »' });
     } else if (!x.supprimee) {
@@ -4116,7 +4257,7 @@ function validerEtape(n) {
   if (n === 2) {
     var act = colonnesActives();
     if (!act.length) { signalerSaisie('Le Kanban doit garder au moins une colonne.'); return false; }
-    var vus = {};
+    var vus = Object.create(null);
     for (var i = 0; i < b.colonnes.length; i++) {
       var x = b.colonnes[i];
       if (x.supprimee) { continue; }
@@ -4127,7 +4268,8 @@ function validerEtape(n) {
     }
   }
   if (n === 3) {
-    var noms = { titre: true };
+    var noms = Object.create(null);
+    noms.titre = true;
     for (var j = 0; j < b.infos.length; j++) {
       var inf = b.infos[j];
       if (!infoActive(inf)) { continue; }
@@ -4151,13 +4293,14 @@ function validerEtapeSansRendu(n) {
   var b = etat.brouillon;
   if (n === 1) { return !!b.nom.trim(); }
   if (n === 2) {
-    var vus = {};
+    var vus = Object.create(null);
     var act = colonnesActives();
     if (!act.length) { return false; }
     return act.every(function (x) { var k = normaliser(x.nom); if (!k || vus[k]) { return false; } vus[k] = true; return true; });
   }
   if (n === 3) {
-    var noms = { titre: true };
+    var noms = Object.create(null);
+    noms.titre = true;
     return b.infos.filter(infoActive).every(function (i) { var k = normaliser(i.libelle); if (!k || noms[k]) { return false; } noms[k] = true; return true; });
   }
   return true;
@@ -4175,6 +4318,7 @@ async function creerDepuisBrouillon() {
        ajoute ses cartes dans la meme table, et n'y ajoute que les colonnes
        qui n'existent pas encore. */
     await chargerMeta();
+    await lireTableaux();
     var biblioAbsente = !trouverTable(ID_BIBLIO);
     var tidCartes = await preparerTableCartes();
     var defs = biblioAbsente ? [{ id: ID_BIBLIO, colonnes: COLONNES_BIBLIO }] : [];
@@ -4189,12 +4333,17 @@ async function creerDepuisBrouillon() {
       await chargerMeta();
     }
     var noms = actives.map(function (x) { return x.nom.trim(); });
-    var pris = IDS_RESERVES.slice();
+    /* Colonnes principales et du fil de la table partagee, renommees ou non
+       par l'agent : jamais reutilisees pour une information. */
+    var principales = colonnesTableCartes(tidCartes);
+    var suiviCartes = colonnesSuivi(tidCartes);
+    var pris = IDS_RESERVES.concat([principales.titre, principales.etape, principales.ordre, principales.kanban, suiviCartes.historique, suiviCartes.commentaire]
+      .map(function (x) { return String(x).toUpperCase(); }));
     for (var n = 0; n < infos.length; n++) {
       infos[n].colCree = await assurerColonneInfo(tidCartes, infos[n].libelle, infos[n].genre, pris);
       if (GENRES_A_VALEURS.indexOf(infos[n].genre) !== -1) { await unirChoix(tidCartes, infos[n].colCree, infos[n].valeurs); }
     }
-    await unirChoix(tidCartes, 'COLONNE', noms);
+    await unirChoix(tidCartes, principales.etape, noms);
     var colDe = function (u) { var i = infoParUid(u); return infoActive(i) ? i.colCree : null; };
     var ech = infos.filter(function (i) { return i.echeance; })[0];
     var resp = infos.filter(function (i) { return i.responsable; })[0];
@@ -4204,10 +4353,10 @@ async function creerDepuisBrouillon() {
     memoriserTableau(cleKanban);
     await ecrireConfig({
       mode: 'creation', nom: b.nom.trim(), description: b.description.trim(),
-      tableCartes: tidCartes, colTitre: 'TITRE', colEtape: 'COLONNE', colKanban: COL_KANBAN, idKanban: cleKanban, historique: true,
+      tableCartes: tidCartes, colTitre: principales.titre, colEtape: principales.etape, colKanban: principales.kanban, idKanban: cleKanban, historique: true,
       sourceEtapes: { type: 'liste', valeurs: noms },
       colonneArchive: (function () { var a = actives.filter(function (x) { return x.uid === b.archiveUid; })[0]; return a ? a.nom.trim() : null; })(),
-      colOrdreCartes: 'ORDRE', tri: null,
+      colOrdreCartes: principales.ordre, tri: null,
       champs: infos.map(function (i) {
         var ch = { col: i.colCree, libelle: i.libelle.trim(), genre: genreStocke(i.genre), surCarte: !!i.surCarte, dansFiche: !!i.dansFiche };
         if (GENRES_A_VALEURS.indexOf(i.genre) !== -1) { ch.valeurs = i.valeurs.slice(); }
@@ -4218,6 +4367,11 @@ async function creerDepuisBrouillon() {
       recherche: !!b.recherche, filtres: b.filtres.map(colDe).filter(Boolean), filtreRetard: !!b.filtreRetard && !!ech,
       nomsInfos: b.nomsInfos !== false, couverture: b.couverture ? colDe(b.couverture) : null, couleur: b.couleur ? colDe(b.couleur) : null
     });
+    /* La formule du fil d'activite est posee tout de suite : sans elle, les
+       commentaires et modifications ne seraient pas enregistres tant que le
+       parametrage n'a pas ete enregistre une fois. */
+    await chargerMeta();
+    await assurerHistorique(etat.config);
     var nomCree = b.nom.trim();
     etat.brouillon = null;
     await chargerTout();
@@ -4275,12 +4429,12 @@ async function appliquerBrouillon() {
       var col = colonneCartes(c.colEtape);
       var opts = JSON.parse(JSON.stringify(col.options || {}));
       var anciennes = opts.choiceOptions || {};
-      var nouvellesOpts = {};
+      var nouvellesOpts = Object.create(null);
       var acts = [];
       actives.forEach(function (y) {
         var nom = y.nom.trim();
         cleParUid[y.uid] = nom;
-        if (y.cle && anciennes[y.cle]) { nouvellesOpts[nom] = anciennes[y.cle]; }
+        if (y.cle && Object.prototype.hasOwnProperty.call(anciennes, y.cle) && anciennes[y.cle]) { nouvellesOpts[nom] = anciennes[y.cle]; }
         if (y.cle && nom !== y.cle) {
           var cartes = cartesDeEtape(y.cle);
           if (cartes.length) { var m = {}; m[c.colEtape] = cartes.map(function () { return nom; }); acts.push(['BulkUpdateRecord', c.tableCartes, cartes.map(function (k) { return k.id; }), m]); }
@@ -4320,7 +4474,9 @@ async function appliquerBrouillon() {
     /* Informations */
     var partagee = !!c.colKanban;
     if (b.source === 'creation') {
-      var pris = IDS_RESERVES.concat(b.infos.filter(function (i) { return i.col; }).map(function (i) { return i.col.toUpperCase(); }));
+      var suiviP = colonnesSuivi(c.tableCartes);
+      var pris = IDS_RESERVES.concat(b.infos.filter(function (i) { return i.col; }).map(function (i) { return i.col.toUpperCase(); }),
+        [c.colTitre, c.colEtape, c.colOrdreCartes, c.colKanban, suiviP.historique, suiviP.commentaire].filter(Boolean).map(function (x) { return String(x).toUpperCase(); }));
       for (var j = 0; j < b.infos.length; j++) {
         var inf = b.infos[j];
         if (inf.supprimee && !inf.nouvelle && inf.col) {
@@ -4499,7 +4655,7 @@ async function repartirDeTableau(t) {
     if (!etat.meta.tables[tc]) { throw new Error('Table des cartes absente : ' + tc); }
     var colE = infoColonne(tc, cfg.colEtape);
     var etapes = [];
-    var parCle = {};
+    var parCle = Object.create(null);
     var cible = colE ? tableCibleRef(colE.type) : null;
     if (cfg.sourceEtapes && cfg.sourceEtapes.type === 'liste') {
       (cfg.sourceEtapes.valeurs || []).forEach(function (v) { etapes.push(v); parCle[v] = v; });
@@ -4517,7 +4673,7 @@ async function repartirDeTableau(t) {
       choixDe(colE).forEach(function (v) { etapes.push(v); parCle[v] = v; });
     } else if (colE) {
       var d = await lireTable(tc);
-      var vus = {};
+      var vus = Object.create(null);
       (d[cfg.colEtape] || []).forEach(function (v) { if (v && typeof v === 'string' && !vus[v]) { vus[v] = true; etapes.push(v); parCle[v] = v; } });
       etapes.sort(function (x, y) { return x.localeCompare(y, 'fr'); });
     }
@@ -4665,7 +4821,7 @@ function tableauDeTable(tid) {
 function tablesBranchables() {
   return Object.keys(etat.meta.tables).filter(function (tid) {
     var t = etat.meta.tables[tid];
-    return !estTableExclue(tid) && !t.resume && tid.toUpperCase().indexOf(ID_BIBLIO) === -1 && !(tid.toUpperCase().indexOf(ID_TABLE_CARTES) === 0 && infoColonne(tid, COL_KANBAN));
+    return !estTableExclue(tid) && !t.resume && tid.toUpperCase().indexOf(ID_BIBLIO) === -1 && !estTableCartesPartagee(tid);
   }).sort(function (x, y) { return x.localeCompare(y, 'fr'); });
 }
 
@@ -4690,7 +4846,7 @@ function colonnesEtapePossibles(tid) {
 function colonnesEtapeEcartees(tid) {
   return colonnesDe(tid).filter(function (c) {
     var r = raisonRefusEtape(c);
-    return r !== null && r !== '' && IDS_META.indexOf(c.colId) === -1 && IDS_TECHNIQUES.indexOf(c.colId) === -1;
+    return r !== null && r !== '' && IDS_META.indexOf(c.colId) === -1 && !estColonneTechnique(tid, c.colId);
   });
 }
 
@@ -4834,7 +4990,7 @@ function nomColonneOrdreLibre(tid) {
 
 function autresColonnes(a) {
   return colonnesDe(a.table).filter(function (c) {
-    return c.colId !== a.colEtape && c.colId !== a.colTitre && IDS_META.indexOf(c.colId) === -1 && IDS_TECHNIQUES.indexOf(c.colId) === -1 && c.colId !== colonneOrdreExistante(a.table);
+    return c.colId !== a.colEtape && c.colId !== a.colTitre && IDS_META.indexOf(c.colId) === -1 && !estColonneTechnique(a.table, c.colId) && c.colId !== colonneOrdreExistante(a.table);
   });
 }
 
@@ -4922,7 +5078,7 @@ function proposerAssociations(a) {
     var choix = parNom[0] || libres[0] || null;
     if (choix) { a.colTitre = choix.colId; }
   }
-  var autres = colonnesDe(t).filter(function (c) { return c.colId !== a.colEtape && c.colId !== a.colTitre && IDS_META.indexOf(c.colId) === -1 && IDS_TECHNIQUES.indexOf(c.colId) === -1; });
+  var autres = colonnesDe(t).filter(function (c) { return c.colId !== a.colEtape && c.colId !== a.colTitre && IDS_META.indexOf(c.colId) === -1 && !estColonneTechnique(t, c.colId); });
   if (!a.colEcheance) {
     var ech = autres.filter(function (c) { return c.type === 'Date' && evoqueRole(c, 'echeance'); })[0];
     if (ech) { a.colEcheance = ech.colId; }
@@ -5323,7 +5479,7 @@ function redessinerColonnes() {
   detruireSortables();
   var zone = document.getElementById('tTableau');
   if (!zone) { return; }
-  var defilements = {};
+  var defilements = Object.create(null);
   Array.prototype.forEach.call(zone.querySelectorAll('.w-colonne__liste'), function (l) { defilements[l.getAttribute('data-cle')] = l.scrollTop; });
   var defilementX = zone.scrollLeft;
   vider(zone);
@@ -5360,14 +5516,14 @@ function rendreColonne(cle) {
   var sec = creer('section', { classe: 'w-colonne' + (depasse ? ' w-colonne--alerte' : '') + (vide ? ' w-colonne--vide' : '') + (archive ? ' w-colonne--archive' : '') + (cle === CLE_NON_CLASSE ? ' w-colonne--nonclasse' : ''),
     attrs: { 'aria-labelledby': 'tCol_' + cleId(cle), 'data-cle': cle } });
   var ordonnable = colonnesOrdonnablesSurKanban() && cle !== CLE_NON_CLASSE;
-  var compte = String(toutes.length);
+  var compte = formaterNombre(toutes.length);
   var tete = creer('div', { classe: 'w-colonne__tete' }, [
     ordonnable ? creer('span', { classe: 'w-poignee w-colonne__poignee w-infobulle w-infobulle--dessous-gauche fr-icon-drag-move-2-line fr-icon--sm', attrs: { 'aria-hidden': 'true', 'data-infobulle': 'Déplacer cette colonne' } }) : null,
     creer('h3', { classe: 'w-colonne__titre', id: 'tCol_' + cleId(cle), texte: lib }),
-    creer('span', { classe: 'w-colonne__compte', texte: compte + (visibles.length !== toutes.length ? ' (' + visibles.length + ' affichées)' : ''),
-      attrs: { 'aria-label': toutes.length + ' carte' + (toutes.length > 1 ? 's' : '') } }),
+    creer('span', { classe: 'w-colonne__compte', texte: compte + (visibles.length !== toutes.length ? ' (' + formaterNombre(visibles.length) + ' affichées)' : ''),
+      attrs: { 'aria-label': compte + ' carte' + (toutes.length > 1 ? 's' : '') } }),
     archive ? creer('button', { classe: 'w-colonne__archives w-infobulle w-infobulle--dessous', id: 'tArchives',
-      attrs: { 'aria-expanded': archRepliee ? 'false' : 'true', 'aria-label': (archRepliee ? 'Afficher les archives, ' : 'Replier les archives, ') + toutes.length + ' carte' + (toutes.length > 1 ? 's' : ''),
+      attrs: { 'aria-expanded': archRepliee ? 'false' : 'true', 'aria-label': (archRepliee ? 'Afficher les archives, ' : 'Replier les archives, ') + compte + ' carte' + (toutes.length > 1 ? 's' : ''),
         'data-infobulle': archRepliee ? 'Afficher les archives' : 'Replier les archives' },
       clic: function () {
         etat.archivesOuvertes = archRepliee;
@@ -5375,7 +5531,7 @@ function rendreColonne(cle) {
         var f = document.getElementById('tArchives');
         if (f) { f.focus(); }
       } }, [creer('span', { classe: 'fr-icon-archive-line fr-icon--sm', attrs: { 'aria-hidden': 'true' } })]) : null,
-    cle !== CLE_NON_CLASSE && !archive && etat.peutModifier ? creer('button', { classe: 'w-plus w-colonne__ajouter w-infobulle w-infobulle--dessous', attrs: { 'aria-label': 'Ajouter une carte dans ' + lib, 'data-infobulle': 'Ajouter une carte dans cette colonne' },
+    cle !== CLE_NON_CLASSE && !archive && etat.peutModifier ? creer('button', { classe: 'w-plus w-colonne__ajouter w-infobulle w-infobulle--dessous', id: 'tAjout_' + cleId(cle), attrs: { 'aria-label': 'Ajouter une carte dans ' + lib, 'data-infobulle': 'Ajouter une carte dans cette colonne' },
       clic: function () {
         if (etat.regroupement) { var pre = {}; pre[etat.regroupement] = valeurPourGroupe(cle); ouvrirCarte(null, etat.etapes.length ? etat.etapes[0].cle : null, pre); }
         else { ouvrirCarte(null, cle); }
@@ -5685,7 +5841,7 @@ async function deplacerCarte(id, cleDest, indexVisible, parGlisser) {
     if (etapeChange) { carte.cle = cleDest; carte.brut = valeurEtapePourCle(cleDest); }
     var pos = cartesDeEtape(cleDest).indexOf(carte) + 1;
     var total = cartesDeEtape(cleDest).length;
-    annoncer('La carte ' + (carte.titre || 'sans titre') + ' a été déplacée dans ' + libelleEtape(cleDest) + ', position ' + pos + ' sur ' + total + '.');
+    annoncer('La carte ' + (carte.titre || 'sans titre') + ' a été déplacée dans ' + libelleEtape(cleDest) + ', position ' + formaterNombre(pos) + ' sur ' + formaterNombre(total) + '.');
     redessinerColonnes();
     if (!parGlisser) {
       var b = document.querySelector('.w-carte[data-id="' + id + '"] .w-carte__deplacer');
@@ -5721,7 +5877,7 @@ function ouvrirDeplacement(x) {
     var r = creer('input', { attrs: { type: 'radio', name: 'dDest', id: 'dDest' + i }, coche: e.cle === choix.cle });
     r.addEventListener('change', function () { choix.cle = e.cle; majPositions(); });
     var lab = creer('label', { classe: 'fr-label', attrs: { 'for': 'dDest' + i } }, [e.libelle,
-      creer('span', { classe: 'fr-hint-text', texte: n + ' carte' + (n > 1 ? 's' : '') + (e.cle === x.cle ? ', colonne actuelle' : '') })]);
+      creer('span', { classe: 'fr-hint-text', texte: formaterNombre(n) + ' carte' + (n > 1 ? 's' : '') + (e.cle === x.cle ? ', colonne actuelle' : '') })]);
     fs.appendChild(creer('div', { classe: 'fr-fieldset__element' }, [creer('div', { classe: 'fr-radio-group' }, [r, lab])]));
   });
   majPositions();
@@ -5766,7 +5922,8 @@ function ouvrirDeplacementGroupe(x) {
 
 /* === SECTION : PIECES JOINTES ===
    Mecanisme eprouve sur l'instance :
-   jeton d'acces en ecriture (un jeton en lecture seule est refuse pour les
+   jeton en lecture seule d'abord, puis jeton complet si l'instance le refuse
+   (certaines instances refusent les jetons en lecture seule pour les
    fichiers, meme en consultation), envoi en multipart avec l'en-tete
    X-Requested-With (sans lui, la protection anti-CSRF du serveur repond 403),
    sans Content-Type pose a la main (le navigateur calcule la frontiere).
@@ -5829,12 +5986,15 @@ async function chargerMetaPJ() {
   }
 }
 
-async function obtenirJeton() {
-  var j = etat.jeton;
+/* Jeton en lecture seule pour consulter ou telecharger un fichier ; jeton
+   en ecriture seulement pour en envoyer un. */
+async function obtenirJeton(ecriture) {
+  var cle = ecriture ? 'jetonEcriture' : 'jeton';
+  var j = etat[cle];
   if (j && Date.now() < j.expire) { return j; }
-  var r = await gristAvecTimeout(grist.docApi.getAccessToken({ readOnly: false }), 15000);
-  etat.jeton = { token: r.token, baseUrl: r.baseUrl, expire: Date.now() + Math.max(0, (r.ttlMsecs || 60000) - 30000) };
-  return etat.jeton;
+  var r = await gristAvecTimeout(grist.docApi.getAccessToken({ readOnly: !ecriture }), 15000);
+  etat[cle] = { token: r.token, baseUrl: r.baseUrl, expire: Date.now() + Math.max(0, (r.ttlMsecs || 60000) - 30000) };
+  return etat[cle];
 }
 
 async function fetchDelai(url, options, delaiMs) {
@@ -5868,8 +6028,18 @@ function iconePJ(nom) {
 }
 
 async function recupererPJ(id) {
-  var j = await obtenirJeton();
-  var rep = await fetchDelai(j.baseUrl + '/attachments/' + id + '/download?auth=' + encodeURIComponent(j.token), {}, DELAI_API_MS);
+  var essai = async function (complet) {
+    var j = await obtenirJeton(complet);
+    return fetchDelai(j.baseUrl + '/attachments/' + id + '/download?auth=' + encodeURIComponent(j.token), {}, DELAI_API_MS);
+  };
+  var rep = await essai(etat.pjJetonComplet === true);
+  /* Certaines instances Grist refusent un jeton en lecture seule pour les
+     fichiers, meme en consultation : un seul nouvel essai avec un jeton
+     complet, conserve ensuite pour la session. */
+  if ((rep.status === 401 || rep.status === 403) && etat.pjJetonComplet !== true) {
+    etat.pjJetonComplet = true;
+    rep = await essai(true);
+  }
   if (!rep.ok) { throw new Error('Réponse ' + rep.status); }
   return rep.blob();
 }
@@ -6062,7 +6232,7 @@ async function envoyerPJ(carte, colId, fichiers, idChamp, redessiner) {
   var c = etat.config;
   _envoiPJ = true;
   try {
-    var j = await obtenirJeton();
+    var j = await obtenirJeton(true);
     var nouveaux = [];
     for (var i = 0; i < fichiers.length; i++) {
       afficherLoader(fichiers.length > 1 ? 'Envoi du fichier ' + (i + 1) + ' sur ' + fichiers.length + '…' : 'Envoi du fichier…');
@@ -6331,7 +6501,7 @@ function editeurChamp(ch, carte, idx, prerempli) {
       /* Grande table visee : un champ de recherche filtre la liste. La
          ligne choisie reste toujours proposee. */
       var q = saisie(id + '_q', '', { type: 'search', indice: 'Tapez quelques lettres' });
-      var nbZone = creer('p', { classe: 'fr-hint-text', attrs: { 'aria-live': 'polite' }, texte: opsR.length + ' lignes' });
+      var nbZone = creer('p', { classe: 'fr-hint-text', attrs: { 'aria-live': 'polite' }, texte: formaterNombre(opsR.length) + ' lignes' });
       q.addEventListener('input', function () {
         var k = normaliser(q.value);
         var garde = sr.value;
@@ -6346,7 +6516,7 @@ function editeurChamp(ch, carte, idx, prerempli) {
             n2++;
           }
         });
-        nbZone.textContent = n2 + ' ligne' + (n2 > 1 ? 's' : '') + ' correspondant' + (n2 > 1 ? 'es' : 'e');
+        nbZone.textContent = formaterNombre(n2) + ' ligne' + (n2 > 1 ? 's' : '') + ' correspondant' + (n2 > 1 ? 'es' : 'e');
       });
       groupeR = creer('div', { classe: 'fr-input-group' }, [
         creer('label', { classe: 'fr-label', attrs: { 'for': id + '_q' }, texte: 'Rechercher dans ' + lib }), q, nbZone,
@@ -6370,12 +6540,12 @@ function editeurChamp(ch, carte, idx, prerempli) {
    nombre de resultats est annonce. */
 function champRecherche(id, lib, cases, total) {
   var q = saisie(id + '_q', '', { type: 'search', indice: 'Tapez quelques lettres' });
-  var nb = creer('p', { classe: 'fr-hint-text', attrs: { 'aria-live': 'polite' }, texte: total + ' lignes' });
+  var nb = creer('p', { classe: 'fr-hint-text', attrs: { 'aria-live': 'polite' }, texte: formaterNombre(total) + ' lignes' });
   q.addEventListener('input', function () {
     var k = normaliser(q.value);
     var n = 0;
     cases.forEach(function (c) { var ok = !k || c.texte.indexOf(k) !== -1 || c.n.checked; c.el.hidden = !ok; if (ok) { n++; } });
-    nb.textContent = n + ' ligne' + (n > 1 ? 's' : '') + ' affichée' + (n > 1 ? 's' : '');
+    nb.textContent = formaterNombre(n) + ' ligne' + (n > 1 ? 's' : '') + ' affichée' + (n > 1 ? 's' : '');
   });
   return creer('div', { classe: 'fr-input-group fr-mb-0' }, [creer('label', { classe: 'fr-label', attrs: { 'for': id + '_q' }, texte: 'Rechercher dans ' + lib }), q, nb]);
 }
@@ -6392,9 +6562,11 @@ function texteEvenement(e) {
   if (e.type === 'commentaire') { return null; }
   var de = e.de || 'vide';
   var a = e.a || 'vide';
-  if (e.champ === c.colEtape) { return 'a déplacé la carte de « ' + de + ' » vers « ' + a + ' »'; }
-  if (e.champ === c.colTitre) { return 'a renommé la carte : « ' + de + ' » devient « ' + a + ' »'; }
-  return 'a modifié ' + (colonneCartes(e.champ) ? libelleChampCol(e.champ) : e.champ) + ' : ' + de + ' → ' + a;
+  /* Information notee sous l'identifiant qu'elle avait avant un renommage dans Grist. */
+  var champ = idColonneActuel(c, e.champ);
+  if (champ === c.colEtape) { return 'a déplacé la carte de « ' + de + ' » vers « ' + a + ' »'; }
+  if (champ === c.colTitre) { return 'a renommé la carte : « ' + de + ' » devient « ' + a + ' »'; }
+  return 'a modifié ' + (colonneCartes(champ) ? libelleChampCol(champ) : champ) + ' : ' + de + ' → ' + a;
 }
 
 function dateEvenement(iso) {
@@ -6423,7 +6595,8 @@ async function relireFil(carte, ul) {
   var c = etat.config;
   var d = await lireTable(c.tableCartes);
   var i = d.id.indexOf(carte.id);
-  if (i !== -1 && d[COL_HISTORIQUE]) { carte.valeurs[COL_HISTORIQUE] = d[COL_HISTORIQUE][i]; }
+  var colHist = colonnesSuivi(c.tableCartes).historique;
+  if (i !== -1 && d[colHist]) { carte.valeurs[COL_HISTORIQUE] = d[colHist][i]; }
   if (ul) { rendreFil(ul, carte); }
 }
 
@@ -6439,7 +6612,7 @@ function blocActivite(carte) {
     envoi.disabled = true;
     try {
       var maj = {};
-      maj[COL_COMMENTAIRE] = JSON.stringify({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), texte: t });
+      maj[colonnesSuivi(c.tableCartes).commentaire] = JSON.stringify({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), texte: t });
       await agir([['UpdateRecord', c.tableCartes, carte.id, maj]]);
       zone.value = '';
       await relireFil(carte, ul);
@@ -6548,9 +6721,15 @@ function ouvrirCarte(carte, cleEtape, prerempli, opts) {
   var fiche = creer('div', { classe: 'w-fiche' }, [grille].concat(editeurs.map(function (x) { return x.e.noeud; })));
   if (carte && (carte.valeurs.CREE_LE || carte.valeurs.MODIFIE_LE)) {
     var m = [];
-    if (carte.valeurs.CREE_LE) { m.push('Créée le ' + formaterDate(carte.valeurs.CREE_LE) + (carte.valeurs.CREE_PAR ? ' par ' + carte.valeurs.CREE_PAR : '')); }
-    if (carte.valeurs.MODIFIE_LE) { m.push('modifiée le ' + formaterDate(carte.valeurs.MODIFIE_LE) + (carte.valeurs.MODIFIE_PAR ? ' par ' + carte.valeurs.MODIFIE_PAR : '')); }
-    fiche.appendChild(creer('p', { classe: 'w-mention', texte: m.join(', ') + '.' }));
+    /* Colonnes "Date et heure" : le jour est lu dans le fuseau de la colonne,
+       pas en temps universel (carte creee a 0 h 30 a Paris datee de la veille). */
+    var jourMeta = function (k) {
+      var p = partiesDansFuseau(carte.valeurs[k], fuseauDe(colonneCartes(k)));
+      return p.j + ' ' + MOIS_COURTS[p.m - 1] + ' ' + p.a;
+    };
+    if (typeof carte.valeurs.CREE_LE === 'number' && carte.valeurs.CREE_LE) { m.push('Créée le ' + jourMeta('CREE_LE') + (carte.valeurs.CREE_PAR ? ' par ' + carte.valeurs.CREE_PAR : '')); }
+    if (typeof carte.valeurs.MODIFIE_LE === 'number' && carte.valeurs.MODIFIE_LE) { m.push('modifiée le ' + jourMeta('MODIFIE_LE') + (carte.valeurs.MODIFIE_PAR ? ' par ' + carte.valeurs.MODIFIE_PAR : '')); }
+    if (m.length) { fiche.appendChild(creer('p', { classe: 'w-mention', texte: m.join(', ') + '.' })); }
   }
 
   /* Lecture des saisies : modifications par rapport a la carte, ou premiere
@@ -6726,7 +6905,7 @@ async function recommencer() {
   var partagee = !!(c && c.colKanban) && !tableAbsente;
   var nb = partagee ? etat.cartes.length : 0;
   var ok = await confirmerAction('Supprimer ce Kanban ?', partagee
-    ? 'Le Kanban disparaît des onglets' + (nb ? ' et ses ' + nb + ' carte' + (nb > 1 ? 's sont supprimées' : ' est supprimée') : '') + '. Les autres Kanbans du document ne sont pas touchés.'
+    ? 'Le Kanban disparaît des onglets' + (nb ? ' et ses ' + formaterNombre(nb) + ' carte' + (nb > 1 ? 's sont supprimées' : ' est supprimée') : '') + '. Les autres Kanbans du document ne sont pas touchés.'
     : (tableAbsente ? 'Le Kanban disparaît des onglets et ses réglages sont effacés. Sa table n\'existe plus dans le document.'
       : 'Le Kanban disparaît des onglets et ses réglages sont effacés. Votre table et ses lignes sont conservées.'), 'Supprimer');
   if (!ok) { return; }
@@ -6863,7 +7042,7 @@ function empreinteDonnees() {
   return JSON.stringify([etat.etapes, etat.cartes.map(function (x) { return [x.id, x.titre, x.cle, x.ordre, x.valeurs]; })]);
 }
 
-async function rafraichirMaintenant(silencieux) {
+async function rafraichirMaintenant(silencieux, apresRelecture) {
   if (etat.vue !== 'tableau') { return; }
   try {
     var avant = empreinteDonnees();
@@ -6876,9 +7055,25 @@ async function rafraichirMaintenant(silencieux) {
         if (!etat.config || !verifierConfig()) { afficherVue('invalide'); return; }
       }
     }
+    /* Parametrage modifie par quelqu'un d'autre (colonnes, informations, nom,
+       autre Kanban) : la bibliotheque est relue, pour que le Kanban l'affiche
+       et qu'une ecriture ulterieure de ce widget ne remette jamais une
+       configuration perimee. */
+    var nomsTableaux = function () { return JSON.stringify(etat.tableaux.map(function (t) { return [t.cle, t.config.nom]; })); };
+    var bruteAvant = etat.configBrute;
+    var nomsAvant = nomsTableaux();
+    await lireTableaux();
+    choisirTableau();
+    if (!etat.config) { await chargerTout(); return; }
+    var reglagesChanges = etat.configBrute !== bruteAvant || nomsTableaux() !== nomsAvant;
+    if (reglagesChanges) { await chargerMeta(); }
+    if (!verifierConfig()) {
+      await chargerMeta();
+      if (!verifierConfig()) { afficherVue('invalide'); return; }
+    }
     await chargerDonnees();
     etat.rafraichirEnAttente = false;
-    if (silencieux && empreinteDonnees() === avant) { return; }
+    if (silencieux && !reglagesChanges && empreinteDonnees() === avant) { return; }
     if (etat.vue === 'tableau' && !etat.modaleOuverte && !etat.glisserEnCours) {
       var actif = document.activeElement;
       var idActif = actif && actif.id ? actif.id : null;
@@ -6889,14 +7084,26 @@ async function rafraichirMaintenant(silencieux) {
          l'historique ne doit pas faire perdre sa place au clavier. */
       var classeActive = null;
       if (carteActive) { ['w-carte__deplacer', 'w-carte__bulle', 'w-carte__ouvrir'].some(function (k) { if (actif.classList.contains(k)) { classeActive = k; return true; } return false; }); }
-      redessinerColonnes();
+      var colActive = carteActive && carteActive.closest ? carteActive.closest('.w-colonne') : null;
+      var cleColActive = colActive ? colActive.getAttribute('data-cle') : null;
+      if (reglagesChanges) { afficherVue('tableau', true); } else { redessinerColonnes(); }
       if (idCarte) {
         var base = '.w-carte[data-id="' + idCarte + '"] ';
         var n = document.querySelector(base + '.' + (classeActive || 'w-carte__ouvrir')) || document.querySelector(base + '.w-carte__ouvrir');
+        /* Carte disparue (supprimee) : le focus va sur sa colonne, pas sur la page. */
+        if (!n) { n = (cleColActive !== null && document.getElementById('tAjout_' + cleId(cleColActive))) || document.getElementById('titreVue'); }
         if (n) { n.focus(); }
       } else if (idActif && document.getElementById(idActif)) { document.getElementById(idActif).focus(); }
     }
   } catch (e) {
+    /* Table ou colonne renommee dans Grist depuis la derniere lecture de la
+       structure : la structure est relue une fois et le rafraichissement
+       retente. */
+    if (!apresRelecture) {
+      var relue = false;
+      try { await chargerMeta(); relue = true; } catch (e3) { logSecurite('INFO', 'Structure non relue', e3); }
+      if (relue) { return rafraichirMaintenant(silencieux, true); }
+    }
     if (silencieux) { logSecurite('AVERTISSEMENT', 'Relecture automatique non aboutie', e); }
     else { afficherErreur('L\'actualisation du Kanban n\'a pas abouti.', e); }
   }
