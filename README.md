@@ -1,5 +1,8 @@
 # Gristcity
 
+<img width="2880" height="1640" alt="image" src="https://github.com/user-attachments/assets/2c6ea986-c03d-4c2a-87ba-7a79bb9a3958" />
+
+
 A custom widget for [Grist](https://www.getgrist.com) that draws a table as a city in isometric 3D.
 
 Each row becomes a building that grows as it moves through its stages: reserved plot, construction site, finished building, skyscraper... Districts group the buildings by a column of your choice. A weather layer flags what needs watching (cloud) and what needs attention now (storm).
