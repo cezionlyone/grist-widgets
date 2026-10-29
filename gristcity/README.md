@@ -19,13 +19,13 @@ Tout se paramètre dans le widget, sans toucher au code.
 | 🚀 Base spatiale | une fusée | des idées, de l'innovation |
 | ⚓ Port | un navire | des programmes, des partenariats |
 
-![La même table dans l'univers Jardin](screenshot-garden.png)
+
 
 ## Installation
 
 1. Dans votre document Grist, ajoutez une vue de type **Personnalisée**.
 2. Choisissez l'**URL personnalisée** et collez :
-   `https://cezionlyone.github.io/grist-widgets/gristcity/`
+   `https://cezionlyone.github.io/grist-widgets/gristcity/index.html`
 3. Dans le panneau de droite, rubrique **Accès**, choisissez **Accès complet**.
 4. Suivez l'assistant : choisissez un univers, puis partez d'un modèle prêt à l'emploi ou branchez le widget sur une de vos tables.
 
