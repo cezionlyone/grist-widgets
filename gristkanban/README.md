@@ -5,8 +5,8 @@ Un widget personnalisé pour [Grist](https://www.getgrist.com) : des Kanbans pou
 Tous les Kanbans d'un document vivent dans le même widget, en onglets. Le dernier onglet, « Nouveau Kanban », en crée un autre.
 
 Tout se paramètre dans le widget, sans toucher au code.
+<img width="3200" height="1760" alt="image" src="https://github.com/user-attachments/assets/29ca2e05-bd94-432f-9475-dfda9134f7ce" />
 
-![Gristkanban : un Kanban de gestion de projet](screenshot-gristkanban.png)
 
 ## Deux façons de commencer
 
