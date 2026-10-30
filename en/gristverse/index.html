@@ -205,7 +205,7 @@
     (never dies). Nobody is asked who they are: "me" is the person last
     clicked on the map to declare a presence on this browser.
   - Office dog: Avane wanders around reception, waits by her bowl, naps next to
-    the desk of the last person who fed her. Editors feed her once a day.
+    the desk of the last person who fed her. Editors can feed her as often as they like.
     She lives in one verse (by default the first one), always at the same size.
   - Celebrations: confetti when a task is ticked, a trophy on the desk when all
     of a person's tasks are done.
@@ -3443,7 +3443,7 @@ function animerTrajet(m, de, vers) {
      southern hemisphere), the beach umbrella of the last working day
      afternoon;
    - the team plant (watered once a day per person, it grows over the weeks);
-   - Avane, the office dog, and her bowl (fed once a day per person);
+   - Avane, the office dog, and her bowl (fed as often as you like);
    - celebrations: confetti when a task is ticked, a trophy when all the
      tasks of a person are done;
    - and a hidden surprise.
@@ -3991,7 +3991,7 @@ function funDejaFait(qui, id, moi) { return qui.some(function (x) { return x.k =
 async function funGesteDuJour(o) {
   if (FUN.geste || !etat.peutModifier || !accesComplet()) { return; }
   var id = await funIdentite(), moi = funMoi();
-  if (funDejaFait(o.quiAujourdhui(), id, moi)) { var t0 = o.deja; confirmer(t0); annoncer(t0); return; }
+  if (!o.illimite && funDejaFait(o.quiAujourdhui(), id, moi)) { var t0 = o.deja; confirmer(t0); annoncer(t0); return; }
   return funFaireGeste(o, id, moi);
 }
 async function funFaireGeste(o, id, moi) {
@@ -4001,10 +4001,11 @@ async function funFaireGeste(o, id, moi) {
   try {
     res = await funMettreAJour(o.cle, function (s) {
       if (s.jour !== auj) { s.jour = auj; s.qui = []; }
-      if (funDejaFait(s.qui, id, moi)) { return { rien: true, deja: true }; }
-      s.qui.push(entree);
+      var dejaFait = funDejaFait(s.qui, id, moi);
+      if (dejaFait && !o.illimite) { return { rien: true, deja: true }; }
+      if (!dejaFait) { s.qui.push(entree); }   // each person listed once a day, even when the gesture is unlimited
       o.appliquer(s, auj, moi);
-      return { present: function (v) { return v.jour === auj && funDejaFait(v.qui, id, moi); } };
+      return { present: function (v) { return v.jour === auj && funDejaFait(v.qui, id, moi) && (!o.illimite || o.present(v, moi)); } };
     });
   } catch (e) {
     FUN.geste = false;
@@ -4033,7 +4034,9 @@ function funArroser() {
     } });
 }
 function funNourrir() {
-  return funGesteDuJour({ cle: CLE_CHIEN, quoi: 'fed ' + NOM_CHIEN,
+  // Feeding is unlimited (the author's choice: it is just for fun); the last feeder is where she naps
+  return funGesteDuJour({ cle: CLE_CHIEN, quoi: 'fed ' + NOM_CHIEN, illimite: true,
+    present: function (v, moi) { return (v.dernierPar || 0) === (moi && moi.id ? moi.id : 0); },
     quiAujourdhui: function () { return funEtatChien(funChien()).qui; },
     deja: '🦴 You have already fed ' + NOM_CHIEN + ' today. She says thank you!',
     refus: NOM_CHIEN + ' was not fed: your permissions do not allow writing in the Gristverse settings table.', echec: NOM_CHIEN + ' was not fed.',
