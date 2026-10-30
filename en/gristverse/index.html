@@ -120,9 +120,9 @@
   - Attachments: read-only; files fetched as Blob, access token never in
     a link of the page; preview limited to raster images and PDFs, type
     forced from the extension.
-  - Links: https only, opened through a temporary link with noopener and
-    noreferrer (no window.open). Forms accept http and https addresses
-    only (an http link is saved but not opened by Gristverse).
+  - Links: http and https only (javascript:, data:, file:... are never
+    opened), opened through a temporary link with noopener and noreferrer
+    (no window.open).
   - Access level granted read through grist.onOptions: without full
     access, read-only mode is announced and any write is refused.
   - Fine-grained rights (who edits which rows) are set through the
@@ -4983,7 +4983,9 @@ function ongletActivites(z, m, modifiable) {
   var tid = etat.config.activites && etat.meta.tables[etat.config.activites] ? etat.config.activites : null;
   if (!tid) {
     z.appendChild(creer('p', { classe: 'w-texte', texte: '🗂️ Here everyone logs, day by day, the time spent on each project, in hours. The activities table must be created first.' }));
-    if (accesComplet()) { z.appendChild(bouton('Create the activities table', null, 'add-line', function () { return creerTableActivites(m); }, { id: 'dvCreerActivites' })); }
+    // Viewers (read-only token, or a refused write): no create button
+    if (peutEditer()) { z.appendChild(bouton('Create the activities table', null, 'add-line', function () { return creerTableActivites(m); }, { id: 'dvCreerActivites' })); }
+    else if (accesComplet()) { z.appendChild(alerte('info', null, 'Your rights on this document are read-only: the activities table cannot be created.')); }
     else { z.appendChild(alerte('info', null, 'Full access to the document is needed to create the activities table.')); }
     return;
   }
@@ -5045,7 +5047,8 @@ function champProjet(choix, initial) {
   var marquer = function () { [].forEach.call(lb.children, function (li, i) { li.setAttribute('aria-selected', i === pos ? 'true' : 'false'); }); if (pos >= 0 && lb.children[pos]) { champ.setAttribute('aria-activedescendant', lb.children[pos].id); lb.children[pos].scrollIntoView({ block: 'nearest' }); } };
   // Typing clears the choice until a project is picked; simply entering the field keeps it (and shows the whole list)
   var filtrer = function (saisi) {
-    var q = saisi === true ? normalizer(champ.value) : '';
+    // Without a chosen project, the reopened list (focus, arrow down) stays filtered by the typed text
+    var q = saisi === true || !(choix.projet || choix.hors) ? normalizer(champ.value) : '';
     if (saisi === true) { choix.projet = null; choix.hors = null; }
     actifs = tout.filter(function (o) { return !q || normalizer(o.libelle).indexOf(q) !== -1; }).slice(0, 60);
     vider(lb);
