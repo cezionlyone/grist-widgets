@@ -3,8 +3,8 @@
   ============================================================================
   READ ME - Gristcity
   ============================================================================
-  Version:     1.0.0-en
-  Date:        2026-10-29
+  Version:     1.1.0-en
+  Date:        2026-10-30
   Author:      madeXcé
   License:     MIT
   Platform:    Grist (custom widget)
@@ -80,6 +80,18 @@
     is linked to the same table, the cursor follows the open item.
   - Add button: name, district and stage, then the details open to
     complete the item.
+  - "Delete this building" (label depends on the world), in the details
+    panel and in the list view: after a confirmation naming the item,
+    its row is deleted from the table. Undo in Grist brings it back.
+  - People: when the owner column is a reference to a table (the Team
+    table of the templates, or one of yours), "Manage people" (filter
+    panel or details) adds, renames and deletes the rows of that table
+    (name, and emoji if an emoji column is set). Deleting a person never
+    deletes an item: Grist empties the references to that person.
+  - Districts: from a reference column, "Manage districts" works the
+    same way; from a choice column, "New district" in the details types
+    a new value (added to the choice list for a column created by a
+    Gristcity template, otherwise written as is).
   - "Move" mode (label depends on the world): drag an item to another
     district on the map, or onto a district name in the bar (including
     a district that is still empty). With the keyboard: D key on an
@@ -98,8 +110,10 @@
   Created with the first city. No other table is created (except those
   of a template, on request), and the drawn table is never
   restructured: the widget only writes the values edited in the
-  details, the items added, the attachments added or removed, and the
-  moves.
+  details, the items added or deleted, the attachments added or
+  removed, the moves, the rows of the people (or districts) table
+  added, renamed or deleted from "Manage people", and, for a choice
+  column created by a template, a new district added to its choices.
 
   TYPES EDITABLE IN THE DETAILS
   -----------------------------
@@ -115,8 +129,8 @@
   RIGHTS AND RECOMMENDED ACL SETUP
   --------------------------------
   Viewers: browsing, search, filters, read-only details. Editors: in
-  addition, editing details, adding and moving items, within the
-  document access rules. Settings: can be restricted to owners with a
+  addition, editing details, adding, moving and deleting items, and
+  managing the people and districts, within the document access rules. Settings: can be restricted to owners with a
   rule on the SETTINGS_ACCESS marker row; the steps to follow are
   shown in step 1 of the settings.
 
@@ -165,6 +179,7 @@
   VERSION HISTORY
   ---------------
   1.0.0-en - 2026-10-29 - madeXcé - First public English edition.
+  1.1.0 - 2026-10-30 - madeXcé - Manage everything from the widget: delete a building, manage the people (create, edit, delete).
 
   THEME
   -----
@@ -341,6 +356,7 @@
     .ui-icon-lightbulb-line::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox=%220 0 24 24%22 fill=%22currentColor%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath d=%22M9.97308 18H11V13H13V18H14.0269C14.1589 16.7984 14.7721 15.8065 15.7676 14.7226C15.8797 14.6006 16.5988 13.8564 16.6841 13.7501C17.5318 12.6931 18 11.385 18 10C18 6.68629 15.3137 4 12 4C8.68629 4 6 6.68629 6 10C6 11.3843 6.46774 12.6917 7.31462 13.7484C7.40004 13.855 8.12081 14.6012 8.23154 14.7218C9.22766 15.8064 9.84103 16.7984 9.97308 18ZM10 20V21H14V20H10ZM5.75395 14.9992C4.65645 13.6297 4 11.8915 4 10C4 5.58172 7.58172 2 12 2C16.4183 2 20 5.58172 20 10C20 11.8925 19.3428 13.6315 18.2443 15.0014C17.624 15.7748 16 17 16 18.5V21C16 22.1046 15.1046 23 14 23H10C8.89543 23 8 22.1046 8 21V18.5C8 17 6.37458 15.7736 5.75395 14.9992Z%22/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg viewBox=%220 0 24 24%22 fill=%22currentColor%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath d=%22M9.97308 18H11V13H13V18H14.0269C14.1589 16.7984 14.7721 15.8065 15.7676 14.7226C15.8797 14.6006 16.5988 13.8564 16.6841 13.7501C17.5318 12.6931 18 11.385 18 10C18 6.68629 15.3137 4 12 4C8.68629 4 6 6.68629 6 10C6 11.3843 6.46774 12.6917 7.31462 13.7484C7.40004 13.855 8.12081 14.6012 8.23154 14.7218C9.22766 15.8064 9.84103 16.7984 9.97308 18ZM10 20V21H14V20H10ZM5.75395 14.9992C4.65645 13.6297 4 11.8915 4 10C4 5.58172 7.58172 2 12 2C16.4183 2 20 5.58172 20 10C20 11.8925 19.3428 13.6315 18.2443 15.0014C17.624 15.7748 16 17 16 18.5V21C16 22.1046 15.1046 23 14 23H10C8.89543 23 8 22.1046 8 21V18.5C8 17 6.37458 15.7736 5.75395 14.9992Z%22/%3E%3C/svg%3E"); }
     .ui-icon-mail-line::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox=%220 0 24 24%22 fill=%22currentColor%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath d=%22M3 3H21C21.5523 3 22 3.44772 22 4V20C22 20.5523 21.5523 21 21 21H3C2.44772 21 2 20.5523 2 20V4C2 3.44772 2.44772 3 3 3ZM20 7.23792L12.0718 14.338L4 7.21594V19H20V7.23792ZM4.51146 5L12.0619 11.662L19.501 5H4.51146Z%22/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg viewBox=%220 0 24 24%22 fill=%22currentColor%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath d=%22M3 3H21C21.5523 3 22 3.44772 22 4V20C22 20.5523 21.5523 21 21 21H3C2.44772 21 2 20.5523 2 20V4C2 3.44772 2.44772 3 3 3ZM20 7.23792L12.0718 14.338L4 7.21594V19H20V7.23792ZM4.51146 5L12.0619 11.662L19.501 5H4.51146Z%22/%3E%3C/svg%3E"); }
     .ui-icon-map-pin-2-line::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox=%220 0 24 24%22 fill=%22currentColor%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath d=%22M12 23.7279L5.63604 17.364C2.12132 13.8492 2.12132 8.15076 5.63604 4.63604C9.15076 1.12132 14.8492 1.12132 18.364 4.63604C21.8787 8.15076 21.8787 13.8492 18.364 17.364L12 23.7279ZM16.9497 15.9497C19.6834 13.2161 19.6834 8.78392 16.9497 6.05025C14.2161 3.31658 9.78392 3.31658 7.05025 6.05025C4.31658 8.78392 4.31658 13.2161 7.05025 15.9497L12 20.8995L16.9497 15.9497ZM12 13C10.8954 13 10 12.1046 10 11C10 9.89543 10.8954 9 12 9C13.1046 9 14 9.89543 14 11C14 12.1046 13.1046 13 12 13Z%22/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg viewBox=%220 0 24 24%22 fill=%22currentColor%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath d=%22M12 23.7279L5.63604 17.364C2.12132 13.8492 2.12132 8.15076 5.63604 4.63604C9.15076 1.12132 14.8492 1.12132 18.364 4.63604C21.8787 8.15076 21.8787 13.8492 18.364 17.364L12 23.7279ZM16.9497 15.9497C19.6834 13.2161 19.6834 8.78392 16.9497 6.05025C14.2161 3.31658 9.78392 3.31658 7.05025 6.05025C4.31658 8.78392 4.31658 13.2161 7.05025 15.9497L12 20.8995L16.9497 15.9497ZM12 13C10.8954 13 10 12.1046 10 11C10 9.89543 10.8954 9 12 9C13.1046 9 14 9.89543 14 11C14 12.1046 13.1046 13 12 13Z%22/%3E%3C/svg%3E"); }
+    .ui-icon-pencil-line::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox=%220 0 24 24%22 fill=%22currentColor%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath d=%22M15.7279 9.57627L14.3137 8.16206L5 17.4758V18.89H6.41421L15.7279 9.57627ZM17.1421 8.16206L18.5563 6.74785L17.1421 5.33363L15.7279 6.74785L17.1421 8.16206ZM7.24264 20.89H3V16.6473L16.435 3.21231C16.8256 2.82179 17.4587 2.82179 17.8492 3.21231L20.6777 6.04074C21.0682 6.43126 21.0682 7.06443 20.6777 7.45495L7.24264 20.89Z%22/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg viewBox=%220 0 24 24%22 fill=%22currentColor%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath d=%22M15.7279 9.57627L14.3137 8.16206L5 17.4758V18.89H6.41421L15.7279 9.57627ZM17.1421 8.16206L18.5563 6.74785L17.1421 5.33363L15.7279 6.74785L17.1421 8.16206ZM7.24264 20.89H3V16.6473L16.435 3.21231C16.8256 2.82179 17.4587 2.82179 17.8492 3.21231L20.6777 6.04074C21.0682 6.43126 21.0682 7.06443 20.6777 7.45495L7.24264 20.89Z%22/%3E%3C/svg%3E"); }
     .ui-icon-palette-line::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox=%220 0 24 24%22 fill=%22currentColor%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath d=%22M12 2C17.5222 2 22 5.97778 22 10.8889C22 13.9556 19.5111 16.4444 16.4444 16.4444H14.4778C13.5556 16.4444 12.8111 17.1889 12.8111 18.1111C12.8111 18.5333 12.9778 18.9222 13.2333 19.2111C13.5 19.5111 13.6667 19.9 13.6667 20.3333C13.6667 21.2556 12.9 22 12 22C6.47778 22 2 17.5222 2 12C2 6.47778 6.47778 2 12 2ZM10.8111 18.1111C10.8111 16.0843 12.451 14.4444 14.4778 14.4444H16.4444C18.4065 14.4444 20 12.851 20 10.8889C20 7.1392 16.4677 4 12 4C7.58235 4 4 7.58235 4 12C4 16.19 7.2226 19.6285 11.324 19.9718C10.9948 19.4168 10.8111 18.7761 10.8111 18.1111ZM7.5 12C6.67157 12 6 11.3284 6 10.5C6 9.67157 6.67157 9 7.5 9C8.32843 9 9 9.67157 9 10.5C9 11.3284 8.32843 12 7.5 12ZM16.5 12C15.6716 12 15 11.3284 15 10.5C15 9.67157 15.6716 9 16.5 9C17.3284 9 18 9.67157 18 10.5C18 11.3284 17.3284 12 16.5 12ZM12 9C11.1716 9 10.5 8.32843 10.5 7.5C10.5 6.67157 11.1716 6 12 6C12.8284 6 13.5 6.67157 13.5 7.5C13.5 8.32843 12.8284 9 12 9Z%22/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg viewBox=%220 0 24 24%22 fill=%22currentColor%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath d=%22M12 2C17.5222 2 22 5.97778 22 10.8889C22 13.9556 19.5111 16.4444 16.4444 16.4444H14.4778C13.5556 16.4444 12.8111 17.1889 12.8111 18.1111C12.8111 18.5333 12.9778 18.9222 13.2333 19.2111C13.5 19.5111 13.6667 19.9 13.6667 20.3333C13.6667 21.2556 12.9 22 12 22C6.47778 22 2 17.5222 2 12C2 6.47778 6.47778 2 12 2ZM10.8111 18.1111C10.8111 16.0843 12.451 14.4444 14.4778 14.4444H16.4444C18.4065 14.4444 20 12.851 20 10.8889C20 7.1392 16.4677 4 12 4C7.58235 4 4 7.58235 4 12C4 16.19 7.2226 19.6285 11.324 19.9718C10.9948 19.4168 10.8111 18.7761 10.8111 18.1111ZM7.5 12C6.67157 12 6 11.3284 6 10.5C6 9.67157 6.67157 9 7.5 9C8.32843 9 9 9.67157 9 10.5C9 11.3284 8.32843 12 7.5 12ZM16.5 12C15.6716 12 15 11.3284 15 10.5C15 9.67157 15.6716 9 16.5 9C17.3284 9 18 9.67157 18 10.5C18 11.3284 17.3284 12 16.5 12ZM12 9C11.1716 9 10.5 8.32843 10.5 7.5C10.5 6.67157 11.1716 6 12 6C12.8284 6 13.5 6.67157 13.5 7.5C13.5 8.32843 12.8284 9 12 9Z%22/%3E%3C/svg%3E"); }
     .ui-icon-refresh-line::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox=%220 0 24 24%22 fill=%22currentColor%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath d=%22M5.46257 4.43262C7.21556 2.91688 9.5007 2 12 2C17.5228 2 22 6.47715 22 12C22 14.1361 21.3302 16.1158 20.1892 17.7406L17 12H20C20 7.58172 16.4183 4 12 4C9.84982 4 7.89777 4.84827 6.46023 6.22842L5.46257 4.43262ZM18.5374 19.5674C16.7844 21.0831 14.4993 22 12 22C6.47715 22 2 17.5228 2 12C2 9.86386 2.66979 7.88416 3.8108 6.25944L7 12H4C4 16.4183 7.58172 20 12 20C14.1502 20 16.1022 19.1517 17.5398 17.7716L18.5374 19.5674Z%22/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg viewBox=%220 0 24 24%22 fill=%22currentColor%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath d=%22M5.46257 4.43262C7.21556 2.91688 9.5007 2 12 2C17.5228 2 22 6.47715 22 12C22 14.1361 21.3302 16.1158 20.1892 17.7406L17 12H20C20 7.58172 16.4183 4 12 4C9.84982 4 7.89777 4.84827 6.46023 6.22842L5.46257 4.43262ZM18.5374 19.5674C16.7844 21.0831 14.4993 22 12 22C6.47715 22 2 17.5228 2 12C2 9.86386 2.66979 7.88416 3.8108 6.25944L7 12H4C4 16.4183 7.58172 20 12 20C14.1502 20 16.1022 19.1517 17.5398 17.7716L18.5374 19.5674Z%22/%3E%3C/svg%3E"); }
     .ui-icon-search-line::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox=%220 0 24 24%22 fill=%22currentColor%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath d=%22M18.031 16.6168L22.3137 20.8995L20.8995 22.3137L16.6168 18.031C15.0769 19.263 13.124 20 11 20C6.032 20 2 15.968 2 11C2 6.032 6.032 2 11 2C15.968 2 20 6.032 20 11C20 13.124 19.263 15.0769 18.031 16.6168ZM16.0247 15.8748C17.2475 14.6146 18 12.8956 18 11C18 7.1325 14.8675 4 11 4C7.1325 4 4 7.1325 4 11C4 14.8675 7.1325 18 11 18C12.8956 18 14.6146 17.2475 15.8748 16.0247L16.0247 15.8748Z%22/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg viewBox=%220 0 24 24%22 fill=%22currentColor%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath d=%22M18.031 16.6168L22.3137 20.8995L20.8995 22.3137L16.6168 18.031C15.0769 19.263 13.124 20 11 20C6.032 20 2 15.968 2 11C2 6.032 6.032 2 11 2C15.968 2 20 6.032 20 11C20 13.124 19.263 15.0769 18.031 16.6168ZM16.0247 15.8748C17.2475 14.6146 18 12.8956 18 11C18 7.1325 14.8675 4 11 4C7.1325 4 4 7.1325 4 11C4 14.8675 7.1325 18 11 18C12.8956 18 14.6146 17.2475 15.8748 16.0247L16.0247 15.8748Z%22/%3E%3C/svg%3E"); }
@@ -802,6 +818,21 @@
     .vl-fiche-sous-titre { margin: .5rem 0 0; font-size: 1rem; color: var(--text-title-primary); }
     .vl-fiche-form { display: flex; flex-direction: column; gap: .25rem; }
     .vl-fiche-statut { margin: 0; }
+    /* Delete, people and districts management (1.1.0) */
+    .vl-fiche-extras { display: flex; flex-wrap: wrap; gap: .25rem .75rem; margin: -.5rem 0 .75rem; }
+    .vl-liste .vl-cell-actions { width: 1%; white-space: nowrap; }
+    .w-volet__gerer { margin: -.25rem 0 .5rem; }
+    .vl-gestion__liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .375rem; }
+    .vl-gestion__ligne { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; padding: .375rem .5rem .375rem .75rem;
+      border: 1px solid var(--border-default-grey); border-radius: 6px; background: var(--background-default-grey); color: var(--text-default-grey); }
+    .vl-gestion__emoji { width: 1.75rem; text-align: center; font-size: 1.125rem; line-height: 1; flex: none; }
+    .vl-gestion__nom { flex: 1; min-width: 7rem; font-weight: 500; overflow-wrap: anywhere; }
+    .vl-gestion__compte { font-size: .75rem; color: var(--text-mention-grey); }
+    .vl-gestion__ajout, .vl-gestion__edition { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem .75rem; }
+    .vl-gestion__ajout .ui-input-group, .vl-gestion__edition .ui-input-group { margin: 0; flex: 1 1 12rem; }
+    .vl-gestion__ajout .vl-gestion__champ-emoji, .vl-gestion__edition .vl-gestion__champ-emoji { flex: 0 1 7rem; }
+    .vl-gestion__edition { flex: 1; }
+    .vl-gestion__boutons { display: flex; gap: .5rem; }
     .vl-lecture .ui-label { margin-bottom: .25rem; }
     .vl-valeur { margin: 0 0 .125rem; white-space: pre-wrap; overflow-wrap: anywhere; font-weight: 500; }
     .vl-cases { border: 1px solid var(--border-default-grey); padding: .5rem .75rem; margin: .5rem 0 0; }
@@ -956,7 +987,7 @@
    ========================================================================== */
 
 // [EDITABLE] Version number: increment it with each release.
-var VERSION_WIDGET = '1.0.0';
+var VERSION_WIDGET = '1.1.0';
 var NOM_WIDGET = 'Gristcity';
 
 /* [DO NOT EDIT] City library: technical table created with the
@@ -1128,7 +1159,7 @@ var etat = {
   niveauAcces: null,      // access level granted to the widget by the user: 'none', 'read table' or 'full'
   peutModifier: true, peutParametrer: true, temoinEdition: false, temoinParam: false, temoinsTentes: false,
   // Actions refused by Grist access rules during the session
-  refus: { creation: false, modification: false, colonnes: {}, lignes: {}, cellules: {} },
+  refus: { creation: false, modification: false, colonnes: {}, lignes: {}, cellules: {}, suppression: false, lignesSuppr: {}, references: {} },
   niveauUtilise: undefined, accesAChange: false,
   metaLueA: 0, initEnCours: false,
   biblio: null, biblioLigne: null, config: null,
@@ -1793,10 +1824,22 @@ function noterRefus(e, actions) {
     logSecurite('INFO', 'Settings refused by the access rules', e);
     return chP ? { tout: true } : null;
   }
+  // People or districts table managed from the widget: read only from now on
+  if (etat.config && table !== etat.config.table && tablesReferencesGerees().indexOf(table) !== -1) {
+    etat.refus.references[table] = true;
+    logSecurite('INFO', 'Change refused on the table ' + table, e);
+    return { references: table };
+  }
   if (!etat.config || table !== etat.config.table) { return null; }
   var r = etat.refus;
   var res = null;
   if (/^(Bulk)?AddRecord$/.test(type)) { r.creation = true; res = { creation: true }; }
+  else if (/^(Bulk)?RemoveRecord$/.test(type)) {
+    // Deletion refused: for this row (row rule) or for the whole table
+    var idsS = type === 'RemoveRecord' ? [a[2]] : (a[2] || []);
+    if (/\brow\b/.test(m)) { idsS.forEach(function (i) { r.lignesSuppr[i] = true; }); } else { r.suppression = true; }
+    res = { suppression: true };
+  }
   else if (/^(Bulk)?UpdateRecord$/.test(type)) {
     var ids = type === 'UpdateRecord' ? [a[2]] : (a[2] || []);
     var champs = Object.keys(a[3] || {});
@@ -1829,9 +1872,9 @@ function remplacerChampsFiche(idFiche, champs) {
     if (!c || (champs && champs.indexOf(c) === -1)) { return; }
     var remplacer = function () {
       if (!el.parentNode || etat.ouvert !== idFiche) { return; }
-      var nouveau = editeurChamp(projetParId(idFiche) || p, c);
-      nouveau.setAttribute('data-champ', c);
+      var nouveau = editeurFiche(projetParId(idFiche) || p, c);
       el.parentNode.replaceChild(nouveau, el);
+      ameliorerListes(nouveau);
     };
     if (el.contains(document.activeElement)) {
       el.addEventListener('focusout', function f(ev) {
@@ -1845,6 +1888,8 @@ function remplacerChampsFiche(idFiche, champs) {
 function apresRefus(e, idFiche) {
   var r = e && e.refusNote;
   if (!r) { return; }
+  // Rights withdrawn while a dialog is open: the city behind is rebuilt when it closes
+  if (r.tout && etat.modaleOuverte) { etat.vueAReconstruire = true; }
   setTimeout(function () {
     if (etat.modaleOuverte && idFiche && etat.ouvert === idFiche && projetParId(idFiche) && document.getElementById('vFicheForm')) {
       if (r.lignes && r.lignes.indexOf(idFiche) === -1) { return; }
@@ -2274,6 +2319,7 @@ function fermerModale() {
   // with a new element; focus is then returned to that one.
   var repere = r && r.getAttribute ? { id: r.id, dataId: r.getAttribute('data-id'), classe: r.classList && r.classList[0] } : null;
   if (rappel) { rappel(); }
+  if (etat.vueAReconstruire) { etat.vueAReconstruire = false; if (etat.vue === 'ville') { afficherVue('ville', true); } }
   if (r && !document.body.contains(r) && repere) {
     var neuf = repere.id ? document.getElementById(repere.id) : null;
     if (!neuf && repere.dataId && repere.classe) {
@@ -2287,7 +2333,7 @@ function fermerModale() {
 }
 
 /* Confirmation or short input. Resolves true/false, or the text entered. */
-function confirmerAction(titre, message, libelleOui, saisieInitiale, libelleNon) {
+function confirmerAction(titre, message, libelleOui, saisieInitiale, libelleNon, libelleSaisie) {
   return new Promise(function (resolve) {
     var ov = document.getElementById('wConfirmOverlay');
     if (!ov) { resolve(false); return; }
@@ -2300,7 +2346,7 @@ function confirmerAction(titre, message, libelleOui, saisieInitiale, libelleNon)
     var champ = null;
     if (saisieInitiale !== undefined) {
       champ = saisie('wConfirmSaisie', saisieInitiale);
-      zone.appendChild(groupeChamp('New name', champ, null, true));
+      zone.appendChild(groupeChamp(libelleSaisie || 'New name', champ, null, true));
     }
     document.getElementById('wConfirmOui').textContent = libelleOui || 'Confirm';
     document.getElementById('wConfirmNon').textContent = libelleNon || 'Cancel';
@@ -5211,7 +5257,9 @@ function devsDeValeur(cfg, source, v) {
     return { emoji: em || initiales(nom), nom: propre || nom };
   };
   if (genre === 'reference' || genre === 'references') {
-    return versListe(v).map(function (id) { return faire(r && r.libelles[id] ? r.libelles[id] : 'Row ' + id, source.emojis[id]); });
+    // A row deleted from the people table (reference not emptied yet) shows no owner
+    return versListe(v).filter(function (id) { return !(r && r.donnees && !Object.prototype.hasOwnProperty.call(r.libelles, id)); })
+      .map(function (id) { return faire(r && r.libelles[id] ? r.libelles[id] : 'Row ' + id, source.emojis[id]); });
   }
   if (genre === 'etiquettes') { return versListe(v).map(function (x) { return faire(x); }); }
   return [faire(String(v))];
@@ -5779,6 +5827,12 @@ function rendreVille(zone) {
       if (v) { etat.filtre.valeurs[x.cle] = v; } else { delete etat.filtre.valeurs[x.cle]; }
       etat.recentrer = true; rendre(); majEffacer(); annoncerResultat();
     }, { vide: 'All' }));
+    // Editors: the people (or districts) of a reference column are managed here
+    var role = x.cle === '__dev' ? 'personnes' : (x.cle === '__quartier' ? 'quartiers' : null);
+    if (role && gestionPossible(role)) {
+      filtres.appendChild(creer('div', { classe: 'w-volet__gerer' }, [bouton(libelleGerer(role), 'discret', role === 'personnes' ? 'team-line' : 'map-pin-2-line',
+        function () { return ouvrirGestion(role, null); }, { petit: true, id: role === 'personnes' ? 'vGererPersonnes' : 'vGererQuartiers' })]));
+    }
   });
   filtres.appendChild(caseVolet('vFermes', mots().fermes, etat.filtre.fermes, function (v) { etat.filtre.fermes = v; etat.recentrer = true; rendre(); majEffacer(); annoncerResultat(); }));
   filtres.appendChild(creer('div', { classe: 'w-volet__actions' }, [
@@ -6016,18 +6070,24 @@ function rendreListe(projets) {
   vider(z);
   var extras = (cfg.champsFiche || []).filter(function (c) { return [cfg.colTitre, cfg.colEtape, cfg.colQuartier, cfg.colResponsable].indexOf(c) === -1 && infoColonne(cfg.table, c); }).slice(0, 3);
   var majuscule = function (x) { x = String(x || ''); return x.charAt(0).toUpperCase() + x.slice(1); };
-  var entetes = [majuscule(mots().un)].concat(cfg.colQuartier ? [majuscule(mots().suffixeQuartier || 'district')] : [], ['Stage', 'Weather'], cfg.colResponsable ? [libelleCol(cfg, cfg.colResponsable)] : [], extras.map(function (c) { return libelleCol(cfg, c); }));
+  var supprimer = suppressionPossible(null);
+  var entetes = [majuscule(mots().un)].concat(cfg.colQuartier ? [majuscule(mots().suffixeQuartier || 'district')] : [], ['Stage', 'Weather'], cfg.colResponsable ? [libelleCol(cfg, cfg.colResponsable)] : [], extras.map(function (c) { return libelleCol(cfg, c); }), supprimer ? ['Actions'] : []);
   var table = creer('table', {}, [
     creer('caption', { classe: 'ui-sr-only', texte: majInitiale(mots().des) + ' of the city ' + (cfg.nom || '') }),
     creer('thead', {}, [creer('tr', {}, entetes.map(function (t) { return creer('th', { texte: t, attrs: { scope: 'col' } }); }))])]);
   var corps = creer('tbody');
   projets.slice().sort(function (a, b) { return (a.rangQuartier - b.rangQuartier) || comparerTextes(String(a.quartierLibelle), String(b.quartierLibelle)) || ordreDansQuartier(a, b); }).forEach(function (p) {
-    var cellules = [creer('td', {}, [creer('button', { classe: 'vl-lien-projet', texte: (p.ref ? p.ref + ' · ' : '') + p.nom, clic: function () { ouvrirFiche(p.id); } })])];
+    var cellules = [creer('td', {}, [creer('button', { classe: 'vl-lien-projet', texte: (p.ref ? p.ref + ' · ' : '') + p.nom, attrs: { 'data-id': p.id }, clic: function () { ouvrirFiche(p.id); } })])];
     if (cfg.colQuartier) { cellules.push(creer('td', { texte: p.quartierLibelle })); }
     cellules.push(creer('td', { texte: p.etape.libelle }));
     cellules.push(creer('td', { texte: libelleMeteo(p) + (p.raisons.length ? ': ' + p.raisons.join('; ') : '') }));
     if (cfg.colResponsable) { cellules.push(creer('td', { texte: nomsDevs(p) })); }
     extras.forEach(function (c) { cellules.push(creer('td', { texte: texteValeurCol(cfg.table, c, valeurLigne(etat.source, c, p.index), etat.source.refs) })); });
+    if (supprimer) {
+      cellules.push(creer('td', { classe: 'vl-cell-actions' }, [suppressionPossible(p.id)
+        ? bouton(libelleSupprimer(), 'discret', 'delete-line', function () { return supprimerProjet(p.id); }, { petit: true, iconeSeule: true, aria: 'Delete ' + p.nom, attrs: { 'data-suppr': String(p.id) } })
+        : null]));
+    }
     corps.appendChild(creer('tr', {}, cellules));
   });
   table.appendChild(corps);
@@ -6498,12 +6558,9 @@ function ouvrirFiche(id) {
     try { relayer(grist.setCursorPos({ rowId: id }), 'Moving the cursor'); } catch (e) { logSecurite('INFO', 'Cursor not moved', e); }
   }
   var form = creer('div', { classe: 'vl-fiche-form', id: 'vFicheForm' });
-  champsDeLaFiche(cfg).forEach(function (colId) {
-    var ed = editeurChamp(p, colId);
-    ed.setAttribute('data-champ', colId);
-    form.appendChild(ed);
-  });
+  champsDeLaFiche(cfg).forEach(function (colId) { form.appendChild(editeurFiche(p, colId)); });
   var pied = [
+    suppressionPossible(id) ? bouton(libelleSupprimer(), 'discret', 'delete-line', function () { return supprimerProjet(id); }, { id: 'vFicheSupprimer' }) : null,
     p.lien ? creer('a', { classe: 'ui-btn ui-btn--secondary ui-icon-external-link-line ui-btn--icon-left', texte: 'Open link',
       attrs: { href: p.lien, target: '_blank', rel: 'noopener noreferrer', title: 'Open link - new window' } }) : null,
     creer('span', { classe: 'w-pousse' }),
@@ -7296,6 +7353,504 @@ async function enregistrerChamp(id, colId, valeur, libelle) {
 
 
 /* ==========================================================================
+   SECTION 6 QUATER: DELETE AN ITEM, MANAGE PEOPLE AND DISTRICTS
+   [DO NOT EDIT except labels]
+   Everything the city shows can be created, edited and deleted from the
+   widget, by editors only (viewers see none of these controls):
+   - "Delete this building" (details panel, list view): one RemoveRecord on
+     the drawn table, after a confirmation that names the item.
+   - People: when the owner column (or the district column) is a reference
+     to a table, a manager adds, renames and deletes the rows of that
+     table: its display column ("Show column" in Grist) and the emoji
+     column if one is set. Deleting a person never deletes an item: Grist
+     empties the references to that person by itself. No other row of
+     that table is ever touched.
+   - Choice districts: a new district is typed in the details panel. It
+     is added to the choice list only when the column was created by a
+     Gristcity template; otherwise the value is written as is.
+   The people table is always found again from the reference column
+   itself (its type and display column): renaming the table or its
+   columns in Grist changes nothing.
+   ========================================================================== */
+
+// [EDITABLE] Labels, in the vocabulary of the world
+function libelleSupprimer() { return 'Delete this ' + mots().un; }
+function libelleGerer(role) { return role === 'personnes' ? 'Manage people' : 'Manage ' + mots().quartiers; }
+
+/* --------------------------------------------------------------------------
+   Deleting an item
+   -------------------------------------------------------------------------- */
+function suppressionPossible(id) {
+  var r = etat.refus || {};
+  return !!(etat.config && accesComplet() && etat.peutModifier && !r.suppression && !(id !== null && r.lignesSuppr && r.lignesSuppr[id]));
+}
+
+// Focus after a deletion: the next item (map or list), otherwise the city title
+function focaliserProjet(id) {
+  var cible = null;
+  if (id !== null && id !== undefined && projetParId(id)) {
+    if (etat.vueListe) { cible = document.querySelector('#vl-liste .vl-lien-projet[data-id="' + Number(id) + '"]'); }
+    else { cible = rendreCourant(id); }
+  }
+  if (!cible) { cible = document.getElementById('titreVue'); }
+  if (cible) { cible.focus(); }
+}
+
+var _suppressionEnCours = false;
+async function supprimerProjet(id) {
+  var cfg = etat.config;
+  var p = projetParId(id);
+  if (!p || !suppressionPossible(id) || _suppressionEnCours) { return; }
+  var nom = p.nom;
+  var ok = await confirmerAction(libelleSupprimer() + ': "' + nom + '"?',
+    '"' + nom + '" will disappear from the city: its row is deleted from the table "' + nomTable(cfg.table) + '", with all its information. '
+    + 'Attached files stay in the document. Undo in Grist brings it back.', libelleSupprimer());
+  if (ok !== true || etat.config !== cfg) { return; }
+  // Next item in reading order, to give it the focus afterwards
+  var ordre = ordreLecture(projetsFiltres()).map(function (x) { return x.id; });
+  var k = ordre.indexOf(id);
+  var voisin = k === -1 ? null : (k + 1 < ordre.length ? ordre[k + 1] : (k > 0 ? ordre[k - 1] : null));
+  _suppressionEnCours = true;
+  var bt = $('vFicheSupprimer');
+  if (bt) { bt.disabled = true; }
+  try {
+    await agir([['RemoveRecord', cfg.table, id]]);
+  } catch (e) {
+    _suppressionEnCours = false;
+    if (bt) { bt.disabled = false; }
+    afficherErreur(estRefusDroits(e) ? 'Your access rights do not allow deleting this row.' : 'The row could not be deleted.', e);
+    // Refused: the delete buttons are withdrawn (and the whole city switches to read-only for a viewer)
+    if (!suppressionPossible(id) && bt && bt.parentNode) {
+      var avaitFocus = document.activeElement === bt;
+      bt.parentNode.removeChild(bt);
+      // The focus stays in the details panel (Escape keeps closing it)
+      if (avaitFocus && $('wModaleFermer')) { $('wModaleFermer').focus(); }
+    }
+    if (e && e.refusNote && e.refusNote.tout) { apresRefus(e, id); }
+    else if (e && e.refusNote && !etat.modaleOuverte && etat.vue === 'ville') { rendre(); focaliserProjet(id); }
+    return;
+  }
+  _suppressionEnCours = false;
+  if (etat.modaleOuverte) { fermerModale(); }
+  if (etat.derniersIds) { delete etat.derniersIds[id]; }
+  if (etat.batCourant === String(id)) { etat.batCourant = voisin !== null ? String(voisin) : null; }
+  if (etat.choisi === id) { etat.choisi = null; }
+  etat.recentrer = false;
+  await rafraichirMaintenant(false, true, true);
+  afficherVue('ville', true);
+  focaliserProjet(voisin);
+  var phrase = '"' + nom + '" was deleted from the table "' + nomTable(cfg.table) + '".';
+  annoncer(phrase);
+  afficherSucces('🗑️ ' + phrase);
+}
+
+/* --------------------------------------------------------------------------
+   Reference columns managed from the widget: role 'personnes' (owner
+   column) or 'quartiers' (district column), when it points to a table.
+   -------------------------------------------------------------------------- */
+function referenceGeree(role) {
+  var cfg = etat.config;
+  if (!cfg || !etat.meta || !etat.meta.tables) { return null; }
+  var colId = role === 'quartiers' ? cfg.colQuartier : cfg.colResponsable;
+  var col = colId ? infoColonne(cfg.table, colId) : null;
+  var tid = col ? tableCibleRef(col.type) : null;
+  // Never the drawn table itself, a technical table or a summary table
+  if (!tid || !etat.meta.tables[tid] || tid === cfg.table || tid === etat.biblio || etat.meta.tables[tid].resume || estTableExclue(tid)) { return null; }
+  var colNom = colAffichageRef(col);
+  if (colNom && !infoColonne(tid, colNom)) { colNom = null; }
+  // Emoji column: set in the city for the owners' table (it can also serve the districts)
+  var colEmoji = cfg.colEmoji && tableDesEmojis(cfg) === tid && infoColonne(tid, cfg.colEmoji) ? cfg.colEmoji : null;
+  var personnes = role === 'personnes';
+  return { role: role, colId: colId, col: col, table: tid, colNom: colNom, colEmoji: colEmoji,
+    un: personnes ? 'person' : mots().quartier, des: personnes ? 'people' : mots().quartiers };
+}
+function tablesReferencesGerees() {
+  return ['personnes', 'quartiers'].map(referenceGeree).filter(Boolean).map(function (g) { return g.table; });
+}
+function gestionPossible(role) { return !!(accesComplet() && etat.peutModifier && referenceGeree(role)); }
+function referencesModifiables(g) {
+  return !!(g && accesComplet() && etat.peutModifier && !((etat.refus && etat.refus.references) || {})[g.table]);
+}
+// Column of the people table the widget may write: text, never a formula
+function colonneTexteEcrivable(tid, colId) {
+  var col = colId ? infoColonne(tid, colId) : null;
+  if (!col || col.formule || col.formuleVide || estEcrasee(col) || IDS_META.indexOf(col.colId) !== -1) { return false; }
+  return col.type === 'Text' || col.type === 'Any';
+}
+
+/* Items of this city that refer to each row of the people table (all the
+   reference columns of the drawn table count), and the number of columns
+   of other tables that also refer to it. */
+function usagesReferences(tid) {
+  var cfg = etat.config;
+  var d = etat.source && etat.source.lignes;
+  var compte = Object.create(null);
+  var cols = colonnesDe(cfg.table).filter(function (c) { return tableCibleRef(c.type) === tid && d && d[c.colId]; });
+  if (d && cols.length) {
+    for (var i = 0; i < d.id.length; i++) {
+      var vus = Object.create(null);
+      cols.forEach(function (c) {
+        versListe(valeurCellule(d[c.colId][i])).forEach(function (x) {
+          if (typeof x === 'number' && x && !vus[x]) { vus[x] = true; compte[x] = (compte[x] || 0) + 1; }
+        });
+      });
+    }
+  }
+  var autres = 0;
+  Object.keys(etat.meta.colonnes).forEach(function (t) {
+    if (t === cfg.table || t === tid || estTableExclue(t) || (etat.meta.tables[t] && etat.meta.tables[t].resume)) { return; }
+    etat.meta.colonnes[t].forEach(function (c) { if (!c.formule && tableCibleRef(c.type) === tid) { autres++; } });
+  });
+  return { compte: compte, autres: autres };
+}
+
+/* --------------------------------------------------------------------------
+   The manager: a dialog listing the rows of the people (or districts)
+   table, with add, edit and delete.
+   -------------------------------------------------------------------------- */
+var _gestion = { role: null, fiche: null, edition: null, filtre: '', enCours: false, modifie: false };
+
+function statutGestion(texte, erreur) {
+  var s = $('vGestionStatut');
+  if (!s) { return; }
+  s.textContent = texte;
+  s.classList.toggle('w-statut--erreur', !!erreur);
+}
+
+async function ouvrirGestion(role, idFiche) {
+  var g = referenceGeree(role);
+  if (!g || !gestionPossible(role)) { return; }
+  _gestion = { role: role, fiche: idFiche || null, edition: null, filtre: '', enCours: false, modifie: false };
+  // Coming from the details panel: the open item is no longer highlighted
+  etat.ouvert = null;
+  document.querySelectorAll('#vl-svg .vl-bat.vl-actif').forEach(function (n) { n.classList.remove('vl-actif'); });
+  var cfg = etat.config;
+  ouvrirModale({
+    titre: (role === 'personnes' ? '👥 ' : '🏘️ ') + majInitiale(g.des),
+    sousTitre: 'Rows of the table "' + nomTable(g.table) + '", used by the column "' + libelleCol(cfg, g.colId) + '"',
+    fermerDehors: true,
+    corps: [creer('div', { classe: 'vl-gestion', id: 'vGestion' }, [creer('p', { classe: 'w-texte', texte: 'Loading…' })])],
+    pied: [idFiche ? bouton('Back to the details', 'secondaire', 'arrow-left-line', function () { return retourFicheGestion(); }, { id: 'vGestionRetour' }) : null,
+      creer('span', { classe: 'w-pousse' }),
+      creer('p', { classe: 'w-mention vl-fiche-statut', id: 'vGestionStatut', attrs: { role: 'status', 'aria-live': 'polite' } })],
+    surFermeture: function () {
+      var modifie = _gestion.modifie;
+      _gestion.role = null;
+      // New names in the filters: the panel is rebuilt, the focus comes back by its id
+      if (modifie && etat.vue === 'ville') { afficherVue('ville', true); }
+    }
+  });
+  await dessinerGestion('vGestionNom');
+}
+
+async function retourFicheGestion() {
+  var id = _gestion.fiche;
+  var modifie = _gestion.modifie;
+  _gestion.role = null;
+  if (modifie && etat.vue === 'ville') { afficherVue('ville', true); }
+  if (id && projetParId(id)) { ouvrirFiche(id); } else { fermerModale(); }
+}
+
+async function dessinerGestion(focus) {
+  var z = $('vGestion');
+  var g = referenceGeree(_gestion.role);
+  if (!z || !g) { return; }
+  var d;
+  try {
+    d = await lireTable(g.table);
+  } catch (e) {
+    logSecurite('ERROR', 'People table unreadable: ' + g.table, e);
+    vider(z);
+    z.appendChild(alerte('error', null, 'The table "' + nomTable(g.table) + '" could not be read. Your access rights may not allow it.'));
+    return;
+  }
+  z = $('vGestion');
+  if (!z || referenceGeree(_gestion.role) === null) { return; }
+  vider(z);
+  var cfg = etat.config;
+  var modif = referencesModifiables(g);
+  var nomOk = modif && colonneTexteEcrivable(g.table, g.colNom);
+  var emojiOk = modif && !!g.colEmoji && colonneTexteEcrivable(g.table, g.colEmoji);
+  var usages = usagesReferences(g.table);
+  var lignes = d.id.map(function (id, i) {
+    var n = g.colNom ? colonneDe(d, g.colNom, i) : null;
+    var em = g.colEmoji ? colonneDe(d, g.colEmoji, i) : null;
+    var o = colonneDe(d, 'manualSort', i);
+    return { id: id, nom: n === null || n === undefined || n === '' || typeof n === 'object' ? 'Row ' + id : String(n),
+      brut: typeof n === 'string' ? n : '', emoji: typeof em === 'string' ? em.trim() : '', ordre: typeof o === 'number' ? o : id };
+  }).sort(function (a, b) { return a.ordre - b.ordre; });
+
+  // What can be done here, and why not
+  z.appendChild(creer('p', { classe: 'w-mention', texte: modif
+    ? 'Each change is saved right away in the table "' + nomTable(g.table) + '". Deleting ' + (g.role === 'personnes' ? 'a person' : 'a ' + g.un) + ' never deletes ' + mots().unA + '.'
+    : 'View only.' }));
+  if (!modif) {
+    z.appendChild(alerte('info', null, ((etat.refus && etat.refus.references) || {})[g.table]
+      ? 'Your access rights do not allow changing the table "' + nomTable(g.table) + '".'
+      : 'Your rights on this document only allow viewing.'));
+  } else if (!g.colNom) {
+    z.appendChild(alerte('info', null, 'The column "' + libelleCol(cfg, g.colId) + '" shows row numbers. To name the ' + g.des + ' here, choose its "Show column" in the Grist column settings.'));
+  } else if (!nomOk) {
+    z.appendChild(alerte('info', null, 'The column "' + nomColonne(infoColonne(g.table, g.colNom)) + '" of the table "' + nomTable(g.table) + '" is calculated or is not a text column: names are changed in Grist.'));
+  }
+
+  // Add form
+  if (nomOk) {
+    var champNom = saisie('vGestionNom', '', { indice: g.role === 'personnes' ? 'For example: Alex Martin' : '' });
+    var champEmoji = emojiOk ? saisie('vGestionEmoji', '', { indice: '🙂' }) : null;
+    var form = creer('form', { classe: 'vl-gestion__ajout', attrs: { novalidate: 'novalidate', 'aria-label': (g.role === 'personnes' ? 'Add a person' : 'Add a ' + g.un) } }, [
+      groupeChamp(nomColonne(infoColonne(g.table, g.colNom)), champNom, null, true),
+      champEmoji ? creer('div', { classe: 'vl-gestion__champ-emoji' }, [groupeChamp(nomColonne(infoColonne(g.table, g.colEmoji)), champEmoji, null, false)]) : null,
+      creer('div', { classe: 'vl-gestion__boutons' }, [creer('button', { classe: 'ui-btn ui-btn--sm ui-icon-add-line ui-btn--icon-left', id: 'vGestionAjouter',
+        texte: 'Add', attrs: { type: 'submit' } })])]);
+    form.addEventListener('submit', function (e) { e.preventDefault(); relayer(ajouterReference(g, champNom, champEmoji), 'Adding a row to ' + g.table); });
+    z.appendChild(creer('section', { attrs: { 'aria-labelledby': 'vGestionAjoutTitre' } }, [
+      creer('h3', { classe: 'vl-fiche-sous-titre', id: 'vGestionAjoutTitre', texte: g.role === 'personnes' ? 'Add a person' : 'Add a ' + g.un }),
+      form]));
+  }
+
+  // Search, beyond 8 rows
+  var ul = creer('ul', { classe: 'vl-gestion__liste', id: 'vGestionListe', attrs: { 'aria-labelledby': 'vGestionListeTitre' } });
+  var filtrer = function () {
+    var q = normaliser(_gestion.filtre);
+    ul.querySelectorAll('li[data-libelle]').forEach(function (li) { li.hidden = !!q && li.getAttribute('data-libelle').indexOf(q) === -1; });
+  };
+  var titreListe = creer('h3', { classe: 'vl-fiche-sous-titre', id: 'vGestionListeTitre', texte: majInitiale(g.des) + ' (' + formaterNombre(lignes.length) + ')' });
+  var blocListe = creer('section', { attrs: { 'aria-labelledby': 'vGestionListeTitre' } }, [titreListe]);
+  if (lignes.length > 8) {
+    var rech = saisie('vGestionFiltre', _gestion.filtre, { type: 'search', indice: 'Filter the list…' });
+    rech.setAttribute('aria-label', 'Filter the ' + g.des);
+    rech.addEventListener('input', function () { _gestion.filtre = rech.value; filtrer(); });
+    blocListe.appendChild(creer('div', { classe: 'ui-input-group ui-mb-1v' }, [rech]));
+  }
+  blocListe.appendChild(ul);
+  z.appendChild(blocListe);
+  if (!lignes.length) { ul.appendChild(creer('li', { classe: 'w-mention', texte: g.role === 'personnes' ? 'No person yet.' : 'No ' + g.un + ' yet.' })); }
+  lignes.forEach(function (l, i) {
+    var n = usages.compte[l.id] || 0;
+    var li = creer('li', { classe: 'vl-gestion__ligne', attrs: { 'data-id': l.id, 'data-libelle': normaliser(l.emoji + ' ' + l.nom) } });
+    if (_gestion.edition === l.id && (nomOk || emojiOk)) {
+      li.appendChild(formulaireEdition(g, l, nomOk, emojiOk));
+    } else {
+      li.appendChild(creer('span', { classe: 'vl-gestion__emoji', texte: l.emoji || initiales(l.nom), attrs: { 'aria-hidden': 'true' } }));
+      li.appendChild(creer('span', { classe: 'vl-gestion__nom', texte: l.nom }));
+      li.appendChild(creer('span', { classe: 'vl-gestion__compte', texte: accord(n, mots().un, mots().des) }));
+      if (nomOk || emojiOk) {
+        li.appendChild(bouton('Edit', 'discret', 'pencil-line', function () { _gestion.edition = l.id; return dessinerGestion('vGestionNomE' + l.id); },
+          { petit: true, iconeSeule: true, aria: 'Edit ' + l.nom, id: 'vGestionEditer' + l.id }));
+      }
+      if (modif) {
+        var suivant = lignes[i + 1] || lignes[i - 1] || null;
+        li.appendChild(bouton('Delete', 'discret', 'delete-line', function () { return supprimerReference(g, l, n, usages.autres, suivant); },
+          { petit: true, iconeSeule: true, aria: 'Delete ' + l.nom, id: 'vGestionSuppr' + l.id }));
+      }
+    }
+    ul.appendChild(li);
+  });
+  filtrer();
+  var f = focus ? $(focus) : null;
+  if (!f) { f = $('vGestionNom') || $('vGestionFiltre') || $('wModaleFermer'); }
+  if (f && !f.hidden && f.offsetParent !== null) { f.focus(); } else if ($('wModaleFermer')) { $('wModaleFermer').focus(); }
+}
+
+// Edit form of a row, in place in the list (Enter saves, Escape cancels)
+function formulaireEdition(g, l, nomOk, emojiOk) {
+  var champNom = nomOk ? saisie('vGestionNomE' + l.id, l.brut) : null;
+  var champEmoji = emojiOk ? saisie('vGestionEmojiE' + l.id, l.emoji) : null;
+  var annuler = function () { _gestion.edition = null; return dessinerGestion('vGestionEditer' + l.id); };
+  var form = creer('form', { classe: 'vl-gestion__edition', attrs: { novalidate: 'novalidate', 'aria-label': 'Edit ' + l.nom } }, [
+    champNom ? groupeChamp(nomColonne(infoColonne(g.table, g.colNom)), champNom, null, true) : creer('span', { classe: 'vl-gestion__nom', texte: l.nom }),
+    champEmoji ? creer('div', { classe: 'vl-gestion__champ-emoji' }, [groupeChamp(nomColonne(infoColonne(g.table, g.colEmoji)), champEmoji, null, false)]) : null,
+    creer('div', { classe: 'vl-gestion__boutons' }, [
+      creer('button', { classe: 'ui-btn ui-btn--sm ui-icon-check-line ui-btn--icon-left', id: 'vGestionEnregistrer' + l.id, texte: 'Save', attrs: { type: 'submit' } }),
+      bouton('Cancel', 'secondaire', null, annuler, { petit: true, id: 'vGestionAnnuler' + l.id })])]);
+  form.addEventListener('submit', function (e) { e.preventDefault(); relayer(modifierReference(g, l, champNom, champEmoji), 'Editing a row of ' + g.table); });
+  form.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') { return; }
+    e.preventDefault();
+    e.stopPropagation();
+    relayer(annuler(), 'Cancel editing');
+  });
+  return form;
+}
+
+/* One write to the people table. Refused: plain error, and the manager
+   becomes read-only. Saved: the city is redrawn behind the dialog. */
+async function ecrireReference(g, actions, focusSiEchec) {
+  if (_gestion.enCours) { annoncer('A change is already being saved.'); return null; }
+  _gestion.enCours = true;
+  statutGestion('Saving…');
+  var r;
+  try {
+    r = await agir(actions);
+  } catch (e) {
+    _gestion.enCours = false;
+    statutGestion('Not saved.', true);
+    afficherErreur(estRefusDroits(e) ? 'Your access rights do not allow changing the table "' + nomTable(g.table) + '".' : 'The change could not be saved.', e);
+    if (e && e.refusNote) { _gestion.edition = null; await dessinerGestion(focusSiEchec); }
+    return null;
+  }
+  _gestion.enCours = false;
+  _gestion.modifie = true;
+  await rafraichirMaintenant(true, true);
+  return r || {};
+}
+
+async function ajouterReference(g, champNom, champEmoji) {
+  var nom = champNom.value.trim();
+  if (!nom) { signalerSaisie(champNom.id, 'A name is required.'); champNom.focus(); return; }
+  var rec = {};
+  rec[g.colNom] = nom;
+  var em = champEmoji ? champEmoji.value.trim() : '';
+  if (champEmoji && em) { rec[g.colEmoji] = em; }
+  var r = await ecrireReference(g, [['AddRecord', g.table, null, rec]], 'vGestionNom');
+  if (!r) { return; }
+  await dessinerGestion('vGestionNom');
+  statutGestion('✓ "' + nom + '" added.');
+  annoncer('"' + nom + '" added to the table "' + nomTable(g.table) + '".');
+}
+
+async function modifierReference(g, l, champNom, champEmoji) {
+  var rec = {};
+  if (champNom) {
+    var nom = champNom.value.trim();
+    if (!nom) { signalerSaisie(champNom.id, 'A name is required.'); champNom.focus(); return; }
+    if (nom !== l.brut) { rec[g.colNom] = nom; }
+  }
+  if (champEmoji) {
+    var em = champEmoji.value.trim();
+    if (em !== l.emoji) { rec[g.colEmoji] = em; }
+  }
+  var nouveau = rec[g.colNom] || l.nom;
+  if (Object.keys(rec).length) {
+    var r = await ecrireReference(g, [['UpdateRecord', g.table, l.id, rec]], 'vGestionEditer' + l.id);
+    if (!r) { return; }
+  }
+  _gestion.edition = null;
+  await dessinerGestion('vGestionEditer' + l.id);
+  if (Object.keys(rec).length) {
+    statutGestion('✓ "' + nouveau + '" saved.');
+    annoncer('"' + nouveau + '" saved.');
+  }
+}
+
+async function supprimerReference(g, l, n, autres, suivant) {
+  var cfg = etat.config;
+  var m = mots();
+  var effet;
+  if (g.role === 'personnes') {
+    var lib = libelleCol(cfg, g.colId).toLowerCase();
+    effet = n ? (n === 1 ? '1 ' + m.un + ' refers to this person: it will show no ' + lib + '.' : accord(n, m.un, m.des) + ' refer to this person: they will show no ' + lib + '.')
+      : 'No ' + m.un + ' of this city refers to this person.';
+  } else {
+    effet = n ? (n === 1 ? '1 ' + m.un + ' is ' + m.dansQ + ' "' + l.nom + '": it will move to "' + quartierVide() + '".' : accord(n, m.un, m.des) + ' are ' + m.dansQ + ' "' + l.nom + '": they will move to "' + quartierVide() + '".')
+      : 'No ' + m.un + ' is ' + m.dansQ + ' "' + l.nom + '".';
+  }
+  var ok = await confirmerAction('Delete "' + l.nom + '"?',
+    'Its row is deleted from the table "' + nomTable(g.table) + '". ' + effet + ' No ' + m.un + ' is deleted.'
+    + (autres ? ' Other tables of the document also refer to this table: their references to "' + l.nom + '" will be emptied too.' : '')
+    + ' Undo in Grist brings everything back.', 'Delete');
+  if (ok !== true) { return; }
+  var r = await ecrireReference(g, [['RemoveRecord', g.table, l.id]], 'vGestionSuppr' + l.id);
+  if (!r) { return; }
+  // A filter on the deleted person no longer applies
+  if (g.role === 'personnes' && etat.filtre.valeurs.__dev) {
+    var restant = etat.projets.some(function (p) { return p.devs.some(function (dv) { return dv.nom === etat.filtre.valeurs.__dev; }); });
+    if (!restant) { delete etat.filtre.valeurs.__dev; }
+  }
+  if (g.role === 'quartiers' && etat.filtre.valeurs.__quartier === String(l.id)) { delete etat.filtre.valeurs.__quartier; }
+  await dessinerGestion(suivant ? 'vGestionEditer' + suivant.id : 'vGestionNom');
+  if (suivant && !$('vGestionEditer' + suivant.id) && $('vGestionSuppr' + suivant.id)) { $('vGestionSuppr' + suivant.id).focus(); }
+  statutGestion('✓ "' + l.nom + '" deleted.');
+  annoncer('"' + l.nom + '" deleted from the table "' + nomTable(g.table) + '".');
+}
+
+/* --------------------------------------------------------------------------
+   Choice districts: a new value typed in the details panel
+   -------------------------------------------------------------------------- */
+function nouveauQuartierPossible(p) {
+  var cfg = etat.config;
+  var col = cfg && cfg.colQuartier ? infoColonne(cfg.table, cfg.colQuartier) : null;
+  return !!(col && col.type === 'Choice' && accesComplet() && colonneEcrivable(cfg.colQuartier) && !ligneRefusee(p.id) && !celluleRefusee(p.id, cfg.colQuartier));
+}
+/* District column created by a Gristcity template (its choice list
+   belongs to the widget): same identifier or same label as in the template. */
+function quartierDuModele(cfg) {
+  if (!cfg || cfg.depart !== 'modele' || !cfg.modele || !cfg.colQuartier) { return false; }
+  var m = MODELES_VILLE.filter(function (x) { return x.id === cfg.modele; })[0];
+  var col = infoColonne(cfg.table, cfg.colQuartier);
+  if (!m || !m.quartier || m.quartier.ref || !col || col.type !== 'Choice') { return false; }
+  return col.colId === m.quartier.id || normaliser(col.label) === normaliser(m.quartier.label);
+}
+
+async function nouveauQuartier(idProjet) {
+  var cfg = etat.config;
+  var p = projetParId(idProjet);
+  if (!p || !nouveauQuartierPossible(p)) { return; }
+  var m = mots();
+  var col = infoColonne(cfg.table, cfg.colQuartier);
+  var duModele = quartierDuModele(cfg);
+  var texte = await confirmerAction('New ' + m.quartier,
+    'Type the name of the new ' + m.quartier + ': "' + p.nom + '" moves there. ' + (duModele
+      ? 'It is also added to the choices of the column "' + nomColonne(col) + '".'
+      : 'The value is written as is; it is not added to the choice list of the column "' + nomColonne(col) + '" (that is done in Grist).'),
+    'Add and move', '', null, 'Name of the new ' + m.quartier);
+  if (typeof texte !== 'string' || !texte.trim() || etat.config !== cfg) { return; }
+  texte = texte.trim();
+  col = infoColonne(cfg.table, cfg.colQuartier);
+  if (!col) { return; }
+  var existant = choixDe(col).filter(function (x) { return normaliser(x) === normaliser(texte); })[0];
+  var valeur = existant !== undefined ? existant : texte;
+  if (existant === undefined && duModele) {
+    var opts = Object.assign({}, col.options || {});
+    opts.choices = choixDe(col).concat([valeur]);
+    try {
+      await agir([['ModifyColumn', cfg.table, cfg.colQuartier, { widgetOptions: JSON.stringify(opts) }]]);
+      await chargerMeta();
+    } catch (e) {
+      if (estRefusEcritureDocument(e)) {
+        afficherErreur('Your access rights do not allow changing this field.', e);
+        apresRefus(e, p.id);
+        return;
+      }
+      // Choice list not changed (structure rights): the value is still written
+      logSecurite('WARNING', 'New district not added to the choices of ' + cfg.colQuartier, e);
+    }
+  }
+  var ok = await enregistrerChamp(p.id, cfg.colQuartier, valeur, nomColonne(col));
+  if (ok === false) { return; }
+  if (etat.ouvert === p.id) {
+    remplacerChampsFiche(p.id, [cfg.colQuartier]);
+    var sel = $('vChamp_' + cfg.colQuartier.replace(/[^A-Za-z0-9_-]/g, '_'));
+    var f = sel ? ($(sel.id + '_saisie') || sel) : null;
+    if (f && f.offsetParent !== null) { f.focus(); }
+  }
+  annoncer(p.nom + ' ' + m.deplace + ' to ' + m.leQ + ' ' + valeur + '.');
+}
+
+/* --------------------------------------------------------------------------
+   A field of the details panel, with its management buttons (editors only)
+   -------------------------------------------------------------------------- */
+function editeurFiche(p, colId) {
+  var cfg = etat.config;
+  var ed = editeurChamp(p, colId);
+  ed.setAttribute('data-champ', colId);
+  var extras = [];
+  if (colId === cfg.colResponsable && gestionPossible('personnes')) {
+    extras.push(bouton(libelleGerer('personnes'), 'tertiaire', 'team-line', function () { return ouvrirGestion('personnes', p.id); }, { petit: true, id: 'vFicheGererPersonnes' }));
+  }
+  if (colId === cfg.colQuartier) {
+    if (gestionPossible('quartiers')) {
+      extras.push(bouton(libelleGerer('quartiers'), 'tertiaire', 'map-pin-2-line', function () { return ouvrirGestion('quartiers', p.id); }, { petit: true, id: 'vFicheGererQuartiers' }));
+    } else if (nouveauQuartierPossible(p)) {
+      extras.push(bouton('New ' + mots().quartier, 'tertiaire', 'add-line', function () { return nouveauQuartier(p.id); }, { petit: true, id: 'vFicheNouveauQuartier' }));
+    }
+  }
+  if (extras.length) { ed.appendChild(creer('div', { classe: 'vl-fiche-extras' }, extras)); }
+  return ed;
+}
+
+/* ==========================================================================
    SECTION 6 BIS: LONG FILTERABLE LISTS [DO NOT EDIT except THRESHOLD]
    Beyond SEUIL_LISTE_FILTRABLE choices, a dropdown list becomes a
    field where you type a few letters: the choices narrow down as you
@@ -7597,7 +8152,7 @@ async function sonderEcriture() {
 }
 
 async function determinerDroits() {
-  etat.refus = { creation: false, modification: false, colonnes: {}, lignes: {}, cellules: {} };
+  etat.refus = { creation: false, modification: false, colonnes: {}, lignes: {}, cellules: {}, suppression: false, lignesSuppr: {}, references: {} };
   // Full access not granted: no write attempted
   if (!accesComplet()) { etat.peutModifier = false; etat.peutParametrer = false; return; }
   etat.peutModifier = await sonderEcriture();
