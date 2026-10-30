@@ -1790,6 +1790,35 @@ function colonneDe(donnees, col, i) {
   return donnees && donnees[col] ? valeurCellule(donnees[col][i]) : undefined;
 }
 
+/* === SECTION: WRITE RIGHTS === */
+function contenuJeton(jeton) {
+  var p = String(jeton || '').split('.')[1];
+  if (!p) { return null; }
+  p = p.replace(/-/g, '+').replace(/_/g, '/');
+  while (p.length % 4) { p += '='; }
+  var bin = atob(p);
+  var octets = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) { octets[i] = bin.charCodeAt(i); }
+  return JSON.parse(new TextDecoder().decode(octets));
+}
+/* Right to write to the document: Grist gives the widget an access
+   token, which it marks "read-only" for a viewer (or a document
+   opened read-only). Nothing is written, nothing is sent to the other
+   connected users, no copy of the document is triggered. */
+async function sonderEcriture() {
+  try {
+    var j = await gristAvecTimeout(grist.docApi.getAccessToken({ readOnly: false }), DELAI_API_MS);
+    var c = contenuJeton(j && j.token);
+    if (c && typeof c.readOnly === 'boolean') { return !c.readOnly; }
+    logSecurite('WARNING', 'Access token without rights information');
+  } catch (e) {
+    logSecurite('WARNING', 'Write rights not determined', e);
+  }
+  // Unknown: editing stays available; Grist will refuse what is not
+  // allowed and the widget will then remove the denied action.
+  return true;
+}
+
 /* === SECTION: DOCUMENT METADATA === */
 async function chargerMeta() {
   etat.metaLueA = Date.now();
@@ -3214,11 +3243,12 @@ function lienSur(valeur) {
   if (!t) { return null; }
   var l = lienDepuisTexte(t);
   var url = l ? l.url : t;
-  try { var u = new URL(url); return u.protocol === 'https:' ? u.href : null; } catch (e) { return null; }
+  // Only web links (http or https); javascript:, data:, file:... are never opened
+  try { var u = new URL(url); return (u.protocol === 'https:' || u.protocol === 'http:') ? u.href : null; } catch (e) { return null; }
 }
-// First https link found in a text (location "Teams: https://...")
+// First web link (http or https) found in a text (location "Teams: https://...")
 function lienDansTexte(t) {
-  var m = String(t || '').match(/https:\/\/[^\s<>"')]+/);
+  var m = String(t || '').match(/https?:\/\/[^\s<>"')]+/i);
   return m ? lienSur(m[0]) : null;
 }
 // Opens an address in a new tab, without window.open (temporary noopener link)
@@ -5900,7 +5930,7 @@ function editeurChamp(tid, colId, o) {
     champ = saisie(id, v === null || v === undefined || invalide ? '' : String(v), { multiligne: genre === 'texte_long' || o.multiligne, lignes: 3, indice: o.indice, type: o.url ? 'url' : 'text' });
     lire = function () {
       var t = champ.value.trim();
-      if (o.url && t && !lienValide(t)) { return { erreur: 'Enter a web address starting with https:// (or http://).' }; }
+      if (o.url && t && !lienValide(t)) { return { erreur: 'Enter a web address starting with https:// or http://.' }; }
       return { valeur: t };
     };
   }
@@ -6047,7 +6077,7 @@ async function formulaireReunion(r, retour, pre) {
     editeurChamp(tid, rc.colDebut, { cle: 'debut', id: 'dvF_debut', libelle: 'Start', requis: true, valeur: brut(rc.colDebut), defaut: def.debut }),
     editeurChamp(tid, rc.colFin, { cle: 'fin', id: 'dvF_fin', libelle: 'End', valeur: brut(rc.colFin), defaut: def.fin, aide: 'Optional: with no end, the meeting lasts one hour' }),
     editeurChamp(tid, rc.colLieu, { cle: 'lieu', id: 'dvF_lieu', libelle: 'Location', valeur: brut(rc.colLieu), indice: 'Meeting room' }),
-    editeurChamp(tid, rc.colVisio, { cle: 'visio', id: 'dvF_visio', libelle: 'Video call link', valeur: brut(rc.colVisio), url: true, indice: 'https://…', aide: 'An address starting with https://' }),
+    editeurChamp(tid, rc.colVisio, { cle: 'visio', id: 'dvF_visio', libelle: 'Video call link', valeur: brut(rc.colVisio), url: true, indice: 'https://…', aide: 'An address starting with https:// or http://' }),
     editeurChamp(tid, rc.colParticipants, { cle: 'participants', id: 'dvF_participants', libelle: 'Participants', valeur: brut(rc.colParticipants), defaut: def.participants, personnes: !!colP && colP.type !== 'Text' && colP.type !== 'Any',
       aide: colP && (colP.type === 'Text' || colP.type === 'Any') ? 'Free text: names separated by commas, or "Everyone"' : null }),
     editeurChamp(tid, rc.colStatut, { cle: 'statut', id: 'dvF_statut', libelle: 'Status', valeur: brut(rc.colStatut), defaut: def.statut })]);
@@ -6067,8 +6097,7 @@ async function formulaireReunion(r, retour, pre) {
       var id = r ? r.id : (res.res && res.res.retValues ? res.res.retValues[0] : null);
       await chargerDonnees();
       retour(['dvReuModif' + id].concat(focusRetour), jourDeSec(v.debut));
-      var http = typeof v.visio === 'string' && /^http:/i.test(v.visio);
-      statut('✓ Meeting saved: ' + v.objet + ', ' + quandReunion({ debut: v.debut }) + (http ? '. The link starts with http: use https:// to get the "Join the call" button.' : ''));
+      statut('✓ Meeting saved: ' + v.objet + ', ' + quandReunion({ debut: v.debut }));
     } });
 }
 function supprimerReunion(r, retour) {
@@ -6314,7 +6343,7 @@ async function formulaireRessource(r) {
   var brut = function (c) { return i >= 0 && c && d[c] ? d[c][i] : undefined; };
   var eds = sansDoublons([
     editeurChamp(tid, rs.colNom, { cle: 'nom', id: 'dvF_resNom', libelle: 'Name', requis: true, valeur: brut(rs.colNom), indice: 'Team charter' }),
-    editeurChamp(tid, rs.colLien, { cle: 'lien', id: 'dvF_resLien', libelle: 'Link', valeur: brut(rs.colLien), url: true, indice: 'https://…', aide: 'An address starting with https://' }),
+    editeurChamp(tid, rs.colLien, { cle: 'lien', id: 'dvF_resLien', libelle: 'Link', valeur: brut(rs.colLien), url: true, indice: 'https://…', aide: 'An address starting with https:// or http://' }),
     editeurChamp(tid, rs.colType, { cle: 'type', id: 'dvF_resType', libelle: 'Type', valeur: brut(rs.colType) }),
     editeurChamp(tid, rs.colEpingle, { cle: 'epingle', id: 'dvF_resEpingle', libelle: 'Pinned', valeur: brut(rs.colEpingle), aide: 'Pinned resources come first' })]);
   if (!eds.some(function (e) { return e.cle === 'nom'; })) { afficherErreur('The name column of "' + nomTable(tid) + '" is calculated: resources cannot be edited here.'); return; }
@@ -6330,7 +6359,7 @@ async function formulaireRessource(r) {
       var id = r ? r.id : (res.res && res.res.retValues ? res.res.retValues[0] : null);
       await chargerDonnees({ lourdes: true });
       retourRessources(['dvResModif' + id].concat(focusRetour));
-      statut('✓ Resource saved: ' + v.nom + (typeof v.lien === 'string' && /^http:/i.test(v.lien) ? '. The link starts with http: use https:// to get the "Open" button.' : ''));
+      statut('✓ Resource saved: ' + v.nom);
     } });
 }
 function supprimerRessource(r) {
@@ -7164,7 +7193,7 @@ function etapePieces(b) {
     lienC.addEventListener('input', function () { c.canal.lien = lienC.value.trim(); });
     var secC = creer('section', { classe: 'dv-piece ui-mt-3w' }, [creer('h3', { classe: 'ui-h6', texte: '💬 The chat channel' }),
       creer('p', { classe: 'w-mention', texte: c.pieces.reunion === false ? 'The TV is in the meeting room: also tick the meeting room ("Template" step).' : 'The meeting room TV shows this name and opens this link in a new tab.' }),
-      groupeChamp('Channel name', nomC, 'Teams, Slack…', false), groupeChamp('Channel link', lienC, 'An address starting with https://', false)]);
+      groupeChamp('Channel name', nomC, 'Teams, Slack…', false), groupeChamp('Channel link', lienC, 'An address starting with https:// or http://', false)]);
     bloc.appendChild(secC);
   }
   if (c.pieces.activites !== false) {
@@ -7358,8 +7387,9 @@ async function chargerTout() {
     try { await ecrireConfig(etat.config); logSecurite('INFO', 'v1 settings carried over to v2'); }
     catch (e) { logSecurite('WARNING', 'Carried-over settings not saved', e); }
   }
-  etat.peutModifier = accesComplet();
-  etat.peutParametrer = accesComplet();
+  // Viewers (or a document opened read-only) get no editing buttons from the start
+  etat.peutModifier = accesComplet() && await sonderEcriture();
+  etat.peutParametrer = etat.peutModifier;
   if (!etat.config || !etat.config.equipe || !etat.meta.tables[etat.config.equipe]) {
     if (etat.peutParametrer) { if (!etat.brouillon) { ouvrirAssistant(1); } return; }
     afficherVue('aucun');
