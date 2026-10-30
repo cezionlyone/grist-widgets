@@ -3,8 +3,8 @@
   ============================================================================
   READ ME - Gristverse
   ============================================================================
-  Version     : 1.2.1
-  Date        : 29/10/2026
+  Version     : 1.3.0
+  Date        : 30/10/2026
   Auteur      : madeXcé
   Licence     : MIT
   Plateforme  : Grist (widget personnalisé)
@@ -34,14 +34,36 @@
   - Bureau de chacun : où il travaille, jour par jour ou par période ; ses
     tâches (paperboard du bureau), à cocher ou à ajouter ; ses activités
     (heures par projet ou hors projet) et son relevé mensuel ; ses réunions.
-  - Salle de réunion : réunions du jour sur le tableau, rappel 15 minutes
-    avant, bouton de la visio, télé qui ouvre le canal de discussion.
+  - Salle de réunion : réunions du jour sur le tableau, les réunions
+    semaine par semaine dans la salle, rappel 15 minutes avant, bouton de
+    la visio, télé qui ouvre le canal de discussion.
   - Ressources : livres sur les étagères de l'accueil, recherche,
     épinglées d'abord, lien ouvert dans un nouvel onglet.
   - Bibliothèque des projets : une étagère par statut, un classeur par
-    projet, une fiche par projet ; tableau du planning (frise des projets,
-    une ligne par personne).
+    projet, une fiche par projet, toute la bibliothèque depuis le nom de la
+    salle ; tableau du planning (frise des projets, une ligne par personne).
   - Accueil : planning « qui est où », avec le total par site et par jour.
+
+  TOUT GÉRER DEPUIS LE WIDGET (personnes qui peuvent modifier)
+  Tout ce que Gristverse affiche se crée, se modifie et se supprime depuis
+  le widget, sans passer par les tables :
+  - les réunions (« Nouvelle réunion » dans la salle de réunion et dans
+    chaque bureau ; Modifier et Supprimer sur chaque réunion) ;
+  - l'équipe (« Ajouter une personne » à l'accueil ; « Modifier la fiche »
+    et « Retirer de l'équipe » dans chaque bureau ; monture et bureau sont
+    enregistrés dans les réglages) ;
+  - les tâches (ajouter, cocher, modifier, supprimer), les ressources et
+    les projets (nouveau, modifier, supprimer), les activités (ajouter,
+    modifier, supprimer), les présences (un jour, une période : déclarer,
+    modifier, supprimer ; « Effacer » un jour).
+  Les formulaires sont construits d'après les colonnes branchées sur chaque
+  pièce ; une colonne calculée n'est jamais écrite ; seuls les champs
+  modifiés sont écrits. Chaque suppression est confirmée et ne supprime que
+  la ligne nommée ; rien d'autre n'est supprimé automatiquement (retirer
+  une personne garde ses présences, tâches, réunions et activités). Les
+  pièces jointes restent gérées dans Grist.
+  Les lecteurs, et les personnes dont l'écriture est refusée, ne voient
+  aucun bouton de modification.
 
   INSTALLATION (assistant, réservé à l'accès complet)
   1. Le modèle : deux sites, un site ou sur mesure ; pièces affichées ;
@@ -69,8 +91,9 @@
   - 🌐 BIBLIOTHÈQUE GRISTVERSE ⚡ (BIBLIOTHEQUE_GRISTVERSE_) : réglages
     (CLE = CONFIG:GRISTVERSE, VALEUR = JSON). Table technique, jamais
     proposée comme table de données.
-  Les tables existantes ne sont jamais restructurées : le widget n'y écrit
-  que les déclarations, tâches, activités et valeurs modifiées.
+  Les tables existantes ne sont jamais restructurées : le widget n'y fait
+  que créer, modifier et supprimer des lignes (quand quelqu'un le fait
+  depuis le widget), sans jamais changer leurs colonnes.
 
   RELEVÉ D'ACTIVITÉ
   Toujours un mois entier : total par projet en heures et en jours
@@ -102,10 +125,16 @@
   - Pièces jointes : consultation seule ; fichiers récupérés en Blob, jeton
     d'accès jamais dans un lien de la page ; aperçu limité aux images
     matricielles et aux PDF, type imposé d'après l'extension.
-  - Liens : https uniquement, ouverts par un lien temporaire avec noopener
-    et noreferrer (pas de window.open).
+  - Liens : adresses web seulement (https ou http ; javascript:, data:,
+    file:... jamais ouverts), ouverts par un lien temporaire avec noopener
+    et noreferrer (pas de window.open). Les formulaires n'acceptent que des
+    adresses en https ou http.
   - Niveau d'accès accordé lu par grist.onOptions : sans accès complet,
     consultation seule annoncée, et toute écriture est refusée.
+  - Droit d'écriture sondé à l'ouverture : le jeton d'accès que Grist remet
+    au widget dit s'il est en lecture seule (lecteur, document ouvert en
+    consultation). Dans ce cas, aucun bouton de modification n'est affiché.
+    Rien n'est écrit pour ce sondage.
   - Les droits fins (qui modifie quelles lignes) se règlent par les règles
     d'accès (ACL) du document.
   - Journalisation via logSecurite(), messages d'erreur neutres.
@@ -137,6 +166,10 @@
 
   HISTORIQUE
   ----------
+  1.3.0 - 30/10/2026 - madeXcé - Tout se gère depuis le widget : réunions,
+          équipe, tâches, ressources, projets, activités et périodes de
+          présence (créer, modifier, supprimer). Liens http acceptés.
+          Boutons de modification masqués aux lecteurs dès l'ouverture.
   1.2.1 - 29/10/2026 - madeXcé - Corrections issues de la relecture : tables
           et colonnes supprimées ou renommées, heures des réunions dans le
           fuseau de leur colonne, rappel 15 minutes avant, fichiers de la
@@ -673,6 +706,38 @@
     .dv-reunion--passee { opacity: .7; }
     .dv-reunion__heure { font-size: .8125rem; font-weight: 700; margin: 0; }
     .dv-reunion__objet { margin: .125rem 0 .25rem; }
+    /* Gestion des données depuis le widget : barres d'outils, boutons Modifier et Supprimer, formulaires */
+    .dv-outils { display: flex; align-items: center; justify-content: space-between; gap: .5rem .75rem; flex-wrap: wrap; }
+    .dv-outils__nav { margin-bottom: 0; }
+    .dv-outils > .fr-btn:only-child { margin-left: auto; }
+    .dv-salle-reu > p.w-texte, .dv-salle-reu > .fr-alert { margin: 0 0 .75rem; }
+    .dv-salle-reu > .dv-outils { margin-bottom: .25rem; }
+    .dv-outils__texte { flex: 1 1 14rem; margin: 0; }
+    .dv-outils--membre { justify-content: flex-start; margin-bottom: .75rem; }
+    .dv-nav-semaine__titre:focus { outline: none; }
+    .dv-ligne { display: flex; align-items: flex-start; gap: .5rem; }
+    .dv-ligne > :first-child { flex: 1 1 auto; min-width: 0; margin-bottom: 0; }
+    .dv-gestion { display: flex; flex: none; gap: .125rem; align-items: center; margin-top: -.125rem; }
+    .dv-ressource .dv-gestion { margin-top: 0; }
+    .dv-activite .fr-btn--icon-only + .fr-btn--icon-only { margin-left: -.5rem; }
+    .dv-reunion > .fr-btn { margin-top: .25rem; }
+    .dv-effacer { margin-left: auto; }
+    .dv-form { display: flex; flex-direction: column; }
+    .dv-form .fr-input-group, .dv-form .dv-fieldset { margin-bottom: 1rem; }
+    .dv-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+    .dv-fieldset > legend { padding: 0; margin-bottom: .25rem; }
+    .dv-form__groupe .fr-input-group { margin-bottom: 0; }
+    .dv-form__duo { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: .75rem; }
+    .dv-form__duo .fr-label { font-size: .8125rem; color: var(--text-mention-grey); }
+    .dv-form__apercu { margin-top: .25rem; }
+    .dv-form__case { margin-bottom: 1rem; }
+    .dv-form__cases { display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); gap: 0 .75rem; max-height: 14rem; overflow-y: auto;
+      margin-top: .375rem; padding: .5rem .625rem 0; border: 1px solid var(--border-default-grey); }
+    .dv-form__err { margin: .25rem 0 0; color: var(--text-default-error); font-size: .8125rem; font-weight: 600; }
+    .dv-form__err::before { content: '⚠ '; }
+    .dv-form [aria-invalid="true"] { box-shadow: inset 0 -2px 0 0 var(--border-plain-error); }
+    .w-dialogue__pied .dv-statut { flex: 1 1 12rem; min-width: 0; }
+    @media (max-width: 30em) { .dv-form__duo { grid-template-columns: 1fr; } }
     /* Salle des idées */
     .dv-ressources { list-style: none; padding: 0; margin: 0; }
     .dv-ressource { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; padding: .375rem 0; border-bottom: 1px solid var(--border-default-grey); }
@@ -737,12 +802,12 @@
     /* La grille : le sol en bois, une case = un carreau ; bureau, chaise, cases réservées hachurées */
     .dv-grille-cadre { display: inline-block; max-width: 100%; overflow-x: auto; padding: .5rem; background: #B98150; border-radius: 0; }
     .dv-grille { --case: 2rem; display: grid; gap: 2px; }
-    .dv-case { width: var(--case); height: var(--case); margin: 0; padding: 0; border: 1px solid rgba(0,0,0,.15); border-radius: 0; background: #E9C79A;
+    .dv-grille .dv-case { width: var(--case); height: var(--case); margin: 0; padding: 0; border: 1px solid rgba(0,0,0,.15); border-radius: 0; background: #E9C79A;
       font-family: inherit; font-size: 1rem; line-height: 1; cursor: pointer; }
-    .dv-case:hover { outline: 2px solid #000091; outline-offset: -2px; }
-    .dv-case--bureau { background: #8A5A33; }
-    .dv-case--siege { background: #9FB0D6; }
-    .dv-case--reserve { background: repeating-linear-gradient(45deg, #E9C79A 0 4px, #CFA471 4px 8px); font-size: .8125rem; cursor: not-allowed; }
+    .dv-grille .dv-case:hover { outline: 2px solid #000091; outline-offset: -2px; }
+    .dv-grille .dv-case--bureau { background: #8A5A33; }
+    .dv-grille .dv-case--siege { background: #9FB0D6; }
+    .dv-grille .dv-case--reserve { background: repeating-linear-gradient(45deg, #E9C79A 0 4px, #CFA471 4px 8px); font-size: .8125rem; cursor: not-allowed; }
     /* === RELEVÉ PDF [MODIFIABLE pour l'apparence] ===
        La feuille n'existe que le temps de l'impression et reste invisible à l'écran.
        À l'impression, tout le reste de la page est masqué : seule la feuille sort. */
@@ -845,7 +910,7 @@
    ========================================================================== */
 
 // [MODIFIABLE] Numero de version : a incrementer a chaque livraison.
-var VERSION_WIDGET = '1.2.1';
+var VERSION_WIDGET = '1.3.0';
 var NOM_WIDGET = 'Gristverse';
 
 /* [INTOUCHABLE] Bibliotheque de Gristverse : table technique des reglages,
@@ -1251,7 +1316,10 @@ function couleurBadge(texte) {
 }
 
 function groupeChamp(libelle, champ, aide, obligatoire) {
-  var id = champ.id;
+  // Champ composé (liste avec recherche) : le libellé vise son champ de saisie
+  var interne = !champ.id && champ.querySelector ? champ.querySelector('input, select, textarea') : null;
+  var id = interne ? interne.id : champ.id;
+  if (interne && obligatoire) { interne.setAttribute('aria-required', 'true'); }
   var lab = creer('label', { classe: 'fr-label', attrs: { 'for': id } }, [libelle]);
   if (obligatoire) {
     lab.appendChild(document.createTextNode(' '));
@@ -1525,6 +1593,35 @@ function valeurCellule(v) {
 
 function colonneDe(donnees, col, i) {
   return donnees && donnees[col] ? valeurCellule(donnees[col][i]) : undefined;
+}
+
+/* === SECTION : DROITS D'ECRITURE === */
+function contenuJeton(jeton) {
+  var p = String(jeton || '').split('.')[1];
+  if (!p) { return null; }
+  p = p.replace(/-/g, '+').replace(/_/g, '/');
+  while (p.length % 4) { p += '='; }
+  var bin = atob(p);
+  var octets = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) { octets[i] = bin.charCodeAt(i); }
+  return JSON.parse(new TextDecoder().decode(octets));
+}
+/* Droit d'écrire dans le document : Grist remet au widget un jeton
+   d'accès, qu'il marque « lecture seule » pour un lecteur (ou un document
+   ouvert en consultation). Rien n'est écrit, rien n'est envoyé aux autres
+   personnes connectées, aucune copie du document n'est déclenchée. */
+async function sonderEcriture() {
+  try {
+    var j = await gristAvecTimeout(grist.docApi.getAccessToken({ readOnly: false }), DELAI_API_MS);
+    var c = contenuJeton(j && j.token);
+    if (c && typeof c.readOnly === 'boolean') { return !c.readOnly; }
+    logSecurite('AVERTISSEMENT', 'Jeton d\'accès sans information sur les droits');
+  } catch (e) {
+    logSecurite('AVERTISSEMENT', 'Droits d\'écriture non déterminés', e);
+  }
+  // Inconnu : la modification reste proposée ; Grist refusera ce qui n'est pas
+  // permis et le widget retirera alors l'action refusée.
+  return true;
 }
 
 /* === SECTION : METADONNEES DU DOCUMENT === */
@@ -2684,7 +2781,10 @@ function etiquettesCarte(couche, carte) {
         poser(ecran, pv.x + ECRAN_TELE.x, pv.y + ECRAN_TELE.y);
       }
     } else if (p.type === 'projets') {
-      var bp = creer('span', { classe: 'dv-salle dv-salle--coin', texte: '🗄️ Bibliothèque des projets' }); poser(bp, p.x0 + 0.02, yBas - 0.36);
+      // Le nom de la salle ouvre toute la bibliothèque (tous les projets, et « Nouveau projet » pour qui peut modifier)
+      var bp = reglagesProjets() ? creer('button', { classe: 'dv-salle dv-salle--coin', id: 'dvSalleProjets', texte: '🗄️ Bibliothèque des projets', attrs: { type: 'button', 'aria-label': 'Bibliothèque des projets : tous les projets' } }) : creer('span', { classe: 'dv-salle dv-salle--coin', texte: '🗄️ Bibliothèque des projets' });
+      if (bp.tagName === 'BUTTON') { bp.addEventListener('click', ouvrirBibliotheque); }
+      poser(bp, p.x0 + 0.02, yBas - 0.36);
       // Une étiquette sous chaque étagère : son statut et son nombre de projets (clic : la liste)
       (etat.donnees.statuts || []).forEach(function (s, k) {
         var e = positionEtagere(p, carte, k);
@@ -2944,17 +3044,17 @@ function nomColonne(c) { return c ? nomLisible(c.label || c.colId) : ''; }
 function nomTable(tid) { return nomLisible(libelleTable(tid)); }
 function libelleCol(tid, colId) { return nomColonne(infoColonne(tid, colId)); }
 
-// Adresse web sûre : https uniquement
+// Adresse web sûre : http ou https seulement ; javascript:, data:, file:... ne sont jamais ouverts
 function lienSur(valeur) {
   var t = String(valeur || '').trim();
   if (!t) { return null; }
   var l = lienDepuisTexte(t);
   var url = l ? l.url : t;
-  try { var u = new URL(url); return u.protocol === 'https:' ? u.href : null; } catch (e) { return null; }
+  try { var u = new URL(url); return (u.protocol === 'https:' || u.protocol === 'http:') ? u.href : null; } catch (e) { return null; }
 }
-// Premier lien https trouvé dans un texte (lieu « Teams : https://... »)
+// Premier lien web (http ou https) trouvé dans un texte (lieu « Teams : https://... »)
 function lienDansTexte(t) {
-  var m = String(t || '').match(/https:\/\/[^\s<>"')]+/);
+  var m = String(t || '').match(/https?:\/\/[^\s<>"')]+/i);
   return m ? lienSur(m[0]) : null;
 }
 // Ouvre une adresse dans un nouvel onglet, sans window.open (lien temporaire noopener)
@@ -3417,7 +3517,7 @@ function noterPresence(m, jour, lieu, dj, resultat) {
     if (x) { x.lieu = lieu; } else { d.presences.push({ id: id || -Date.now(), personne: m.id, du: jour, au: jour, lieu: lieu }); }
   };
   appliquer(etat.donnees);
-  _editions.push({ quand: Date.now(), appliquer: appliquer });
+  _editions.push({ quand: Date.now(), cle: m.id + '|' + jour, appliquer: appliquer });
   etat.empreinteDonnees = empreinteDe(etat.donnees);
   // Relecture de confirmation (tables légères) : elle part après l'enregistrement, donc elle le contient
   planifierRafraichissement();
@@ -3462,6 +3562,8 @@ function texteCellule(tid, colId, v) {
   // Nom affiché d'une ligne d'une autre table, à partir de son numéro
   var nomRef = function (id) {
     var cible = tableCibleRef(col.type), cache = etat.donnees && etat.donnees.refs ? etat.donnees.refs[cible] : null;
+    // Une référence vers l'équipe (participants...) : le nom de la personne, d'après l'équipe déjà lue
+    if (!cache && cible === cfg().equipe && etat.donnees && etat.donnees.membres) { var mb = etat.donnees.membres.filter(function (x) { return x.id === id; })[0]; return mb ? mb.nom : ''; }
     if (!cache || typeof id !== 'number') { return ''; }
     var nm = cible === cfg().equipe ? cf('equipe', 'NOM') : 'NOM', aff = colAffichageRef(col) || (cache[nm] ? nm : null), k = cache.id.indexOf(id);
     return aff && cache[aff] && k >= 0 ? String(cache[aff][k] || '') : '';
@@ -3531,18 +3633,12 @@ function reunionsAVenir() {
   if (!rc || !d.reunions) { return []; }
   var r = d.reunions, maintenant = Date.now() / 1000, debutJour = aujourdhui() - 3600 * 3, finFenetre = maintenant + JOURS_REUNIONS * 86400, l = [];
   for (var i = 0; i < r.id.length; i++) {
-    var debut = r[rc.colDebut][i];
-    if (typeof debut !== 'number' || !debut) { continue; }
-    var fin = rc.colFin && typeof r[rc.colFin][i] === 'number' && r[rc.colFin][i] ? r[rc.colFin][i] : debut + 3600;
+    var x = reunionDe(rc, r, i, maintenant);   // section 5 quater
+    if (!x) { continue; }
     // Gardées : les réunions des prochains jours, et toutes celles du jour montré sur le plan
-    if ((fin < debutJour || debut > finFenetre) && jourDeSec(debut) !== jourVu()) { continue; }
-    if (reunionExclue(rc, rc.colStatut && r[rc.colStatut] ? r[rc.colStatut][i] : '')) { continue; }   // annulée, reportée...
-    var lieu = rc.colLieu ? String(r[rc.colLieu][i] || '') : '';
-    var visio = rc.colVisio ? lienSur(r[rc.colVisio][i]) || lienDansTexte(r[rc.colVisio][i]) : null;
-    if (!visio) { visio = lienDansTexte(lieu); }
-    l.push({ id: r.id[i], objet: String(r[rc.colObjet][i] || '').trim() || 'Réunion', debut: debut, fin: fin, lieu: lieu, visio: visio,
-      participants: rc.colParticipants ? texteCellule(rc.table, rc.colParticipants, r[rc.colParticipants][i]) : '',
-      enCours: debut <= maintenant && maintenant < fin, passee: fin <= maintenant });
+    if ((x.fin < debutJour || x.debut > finFenetre) && jourDeSec(x.debut) !== jourVu()) { continue; }
+    if (x.exclue) { continue; }   // annulée, reportée...
+    l.push(x);
   }
   return l.sort(function (a, b) { return a.debut - b.debut; });
 }
@@ -4038,7 +4134,11 @@ function rendrePlan(z) {
   var rappel = bandeauReunions(); if (rappel) { z.appendChild(rappel); }
   if (!accesComplet()) { z.appendChild(alerte('info', null, 'Consultation seule : le widget n\'a pas l\'accès complet au document. Pour déclarer vos présences ou cocher vos tâches, choisissez « Accès complet » dans la rubrique Accès du panneau de droite de la page.')); }
   var manques = elementsManquants(); if (manques) { z.appendChild(manques); }
-  if (!etat.donnees.membres.length) { z.appendChild(alerte('info', null, 'L\'équipe est vide : ajoutez des personnes dans la table « ' + nomTable(etat.config.equipe) + ' ».')); }
+  if (!etat.donnees.membres.length) {
+    z.appendChild(alerte('info', null, peutGererEquipe() ? creer('div', { classe: 'dv-actions dv-actions--gauche' }, [creer('p', { texte: 'L\'équipe est vide.' }),
+      bouton('Ajouter une personne', 'secondaire', 'user-add-line', function () { return formulairePersonne(null, retourAccueil); }, { petit: true, id: 'dvAjoutPremier' })])
+      : 'L\'équipe est vide : ajoutez des personnes dans la table « ' + nomTable(etat.config.equipe) + ' ».'));
+  }
   if (etat.listeAccessible) { z.appendChild(listeAccessible(plan)); return; }
   // La carte : le dessin en pixel art (canvas) et, par-dessus, les emojis et les salles (boutons)
   var cv = creer('canvas', { classe: 'dv-carte__dessin', attrs: { 'aria-hidden': 'true' } });
@@ -4221,7 +4321,8 @@ function listeAccessible(plan) {
       d.appendChild(creer('div', { classe: 'dv-actions dv-actions--gauche' }, [
         bouton('🚪 Accueil : planning de la semaine', 'secondaire', null, ouvrirAccueil, { petit: true }),
         etat.donnees.reu ? bouton('📺 Salle de réunion', 'secondaire', null, ouvrirSalleReunion, { petit: true }) : null,
-        etat.donnees.res ? bouton('📚 Bibliothèque des ressources', 'secondaire', null, ouvrirSalleIdees, { petit: true }) : null]));
+        etat.donnees.res ? bouton('📚 Bibliothèque des ressources', 'secondaire', null, ouvrirSalleIdees, { petit: true }) : null,
+        pieceActive('projets') && reglagesProjets() ? bouton('🗄️ Bibliothèque des projets', 'secondaire', null, ouvrirBibliotheque, { petit: true }) : null]));
     }
   });
   return d;
@@ -4231,7 +4332,7 @@ function listeAccessible(plan) {
    SECTION 5 : LES FENETRES DES PIECES
    ========================================================================== */
 // Bureau d'une personne : où elle travaille (et déclaration) et ses tâches
-function ouvrirBureau(m) {
+function ouvrirBureau(m, garderJour) {
   var corps = [creer('div', { id: 'dvBureau' })];
   ouvrirModale({
     titre: nomAffiche(m), sousTitre: 'Bureau : ' + nomSite(siteHabituel(m)),
@@ -4239,7 +4340,7 @@ function ouvrirBureau(m) {
     pied: [creer('p', { classe: 'w-mention dv-statut', id: 'dvStatut', attrs: { role: 'status', 'aria-live': 'polite' } })],
     surFermeture: function () { if (etat.vue === 'plan') { afficherVue('plan'); } }
   });
-  etat.jourActivite = jourVu();   // l'onglet des activités s'ouvre sur le jour affiché sur la carte
+  if (garderJour !== true) { etat.jourActivite = jourVu(); }   // l'onglet des activités s'ouvre sur le jour affiché sur la carte (gardé au retour d'un formulaire)
   remplirBureau(m);
 }
 /* remplirBureau (les 4 onglets) : voir la section 5 bis, plus bas */
@@ -4335,34 +4436,53 @@ async function ajouterTache(m, texte) {
   } finally { _tacheEnCours = false; }
 }
 
-// Salle de réunion : aujourd'hui et les prochains jours, bouton visio
-function ouvrirSalleReunion() {
+/* Salle de réunion : les réunions semaine par semaine (les 7 prochains jours
+   d'abord, flèches pour les semaines d'avant et d'après), bouton visio, et
+   pour qui peut modifier : « Nouvelle réunion », Modifier et Supprimer sur
+   chaque réunion. Les réunions annulées sont listées ici (signalées), pour
+   pouvoir les gérer ; elles restent absentes de la carte. */
+function ouvrirSalleReunion(e, garder) {
+  if (garder !== true) { etat.decalageReunions = 0; }   // en action d'un clic, e est l'événement du clic
   var es = etatSalleReunion();
-  var corps = [];
-  var plan = calculerPlan();
-  corps.push(creer('p', { classe: 'w-texte', texte: 'L\'équipe aujourd\'hui : ' + resumeJour(plan) + '.' }));
-  var sitesOccupes = sitesConfig().filter(function (s) { return etat.donnees.membres.some(function (m) { return plan.ou[m.id] === s; }); }).length;
-  if (sitesOccupes > 1 || etat.donnees.membres.some(function (m) { return plan.ou[m.id] === LIEU_TELETRAVAIL; })) {
-    corps.push(alerte('info', null, 'L\'équipe est répartie sur plusieurs lieux aujourd\'hui : pensez à la visio.'));
+  ouvrirModale({ titre: '📺 Salle de réunion', sousTitre: es.enCours ? 'En réunion : ' + es.enCours.objet : 'Les réunions, semaine par semaine', laterale: true, fermerDehors: true,
+    corps: [creer('div', { id: 'dvSalle', classe: 'dv-salle-reu' })], pied: [piedStatut()] });
+  remplirSalleReunion();
+}
+function remplirSalleReunion() {
+  var z = $('dvSalle');
+  if (!z) { return; }
+  vider(z);
+  var k = etat.decalageReunions || 0, du = aujourdhui() + k * 7 * 86400, au = du + 6 * 86400;
+  if (k === 0) {
+    var plan = calculerPlan();
+    z.appendChild(creer('p', { classe: 'w-texte', texte: 'L\'équipe aujourd\'hui : ' + resumeJour(plan) + '.' }));
+    var sitesOccupes = sitesConfig().filter(function (s) { return etat.donnees.membres.some(function (m) { return plan.ou[m.id] === s; }); }).length;
+    if (sitesOccupes > 1 || etat.donnees.membres.some(function (m) { return plan.ou[m.id] === LIEU_TELETRAVAIL; })) {
+      z.appendChild(alerte('info', null, 'L\'équipe est répartie sur plusieurs lieux aujourd\'hui : pensez à la visio.'));
+    }
   }
-  if (!es.liste.length) { corps.push(creer('p', { classe: 'w-mention', texte: 'Aucune réunion dans les ' + JOURS_REUNIONS + ' prochains jours.' })); }
+  var aller = function (n) { return function () { etat.decalageReunions = n; remplirSalleReunion(); var f = $(n < k ? 'dvReuPrec' : (n > k ? 'dvReuSuiv' : 'dvReuPeriode')); if (f) { f.focus(); } }; };
+  var jourNouvelle = k === 0 && jourVu() >= du && jourVu() <= au ? jourVu() : du;
+  z.appendChild(creer('div', { classe: 'dv-outils' }, [
+    creer('div', { classe: 'dv-nav-semaine dv-outils__nav' }, [
+      bouton('7 jours précédents', 'tertiaire', 'arrow-left-s-line', aller(k - 1), { petit: true, iconeSeule: true, id: 'dvReuPrec' }),
+      creer('p', { classe: 'dv-nav-semaine__titre', id: 'dvReuPeriode', texte: k === 0 ? 'Les 7 prochains jours' : 'Du ' + libelleJour(du) + ' au ' + libelleJour(au), attrs: { 'aria-live': 'polite', tabindex: '-1' } }),
+      bouton('7 jours suivants', 'tertiaire', 'arrow-right-s-line', aller(k + 1), { petit: true, iconeSeule: true, id: 'dvReuSuiv' }),
+      k ? bouton('Revenir à aujourd\'hui', 'tertiaire', null, aller(0), { petit: true, id: 'dvReuAuj' }) : null]),
+    peutCreerReunion() ? bouton('Nouvelle réunion', null, 'add-line', function () { return formulaireReunion(null, retourSalle, { jour: jourNouvelle }); }, { petit: true, id: 'dvReuNouvelle' }) : null]));
+  var l = reunionsDesJours(du, 7);
+  if (!l.length) { z.appendChild(creer('p', { classe: 'w-mention', texte: k === 0 ? 'Aucune réunion dans les 7 prochains jours.' : 'Aucune réunion sur ces 7 jours.' })); }
   var jourCourant = null, ul = null;
-  es.liste.forEach(function (r, i) {
+  l.forEach(function (r, i) {
     var j = jourDeSec(r.debut);
     if (j !== jourCourant) {
       jourCourant = j;
-      corps.push(creer('h3', { classe: 'fr-h6 fr-mt-2w', texte: (j === aujourdhui() ? 'Aujourd\'hui · ' : '') + libelleJour(j, true) }));
+      z.appendChild(creer('h3', { classe: 'fr-h6 fr-mt-2w fr-mb-1w', texte: (j === aujourdhui() ? 'Aujourd\'hui · ' : '') + libelleJour(j, true) }));
       ul = creer('ul', { classe: 'dv-reunions' });
-      corps.push(ul);
+      z.appendChild(ul);
     }
-    ul.appendChild(creer('li', { classe: 'dv-reunion' + (r.enCours ? ' dv-reunion--encours' : '') + (r.passee ? ' dv-reunion--passee' : '') }, [
-      creer('p', { classe: 'dv-reunion__heure', texte: heureDe(r.debut) + ' à ' + heureDe(r.fin) + (r.enCours ? ' · 🔴 en cours' : (r.passee ? ' · terminée' : '')) }),
-      creer('p', { classe: 'dv-reunion__objet', texte: r.objet }),
-      r.lieu && !lienDansTexte(r.lieu) ? creer('p', { classe: 'w-mention', texte: '📍 ' + r.lieu }) : null,
-      r.participants ? creer('p', { classe: 'w-mention', texte: '👥 ' + r.participants }) : null,
-      r.visio && !r.passee ? bouton('Rejoindre la visio', r.enCours ? null : 'secondaire', 'video-chat-line', function () { ouvrirAdresse(r.visio); }, { petit: true, id: 'dvVisio' + i, aria: 'Rejoindre la visio : ' + r.objet + ' (nouvelle fenêtre)' }) : null]));
+    ul.appendChild(elementReunion(r, i, retourSalle, 'dvVisio'));
   });
-  ouvrirModale({ titre: '📺 Salle de réunion', sousTitre: es.enCours ? 'En réunion : ' + es.enCours.objet : 'Les ' + JOURS_REUNIONS + ' prochains jours', laterale: true, fermerDehors: true, corps: corps });
 }
 
 // Salle des bonnes idées : bibliothèque filtrable, épinglées d'abord
@@ -4386,6 +4506,7 @@ function ouvrirSalleIdees(nomsLus) {
         creer('span', { classe: 'dv-ressource__nom', texte: (r.epingle ? '📌 ' : '📘 ') + r.nom }),
         r.type ? badge(r.type, 'info') : null,
         r.lien ? bouton('Ouvrir', 'tertiaire', 'external-link-line', function () { ouvrirAdresse(r.lien); }, { petit: true, id: 'dvRes' + i, aria: 'Ouvrir : ' + r.nom + ' (nouvelle fenêtre)' }) : null,
+        boutonsGestion('dvRes', r.id, 'la ressource ' + r.nom, function () { return formulaireRessource(r); }, function () { return supprimerRessource(r); }),
         // Fichiers joints à la ressource : à consulter ou télécharger
         idsPJ(r.fichiers).length ? creer('div', { classe: 'dv-ressource__fichiers' }, [listePJ(r.fichiers, 'dvResF' + i + '_', r.nom)]) : null]));
     });
@@ -4394,13 +4515,18 @@ function ouvrirSalleIdees(nomsLus) {
   rech.addEventListener('input', dessiner);
   dessiner();
   ouvrirModale({ titre: '📚 Bibliothèque des ressources', sousTitre: accord(tout.length, 'ressource') + ' dans « ' + nomTable(etat.donnees.res.table) + ' »', laterale: true, fermerDehors: true,
-    corps: [groupeChamp('Chercher une ressource', rech, null, false), zone] });
+    corps: [peutCreerRessource() ? creer('div', { classe: 'dv-outils' }, [etat.donnees.res.colFichier ? creer('p', { classe: 'w-mention dv-outils__texte', texte: 'Noms, liens et types se gèrent ici ; les fichiers joints s\'ajoutent dans Grist.' }) : creer('span', { classe: 'dv-outils__texte' }),
+      bouton('Nouvelle ressource', null, 'add-line', function () { return formulaireRessource(null); }, { petit: true, id: 'dvResNouvelle' })]) : null,
+      groupeChamp('Chercher une ressource', rech, null, false), zone], pied: [piedStatut()] });
 }
 
 // Accueil : qui est où, semaine par semaine
 function ouvrirAccueil() {
   var z = creer('div', { id: 'dvAccueil' });
-  ouvrirModale({ titre: '🚪 Accueil : qui est où ?', sousTitre: 'Un clic sur un nom ouvre son bureau', laterale: true, fermerDehors: true, corps: [z] });
+  // Pour qui peut modifier : ajouter une personne à l'équipe (son bureau propose ensuite de la modifier ou de la retirer)
+  var outils = peutGererEquipe() ? creer('div', { classe: 'dv-outils' }, [creer('p', { classe: 'w-mention dv-outils__texte', texte: 'Pour modifier ou retirer une personne, ouvrez son bureau.' }),
+    bouton('Ajouter une personne', null, 'user-add-line', function () { return formulairePersonne(null, retourAccueil); }, { petit: true, id: 'dvAjoutMembre' })]) : null;
+  ouvrirModale({ titre: '🚪 Accueil : qui est où ?', sousTitre: 'Un clic sur un nom ouvre son bureau', laterale: true, fermerDehors: true, corps: [outils, z], pied: [piedStatut()] });
   remplirAccueil();
 }
 function remplirAccueil() {
@@ -4419,7 +4545,7 @@ function remplirAccueil() {
   })))]);
   var tb = creer('tbody');
   etat.donnees.membres.forEach(function (m) {
-    tb.appendChild(creer('tr', {}, [creer('th', { attrs: { scope: 'row' } }, [bouton(nomAffiche(m), 'tertiaire', null, function () { fermerModale(); ouvrirBureau(m); }, { petit: true, aria: nomAccessible(m) + ' : ouvrir son bureau' })])].concat(jours.map(function (j) {
+    tb.appendChild(creer('tr', {}, [creer('th', { attrs: { scope: 'row' } }, [bouton(nomAffiche(m), 'tertiaire', null, function () { fermerModale(); ouvrirBureau(m); }, { petit: true, id: 'dvAccMembre' + m.id, aria: nomAccessible(m) + ' : ouvrir son bureau' })])].concat(jours.map(function (j) {
       var l = lieuDu(m, j), e = etatDe(m, l), t = libelleEtat(e, l);
       return creer('td', { classe: 'dv-case' + (j === aujourdhui() ? ' dv-semaine__auj' : ''), attrs: { title: t } }, [creer('span', { texte: emojiEtat(e, l), attrs: { 'aria-hidden': 'true' } }), creer('span', { classe: 'fr-sr-only', texte: t })]);
     }))));
@@ -4494,6 +4620,12 @@ function remplirBureau(m) {
   var z = $('dvBureau');
   if (!z) { return; }
   vider(z);
+  // Pour qui peut modifier : modifier la fiche de la personne ou la retirer de l'équipe (section 5 quater)
+  if (peutGererEquipe()) {
+    z.appendChild(creer('div', { classe: 'dv-outils dv-outils--membre' }, [
+      bouton('Modifier la fiche', 'tertiaire', 'pencil-line', function () { return formulairePersonne(m, retourBureau(m.id, etat.ongletBureau)); }, { petit: true, id: 'dvMembreModif', aria: 'Modifier la fiche de ' + nomAccessible(m) }),
+      bouton('Retirer de l\'équipe', 'tertiaire', 'delete-line', function () { return supprimerPersonne(m); }, { petit: true, id: 'dvMembreSuppr', aria: 'Retirer ' + nomAccessible(m) + ' de l\'équipe' })]));
+  }
   // Onglets des pièces optionnelles : seulement si la pièce est affichée (réglages)
   var onglets = ONGLETS_BUREAU.filter(function (o) {
     return o.cle === 'ou' || (o.cle === 'activites' && pieceActive('activites')) || (o.cle === 'taches' && etat.donnees.tac) || (o.cle === 'reunions' && etat.donnees.reu);
@@ -4533,11 +4665,15 @@ function ongletOu(z, m, modifiable) {
   jours.forEach(function (j) {
     var lieu = lieuDu(m, j);
     var cellule = creer('td', { classe: 'dv-semaine__choix' });
-    lieuxDe(m).forEach(function (l) {
+    lieuxDe(m).forEach(function (l, n) {
       var actif = l === lieu;
-      cellule.appendChild(creer('button', { classe: 'dv-lieu' + (actif ? ' dv-lieu--actif' : ''), attrs: { type: 'button', 'aria-pressed': actif ? 'true' : 'false', 'aria-label': libelleJour(j, true) + ' : ' + nomChoix(m, l), title: nomChoix(m, l), disabled: modifiable ? null : 'disabled' },
+      cellule.appendChild(creer('button', { classe: 'dv-lieu' + (actif ? ' dv-lieu--actif' : ''), id: n === 0 ? 'dvJourLieu' + j : null, attrs: { type: 'button', 'aria-pressed': actif ? 'true' : 'false', 'aria-label': libelleJour(j, true) + ' : ' + nomChoix(m, l), title: nomChoix(m, l), disabled: modifiable ? null : 'disabled' },
         clic: function () { relayer(declarer(m, j, l), 'Déclaration de présence'); } }, [creer('span', { texte: emojiLieu(l), attrs: { 'aria-hidden': 'true' } }), creer('span', { classe: 'dv-lieu__nom', texte: nomChoix(m, l) })]));
     });
+    // Une déclaration pour ce seul jour : elle peut être effacée (le jour revient à la période qui le couvre, ou à « pas encore déclaré »)
+    if (modifiable && declarationsDuJour(m, j).length) {
+      cellule.appendChild(bouton('Effacer', 'discret', 'close-line', function () { return effacerJour(m, j); }, { petit: true, iconeSeule: true, id: 'dvEffacer' + j, classe: 'dv-effacer', aria: 'Effacer la déclaration du ' + libelleJour(j, true) }));
+    }
     tb.appendChild(creer('tr', { classe: j === aujourdhui() ? 'dv-semaine__auj' : null }, [creer('th', { attrs: { scope: 'row' }, texte: (j === aujourdhui() ? 'Aujourd\'hui · ' : '') + libelleJour(j) }), cellule]));
   });
   table.appendChild(tb);
@@ -4589,16 +4725,18 @@ function listePeriodes(z, m) {
       // Où en est la période par rapport à aujourd'hui
       var quandP = p.au < auj ? 'passée' : (p.du > auj ? 'à venir' : 'en cours');
       var lieuTexte = p.lieu ? emojiLieu(p.lieu) + ' ' + nomChoix(m, p.lieu) : 'Lieu non précisé';
-      return creer('li', { classe: 'dv-tache' }, [
-        creer('span', { texte: lieuTexte + ' · du ' + formaterDate(p.du) + ' au ' + formaterDate(p.au) }),
+      var texteP = lieuTexte + ' · du ' + formaterDate(p.du) + ' au ' + formaterDate(p.au);
+      return creer('li', { classe: 'dv-tache' }, [creer('div', { classe: 'dv-ligne' }, [creer('div', {}, [
+        creer('span', { texte: texteP }),
         double ? document.createTextNode(' ') : null,
         double ? badge('en double', 'warning') : null,
-        creer('span', { classe: 'fr-hint-text', texte: accord(joursOuvresEntre(p.du, p.au), 'jour ouvré', 'jours ouvrés') + ' · ' + quandP })]);
+        creer('span', { classe: 'fr-hint-text', texte: accord(joursOuvresEntre(p.du, p.au), 'jour ouvré', 'jours ouvrés') + ' · ' + quandP })]),
+        boutonsGestion('dvPer', p.id, 'la période ' + texteP + (double ? ' (en double)' : ''), function () { formulairePeriode(m, p); }, function () { return supprimerPeriode(m, p); })])]);
     }));
   }
   // Bloc dépliant, ouvert par défaut ; le nombre de périodes est dans le titre
   z.appendChild(creer('details', { classe: 'dv-periode fr-mt-2w', attrs: { open: 'open' } }, [
-    creer('summary', { texte: '🗂️ Périodes enregistrées (' + compteLocal(periodes.length) + ')' }),
+    creer('summary', { id: 'dvPeriodes', texte: '🗂️ Périodes enregistrées (' + compteLocal(periodes.length) + ')' }),
     creer('div', { classe: 'fr-mt-1w' }, [contenuListe])]));
 }
 /* ---------- 📝 Mes tâches ---------- */
@@ -4612,9 +4750,10 @@ function ongletTaches(z, m, modifiable) {
     var retard = typeof t.echeance === 'number' && t.echeance && t.echeance < aujourdhui();
     var cb = creer('input', { id: 'dvTache' + i, attrs: { type: 'checkbox', disabled: modifiable && fini && tc.colStatut ? null : 'disabled' } });
     cb.addEventListener('change', function () { if (cb.checked) { relayer(terminerTache(m, t, fini), 'Tâche terminée'); } });
-    ul.appendChild(creer('li', { classe: 'dv-tache' }, [creer('div', { classe: 'fr-checkbox-group fr-checkbox-group--sm' }, [cb,
+    ul.appendChild(creer('li', { classe: 'dv-tache' }, [creer('div', { classe: 'dv-ligne' }, [creer('div', { classe: 'fr-checkbox-group fr-checkbox-group--sm' }, [cb,
       creer('label', { classe: 'fr-label', attrs: { 'for': 'dvTache' + i } }, [t.description,
-        creer('span', { classe: 'fr-hint-text', texte: [t.statut, t.priorite, typeof t.echeance === 'number' && t.echeance ? (retard ? '⚠️ en retard, ' : 'pour le ') + formaterDate(t.echeance) : null].filter(Boolean).join(' · ') })])])]));
+        creer('span', { classe: 'fr-hint-text', texte: [t.statut, t.priorite, typeof t.echeance === 'number' && t.echeance ? (retard ? '⚠️ en retard, ' : 'pour le ') + formaterDate(t.echeance) : null].filter(Boolean).join(' · ') })])]),
+      boutonsTache(t, retourBureau(m.id, 'taches'))])]));
   });
   z.appendChild(ul);
   if (modifiable && fini && tc.colStatut) { z.appendChild(creer('p', { classe: 'w-mention', texte: 'Cocher une tâche la passe à « ' + fini + ' ».' })); }
@@ -4633,17 +4772,16 @@ function ongletReunions(z, m) {
   // Citée : son emoji, son nom ou son prénom dans les participants (« Céline, Reihane »), ou toute l'équipe
   var prenom = normaliser(String(m.nom || '').split(/\s+/)[0]);
   var miennes = toutes.filter(function (r) { var t = normaliser(r.participants); return !etat.donnees.reu.colParticipants || correspond(m, r.participants) || (prenom.length > 2 && t.indexOf(prenom) !== -1) || /equipe|tous|toutes/.test(t); });
-  z.appendChild(creer('p', { classe: 'w-mention', texte: etat.donnees.reu.colParticipants ? 'Les réunions des ' + JOURS_REUNIONS + ' prochains jours où ' + nomAffiche(m) + ' est cité dans les participants (ou toute l\'équipe).' : 'Toutes les réunions des ' + JOURS_REUNIONS + ' prochains jours.' }));
+  z.appendChild(creer('div', { classe: 'dv-outils' }, [
+    creer('p', { classe: 'w-mention dv-outils__texte', texte: etat.donnees.reu.colParticipants ? 'Les réunions des ' + JOURS_REUNIONS + ' prochains jours où ' + nomAffiche(m) + ' est cité dans les participants (ou toute l\'équipe).' : 'Toutes les réunions des ' + JOURS_REUNIONS + ' prochains jours.' }),
+    // Une nouvelle réunion depuis le bureau : cette personne est déjà parmi les participants
+    peutCreerReunion() ? bouton('Nouvelle réunion', null, 'add-line', function () { return formulaireReunion(null, retourBureau(m.id, 'reunions'), { jour: jourVu(), participant: m, surFermeture: function () { if (etat.vue === 'plan') { afficherVue('plan'); } } }); }, { petit: true, id: 'dvReuNouvelle' }) : null]));
   if (!miennes.length) { z.appendChild(creer('p', { classe: 'w-texte', texte: 'Aucune réunion prévue. 🌤️' })); return; }
-  var jourPrec = null;
+  var jourPrec = null, ul = null;
   miennes.forEach(function (r, i) {
     var j = jourSec(r.debut);
-    if (j !== jourPrec) { z.appendChild(creer('h3', { classe: 'fr-h6 fr-mt-2w fr-mb-1w', texte: (j === aujourdhui() ? 'Aujourd\'hui · ' : '') + libelleJour(j, true) })); jourPrec = j; }
-    z.appendChild(creer('div', { classe: 'dv-reunion' + (r.enCours ? ' dv-reunion--encours' : '') }, [
-      creer('p', { classe: 'dv-reunion__heure', texte: heureDe(r.debut) + ' à ' + heureDe(r.fin) + (r.enCours ? ' · 🔴 en cours' : '') }),
-      creer('p', { classe: 'dv-reunion__objet', texte: r.objet }),
-      r.lieu && !lienDansTexte(r.lieu) ? creer('p', { classe: 'w-mention', texte: '📍 ' + r.lieu }) : null,
-      r.visio ? bouton('Rejoindre la visio', r.enCours ? null : 'secondaire', 'video-chat-line', function () { ouvrirAdresse(r.visio); }, { petit: true, id: 'dvMaVisio' + i, aria: 'Rejoindre la visio : ' + r.objet + ' (nouvelle fenêtre)' }) : null]));
+    if (j !== jourPrec) { z.appendChild(creer('h3', { classe: 'fr-h6 fr-mt-2w fr-mb-1w', texte: (j === aujourdhui() ? 'Aujourd\'hui · ' : '') + libelleJour(j, true) })); jourPrec = j; ul = creer('ul', { classe: 'dv-reunions' }); z.appendChild(ul); }
+    ul.appendChild(elementReunion(r, i, retourBureau(m.id, 'reunions'), 'dvMaVisio'));
   });
 }
 function jourSec(s) { return jourDeSec(s); }
@@ -4653,7 +4791,9 @@ function ongletActivites(z, m, modifiable) {
   var tid = etat.config.activites && etat.meta.tables[etat.config.activites] ? etat.config.activites : null;
   if (!tid) {
     z.appendChild(creer('p', { classe: 'w-texte', texte: '🗂️ Chacun déclare ici, jour par jour, le temps passé sur chaque projet, en heures. Il faut d\'abord créer la table des activités.' }));
-    if (accesComplet()) { z.appendChild(bouton('Créer la table des activités', null, 'add-line', function () { return creerTableActivites(m); }, { id: 'dvCreerActivites' })); }
+    // Lecteurs (jeton en lecture seule, ou écriture refusée) : pas de bouton de création
+    if (peutEditer()) { z.appendChild(bouton('Créer la table des activités', null, 'add-line', function () { return creerTableActivites(m); }, { id: 'dvCreerActivites' })); }
+    else if (accesComplet()) { z.appendChild(alerte('info', null, 'Vos droits sur ce document permettent la consultation seulement : la table des activités ne peut pas être créée.')); }
     else { z.appendChild(alerte('info', null, 'Il faut l\'accès complet au document pour créer la table des activités.')); }
     return;
   }
@@ -4681,6 +4821,7 @@ function ongletActivites(z, m, modifiable) {
       creer('span', { classe: 'dv-activite__heures', texte: heuresTexte(a.heures || 0) }),
       creer('span', { classe: 'dv-activite__projet', texte: libelleActivite(a) + (a.precision ? ' · ' + a.precision : '') }),
       enDouble ? badge('en double', 'warning') : null,
+      modifiable ? bouton('Modifier', 'discret', 'pencil-line', function () { formulaireActivite(m, a); }, { petit: true, iconeSeule: true, id: 'dvActModif' + a.id, aria: 'Modifier : ' + libelleActivite(a) + ', ' + heuresTexte(a.heures || 0) + (enDouble ? ' (en double)' : '') }) : null,
       modifiable ? bouton('Supprimer', 'discret', 'delete-line', function () { return supprimerActivite(m, a); }, { petit: true, iconeSeule: true, id: 'dvActSuppr' + i, aria: 'Supprimer : ' + libelleActivite(a) + ', ' + heuresTexte(a.heures || 0) + (enDouble ? ' (en double)' : '') }) : null]));
   });
   if (!lignes.length) { z.appendChild(creer('p', { classe: 'w-mention', texte: 'Rien de déclaré pour ce jour.' })); }
@@ -4703,18 +4844,20 @@ function ongletActivites(z, m, modifiable) {
 
 /* Liste des projets avec recherche (combobox accessible) : chaque lettre
    tapée réduit la liste ; flèches haut et bas, Entrée pour choisir, Échap pour fermer. */
-function champProjet(choix) {
+function champProjet(choix, initial) {
   var boite = creer('div', { classe: 'dv-combo' });
-  var champ = creer('input', { id: 'dvActProjet', classe: 'fr-input', attrs: { type: 'text', autocomplete: 'off', role: 'combobox', 'aria-expanded': 'false', 'aria-controls': 'dvActListe', 'aria-autocomplete': 'list', placeholder: 'Rechercher un projet…' } });
+  var champ = creer('input', { id: 'dvActProjet', classe: 'fr-input', valeur: initial || '', attrs: { type: 'text', autocomplete: 'off', role: 'combobox', 'aria-expanded': 'false', 'aria-controls': 'dvActListe', 'aria-autocomplete': 'list', placeholder: 'Rechercher un projet…' } });
   var lb = creer('ul', { id: 'dvActListe', classe: 'dv-combo__liste', attrs: { role: 'listbox', 'aria-label': 'Projets' } });
   var tout = HORS_PROJET.map(function (h) { return { hors: h, libelle: '⭐ ' + h }; }).concat((etat.projets || []).map(function (p) { return { projet: p.id, libelle: p.libelle }; }));
   var actifs = [], pos = -1;
   var fermer = function () { lb.classList.remove('dv-combo__liste--ouverte'); champ.setAttribute('aria-expanded', 'false'); champ.removeAttribute('aria-activedescendant'); pos = -1; };
   var choisir = function (o) { choix.projet = o.projet || null; choix.hors = o.hors || null; champ.value = o.libelle.replace(/^⭐ /, ''); fermer(); };
   var marquer = function () { [].forEach.call(lb.children, function (li, i) { li.setAttribute('aria-selected', i === pos ? 'true' : 'false'); }); if (pos >= 0 && lb.children[pos]) { champ.setAttribute('aria-activedescendant', lb.children[pos].id); lb.children[pos].scrollIntoView({ block: 'nearest' }); } };
-  var filtrer = function () {
-    var q = normaliser(champ.value);
-    choix.projet = null; choix.hors = null;
+  // Taper efface le choix tant qu'aucun projet n'est choisi ; entrer simplement dans le champ le garde (et montre toute la liste).
+  // Sans choix retenu, la liste rouverte (entrée dans le champ, flèche bas) reste filtrée par le texte tapé.
+  var filtrer = function (saisi) {
+    var q = saisi === true || !(choix.projet || choix.hors) ? normaliser(champ.value) : '';
+    if (saisi === true) { choix.projet = null; choix.hors = null; }
     actifs = tout.filter(function (o) { return !q || normaliser(o.libelle).indexOf(q) !== -1; }).slice(0, 60);
     vider(lb);
     actifs.forEach(function (o, i) {
@@ -4725,8 +4868,8 @@ function champProjet(choix) {
     if (!actifs.length) { lb.appendChild(creer('li', { classe: 'dv-combo__vide', texte: 'Aucun projet ne correspond' })); }
     lb.classList.add('dv-combo__liste--ouverte'); champ.setAttribute('aria-expanded', 'true'); pos = -1;
   };
-  champ.addEventListener('input', filtrer);
-  champ.addEventListener('focus', filtrer);
+  champ.addEventListener('input', function () { filtrer(true); });
+  champ.addEventListener('focus', function () { filtrer(false); });
   champ.addEventListener('blur', function () { setTimeout(fermer, 120); });
   champ.addEventListener('keydown', function (e) {
     if (e.key === 'ArrowDown') { e.preventDefault(); if (!lb.classList.contains('dv-combo__liste--ouverte')) { filtrer(); } pos = Math.min(actifs.length - 1, pos + 1); marquer(); }
@@ -4763,12 +4906,11 @@ async function ajouterActivite(m, jour, choix, heures, precision) {
     var b2 = $('dvActAjouter'); if (b2) { b2.disabled = false; }
   }
 }
-async function supprimerActivite(m, a) {
-  try { await agir([['RemoveRecord', etat.config.activites, a.id]]); }
-  catch (e) { afficherErreur('L\'activité n\'a pas été supprimée.', e); return; }
-  await chargerDonnees();
-  remplirBureau(m);
-  statut('✓ Activité supprimée');
+// Supprimer une activité : toujours confirmé (section 5 quater)
+function supprimerActivite(m, a) {
+  var tid = etat.config.activites;
+  return supprimerLignes({ titre: 'Supprimer cette activité ?', message: libelleJour(a.date, true) + ' : ' + libelleActivite(a) + ', ' + heuresTexte(a.heures || 0) + (a.precision ? ' (' + a.precision + ')' : '') + '. Sa ligne est supprimée de la table « ' + nomTable(tid) + ' ».',
+    table: tid, ids: a.id, quoi: 'supprimer cette activité', ok: '✓ Activité supprimée', focus: ['dvActProjet'], retour: retourBureau(m.id, 'activites') });
 }
 
 /* ---------- 📤 Le relevé : un mois entier, le total par projet et le détail jour par jour ----------
@@ -5095,9 +5237,10 @@ function remplirPaperboard() {
       var id = 'dvPb' + (n++), retard = typeof t.echeance === 'number' && t.echeance && t.echeance < aujourdhui();
       var cb = creer('input', { id: id, attrs: { type: 'checkbox', disabled: modifiable && fini && tc.colStatut ? null : 'disabled' } });
       cb.addEventListener('change', function () { if (cb.checked) { relayer(terminerTache(m, t, fini), 'Tâche terminée'); } });
-      ul.appendChild(creer('li', { classe: 'dv-tache' }, [creer('div', { classe: 'fr-checkbox-group fr-checkbox-group--sm' }, [cb,
+      ul.appendChild(creer('li', { classe: 'dv-tache' }, [creer('div', { classe: 'dv-ligne' }, [creer('div', { classe: 'fr-checkbox-group fr-checkbox-group--sm' }, [cb,
         creer('label', { classe: 'fr-label', attrs: { 'for': id } }, [t.description,
-          creer('span', { classe: 'fr-hint-text', texte: [t.statut, t.priorite, typeof t.echeance === 'number' && t.echeance ? (retard ? '⚠️ en retard, ' : 'pour le ') + formaterDate(t.echeance) : null].filter(Boolean).join(' · ') })])])]));
+          creer('span', { classe: 'fr-hint-text', texte: [t.statut, t.priorite, typeof t.echeance === 'number' && t.echeance ? (retard ? '⚠️ en retard, ' : 'pour le ') + formaterDate(t.echeance) : null].filter(Boolean).join(' · ') })])]),
+        boutonsTache(t, retourPaperboard(etat.paperboard))])]));
     });
     z.appendChild(ul);
   });
@@ -5183,7 +5326,9 @@ function ouvrirEtagere(statut) {
   rech.addEventListener('input', dessiner);
   dessiner();
   ouvrirModale({ titre: '🗄️ ' + s.nom, sousTitre: accord(s.projets.length, 'projet') + ', rangés par numéro', laterale: true, fermerDehors: true,
-    corps: [groupeChamp('Chercher un projet', rech, null, false), zone] });
+    corps: [creer('div', { classe: 'dv-outils' }, [bouton('Toute la bibliothèque', 'tertiaire', 'list-unordered', ouvrirBibliotheque, { petit: true, id: 'dvVersBib' }),
+      peutCreerProjet() ? bouton('Nouveau projet', null, 'add-line', function () { return formulaireProjet(null, s.nom); }, { petit: true, id: 'dvProjNouveau', aria: 'Nouveau projet au statut ' + s.nom }) : null]),
+      groupeChamp('Chercher un projet', rech, null, false), zone], pied: [piedStatut()] });
 }
 
 /* Fiche projet : les informations principales du projet, en lecture */
@@ -5213,8 +5358,12 @@ function ouvrirFicheProjet(id, nomsLus) {
     var v = valeurProjet(d, col, i), u = lienSur(v) || lienDansTexte(v), lib = '🔗 ' + libelleProjet(C, col);
     return u ? bouton(lib, 'secondaire', 'external-link-line', function () { ouvrirAdresse(u); }, { petit: true, id: 'dvFicheLien' + k, aria: lib + ' (nouvelle fenêtre)' }) : null;
   });
-  ouvrirModale({ titre: (p.num ? p.num + ' · ' : '') + p.nom, sousTitre: '🗄️ ' + p.statut, laterale: true, fermerDehors: true,
-    corps: [dl, objet ? creer('h3', { classe: 'fr-h6 fr-mt-2w', texte: libelleProjet(C, C.colObjet) }) : null, objet ? creer('p', { classe: 'w-texte dv-fiche__objet', texte: objet }) : null,
+  // Pour qui peut modifier : modifier ou supprimer le projet ; pour tous : retour à toute la bibliothèque
+  var gestion = creer('div', { classe: 'dv-outils' }, [bouton('Toute la bibliothèque', 'tertiaire', 'list-unordered', ouvrirBibliotheque, { petit: true, id: 'dvVersBib' }),
+    peutCreerProjet() ? creer('div', { classe: 'dv-actions' }, [bouton('Modifier', 'secondaire', 'pencil-line', function () { return formulaireProjet(p); }, { petit: true, id: 'dvFicheModif', aria: 'Modifier le projet ' + p.libelle }),
+      bouton('Supprimer', 'tertiaire', 'delete-line', function () { return supprimerProjet(p); }, { petit: true, id: 'dvFicheSuppr', aria: 'Supprimer le projet ' + p.libelle })]) : null]);
+  ouvrirModale({ titre: (p.num ? p.num + ' · ' : '') + p.nom, sousTitre: '🗄️ ' + p.statut, laterale: true, fermerDehors: true, pied: [piedStatut()],
+    corps: [gestion, dl, objet ? creer('h3', { classe: 'fr-h6 fr-mt-2w', texte: libelleProjet(C, C.colObjet) }) : null, objet ? creer('p', { classe: 'w-texte dv-fiche__objet', texte: objet }) : null,
       creer('div', { classe: 'dv-actions dv-actions--gauche fr-mt-2w' }, liens)]
       .concat([].concat.apply([], colsPJ.map(function (col, k) {
         if (!idsPJ(valeurProjet(d, col, i)).length) { return []; }
@@ -5296,6 +5445,797 @@ function ouvrirPlanning() {
 }
 
 /* ==========================================================================
+   SECTION 5 QUATER : TOUT GÉRER DEPUIS LE WIDGET
+   [INTOUCHABLE sauf libellés]
+   Créer, modifier et supprimer, sans passer par les tables : réunions,
+   personnes, tâches, ressources, projets, activités et présences.
+   - Réservé aux personnes qui peuvent modifier : sans accès complet, ou
+     après une écriture refusée par le document, aucun bouton de création,
+     de modification ou de suppression n'est affiché.
+   - Les formulaires sont construits d'après les colonnes branchées sur
+     chaque pièce. Une colonne calculée (formule) n'est jamais écrite. En
+     modification, seuls les champs changés sont écrits.
+   - Les valeurs sont écrites au format de chaque colonne : Date = secondes
+     à minuit UTC, Date et heure = secondes (saisies dans le fuseau de la
+     colonne), Référence = numéro de ligne, listes = ['L', ...], case à
+     cocher = true ou false.
+   - Chaque suppression est confirmée et nomme ce qui sera supprimé. Rien
+     d'autre n'est jamais supprimé automatiquement.
+   ========================================================================== */
+function peutEditer() { return accesComplet() && etat.peutModifier; }
+function membreParId(id) { return (etat.donnees ? etat.donnees.membres : []).filter(function (x) { return x.id === id; })[0] || null; }
+function deuxChiffres(n) { return (n < 10 ? '0' : '') + n; }
+function estVide(v) { return v === null || v === undefined || v === '' || v === 0 || v === false; }
+// Adresse web acceptée dans un formulaire : http ou https seulement (aussi « Libellé https://... »)
+function lienValide(t) {
+  var l = lienDepuisTexte(t), u = l ? l.url : String(t || '').trim();
+  try { var x = new URL(u); return x.protocol === 'https:' || x.protocol === 'http:'; } catch (e) { return false; }
+}
+// Ligne d'état en bas d'une fenêtre (lue par les lecteurs d'écran)
+function piedStatut() { return creer('p', { classe: 'w-mention dv-statut', id: 'dvStatut', attrs: { role: 'status', 'aria-live': 'polite' } }); }
+// Donne le focus au premier de ces éléments qui est affiché, sinon au premier contrôle de la fenêtre
+function focaliser(ids) {
+  ids = [].concat(ids || []);
+  for (var k = 0; k < ids.length; k++) { var n = ids[k] ? $(ids[k]) : null; if (n && !n.disabled && n.offsetParent !== null) { n.focus(); return; } }
+  var corps = $('wModaleCorps'), f = corps ? elementsFocusables(corps)[0] : null;
+  if (f) { f.focus(); } else if ($('wModaleFermer')) { $('wModaleFermer').focus(); }
+}
+/* Un enregistrement : toutes les actions en une seule demande. En cas
+   d'échec, un message simple ; un refus pour droits insuffisants fait
+   passer le widget en consultation seule (voir agir) et apresRefus()
+   redessine la fenêtre sans ses boutons de modification. */
+async function enregistrer(actions, quoi, apresRefus) {
+  try { return { ok: true, res: await agir(actions) }; }
+  catch (e) {
+    var refus = estRefusDroits(e) || !accesComplet();
+    afficherErreur(refus ? 'Vos droits ne permettent pas de ' + quoi + '. Gristverse passe en consultation seule.' : 'Impossible de ' + quoi + '.' + detailErreur(e), e);
+    if (refus && apresRefus) { apresRefus(); }
+    statut(refus ? 'Consultation seule : rien n\'a été enregistré.' : 'Rien n\'a été enregistré.', true);
+    return { ok: false };
+  }
+}
+/* Suppression, toujours confirmée : o = { titre, message, table, ids, quoi, ok (annonce),
+   retour(focusIds), focus, lourdes (tables lourdes à relire), avant() (avant la relecture) } */
+async function supprimerLignes(o) {
+  var oui = await confirmerAction(o.titre, o.message, o.libelle || 'Supprimer');
+  if (!oui) { return false; }
+  var ids = [].concat(o.ids);
+  var res = await enregistrer([ids.length > 1 ? ['BulkRemoveRecord', o.table, ids] : ['RemoveRecord', o.table, ids[0]]], o.quoi, function () { o.retour(o.focus); });
+  if (!res.ok) { return false; }
+  if (o.avant) { o.avant(); }
+  await chargerDonnees(o.lourdes ? { lourdes: true } : {});
+  o.retour(o.focus);
+  statut(o.ok);
+  annoncer(o.ok);
+  return true;
+}
+
+/* ---------- Les éditeurs de champ ----------
+   Un éditeur par colonne, choisi d'après le type de la colonne. Chaque
+   éditeur donne : noeud (le champ), lire() -> { valeur } ou { erreur },
+   changee(), focus(), erreur(message). La valeur est lue au format de la colonne. */
+function fabriquerEditeur(cle, colId, noeud, cible, lire) {
+  var err = creer('p', { classe: 'dv-form__err', id: (cible && cible.id ? cible.id : 'dvF_' + cle) + '_err' });
+  err.hidden = true;
+  noeud.appendChild(err);
+  var lu = function () { var r = lire(); return r.valeur === undefined ? null : r.valeur; };
+  var initial = JSON.stringify(lu());
+  return { cle: cle, colId: colId, noeud: noeud, lire: lire,
+    focus: function () { if (cible && cible.focus) { cible.focus(); } },
+    changee: function () { var r = lire(); return !r.erreur && JSON.stringify(r.valeur === undefined ? null : r.valeur) !== initial; },
+    erreur: function (message) {
+      err.textContent = message || ''; err.hidden = !message;
+      if (!cible || !cible.setAttribute) { return; }
+      if (message) { cible.setAttribute('aria-invalid', 'true'); cible.setAttribute('aria-describedby', err.id); }
+      else { cible.removeAttribute('aria-invalid'); cible.removeAttribute('aria-describedby'); }
+    } };
+}
+// Lignes des tables visées par une référence (lues à l'ouverture d'un formulaire), par table
+var _cibles = {};
+async function chargerCibles(tid, colIds) {
+  var cibles = [];
+  colIds.forEach(function (c) {
+    var col = c ? infoColonne(tid, c) : null, t = col ? tableCibleRef(col.type) : null;
+    if (t && t !== cfg().equipe && etat.meta.tables[t] && cibles.indexOf(t) === -1) { cibles.push(t); }
+  });
+  if (!cibles.length) { return; }
+  afficherLoader('Chargement…');
+  try {
+    await Promise.all(cibles.map(function (t) {
+      return lireTable(t).then(function (d) { _cibles[t] = d; }).catch(function (e) { logSecurite('AVERTISSEMENT', 'Table visée par une référence illisible : ' + t, e); });
+    }));
+  } finally { masquerLoader(); }
+}
+// Choix d'une colonne référence : l'équipe (par son nom), sinon les lignes de la table visée (colonne d'affichage)
+function optionsCible(col) {
+  var cible = tableCibleRef(col.type);
+  if (!cible) { return []; }
+  if (cible === cfg().equipe && etat.donnees) { return etat.donnees.membres.map(function (m) { return { id: m.id, libelle: nomAccessible(m) }; }); }
+  var d = _cibles[cible];
+  if (!d) { return []; }
+  var aff = colAffichageRef(col);
+  if (!aff || !d[aff]) { aff = (colonnesDe(cible).filter(function (c) { return c.type === 'Text' && IDS_META.indexOf(c.colId) === -1 && d[c.colId]; })[0] || {}).colId; }
+  return d.id.slice(0, 1000).map(function (id, i) { return { id: id, libelle: String(aff && d[aff] ? valeurCellule(d[aff][i]) || '' : '').trim() || 'Ligne ' + id }; })
+    .sort(function (a, b) { return a.libelle.localeCompare(b.libelle, 'fr'); });
+}
+/* L'éditeur d'une colonne, ou null quand la colonne ne s'écrit pas (calculée,
+   absente, pièces jointes). o : { cle, id, libelle, requis, aide, indice, valeur (la
+   cellule), defaut (pour une nouvelle ligne), personnes (listes faites de personnes), url, multiligne } */
+function editeurChamp(tid, colId, o) {
+  var col = colId ? infoColonne(tid, colId) : null;
+  if (!col) { return null; }
+  var genre = genreDe(col, null);
+  if (!estModifiable(col, genre)) { return null; }
+  var id = o.id, v = valeurCellule(o.valeur === undefined ? o.defaut : o.valeur);
+  if (v === undefined) { v = null; }
+  var libelle = o.libelle || nomColonne(col), aide = o.aide || null, membres = etat.donnees ? etat.donnees.membres : [];
+  var champ = null, noeud = null, lire = null, cible = null;
+  var invalide = estValeurInvalide(genre, v);
+  // Une colonne de choix sans aucun choix défini : saisie en texte
+  if (genre === 'choix' && !choixDe(col).length && !o.personnes) { genre = 'texte'; }
+  // Choix de personnes : « 🎧 » devient « 🎧 · Hugo » ; les personnes absentes des choix sont ajoutées à la fin
+  var annoter = function (x) { if (!o.personnes) { return x; } var m = membres.filter(function (y) { return correspond(y, x); })[0]; return m && normaliser(m.nom) !== normaliser(x) ? x + ' · ' + m.nom : x; };
+  var choixPlus = function () {
+    var c = choixDe(col);
+    if (o.personnes) { membres.forEach(function (m) { if (!c.some(function (x) { return correspond(m, x); })) { c.push(m.emoji || m.nom); } }); }
+    return c;
+  };
+  if (genre === 'oui_non') {
+    champ = creer('input', { id: id, attrs: { type: 'checkbox' }, coche: v === true });
+    noeud = creer('div', { classe: 'fr-checkbox-group dv-form__case' }, [champ, creer('label', { classe: 'fr-label', attrs: { 'for': id } }, [libelle, aide ? creer('span', { classe: 'fr-hint-text', texte: aide }) : null])]);
+    lire = function () { return { valeur: champ.checked }; };
+  } else if (genre === 'date' || genre === 'dateheure') {
+    var tz = genre === 'dateheure' ? fuseauDe(col) : 'UTC', avecHeure = genre === 'dateheure';
+    var p0 = typeof v === 'number' && v ? partiesDansFuseau(v, tz) : null;
+    champ = creer('input', { classe: 'fr-input', id: id, valeur: p0 ? p0.a + '-' + deuxChiffres(p0.m) + '-' + deuxChiffres(p0.j) : '', attrs: { type: 'date' } });
+    var heure = avecHeure ? creer('input', { classe: 'fr-input', id: id + 'H', valeur: p0 ? deuxChiffres(p0.h) + ':' + deuxChiffres(p0.mi) : '', attrs: { type: 'time', step: '300' } }) : null;
+    var apercu = creer('span', { classe: 'fr-hint-text dv-form__apercu', id: id + '_apercu' });
+    lire = function () {
+      if (!champ.value && (!heure || !heure.value)) { return { valeur: null }; }
+      var j = saisieVersDate(champ.value);
+      if (!j) { return { erreur: 'Indiquez une date valide.' }; }
+      if (!heure) { return { valeur: j }; }
+      var hm = /^(\d{1,2}):(\d{2})/.exec(heure.value);
+      if (!hm) { return { erreur: 'Indiquez l\'heure.' }; }
+      var dj = new Date(j * 1000);
+      return { valeur: epochDansFuseau(dj.getUTCFullYear(), dj.getUTCMonth() + 1, dj.getUTCDate(), parseInt(hm[1], 10), parseInt(hm[2], 10), tz) };
+    };
+    // Rappel de la date saisie, en toutes lettres, et du fuseau de la colonne quand ce n'est pas l'heure de Paris
+    var autreFuseau = avecHeure && tz !== 'Europe/Paris';
+    var majApercu = function () {
+      var r = lire();
+      apercu.textContent = r.valeur ? 'Soit le ' + (avecHeure ? formaterDateHeure(r.valeur, tz) + (autreFuseau ? ' (fuseau ' + tz + ')' : '') : formaterDate(r.valeur)) : (autreFuseau ? 'Fuseau horaire : ' + tz : '');
+    };
+    champ.addEventListener('input', majApercu);
+    if (heure) { heure.addEventListener('input', majApercu); }
+    majApercu();
+    if (avecHeure) {
+      var legende = creer('legend', { classe: 'fr-label', texte: libelle });
+      if (o.requis) { legende.appendChild(document.createTextNode(' ')); legende.appendChild(creer('span', { classe: 'w-mention', texte: '(obligatoire)' })); champ.setAttribute('aria-required', 'true'); }
+      noeud = creer('fieldset', { classe: 'dv-fieldset dv-form__groupe' }, [legende, aide ? creer('span', { classe: 'fr-hint-text', texte: aide }) : null,
+        creer('div', { classe: 'dv-form__duo' }, [groupeChamp('Date', champ, null, false), groupeChamp('Heure', heure, null, false)]), apercu]);
+    } else {
+      noeud = groupeChamp(libelle, champ, aide, o.requis);
+      noeud.appendChild(apercu);
+    }
+  } else if (genre === 'choix') {
+    var cs = choixPlus();
+    if (v && cs.indexOf(String(v)) === -1) { cs.push(String(v)); }
+    champ = liste(id, cs.map(function (x) { return { valeur: x, libelle: annoter(x) }; }), v || '', { vide: '(Aucun)' });
+    lire = function () { return { valeur: champ.value }; };
+  } else if (genre === 'etiquettes' || genre === 'references') {
+    var actuels = Array.isArray(v) && v[0] === 'L' ? v.slice(1) : [];
+    var opts;
+    if (genre === 'etiquettes') {
+      var c2 = choixPlus();
+      actuels.forEach(function (x) { if (c2.indexOf(String(x)) === -1) { c2.push(String(x)); } });
+      opts = c2.map(function (x) { return { valeur: x, libelle: annoter(x) }; });
+    } else {
+      opts = optionsCible(col).map(function (x) { return { valeur: x.id, libelle: x.libelle }; });
+      actuels.forEach(function (x) { if (!opts.some(function (y) { return y.valeur === x; })) { opts.push({ valeur: x, libelle: 'Ligne ' + x + ' (introuvable)' }); } });
+    }
+    var cases = opts.map(function (x, k) {
+      var inp = creer('input', { id: id + '_' + k, attrs: { type: 'checkbox' }, coche: actuels.some(function (a) { return String(a) === String(x.valeur); }) });
+      return { inp: inp, x: x, el: creer('div', { classe: 'fr-checkbox-group fr-checkbox-group--sm' }, [inp, creer('label', { classe: 'fr-label', attrs: { 'for': id + '_' + k }, texte: x.libelle })]) };
+    });
+    noeud = creer('fieldset', { classe: 'dv-fieldset dv-form__groupe', attrs: { id: id } }, [creer('legend', { classe: 'fr-label', texte: libelle }),
+      aide ? creer('span', { classe: 'fr-hint-text', texte: aide }) : null,
+      cases.length ? creer('div', { classe: 'dv-form__cases' }, cases.map(function (c) { return c.el; })) : creer('p', { classe: 'w-mention', texte: 'Rien à choisir pour l\'instant.' })]);
+    lire = function () { var l = cases.filter(function (c) { return c.inp.checked; }).map(function (c) { return c.x.valeur; }); return { valeur: l.length ? ['L'].concat(l) : null }; };
+    cible = cases[0] ? cases[0].inp : noeud;
+  } else if (genre === 'reference') {
+    var ops = optionsCible(col);
+    if (typeof v === 'number' && v && !ops.some(function (x) { return x.id === v; })) { ops.push({ id: v, libelle: 'Ligne ' + v + ' (introuvable)' }); }
+    champ = liste(id, ops.map(function (x) { return { valeur: String(x.id), libelle: x.libelle }; }), typeof v === 'number' && v ? String(v) : '', { vide: '(Aucune)' });
+    lire = function () { return { valeur: Number(champ.value) || 0 }; };
+  } else if (genre === 'nombre') {
+    champ = saisie(id, typeof v === 'number' ? String(v).replace('.', ',') : '', { clavier: 'decimal' });
+    lire = function () {
+      if (!champ.value.trim()) { return { valeur: null }; }
+      var n = lireNombreSaisi(champ.value);
+      if (n === undefined || n === null) { return { erreur: 'Indiquez un nombre, par exemple 12,5.' }; }
+      if (col.type === 'Int' && Math.round(n) !== n) { return { erreur: 'Indiquez un nombre entier.' }; }
+      return { valeur: n };
+    };
+  } else if (o.personnes && (genre === 'texte' || genre === 'autre')) {
+    // Une colonne texte qui contient une personne : la liste de l'équipe (son nom est écrit)
+    var gens = membres.map(function (m) { return { valeur: m.nom, libelle: nomAccessible(m) }; }), choisi = v ? String(v) : '';
+    if (choisi && !gens.some(function (x) { return x.valeur === choisi; })) {
+      var trouve = membres.filter(function (m) { return correspond(m, choisi); })[0];
+      if (trouve) { choisi = trouve.nom; } else { gens.push({ valeur: choisi, libelle: choisi }); }
+    }
+    champ = liste(id, gens, choisi, { vide: '(Personne)' });
+    lire = function () { return { valeur: champ.value }; };
+  } else {
+    // Texte (une ou plusieurs lignes), lien, autres types
+    champ = saisie(id, v === null || v === undefined || invalide ? '' : String(v), { multiligne: genre === 'texte_long' || o.multiligne, lignes: 3, indice: o.indice, type: o.url ? 'url' : 'text' });
+    lire = function () {
+      var t = champ.value.trim();
+      if (o.url && t && !lienValide(t)) { return { erreur: 'Indiquez une adresse web qui commence par https:// ou http://.' }; }
+      return { valeur: t };
+    };
+  }
+  if (!noeud) { noeud = groupeChamp(libelle, champ, aide, o.requis); }
+  if (invalide) { noeud.appendChild(creer('p', { classe: 'fr-hint-text', texte: 'Valeur actuelle dans le document : « ' + String(v).slice(0, 80) + ' » (ce n\'est pas une valeur valide pour le type ' + libelleType(col).toLowerCase() + '). Elle est conservée tant que vous n\'en saisissez pas une nouvelle.' })); }
+  var lireFinal = function () {
+    var r = lire();
+    if (!r.erreur && o.requis && estVide(r.valeur)) { return { erreur: 'Obligatoire : renseignez « ' + libelle + ' ».' }; }
+    return r;
+  };
+  return fabriquerEditeur(o.cle, colId, noeud, cible || champ, lireFinal);
+}
+// Un éditeur par colonne (une colonne choisie pour deux rôles n'est proposée qu'une fois)
+function sansDoublons(eds) { var vus = {}; return eds.filter(function (e) { if (!e) { return false; } if (e.colId && vus[e.colId]) { return false; } if (e.colId) { vus[e.colId] = true; } return true; }); }
+// Champs à écrire : pour une nouvelle ligne, ceux qui sont remplis ; en modification, ceux qui ont changé
+function champsAEcrire(eds, nouveau) {
+  var ch = {};
+  eds.forEach(function (ed) { if (!ed || !ed.colId) { return; } var r = ed.lire(); if (r.erreur) { return; } if (nouveau ? !estVide(r.valeur) : ed.changee()) { ch[ed.colId] = r.valeur === undefined ? null : r.valeur; } });
+  return ch;
+}
+
+/* ---------- Le formulaire, dans la fenêtre ouverte ----------
+   La fenêtre latérale montre le formulaire à la place de la liste :
+   « Annuler » revient à la liste, « Enregistrer » (ou Entrée dans un champ)
+   enregistre. Un champ qui pose problème est signalé, expliqué en toutes
+   lettres et reçoit le focus. */
+function ouvrirFormulaire(o) {
+  var eds = o.editeurs.filter(Boolean);
+  var form = creer('form', { classe: 'dv-form', id: 'dvForm', attrs: { novalidate: 'novalidate', 'aria-label': o.titre } });
+  (o.avant || []).forEach(function (n) { if (n) { form.appendChild(n); } });
+  eds.forEach(function (e) { form.appendChild(e.noeud); });
+  (o.apres || []).forEach(function (n) { if (n) { form.appendChild(n); } });
+  var ok = creer('button', { classe: 'fr-btn fr-icon-check-line fr-btn--icon-left', id: 'dvFormOk', texte: o.libelleOk || 'Enregistrer', attrs: { type: 'submit', form: 'dvForm' } });
+  var annuler = bouton('Annuler', 'secondaire', null, function () { o.annuler(); }, { id: 'dvFormAnnuler' });
+  var enCours = false;
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (enCours) { return; }
+    var valeurs = {}, parCle = {}, premier = null, message = '';
+    eds.forEach(function (ed) { var r = ed.lire(); ed.erreur(r.erreur || ''); if (r.erreur && !premier) { premier = ed; message = r.erreur; } valeurs[ed.cle] = r.valeur; parCle[ed.cle] = ed; });
+    if (!premier && o.verifier) { var pb = o.verifier(valeurs, parCle); if (pb) { pb.ed.erreur(pb.message); premier = pb.ed; message = pb.message; } }
+    if (premier) { premier.focus(); statut(message, true); return; }
+    enCours = true; ok.disabled = true; statut('Enregistrement…');
+    relayer(Promise.resolve(o.enregistrer(valeurs, parCle)).finally(function () { enCours = false; if (document.body.contains(ok)) { ok.disabled = false; } }), 'Enregistrement : ' + o.titre);
+  });
+  ouvrirModale({ titre: o.titre, sousTitre: o.sousTitre, laterale: true, fermerDehors: false, corps: [form], surFermeture: o.surFermeture || null,
+    pied: [piedStatut(), creer('span', { classe: 'w-pousse' }), annuler, ok] });
+  if (eds[0]) { eds[0].focus(); }
+}
+// Boutons Modifier et Supprimer d'une ligne (icônes, avec un nom accessible complet)
+function boutonsGestion(prefixe, id, nom, modifier, supprimer) {
+  if (!peutEditer()) { return null; }
+  return creer('div', { classe: 'dv-gestion' }, [
+    modifier ? bouton('Modifier', 'discret', 'pencil-line', modifier, { petit: true, iconeSeule: true, id: prefixe + 'Modif' + id, aria: 'Modifier : ' + nom }) : null,
+    supprimer ? bouton('Supprimer', 'discret', 'delete-line', supprimer, { petit: true, iconeSeule: true, id: prefixe + 'Suppr' + id, aria: 'Supprimer : ' + nom }) : null]);
+}
+
+/* ---------- 📺 Les réunions ---------- */
+// Une réunion de la table des réunions (ligne i), ou null sans début
+function reunionDe(rc, r, i, maintenant) {
+  var debut = r[rc.colDebut] ? r[rc.colDebut][i] : null;
+  if (typeof debut !== 'number' || !debut) { return null; }
+  var finBrute = rc.colFin && r[rc.colFin] ? r[rc.colFin][i] : null;
+  var fin = typeof finBrute === 'number' && finBrute ? finBrute : debut + 3600;
+  var statutR = rc.colStatut && r[rc.colStatut] ? String(r[rc.colStatut][i] || '') : '';
+  var lieu = rc.colLieu && r[rc.colLieu] ? String(r[rc.colLieu][i] || '') : '';
+  var visio = rc.colVisio && r[rc.colVisio] ? lienSur(r[rc.colVisio][i]) || lienDansTexte(r[rc.colVisio][i]) : null;
+  if (!visio) { visio = lienDansTexte(lieu); }
+  return { id: r.id[i], objet: String(r[rc.colObjet][i] || '').trim() || 'Réunion', debut: debut, fin: fin, lieu: lieu, visio: visio,
+    participants: rc.colParticipants && r[rc.colParticipants] ? texteCellule(rc.table, rc.colParticipants, r[rc.colParticipants][i]) : '',
+    statut: statutR, exclue: reunionExclue(rc, statutR), enCours: debut <= maintenant && maintenant < fin, passee: fin <= maintenant };
+}
+// Toutes les réunions de n jours à partir de du (les annulées aussi, signalées), dans l'ordre
+function reunionsDesJours(du, n) {
+  var d = etat.donnees, rc = d.reu;
+  if (!rc || !d.reunions) { return []; }
+  var l = [], au = du + n * 86400, maintenant = Date.now() / 1000;
+  for (var i = 0; i < d.reunions.id.length; i++) {
+    var x = reunionDe(rc, d.reunions, i, maintenant);
+    if (!x) { continue; }
+    var j = jourDeSec(x.debut);
+    if (j >= du && j < au) { l.push(x); }
+  }
+  return l.sort(function (a, b) { return a.debut - b.debut; });
+}
+function reunionDateSeule() { var rc = etat.donnees.reu, c = rc ? infoColonne(rc.table, rc.colDebut) : null; return !!c && c.type === 'Date'; }
+function quandReunion(r) { return libelleJour(jourDeSec(r.debut), true) + (reunionDateSeule() ? '' : ' à ' + heureDe(r.debut)); }
+// Peut-on créer une réunion ici ? (les colonnes de l'objet et du début s'écrivent)
+function peutCreerReunion() {
+  var rc = etat.donnees ? etat.donnees.reu : null;
+  if (!rc || !peutEditer()) { return false; }
+  return [rc.colObjet, rc.colDebut].every(function (c) { var col = infoColonne(rc.table, c); return col && estModifiable(col, genreDe(col, null)); });
+}
+// Une réunion dans une liste (salle de réunion, bureau) : heure, objet, détails, visio, Modifier et Supprimer
+function elementReunion(r, i, retour, prefixeVisio) {
+  var heure = reunionDateSeule() ? 'Toute la journée' : heureDe(r.debut) + ' à ' + heureDe(r.fin);
+  return creer('li', { classe: 'dv-reunion' + (r.enCours && !r.exclue ? ' dv-reunion--encours' : '') + (r.passee || r.exclue ? ' dv-reunion--passee' : '') }, [
+    creer('div', { classe: 'dv-ligne' }, [creer('div', {}, [
+      creer('p', { classe: 'dv-reunion__heure', texte: heure + (r.exclue ? '' : (r.enCours ? ' · 🔴 en cours' : (r.passee ? ' · terminée' : ''))) }),
+      creer('p', { classe: 'dv-reunion__objet' }, [r.objet, r.exclue ? ' ' : null, r.exclue ? badge(r.statut, 'warning') : null]),
+      r.lieu && !lienDansTexte(r.lieu) ? creer('p', { classe: 'w-mention', texte: '📍 ' + r.lieu }) : null,
+      r.participants ? creer('p', { classe: 'w-mention', texte: '👥 ' + r.participants }) : null]),
+      boutonsGestion('dvReu', r.id, 'la réunion ' + r.objet + ', ' + quandReunion(r), function () { return formulaireReunion(r, retour); }, function () { return supprimerReunion(r, retour); })]),
+    r.visio && !r.passee && !r.exclue ? bouton('Rejoindre la visio', r.enCours ? null : 'secondaire', 'video-chat-line', function () { ouvrirAdresse(r.visio); }, { petit: true, id: prefixeVisio + i, aria: 'Rejoindre la visio : ' + r.objet + ' (nouvelle fenêtre)' }) : null]);
+}
+// Retour à la salle de réunion après un enregistrement, sur la semaine de la réunion
+function retourSalle(focusIds, jour) {
+  if (typeof jour === 'number') { etat.decalageReunions = Math.floor((jour - aujourdhui()) / (7 * 86400)); }
+  ouvrirSalleReunion(null, true);
+  focaliser(focusIds);
+}
+// Participants d'une nouvelle réunion créée depuis un bureau : cette personne, au format de la colonne
+function participantsDe(m, col) {
+  if (!m || !col) { return undefined; }
+  var t = col.type;
+  if (t.indexOf('Ref') === 0 && tableCibleRef(t) === cfg().equipe) { return t.indexOf('RefList:') === 0 ? ['L', m.id] : m.id; }
+  if (t === 'Choice' || t === 'ChoiceList') { var ch = choixDe(col).filter(function (x) { return correspond(m, x); })[0]; return ch ? (t === 'Choice' ? ch : ['L', ch]) : undefined; }
+  if (t === 'Text' || t === 'Any') { return m.nom; }
+  return undefined;
+}
+async function formulaireReunion(r, retour, pre) {
+  pre = pre || {};
+  var rc = etat.donnees.reu, tid = rc.table, d = etat.donnees.reunions, i = r ? d.id.indexOf(r.id) : -1;
+  if (r && i < 0) { afficherErreur('Cette réunion n\'est plus dans le document.'); retour(); return; }
+  await chargerCibles(tid, [rc.colParticipants]);
+  var brut = function (c) { return i >= 0 && c && d[c] ? d[c][i] : undefined; };
+  var colD = infoColonne(tid, rc.colDebut), colF = rc.colFin ? infoColonne(tid, rc.colFin) : null, def = {};
+  if (!r) {
+    // Une nouvelle réunion : le jour affiché, à l'heure pleine suivante aujourd'hui (9 h un autre jour), pour une heure
+    var jour = pre.jour || jourVu(), dj = new Date(jour * 1000);
+    if (colD.type === 'Date') { def.debut = jour; }
+    else {
+      var tzD = fuseauDe(colD), h = 9;
+      if (jour === aujourdhui()) { h = Math.min(22, partiesDansFuseau(Date.now() / 1000, tzD).h + 1); }
+      def.debut = epochDansFuseau(dj.getUTCFullYear(), dj.getUTCMonth() + 1, dj.getUTCDate(), h, 0, tzD);
+    }
+    if (colF) { def.fin = colF.type === 'Date' ? jour : (colD.type === 'Date' ? epochDansFuseau(dj.getUTCFullYear(), dj.getUTCMonth() + 1, dj.getUTCDate(), 10, 0, fuseauDe(colF)) : def.debut + 3600); }
+    var colS = rc.colStatut ? infoColonne(tid, rc.colStatut) : null;
+    def.statut = colS ? choixDe(colS).filter(function (x) { return !reunionExclue(rc, x); })[0] : undefined;
+    def.participants = participantsDe(pre.participant, rc.colParticipants ? infoColonne(tid, rc.colParticipants) : null);
+  }
+  var colP = rc.colParticipants ? infoColonne(tid, rc.colParticipants) : null;
+  var eds = sansDoublons([
+    editeurChamp(tid, rc.colObjet, { cle: 'objet', id: 'dvF_objet', libelle: 'Objet', requis: true, valeur: brut(rc.colObjet), indice: 'Point d\'équipe' }),
+    editeurChamp(tid, rc.colDebut, { cle: 'debut', id: 'dvF_debut', libelle: 'Début', requis: true, valeur: brut(rc.colDebut), defaut: def.debut }),
+    editeurChamp(tid, rc.colFin, { cle: 'fin', id: 'dvF_fin', libelle: 'Fin', valeur: brut(rc.colFin), defaut: def.fin, aide: 'Facultatif : sans fin, la réunion dure une heure' }),
+    editeurChamp(tid, rc.colLieu, { cle: 'lieu', id: 'dvF_lieu', libelle: 'Lieu', valeur: brut(rc.colLieu), indice: 'Salle de réunion' }),
+    editeurChamp(tid, rc.colVisio, { cle: 'visio', id: 'dvF_visio', libelle: 'Lien de la visio', valeur: brut(rc.colVisio), url: true, indice: 'https://…', aide: 'Une adresse qui commence par https:// ou http://' }),
+    editeurChamp(tid, rc.colParticipants, { cle: 'participants', id: 'dvF_participants', libelle: 'Participants', valeur: brut(rc.colParticipants), defaut: def.participants, personnes: !!colP && colP.type !== 'Text' && colP.type !== 'Any',
+      aide: colP && (colP.type === 'Text' || colP.type === 'Any') ? 'Texte libre : des noms séparés par des virgules, ou « Toute l\'équipe »' : null }),
+    editeurChamp(tid, rc.colStatut, { cle: 'statut', id: 'dvF_statut', libelle: 'Statut', valeur: brut(rc.colStatut), defaut: def.statut })]);
+  if (!eds.some(function (e) { return e.cle === 'objet'; }) || !eds.some(function (e) { return e.cle === 'debut'; })) {
+    afficherErreur('La colonne de l\'objet ou du début de « ' + nomTable(tid) + ' » est calculée : les réunions ne se créent ni ne se modifient ici.');
+    retour(); return;
+  }
+  var focusRetour = r ? ['dvReuModif' + r.id] : ['dvReuNouvelle'];
+  ouvrirFormulaire({ titre: r ? '📺 Modifier la réunion' : '📺 Nouvelle réunion', sousTitre: 'Table « ' + nomTable(tid) + ' »', editeurs: eds, surFermeture: pre.surFermeture,
+    annuler: function () { retour(focusRetour); },
+    verifier: function (v, ed) { return ed.fin && typeof v.fin === 'number' && typeof v.debut === 'number' && v.fin < v.debut ? { ed: ed.fin, message: 'La fin doit suivre le début.' } : null; },
+    enregistrer: async function (v) {
+      var champs = champsAEcrire(eds, !r);
+      if (r && !Object.keys(champs).length) { retour(focusRetour); statut('Rien n\'a changé.'); return; }
+      var res = await enregistrer([r ? ['UpdateRecord', tid, r.id, champs] : ['AddRecord', tid, null, champs]], r ? 'modifier cette réunion' : 'ajouter une réunion', function () { retour(focusRetour); });
+      if (!res.ok) { return; }
+      var id = r ? r.id : (res.res && res.res.retValues ? res.res.retValues[0] : null);
+      await chargerDonnees();
+      retour(['dvReuModif' + id].concat(focusRetour), jourDeSec(v.debut));
+      statut('✓ Réunion enregistrée : ' + v.objet + ', ' + quandReunion({ debut: v.debut }));
+    } });
+}
+function supprimerReunion(r, retour) {
+  var rc = etat.donnees.reu;
+  return supprimerLignes({ titre: 'Supprimer cette réunion ?', message: '« ' + r.objet + ' », ' + quandReunion(r) + '. Sa ligne est supprimée de la table « ' + nomTable(rc.table) + ' ».',
+    table: rc.table, ids: r.id, quoi: 'supprimer cette réunion', retour: retour, focus: ['dvReuNouvelle', 'dvReuPeriode'], ok: '✓ Réunion supprimée : « ' + r.objet + ' »' });
+}
+
+/* ---------- 👥 L'équipe ---------- */
+function peutGererEquipe() {
+  var t = cfg().equipe, col = t ? infoColonne(t, cf('equipe', 'NOM')) : null;
+  return peutEditer() && !!col && estModifiable(col, 'texte');
+}
+// Bureaux libres d'un bâtiment aménagé à la main : les places où personne de l'équipe ne s'assoit (m : la personne, qui peut garder la sienne)
+function placesLibres(site, m) {
+  var am = amenagementDe(site);
+  if (!am) { return []; }
+  var gens = (etat.donnees ? etat.donnees.membres : []).filter(function (x) { return !m || x.id !== m.id; });
+  return am.places.map(function (pl, k) { return { pl: pl, k: k }; }).filter(function (x) { return !gens.some(function (g) { return correspondPlace(x.pl, g); }); });
+}
+// Enregistre les réglages sans passer en consultation seule s'ils sont réservés aux propriétaires (la personne peut encore modifier les données)
+async function ecrireReglagesPersonne(c) {
+  noterReferencesConfig(c);
+  await gristAvecTimeout(grist.docApi.applyUserActions([['UpdateRecord', etat.biblio, etat.cleLigne, { VALEUR: JSON.stringify(c), VERSION_MODIF: VERSION_WIDGET }]]), DELAI_API_MS);
+  etat.config = c;
+}
+function retourAccueil(focusIds) { ouvrirAccueil(); focaliser(focusIds); }
+async function formulairePersonne(m, retour) {
+  var tE = cfg().equipe, colSite = infoColonne(tE, cf('equipe', 'SITE')), colEmp = infoColonne(tE, cf('equipe', 'EMPLOYEUR')), colEmoji = infoColonne(tE, cf('equipe', 'EMOJI'));
+  var sites = sitesConfig().slice();
+  if (m && m.site && sites.indexOf(m.site) === -1) { sites.push(m.site); }
+  var eds = [];
+  var nom = saisie('dvF_nom', m ? m.nom : '', { indice: 'Camille Martin' });
+  eds.push(fabriquerEditeur('nom', null, groupeChamp('Nom', nom, null, true), nom, function () { var t = nom.value.trim(); return t ? { valeur: t } : { erreur: 'Obligatoire : renseignez le nom.' }; }));
+  if (colEmoji && estModifiable(colEmoji, 'texte')) {
+    var emo = saisie('dvF_emoji', m ? m.emoji : '', { indice: '🦊' });
+    emo.classList.add('dv-emoji');
+    eds.push(fabriquerEditeur('emoji', null, groupeChamp('Emoji', emo, 'Un emoji : il apparaît sur la carte. Sans emoji, c\'est le nom qui s\'affiche.', false), emo, function () {
+      var t = emo.value.trim();
+      if (t.length > 8) { return { erreur: 'Restez court : un seul emoji.' }; }
+      return { valeur: t };
+    }));
+  }
+  var site = null, deskZone = creer('div', { id: 'dvF_bureauZone' }), deskSel = null;
+  // Le bureau : proposé seulement dans un bâtiment dont les bureaux ont été placés à la main (Paramétrer, étape « Les bureaux »)
+  var dessinerBureau = function () {
+    vider(deskZone); deskSel = null;
+    var s = site ? site.value : (m ? siteHabituel(m) : sites[0]), am = amenagementDe(s);
+    if (!am) { deskZone.appendChild(creer('p', { classe: 'w-mention', texte: '🪑 À ' + nomSite(s) + ', les bureaux sont placés automatiquement.' })); return; }
+    var actuelle = m && siteHabituel(m) === s ? placeDe(am, m) : null;
+    var ops = [{ valeur: 'auto', libelle: 'À côté des autres bureaux (automatique)' }];
+    if (actuelle) { ops.push({ valeur: 'actuelle', libelle: 'Son bureau : colonne ' + actuelle.x + ', rang ' + actuelle.y }); }
+    placesLibres(s, m).forEach(function (x) { if (x.pl !== actuelle) { ops.push({ valeur: 'p' + x.k, libelle: 'Bureau libre : colonne ' + x.pl.x + ', rang ' + x.pl.y }); } });
+    deskSel = liste('dvF_bureau', ops, actuelle ? 'actuelle' : 'auto');
+    deskZone.appendChild(groupeChamp('Bureau à ' + nomSite(s), deskSel, 'Les bureaux placés dans Paramétrer, étape « Les bureaux »', false));
+  };
+  if (colSite && estModifiable(colSite, genreDe(colSite, null)) && sites.length) {
+    site = liste('dvF_site', sites.map(function (s) { return { valeur: s, libelle: emojiLieu(s) + ' ' + nomSite(s) }; }), m ? siteHabituel(m) : sites[0]);
+    site.addEventListener('change', dessinerBureau);
+    eds.push(fabriquerEditeur('site', null, groupeChamp('Site habituel', site, 'Son bureau est dans ce bâtiment', false), site, function () { return { valeur: site.value }; }));
+  }
+  var monture = liste('dvF_monture', MONTURES_LIBELLES, m ? montureReglee(cfg(), cleQui(m)) : '');
+  eds.push(fabriquerEditeur('monture', null, groupeChamp('Monture', monture, 'Comment le personnage rentre chez lui sur la carte', false), monture, function () { return { valeur: monture.value }; }));
+  if (colEmp && estModifiable(colEmp, 'texte')) {
+    var emp = saisie('dvF_employeur', m ? m.employeur : '', {});
+    eds.push(fabriquerEditeur('employeur', null, groupeChamp('Titulaire', emp, 'Facultatif : écrit sur le relevé PDF', false), emp, function () { return { valeur: emp.value.trim() }; }));
+  }
+  dessinerBureau();
+  var focusRetour = m ? ['dvMembreModif'] : ['dvAccMembre_nouveau', 'dvAjoutMembre'];
+  ouvrirFormulaire({ titre: m ? '👤 Modifier ' + nomAccessible(m) : '👤 Ajouter une personne', sousTitre: 'Table « ' + nomTable(tE) + ' »', editeurs: eds, apres: [deskZone],
+    surFermeture: m ? function () { if (etat.vue === 'plan') { afficherVue('plan'); } } : null,
+    annuler: function () { retour(focusRetour); },
+    verifier: function (v, ed) {
+      var autres = etat.donnees.membres.filter(function (x) { return !m || x.id !== m.id; });
+      var memeEmoji = v.emoji ? autres.filter(function (x) { return x.emoji && sansVariante(x.emoji) === sansVariante(v.emoji); })[0] : null;
+      if (memeEmoji) { return { ed: ed.emoji, message: 'Déjà pris par ' + memeEmoji.nom + ' : chaque personne a son propre emoji.' }; }
+      var memeNom = !v.emoji ? autres.filter(function (x) { return !x.emoji && normaliser(x.nom) === normaliser(v.nom); })[0] : null;
+      if (memeNom) { return { ed: ed.nom, message: 'Une autre personne porte ce nom, sans emoji : ajoutez un emoji pour les distinguer.' }; }
+      return null;
+    },
+    enregistrer: async function (v) {
+      var champs = {};
+      var mettre = function (k, val, avant) { if (val !== undefined && (!m || val !== avant)) { champs[cf('equipe', k)] = val; } };
+      mettre('NOM', v.nom, m && m.nom);
+      if ('emoji' in v) { mettre('EMOJI', v.emoji, m && m.emoji); }
+      if ('site' in v) { mettre('SITE', v.site, m && m.site); }
+      if ('employeur' in v) { mettre('EMPLOYEUR', v.employeur, m && m.employeur); }
+      var id = m ? m.id : null;
+      if (!m || Object.keys(champs).length) {
+        var res = await enregistrer([m ? ['UpdateRecord', tE, m.id, champs] : ['AddRecord', tE, null, champs]], m ? 'modifier cette personne' : 'ajouter une personne', function () { retour(focusRetour); });
+        if (!res.ok) { return; }
+        if (!m) { id = res.res && res.res.retValues ? res.res.retValues[0] : null; }
+      }
+      // Monture et bureau : enregistrés dans les réglages, par emoji (ou par nom sans emoji)
+      var c = cloner(cfg()), avant = JSON.stringify([c.montures || {}, c.amenagements || {}]);
+      var neuf = { emoji: 'emoji' in v ? v.emoji : (m ? m.emoji : ''), nom: v.nom }, cle = neuf.emoji || neuf.nom, siteN = 'site' in v ? v.site : (m ? siteHabituel(m) : sites[0]);
+      if (m) { reglerMonture(c, cleQui(m), ''); }
+      reglerMonture(c, cle, v.monture);
+      var choixBureau = deskSel ? deskSel.value : 'auto';
+      Object.keys(c.amenagements || {}).forEach(function (s) {
+        var am = c.amenagements[s];
+        if (!am || !Array.isArray(am.places)) { return; }
+        am.places.forEach(function (pl) {
+          if (!m || !correspondPlace(pl, m)) { return; }
+          if (s === siteN && choixBureau === 'actuelle') { pl.qui = cle; pl.nom = neuf.nom; } else { pl.qui = ''; pl.nom = ''; }   // son ancien bureau devient libre
+        });
+      });
+      var amN = c.amenagements ? propre(c.amenagements, siteN) : null;
+      if (amN && /^p\d+$/.test(choixBureau) && amN.places[Number(choixBureau.slice(1))]) { var pl = amN.places[Number(choixBureau.slice(1))]; pl.qui = cle; pl.nom = neuf.nom; }
+      var reglagesOk = true;
+      if (JSON.stringify([c.montures || {}, c.amenagements || {}]) !== avant && etat.cleLigne) {
+        try { await ecrireReglagesPersonne(c); } catch (e) { reglagesOk = false; logSecurite('AVERTISSEMENT', 'Monture ou bureau non enregistrés', e); }
+      }
+      await chargerDonnees();
+      etat.rafraichirEnAttente = true;   // la carte, derrière la fenêtre, est redessinée à sa fermeture
+      var nouveau = membreParId(id);
+      if (m && nouveau) { retour(focusRetour); } else { retourAccueil(['dvAccMembre' + id, 'dvAjoutMembre']); }
+      var texte = '✓ ' + (nouveau ? nomAccessible(nouveau) : v.nom) + (m ? ' : enregistré' : ' : ajouté à l\'équipe');
+      statut(reglagesOk ? texte : texte + '. La monture et le bureau n\'ont pas été enregistrés : les réglages sont réservés aux propriétaires du document.', !reglagesOk);
+      if (!reglagesOk) { afficherErreur('La monture et le bureau n\'ont pas été enregistrés : les réglages sont réservés aux propriétaires du document.'); }
+    } });
+}
+function supprimerPersonne(m) {
+  var tE = cfg().equipe;
+  return supprimerLignes({ titre: 'Retirer ' + nomAccessible(m) + ' de l\'équipe ?', libelle: 'Retirer de l\'équipe',
+    message: 'Sa ligne est supprimée de la table « ' + nomTable(tE) + ' ». Ses présences, tâches, réunions et activités restent dans votre document : Gristverse ne les supprime pas.',
+    table: tE, ids: m.id, quoi: 'retirer cette personne', focus: ['dvAjoutMembre'], ok: '✓ ' + nomAccessible(m) + ' : retiré de l\'équipe. Ses autres lignes restent dans le document.',
+    retour: function (f) { if (membreParId(m.id)) { retourBureau(m.id, etat.ongletBureau)(['dvMembreSuppr']); } else { etat.rafraichirEnAttente = true; retourAccueil(f); } } });
+}
+
+/* ---------- 📍 Les présences : périodes et déclaration d'un jour ---------- */
+function retourBureau(idMembre, onglet) {
+  return function (focusIds) {
+    var m = membreParId(idMembre);
+    if (!m) { fermerModale(); return; }
+    etat.ongletBureau = onglet;
+    ouvrirBureau(m, true);
+    focaliser(focusIds);
+  };
+}
+// Les déclarations d'un seul jour d'une personne pour ce jour (il peut y avoir des doublons)
+function declarationsDuJour(m, jour) { return etat.donnees.presences.filter(function (x) { return x.personne === m.id && x.du === jour && (!x.au || x.au === jour); }); }
+function effacerJour(m, jour) {
+  var lignes = declarationsDuJour(m, jour);
+  if (!lignes.length) { return; }
+  var tid = etat.config.presences, lieu = lieuDu(m, jour);
+  // Ce qui s'applique une fois la déclaration effacée : une période qui couvre le jour, ou rien
+  var reste = etat.donnees.presences.filter(function (x) { return lignes.indexOf(x) === -1; }), sauve = etat.donnees.presences;
+  etat.donnees.presences = reste; var apres = lieuDu(m, jour); etat.donnees.presences = sauve;
+  var ensuite = apres === LIEU_NON_DECLARE ? nomAffiche(m) + ' apparaîtra ensuite « pas encore déclaré ».' : 'La période qui couvre ce jour s\'appliquera : ' + emojiLieu(apres) + ' ' + nomChoix(m, apres) + '.';
+  return supprimerLignes({ titre: 'Effacer le ' + libelleJour(jour, true) + ' ?', libelle: 'Effacer le jour',
+    message: 'La déclaration « ' + emojiLieu(lieu) + ' ' + nomChoix(m, lieu) + ' » de ' + nomAccessible(m) + ' pour ce jour est supprimée de la table « ' + nomTable(tid) + ' ». ' + ensuite,
+    table: tid, ids: lignes.map(function (x) { return x.id; }), quoi: 'effacer ce jour', ok: '✓ ' + libelleJour(jour, true) + ' : effacé',
+    focus: ['dvJourLieu' + jour], retour: retourBureau(m.id, 'ou'),
+    // Une déclaration faite à l'instant dans le widget ne doit pas revenir à la lecture suivante
+    avant: function () { _editions = _editions.filter(function (e) { return e.cle !== m.id + '|' + jour; }); etat.rafraichirEnAttente = true; } });
+}
+function formulairePeriode(m, p) {
+  var retour = retourBureau(m.id, 'ou'), lieux = lieuxDe(m).slice();
+  if (p.lieu && lieux.indexOf(p.lieu) === -1) { lieux.push(p.lieu); }
+  var du = saisie('dvF_du', dateVersSaisie(p.du), { type: 'date' }), au = saisie('dvF_au', dateVersSaisie(p.au), { type: 'date' });
+  var lieu = liste('dvF_lieuP', lieux.map(function (l) { return { valeur: l, libelle: emojiLieu(l) + ' ' + nomChoix(m, l) }; }), p.lieu || LIEU_ABSENT);
+  var eds = [
+    fabriquerEditeur('du', null, groupeChamp('Du', du, null, true), du, function () { var d = saisieVersDate(du.value); return d ? { valeur: d } : { erreur: 'Indiquez la date de début.' }; }),
+    fabriquerEditeur('au', null, groupeChamp('Au', au, null, true), au, function () { var d = saisieVersDate(au.value); return d ? { valeur: d } : { erreur: 'Indiquez la date de fin.' }; }),
+    fabriquerEditeur('lieu', null, groupeChamp('Lieu', lieu, null, true), lieu, function () { return { valeur: lieu.value }; })];
+  ouvrirFormulaire({ titre: '🗓️ Modifier la période', sousTitre: nomAccessible(m) + ' · table « ' + nomTable(etat.config.presences) + ' »', editeurs: eds,
+    surFermeture: function () { if (etat.vue === 'plan') { afficherVue('plan'); } },
+    annuler: function () { retour(['dvPerModif' + p.id]); },
+    verifier: function (v, ed) {
+      if (v.au < v.du) { return { ed: ed.au, message: 'La date de fin doit suivre la date de début.' }; }
+      var deja = etat.donnees.presences.filter(function (x) { return x.id !== p.id && x.personne === m.id && x.du === v.du && (x.au || x.du) === v.au && x.lieu === v.lieu; })[0];
+      return deja ? { ed: ed.du, message: 'Cette période est déjà enregistrée.' } : null;
+    },
+    enregistrer: async function (v) {
+      var ch = {};
+      if (v.du !== p.du) { ch.DU = v.du; }
+      if (v.au !== p.au) { ch.AU = v.au; }
+      if (v.lieu !== p.lieu) { ch.LIEU = v.lieu; }
+      if (!Object.keys(ch).length) { retour(['dvPerModif' + p.id]); statut('Rien n\'a changé.'); return; }
+      var res = await enregistrer([['UpdateRecord', etat.config.presences, p.id, versColonnes('presences', ch)]], 'modifier cette période', function () { retour(['dvPerModif' + p.id]); });
+      if (!res.ok) { return; }
+      await chargerDonnees();
+      etat.rafraichirEnAttente = true;
+      retour(['dvPerModif' + p.id]);
+      statut('✓ Période enregistrée : ' + emojiLieu(v.lieu) + ' ' + nomChoix(m, v.lieu) + ' du ' + formaterDate(v.du) + ' au ' + formaterDate(v.au));
+    } });
+}
+function supprimerPeriode(m, p) {
+  return supprimerLignes({ titre: 'Supprimer cette période ?',
+    message: (p.lieu ? emojiLieu(p.lieu) + ' ' + nomChoix(m, p.lieu) : 'Lieu non précisé') + ' du ' + formaterDate(p.du) + ' au ' + formaterDate(p.au) + ' (' + accord(joursOuvresEntre(p.du, p.au), 'jour ouvré', 'jours ouvrés') + '). Sa ligne est supprimée de la table « ' + nomTable(etat.config.presences) + ' ».',
+    table: etat.config.presences, ids: p.id, quoi: 'supprimer cette période', ok: '✓ Période supprimée', focus: ['dvPeriodes'], retour: retourBureau(m.id, 'ou'),
+    avant: function () { etat.rafraichirEnAttente = true; } });
+}
+
+/* ---------- 📝 Les tâches ---------- */
+function retourPaperboard(site) { return function (focusIds) { ouvrirPaperboard(site); focaliser(focusIds); }; }
+function boutonsTache(t, retour) {
+  return boutonsGestion('dvTache', t.id, 'la tâche ' + t.description, function () { return formulaireTache(t, retour); }, function () { return supprimerTache(t, retour); });
+}
+async function formulaireTache(t, retour, surFermeture) {
+  var tc = etat.donnees.tac, tid = tc.table, d = etat.donnees.taches, i = d.id.indexOf(t.id);
+  if (i < 0) { afficherErreur('Cette tâche n\'est plus dans le document.'); retour(); return; }
+  await chargerCibles(tid, [tc.colResponsable]);
+  var brut = function (c) { return c && d[c] ? d[c][i] : undefined; };
+  var eds = sansDoublons([
+    editeurChamp(tid, tc.colDescription, { cle: 'description', id: 'dvF_tache', libelle: 'Tâche', requis: true, valeur: brut(tc.colDescription) }),
+    editeurChamp(tid, tc.colResponsable, { cle: 'responsable', id: 'dvF_responsable', libelle: 'Responsable', valeur: brut(tc.colResponsable), personnes: true }),
+    editeurChamp(tid, tc.colStatut, { cle: 'statut', id: 'dvF_statutT', libelle: 'Statut', valeur: brut(tc.colStatut) }),
+    editeurChamp(tid, tc.colEcheance, { cle: 'echeance', id: 'dvF_echeance', libelle: 'Échéance', valeur: brut(tc.colEcheance) }),
+    editeurChamp(tid, tc.colPriorite, { cle: 'priorite', id: 'dvF_priorite', libelle: 'Priorité', valeur: brut(tc.colPriorite) })]);
+  if (!eds.length) { afficherErreur('Les colonnes de cette tâche sont calculées : elle ne se modifie pas ici.'); return; }
+  var focusRetour = ['dvTacheModif' + t.id];
+  ouvrirFormulaire({ titre: '📝 Modifier la tâche', sousTitre: 'Table « ' + nomTable(tid) + ' »', editeurs: eds, surFermeture: surFermeture || function () { if (etat.vue === 'plan') { afficherVue('plan'); } },
+    annuler: function () { retour(focusRetour); },
+    enregistrer: async function (v) {
+      var champs = champsAEcrire(eds, false);
+      if (!Object.keys(champs).length) { retour(focusRetour); statut('Rien n\'a changé.'); return; }
+      var res = await enregistrer([['UpdateRecord', tid, t.id, champs]], 'modifier cette tâche', function () { retour(focusRetour); });
+      if (!res.ok) { return; }
+      await chargerDonnees();
+      retour(focusRetour.concat(['dvNouvelle', 'dvPbTexte']));
+      var txt = v.description !== undefined ? String(v.description) : t.description;
+      statut('✓ Tâche enregistrée : « ' + txt.slice(0, 60) + ' »' + ($('dvTacheModif' + t.id) ? '' : ' (elle n\'est plus listée ici : son responsable ou son statut a changé)'));
+    } });
+}
+function supprimerTache(t, retour) {
+  var tc = etat.donnees.tac;
+  return supprimerLignes({ titre: 'Supprimer cette tâche ?', message: '« ' + t.description + ' ». Sa ligne est supprimée de la table « ' + nomTable(tc.table) + ' ».',
+    table: tc.table, ids: t.id, quoi: 'supprimer cette tâche', ok: '✓ Tâche supprimée : « ' + t.description.slice(0, 60) + ' »', focus: ['dvNouvelle', 'dvPbTexte'], retour: retour });
+}
+
+/* ---------- 📚 Les ressources ---------- */
+function peutCreerRessource() {
+  var rs = etat.donnees ? etat.donnees.res : null, col = rs ? infoColonne(rs.table, rs.colNom) : null;
+  return peutEditer() && !!col && estModifiable(col, genreDe(col, null));
+}
+function retourRessources(focusIds) { ouvrirSalleIdees(true); focaliser(focusIds); }
+async function formulaireRessource(r) {
+  var rs = etat.donnees.res, tid = rs.table, d = etat.donnees.ressources || { id: [] }, i = r ? d.id.indexOf(r.id) : -1;
+  if (r && i < 0) { afficherErreur('Cette ressource n\'est plus dans le document.'); retourRessources(); return; }
+  await chargerCibles(tid, [rs.colType]);
+  var brut = function (c) { return i >= 0 && c && d[c] ? d[c][i] : undefined; };
+  var eds = sansDoublons([
+    editeurChamp(tid, rs.colNom, { cle: 'nom', id: 'dvF_resNom', libelle: 'Nom', requis: true, valeur: brut(rs.colNom), indice: 'Charte de l\'équipe' }),
+    editeurChamp(tid, rs.colLien, { cle: 'lien', id: 'dvF_resLien', libelle: 'Lien', valeur: brut(rs.colLien), url: true, indice: 'https://…', aide: 'Une adresse qui commence par https:// ou http://' }),
+    editeurChamp(tid, rs.colType, { cle: 'type', id: 'dvF_resType', libelle: 'Type', valeur: brut(rs.colType) }),
+    editeurChamp(tid, rs.colEpingle, { cle: 'epingle', id: 'dvF_resEpingle', libelle: 'Épinglée', valeur: brut(rs.colEpingle), aide: 'Les ressources épinglées passent en premier' })]);
+  if (!eds.some(function (e) { return e.cle === 'nom'; })) { afficherErreur('La colonne du nom de « ' + nomTable(tid) + ' » est calculée : les ressources ne se modifient pas ici.'); return; }
+  var note = rs.colFichier ? creer('p', { classe: 'w-mention', texte: '📎 Fichiers : ajoutez-les dans la colonne « ' + libelleCol(tid, rs.colFichier) + ' » de la table, dans Grist. Gristverse les montre (consulter, télécharger) mais n\'envoie pas de fichier.' }) : null;
+  var focusRetour = r ? ['dvResModif' + r.id] : ['dvResNouvelle'];
+  ouvrirFormulaire({ titre: r ? '📚 Modifier la ressource' : '📚 Nouvelle ressource', sousTitre: 'Table « ' + nomTable(tid) + ' »', editeurs: eds, apres: [note],
+    annuler: function () { retourRessources(focusRetour); },
+    enregistrer: async function (v) {
+      var champs = champsAEcrire(eds, !r);
+      if (r && !Object.keys(champs).length) { retourRessources(focusRetour); statut('Rien n\'a changé.'); return; }
+      var res = await enregistrer([r ? ['UpdateRecord', tid, r.id, champs] : ['AddRecord', tid, null, champs]], r ? 'modifier cette ressource' : 'ajouter une ressource', function () { retourRessources(focusRetour); });
+      if (!res.ok) { return; }
+      var id = r ? r.id : (res.res && res.res.retValues ? res.res.retValues[0] : null);
+      await chargerDonnees({ lourdes: true });
+      retourRessources(['dvResModif' + id].concat(focusRetour));
+      statut('✓ Ressource enregistrée : ' + v.nom);
+    } });
+}
+function supprimerRessource(r) {
+  var rs = etat.donnees.res;
+  return supprimerLignes({ titre: 'Supprimer cette ressource ?', message: '« ' + r.nom + ' ». Sa ligne est supprimée de la table « ' + nomTable(rs.table) + ' »' + (idsPJ(r.fichiers).length ? ', avec le lien vers ses fichiers joints.' : '.'),
+    table: rs.table, ids: r.id, quoi: 'supprimer cette ressource', ok: '✓ Ressource supprimée : « ' + r.nom + ' »', focus: ['dvResNouvelle', 'dvRechIdees'], lourdes: true, retour: retourRessources });
+}
+
+/* ---------- 🗄️ Les projets ---------- */
+function peutCreerProjet() {
+  var C = reglagesProjets(), col = C ? infoColonne(C.table, C.colNom) : null;
+  return peutEditer() && !!col && estModifiable(col, genreDe(col, null));
+}
+// Toute la bibliothèque des projets : chaque projet, rangé par statut, avec une recherche
+function ouvrirBibliotheque() {
+  if (lourdesPerimees()) { relireLourdesPuis(ouvrirBibliotheque); return; }
+  var C = reglagesProjets();
+  if (!C) { return; }
+  var rech = saisie('dvRechBib', '', { indice: 'Un numéro ou quelques lettres…' });
+  var zone = creer('div', { id: 'dvBib' }), statuts = etat.donnees.statuts || [];
+  var total = statuts.reduce(function (s, x) { return s + x.projets.length; }, 0);
+  var dessiner = function () {
+    vider(zone);
+    var q = normaliser(rech.value), n = 0, blocs = [];
+    statuts.forEach(function (s) {
+      var l = s.projets.filter(function (p) { return !q || normaliser(p.libelle + ' ' + s.nom).indexOf(q) !== -1; });
+      if (!l.length) { return; }
+      n += l.length;
+      blocs.push(creer('h3', { classe: 'fr-h6 fr-mt-2w fr-mb-1w', texte: s.nom + ' · ' + accord(l.length, 'projet') }));
+      blocs.push(creer('ul', { classe: 'dv-classeurs' }, l.map(function (p) {
+        return creer('li', {}, [creer('button', { classe: 'dv-classeur', id: 'dvBib' + p.id, attrs: { type: 'button', style: '--couleur:' + s.couleur }, texte: p.libelle, clic: function () { ouvrirFicheProjet(p.id); } })]);
+      })));
+    });
+    zone.appendChild(creer('p', { classe: 'w-mention', attrs: { 'aria-live': 'polite' }, texte: total ? accord(n, 'projet') : 'Aucun projet pour l\'instant.' }));
+    blocs.forEach(function (b) { zone.appendChild(b); });
+  };
+  rech.addEventListener('input', dessiner);
+  dessiner();
+  ouvrirModale({ titre: '🗄️ Bibliothèque des projets', sousTitre: accord(total, 'projet') + ' dans « ' + nomTable(C.table) + ' »', laterale: true, fermerDehors: true,
+    corps: [peutCreerProjet() ? creer('div', { classe: 'dv-outils' }, [bouton('Nouveau projet', null, 'add-line', function () { return formulaireProjet(null); }, { petit: true, id: 'dvProjNouveau' })]) : null,
+      total ? groupeChamp('Chercher un projet', rech, null, false) : null, zone], pied: [piedStatut()] });
+}
+async function formulaireProjet(p, statutInitial) {
+  var C = reglagesProjets(), tid = C.table, d = etat.donnees.projetsBruts || { id: [] }, i = p ? d.id.indexOf(p.id) : -1;
+  if (p && i < 0) { afficherErreur('Ce projet n\'est plus dans le document.'); ouvrirBibliotheque(); return; }
+  var colonnesF = [C.colNum, C.colNom, C.colStatut, C.colDev, C.colDevRef, C.colDebut, C.colFin, C.colObjet].concat(C.colLiens || [], C.champsFiche || []);
+  await chargerCibles(tid, colonnesF);
+  var brut = function (c) { return i >= 0 && c && d[c] ? d[c][i] : undefined; };
+  // Un nouveau projet : le numéro suivant, le statut de l'étagère d'où il est créé
+  var numDef;
+  var colN = C.colNum ? infoColonne(tid, C.colNum) : null;
+  if (!p && colN && (colN.type === 'Int' || colN.type === 'Numeric') && d[C.colNum]) { numDef = d[C.colNum].reduce(function (mx, x) { return typeof x === 'number' && x > mx ? x : mx; }, 0) + 1; }
+  var lib = function (c) { return libelleProjet(C, c); };
+  var eds = [
+    editeurChamp(tid, C.colNom, { cle: 'nom', id: 'dvF_projNom', libelle: lib(C.colNom), requis: true, valeur: brut(C.colNom) }),
+    editeurChamp(tid, C.colNum, { cle: 'num', id: 'dvF_projNum', libelle: lib(C.colNum), valeur: brut(C.colNum), defaut: numDef }),
+    editeurChamp(tid, C.colStatut, { cle: 'statut', id: 'dvF_projStatut', libelle: lib(C.colStatut), valeur: brut(C.colStatut), defaut: statutInitial, aide: 'Une étagère par statut dans la bibliothèque' }),
+    editeurChamp(tid, C.colDev, { cle: 'dev', id: 'dvF_projDev', libelle: lib(C.colDev), valeur: brut(C.colDev), personnes: true }),
+    editeurChamp(tid, C.colDevRef, { cle: 'devRef', id: 'dvF_projDevRef', libelle: lib(C.colDevRef), valeur: brut(C.colDevRef), personnes: true }),
+    editeurChamp(tid, C.colDebut, { cle: 'debut', id: 'dvF_projDebut', libelle: lib(C.colDebut), valeur: brut(C.colDebut) }),
+    editeurChamp(tid, C.colFin, { cle: 'fin', id: 'dvF_projFin', libelle: lib(C.colFin), valeur: brut(C.colFin) }),
+    editeurChamp(tid, C.colObjet, { cle: 'objet', id: 'dvF_projObjet', libelle: lib(C.colObjet), valeur: brut(C.colObjet), multiligne: true })]
+    .concat((C.colLiens || []).map(function (c, k) { return editeurChamp(tid, c, { cle: 'lien' + k, id: 'dvF_projLien' + k, libelle: lib(c), valeur: brut(c), url: true, indice: 'https://…', aide: 'Une adresse qui commence par https:// ou http://' }); }))
+    .concat((C.champsFiche || []).map(function (c, k) { return editeurChamp(tid, c, { cle: 'champ' + k, id: 'dvF_projChamp' + k, libelle: lib(c), valeur: brut(c) }); }));
+  eds = sansDoublons(eds);
+  if (!eds.some(function (e) { return e.cle === 'nom'; })) { afficherErreur('La colonne du nom de « ' + nomTable(tid) + ' » est calculée : les projets ne se modifient pas ici.'); return; }
+  var pj = (C.champsFiche || []).filter(function (c) { var x = infoColonne(tid, c); return x && x.type === 'Attachments'; });
+  var note = pj.length ? creer('p', { classe: 'w-mention', texte: '📎 Fichiers : ajoutez-les dans la colonne « ' + pj.map(lib).join(' », « ') + ' » de la table, dans Grist. Gristverse les montre mais n\'envoie pas de fichier.' }) : null;
+  var annuler = p ? function () { ouvrirFicheProjet(p.id, true); focaliser(['dvFicheModif']); } : function () { ouvrirBibliotheque(); focaliser(['dvProjNouveau']); };
+  ouvrirFormulaire({ titre: p ? '🗄️ Modifier le projet' : '🗄️ Nouveau projet', sousTitre: 'Table « ' + nomTable(tid) + ' »', editeurs: eds, apres: [note], annuler: annuler,
+    verifier: function (v, ed) { return ed.fin && typeof v.fin === 'number' && typeof v.debut === 'number' && v.fin < v.debut ? { ed: ed.fin, message: 'La fin doit suivre le début.' } : null; },
+    enregistrer: async function (v) {
+      var champs = champsAEcrire(eds, !p);
+      if (p && !Object.keys(champs).length) { annuler(); statut('Rien n\'a changé.'); return; }
+      var res = await enregistrer([p ? ['UpdateRecord', tid, p.id, champs] : ['AddRecord', tid, null, champs]], p ? 'modifier ce projet' : 'ajouter un projet', annuler);
+      if (!res.ok) { return; }
+      var id = p ? p.id : (res.res && res.res.retValues ? res.res.retValues[0] : null);
+      await chargerDonnees({ lourdes: true });
+      etat.rafraichirEnAttente = true;
+      ouvrirFicheProjet(id, true);
+      focaliser(['dvFicheModif']);
+      statut('✓ Projet enregistré : ' + v.nom);
+    } });
+}
+function supprimerProjet(p) {
+  var C = reglagesProjets();
+  return supprimerLignes({ titre: 'Supprimer ce projet ?', message: '« ' + p.libelle + ' ». Sa ligne est supprimée de la table « ' + nomTable(C.table) + ' ». Les activités déclarées sur ce projet restent dans votre document.',
+    table: C.table, ids: p.id, quoi: 'supprimer ce projet', ok: '✓ Projet supprimé : « ' + p.libelle + ' »', focus: ['dvProjNouveau', 'dvRechBib'], lourdes: true,
+    avant: function () { etat.rafraichirEnAttente = true; }, retour: function (f) { ouvrirBibliotheque(); focaliser(f); } });
+}
+
+/* ---------- 🗂️ Les activités ---------- */
+function formulaireActivite(m, a) {
+  var retour = retourBureau(m.id, 'activites'), tid = etat.config.activites;
+  var existe = function (k) { return !!infoColonne(tid, cf('activites', k)); };
+  var date = saisie('dvF_actDate', dateVersSaisie(a.date), { type: 'date' });
+  var choix = { projet: a.projet || null, hors: a.projet ? null : (a.horsProjet || null) };
+  var combo = champProjet(choix, a.projet || a.horsProjet ? libelleActivite(a) : '');
+  var heures = DUREES.slice();
+  if (a.heures && heures.indexOf(a.heures) === -1) { heures.push(a.heures); heures.sort(function (x, y) { return x - y; }); }
+  var duree = liste('dvF_actDuree', heures.map(function (h) { return { valeur: String(h), libelle: heuresTexte(h) }; }), String(a.heures || 1));
+  var detail = saisie('dvF_actDetail', a.precision, { indice: 'Facultatif' });
+  var eds = [
+    fabriquerEditeur('date', null, groupeChamp('Date', date, null, true), date, function () { var x = saisieVersDate(date.value); return x ? { valeur: x } : { erreur: 'Indiquez la date.' }; }),
+    fabriquerEditeur('projet', null, groupeChamp('Projet', combo, 'Tapez des lettres ou un numéro : la liste se réduit', true), combo.querySelector('input'), function () {
+      return choix.projet || choix.hors ? { valeur: { projet: choix.projet || null, hors: choix.hors || null } } : { erreur: 'Choisissez un projet dans la liste (ou une entrée hors projet).' };
+    }),
+    fabriquerEditeur('duree', null, groupeChamp('Durée', duree, null, true), duree, function () { return { valeur: Number(duree.value) }; }),
+    fabriquerEditeur('detail', null, groupeChamp('Précision', detail, null, false), detail, function () { return { valeur: detail.value.trim() }; })];
+  ouvrirFormulaire({ titre: '🗂️ Modifier l\'activité', sousTitre: nomAccessible(m) + ' · table « ' + nomTable(tid) + ' »', editeurs: eds,
+    surFermeture: function () { if (etat.vue === 'plan') { afficherVue('plan'); } },
+    annuler: function () { retour(['dvActModif' + a.id]); },
+    enregistrer: async function (v) {
+      var ch = {};
+      if (v.date !== a.date) { ch.DATE = v.date; }
+      var avantP = a.projet || null, avantH = a.projet ? null : (a.horsProjet || null);
+      if (v.projet.projet !== avantP || v.projet.hors !== avantH) {
+        if (v.projet.projet) { ch.PROJET = v.projet.projet; if (existe('HORS_PROJET') && a.horsProjet) { ch.HORS_PROJET = ''; } }
+        else { ch.HORS_PROJET = v.projet.hors; if (existe('PROJET') && a.projet) { ch.PROJET = 0; } }
+      }
+      if (v.duree !== a.heures) { ch.HEURES = v.duree; }
+      if (v.detail !== a.precision) { ch.PRECISION = v.detail; }
+      Object.keys(ch).forEach(function (k) { if (!existe(k)) { delete ch[k]; } });
+      if (!Object.keys(ch).length) { retour(['dvActModif' + a.id]); statut('Rien n\'a changé.'); return; }
+      var res = await enregistrer([['UpdateRecord', tid, a.id, versColonnes('activites', ch)]], 'modifier cette activité', function () { retour(['dvActModif' + a.id]); });
+      if (!res.ok) { return; }
+      await chargerDonnees();
+      etat.jourActivite = v.date;   // l'onglet s'ouvre sur le jour de l'activité
+      retour(['dvActModif' + a.id]);
+      statut('✓ Activité enregistrée : ' + heuresTexte(v.duree) + ', ' + libelleJour(v.date, true));
+    } });
+}
+/* ==========================================================================
+
    SECTION 6 BIS : L'ÉDITEUR D'AMÉNAGEMENT DES BUREAUX
    [INTOUCHABLE sauf libellés et couleurs]
    Étape « Les bureaux » de l'assistant. Pour chaque bâtiment, on choisit :
@@ -5938,7 +6878,7 @@ var PIECES_TABLES = {
     probable: function () { return tableProbable(/meeting|reunion/, null); }, proposer: function (t) { return proposerReunions(t); },
     champs: [['colObjet', 'Objet de la réunion', TYPES.texte, false], ['colDebut', 'Début', TYPES.dateheure, false],
       ['colFin', 'Fin', TYPES.dateheure, true, 'Facultatif : sans fin, une réunion dure une heure'], ['colLieu', 'Lieu', TYPES.texte, true],
-      ['colVisio', 'Lien de visio', TYPES.texte, true, 'Facultatif : un lien https écrit dans le lieu est aussi reconnu'], ['colParticipants', 'Participants', TYPES.tout, true],
+      ['colVisio', 'Lien de visio', TYPES.texte, true, 'Facultatif : un lien web écrit dans le lieu est aussi reconnu'], ['colParticipants', 'Participants', TYPES.tout, true],
       ['colStatut', 'Statut', TYPES.choix, true, 'Facultatif : les réunions annulées ou reportées ne sont pas affichées']] },
   taches: { pieces: ['paperboards'], titre: '📝 Les tâches (paperboards)', cles: ['colDescription', 'colResponsable'],
     intro: 'Les tâches ouvertes de chacun, sur son bureau et sur le paperboard. Une tâche est à quelqu\'un si sa colonne « responsable » contient son emoji ou son nom.',
@@ -5986,7 +6926,7 @@ function etapePieces(b) {
     lienC.addEventListener('input', function () { c.canal.lien = lienC.value.trim(); });
     var secC = creer('section', { classe: 'dv-piece fr-mt-3w' }, [creer('h3', { classe: 'fr-h6', texte: '💬 Le canal de discussion' }),
       creer('p', { classe: 'w-mention', texte: c.pieces.reunion === false ? 'La télé est dans la salle de réunion : cochez aussi la salle de réunion (étape « Le modèle »).' : 'La télé de la salle de réunion affiche ce nom et ouvre ce lien dans un nouvel onglet.' }),
-      groupeChamp('Nom du canal', nomC, 'Tchap, Teams, Slack…', false), groupeChamp('Lien du canal', lienC, 'Une adresse qui commence par https://', false)]);
+      groupeChamp('Nom du canal', nomC, 'Tchap, Teams, Slack…', false), groupeChamp('Lien du canal', lienC, 'Une adresse qui commence par https:// ou http://', false)]);
     bloc.appendChild(secC);
   }
   if (c.pieces.activites !== false) {
@@ -6179,8 +7119,9 @@ async function chargerTout() {
     try { await ecrireConfig(etat.config); logSecurite('INFO', 'Réglages de la v1 repris en v2'); }
     catch (e) { logSecurite('AVERTISSEMENT', 'Réglages repris non enregistrés', e); }
   }
-  etat.peutModifier = accesComplet();
-  etat.peutParametrer = accesComplet();
+  // Lecteurs (ou document ouvert en consultation) : aucun bouton de modification dès l'ouverture
+  etat.peutModifier = accesComplet() && await sonderEcriture();
+  etat.peutParametrer = etat.peutModifier;
   if (!etat.config || !etat.config.equipe || !etat.meta.tables[etat.config.equipe]) {
     if (etat.peutParametrer) { if (!etat.brouillon) { ouvrirAssistant(1); } return; }
     afficherVue('aucun');
