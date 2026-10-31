@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calendrier de l'Avent - Mon Grist perso</title>
+<!--
+  Mon Grist perso - widget "Calendrier de l'Avent"
+  Version 1.0.0 - madeXcé - série communautaire gratuite
+  - 24 cases ; une case s'ouvre le jour J à 9 h (heure de Paris).
+  - Le contenu de chaque case est lu au moment voulu dans ../avent/jour-NN/contenu.json :
+    rien n'est embarqué dans ce fichier. Un 404 ou une date non atteinte = case fermée.
+  - Progression (case ouverte, défi relevé, quiz) enregistrée dans la table technique
+    "⚙️ BIBLIOTHÈQUE MON GRIST PERSO ⚡" (accès complet nécessaire pour enregistrer ;
+    en lecture seule, le calendrier s'affiche quand même).
+  - Réglages : année (2026 par défaut), mode test avec date simulée. ?maintenant=AAAA-MM-JJTHH:MM pour les tests.
+  HISTORIQUE
+  1.0.0 : première version.
+-->
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<style>
+/* ==========================================================================
+   Mon Grist perso - styles partagés (style "California pastel")
+   Fichier commun concaténé dans chaque widget par build.py : ne pas modifier
+   dans un widget, modifier ici puis relancer build.py.
+   ========================================================================== */
+:root {
+  --sable: #FFF8F0; --sable2: #FBEFE3; --encre: #2B2D42; --gris: #6B6F80; --trait: #EADFD3; --blanc: #FFFFFF;
+  --ecume: #A8E6E2; --ecume-f: #1F7F7A;
+  --flamant: #FFC2D1; --flamant-f: #C2406A;
+  --citron: #FFF1A8; --citron-f: #8A6D00;
+  --peche: #FFD3B5; --peche-f: #C25A2C;
+  --lavande: #DCD0F7; --lavande-f: #6A4FB8;
+  --menthe: #CDEDC8; --menthe-f: #3D7F44;
+  --coucher: linear-gradient(120deg, var(--peche), var(--flamant) 48%, var(--lavande));
+  --ombre: 0 3px 14px rgba(43, 45, 66, .08);
+  --ombre-forte: 0 12px 32px rgba(43, 45, 66, .18);
+  --voile: rgba(43, 45, 66, .38);
+  --r-s: 16px; --r-m: 20px; --r-l: 24px; --r-xl: 28px;
+  --police: "Avenir Next", "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --focus: 3px solid var(--lavande-f);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--sable); color: var(--encre); font-family: var(--police); font-size: 15px; line-height: 1.45; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+h1, h2, h3 { margin: 0; line-height: 1.2; letter-spacing: -.3px; }
+p { margin: 0; }
+a { color: var(--ecume-f); }
+button, input, select, textarea { font-family: inherit; font-size: 15px; color: var(--encre); }
+:focus-visible { outline: var(--focus); outline-offset: 2px; }
+.cache { display: none; }
+/* L'attribut hidden doit gagner sur les display des composants (spécificité égale ou supérieure, aucune règle forcée). */
+[hidden], .btn[hidden], .fab[hidden], .pil[hidden], .btn-icone[hidden], .bandeau[hidden] { display: none; }
+.sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.mini { font-size: 13px; color: var(--gris); }
+.gras { font-weight: 700; }
+
+/* ---- Chargement ---- */
+.loader { position: fixed; inset: 0; z-index: 90; display: none; place-items: center; background: var(--sable); color: var(--gris); }
+.loader.actif { display: grid; }
+.loader .rond { width: 44px; height: 44px; border-radius: 50%; border: 4px solid var(--sable2); border-top-color: var(--ecume-f); animation: tourne .9s linear infinite; margin: 0 auto 10px; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+
+/* ---- Mise en page ---- */
+.page { padding: 16px 16px 110px; max-width: 1600px; margin: 0 auto; }
+.barre { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.barre .titre { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.barre h1 { font-size: 22px; font-weight: 800; }
+.barre .marque { font-size: 13px; color: var(--gris); font-weight: 600; }
+.barre .actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.grille { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 700px) { .page { padding: 22px 24px 110px; } .grille.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .page { padding: 26px 32px 110px; } .grille.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .grille.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 700px) and (max-width: 1099px) { .grille.g3, .grille.g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---- Cartes ---- */
+.carte { background: var(--blanc); border-radius: var(--r-m); box-shadow: var(--ombre); padding: 16px; min-width: 0; }
+.carte.douce { background: var(--sable2); box-shadow: none; }
+.carte h2 { font-size: 17px; font-weight: 800; }
+.hero { background: var(--coucher); border-radius: var(--r-l); padding: 18px 20px; position: relative; overflow: hidden; color: var(--encre); }
+.hero h2 { font-size: 20px; font-weight: 800; }
+.hero p { color: #4A4458; font-size: 14px; margin-top: 4px; }
+
+/* ---- Boutons et pastilles ---- */
+.btn { min-height: 44px; border: 0; border-radius: 999px; padding: 10px 20px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--ecume-f); color: var(--blanc); text-decoration: none; }
+.btn:hover { filter: brightness(1.06); }
+.btn.sec { background: var(--blanc); color: var(--ecume-f); box-shadow: inset 0 0 0 1.5px var(--ecume-f); }
+.btn.doux { background: var(--sable2); color: var(--encre); }
+.btn.danger { background: var(--flamant-f); color: var(--blanc); }
+.btn.lien { background: transparent; color: var(--ecume-f); padding: 10px 12px; }
+.btn.plein { width: 100%; }
+.btn[disabled] { opacity: .55; cursor: not-allowed; }
+.btn-icone { min-width: 44px; min-height: 44px; border: 0; border-radius: 999px; background: var(--sable2); color: var(--encre); cursor: pointer; display: inline-grid; place-items: center; font-size: 17px; padding: 0 10px; }
+.pil { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 700; white-space: nowrap; border: 0; background: var(--sable2); color: var(--encre); }
+button.pil { min-height: 44px; padding: 6px 14px; cursor: pointer; }
+.t-ecume { background: var(--ecume); color: var(--ecume-f); }
+.t-flamant { background: var(--flamant); color: var(--flamant-f); }
+.t-citron { background: var(--citron); color: var(--citron-f); }
+.t-peche { background: var(--peche); color: var(--peche-f); }
+.t-lavande { background: var(--lavande); color: var(--lavande-f); }
+.t-menthe { background: var(--menthe); color: var(--menthe-f); }
+.t-sable { background: var(--sable2); color: var(--gris); }
+.choix { display: flex; flex-wrap: wrap; gap: 8px; }
+.choix button { min-height: 44px; border: 0; border-radius: 999px; padding: 0 16px; font-weight: 700; background: var(--sable2); color: var(--gris); cursor: pointer; }
+.choix button[aria-pressed="true"] { background: var(--ecume-f); color: var(--blanc); }
+
+/* ---- Onglets ---- */
+.onglets { display: flex; gap: 4px; background: var(--blanc); border-radius: 999px; padding: 5px; box-shadow: var(--ombre); overflow-x: auto; margin-bottom: 16px; max-width: 100%; scrollbar-width: none; }
+.onglets button { flex: none; min-height: 44px; border: 0; border-radius: 999px; padding: 0 16px; background: transparent; color: var(--gris); font-weight: 700; cursor: pointer; white-space: nowrap; }
+.onglets button[aria-selected="true"] { background: var(--ecume-f); color: var(--blanc); }
+@media (max-width: 520px) { .onglets button { padding: 0 12px; } }
+
+/* ---- Jauge ---- */
+.jauge { height: 10px; border-radius: 999px; background: var(--sable2); overflow: hidden; }
+.jauge > i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--menthe-f), var(--ecume-f)); }
+.jauge.alerte > i { background: linear-gradient(90deg, var(--peche-f), var(--flamant-f)); }
+.lignes-jauge { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lignes-jauge .jauge { flex: 1; min-width: 120px; }
+
+/* ---- Champs ---- */
+.champ { margin-bottom: 14px; }
+.champ > label, .champ > .lib { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+.champ input[type=text], .champ input[type=number], .champ input[type=date], .champ input[type=url], .champ select, .champ textarea {
+  width: 100%; min-height: 46px; border-radius: 14px; border: 0; background: var(--sable); box-shadow: inset 0 0 0 1.5px var(--trait); padding: 10px 14px; }
+.champ textarea { min-height: 80px; resize: vertical; }
+.champ input:focus-visible, .champ select:focus-visible, .champ textarea:focus-visible { box-shadow: inset 0 0 0 2px var(--ecume-f); }
+.champ .aide { font-size: 13px; color: var(--gris); margin-top: 4px; }
+.champ > label.photo-btn, .photo-btn { display: flex; margin-bottom: 0; font-size: 15px; align-items: center; gap: 8px; min-height: 46px; border-radius: 14px; background: var(--sable); box-shadow: inset 0 0 0 1.5px var(--trait); padding: 0 14px; color: var(--ecume-f); font-weight: 700; cursor: pointer; }
+.photo-btn input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.photo-btn:focus-within { outline: var(--focus); outline-offset: 2px; }
+
+/* ---- FAB ---- */
+.fab { position: fixed; right: 18px; bottom: 22px; z-index: 40; width: 60px; height: 60px; border-radius: 50%; border: 0; background: var(--ecume-f); color: var(--blanc); font-size: 30px; line-height: 1; cursor: pointer; box-shadow: 0 8px 20px rgba(31, 127, 122, .4); display: grid; place-items: center; }
+
+/* ---- Feuilles et dialogues (element dialog natif) ---- */
+dialog.feuille { border: 0; padding: 0; background: var(--blanc); color: var(--encre); width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 40px); border-radius: var(--r-xl); box-shadow: var(--ombre-forte); }
+dialog.feuille::backdrop { background: var(--voile); }
+dialog.feuille .corps { padding: 12px 20px 22px; overflow-y: auto; max-height: calc(100vh - 60px); }
+dialog.feuille .poignee { width: 44px; height: 5px; border-radius: 999px; background: var(--trait); margin: 10px auto 6px; }
+dialog.feuille h2 { font-size: 19px; font-weight: 800; margin: 4px 0 14px; }
+dialog.feuille .pied { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 10px; }
+@media (max-width: 699px) {
+  dialog.feuille { width: 100vw; max-width: 100vw; margin: auto 0 0 0; border-radius: var(--r-xl) var(--r-xl) 0 0; max-height: 92vh; }
+  dialog.feuille .corps { max-height: calc(92vh - 24px); }
+  dialog.feuille .pied .btn { flex: 1; }
+}
+@media (min-width: 700px) { dialog.feuille .poignee { display: none; } }
+
+/* ---- Annonces (toasts) ---- */
+.toasts { position: fixed; left: 50%; transform: translateX(-50%); bottom: 96px; z-index: 95; display: flex; flex-direction: column; gap: 8px; width: min(440px, calc(100vw - 32px)); pointer-events: none; }
+.toast { background: var(--encre); color: var(--blanc); border-radius: var(--r-s); padding: 12px 16px; font-weight: 600; box-shadow: var(--ombre-forte); }
+.toast.ok { background: var(--menthe-f); }
+.toast.err { background: var(--flamant-f); }
+
+/* ---- Bandeau d'information ---- */
+.bandeau { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-radius: var(--r-m); padding: 12px 16px; margin-bottom: 14px; }
+.bandeau .txt { flex: 1; min-width: 200px; }
+
+/* ---- Vide ---- */
+.vide { text-align: center; padding: 28px 16px; color: var(--gris); }
+.vide .gros { font-size: 40px; }
+
+/* ---- Avatar ---- */
+.av { width: 44px; height: 44px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 22px; }
+.av.grand { width: 84px; height: 84px; font-size: 40px; }
+
+/* ---- Liste de lignes dans une carte ---- */
+.ligne { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--sable2); min-width: 0; }
+.ligne .x { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+
+/* ---- Sous le capot ---- */
+.capot-grille { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1400px) { .capot-grille { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; } }
+.schema-svg { width: 100%; max-width: 880px; height: auto; display: block; }
+.schema-svg .boite-fond { fill: var(--blanc); stroke: var(--trait); stroke-width: 2; }
+.schema-svg text { font-family: var(--police); font-size: 13px; fill: var(--encre); }
+.schema-svg .type { fill: var(--gris); font-size: 12px; }
+.schema-svg .ent { font-weight: 800; font-size: 14px; }
+.schema-svg .champ-l { cursor: pointer; }
+.schema-svg .champ-l:focus-visible rect.surv, .schema-svg .champ-l:hover rect.surv { fill: var(--sable2); stroke: var(--lavande-f); stroke-width: 2; }
+.schema-svg .lien { fill: none; stroke: var(--ecume-f); stroke-width: 2.5; }
+.schema-svg .lien-txt { fill: var(--gris); font-size: 11px; }
+.schema-mobile details { border-radius: var(--r-s); background: var(--sable); margin-bottom: 10px; }
+.schema-mobile summary { min-height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 14px; font-weight: 800; cursor: pointer; border-radius: var(--r-s); }
+.schema-mobile ul { list-style: none; margin: 0; padding: 0 14px 10px; }
+.schema-mobile li button { width: 100%; min-height: 44px; display: flex; justify-content: space-between; gap: 8px; align-items: center; border: 0; background: transparent; border-top: 1px solid var(--trait); padding: 6px 0; text-align: left; cursor: pointer; }
+.schema-mobile .fleche { color: var(--ecume-f); font-size: 13px; font-weight: 700; }
+.vue-bureau { display: none; }
+@media (min-width: 1100px) { .vue-bureau { display: block; } .vue-mobile { display: none; } }
+.fiche-champ { border-radius: var(--r-s); padding: 14px; background: var(--sable); }
+.fiche-champ h3 { font-size: 15px; font-weight: 800; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fiche-champ .ex { margin-top: 8px; font-size: 13px; }
+.fiche-champ.active { box-shadow: inset 0 0 0 2px var(--lavande-f); }
+pre.code { background: var(--encre); color: #FFF1A8; border-radius: var(--r-s); padding: 14px 16px; font-family: var(--mono); font-size: 13.5px; white-space: pre-wrap; overflow-wrap: anywhere; margin: 10px 0; }
+code { font-family: var(--mono); font-size: .92em; background: var(--sable2); border-radius: 6px; padding: 1px 5px; overflow-wrap: anywhere; }
+.jeton { display: grid; grid-template-columns: minmax(90px, 150px) minmax(0, 1fr); gap: 12px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--sable2); }
+.jeton .j { background: var(--citron); color: var(--citron-f); border-radius: 999px; padding: 4px 12px; font-family: var(--mono); font-weight: 700; font-size: 13px; overflow-wrap: anywhere; }
+.a-vous { background: var(--citron); border-radius: var(--r-s); padding: 14px 16px; margin-top: 12px; }
+.a-vous b { color: var(--citron-f); }
+.formule-carte + .formule-carte { margin-top: 14px; }
+
+/* ---- Kanban partagé ---- */
+.kanban { display: grid; gap: 12px; grid-template-columns: repeat(var(--kb-cols, 4), minmax(0, 1fr)); align-items: start; }
+.kb-col { background: var(--sable2); border-radius: var(--r-m); padding: 10px; min-height: 140px; min-width: 0; }
+.kb-col.survol { box-shadow: inset 0 0 0 2px var(--ecume-f); background: var(--ecume); }
+.kb-tete { display: flex; align-items: center; gap: 8px; padding: 4px 4px 10px; flex-wrap: wrap; }
+.kb-tete h3 { font-size: 15px; font-weight: 800; }
+.kb-tete .tot { margin-left: auto; font-size: 13px; color: var(--gris); font-weight: 700; }
+.kb-liste { display: flex; flex-direction: column; gap: 10px; min-height: 60px; }
+.kb-carte { background: var(--blanc); border-radius: var(--r-s); box-shadow: var(--ombre); padding: 12px; cursor: grab; touch-action: pan-y; }
+.kb-carte.traine { opacity: .45; }
+.kb-carte .kb-act { display: flex; gap: 6px; margin-top: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.kb-seg { display: none; }
+@media (max-width: 699px) {
+  .kb-seg { display: flex; gap: 4px; background: var(--blanc); border-radius: 999px; padding: 5px; box-shadow: var(--ombre); margin-bottom: 12px; position: sticky; top: 0; z-index: 5; }
+  .kb-seg button { flex: 1; min-height: 44px; border: 0; border-radius: 999px; background: transparent; color: var(--gris); font-weight: 700; font-size: 13px; cursor: pointer; padding: 0 4px; line-height: 1.15; }
+  .kb-seg button[aria-pressed="true"] { background: var(--ecume-f); color: var(--blanc); }
+  .kanban { grid-template-columns: 1fr; }
+  .kanban .kb-col:not(.visible) { display: none; }
+}
+.menu-etapes { display: flex; flex-direction: column; gap: 8px; }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none; transition: none; } }
+
+.hero { min-height: 120px; padding: 20px 22px; }
+.hero h2 { font-size: 24px; max-width: 75%; }
+.hero p { max-width: 75%; }
+.soleil { position: absolute; right: 32px; top: 14px; width: 96px; height: 96px; border-radius: 50%; background: radial-gradient(circle, #FFF6C9, var(--citron) 60%, rgba(255, 241, 168, 0) 72%); }
+.palmier { position: absolute; right: 118px; bottom: -10px; font-size: 60px; }
+@media (max-width: 699px) { .soleil, .palmier { display: none; } .hero h2, .hero p { max-width: none; } .hero h2 { font-size: 19px; } .hero { min-height: 0; padding: 16px 18px; } }
+.portes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin: 16px 0; }
+@media (min-width: 700px) { .portes { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; } }
+@media (min-width: 1100px) { .portes { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+.porte { position: relative; height: 78px; border: 0; border-radius: 16px; box-shadow: var(--ombre); padding: 8px 10px; text-align: left; font-weight: 800; font-size: 19px; color: var(--encre); cursor: pointer; display: block; overflow: hidden; }
+@media (min-width: 700px) { .porte { height: 118px; font-size: 22px; border-radius: 18px; padding: 10px 12px; } }
+.porte .num { position: absolute; left: 10px; top: 6px; }
+.porte .ok { position: absolute; right: 10px; top: 8px; color: var(--menthe-f); font-size: 15px; }
+.porte .ic { position: absolute; right: 8px; bottom: 6px; font-size: 20px; }
+.porte .et { position: absolute; left: 10px; bottom: 9px; right: 34px; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 699px) { .porte .et { display: none; } .porte .ok { font-size: 13px; right: 8px; top: 6px; } }
+@media (min-width: 700px) { .porte .ic { font-size: 24px; right: 12px; bottom: 10px; } .porte .num { left: 12px; top: 10px; } }
+.porte.ouverte { background: var(--blanc); color: var(--gris); }
+.porte.jour { outline: 3px solid var(--flamant-f); outline-offset: 3px; }
+.porte.jour .et { color: var(--flamant-f); }
+.porte:focus-visible { outline: var(--focus); outline-offset: 3px; }
+.porte.jour:focus-visible { outline: 3px solid var(--lavande-f); }
+.porte.c24 { background: linear-gradient(135deg, var(--peche), var(--flamant), var(--lavande)); }
+.pied-cal { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pied-cal .jauge { flex: 1; min-width: 140px; }
+.lecon h3 { font-size: 16px; font-weight: 800; margin: 16px 0 6px; }
+.lecon p { margin: 6px 0; }
+.lecon ul { margin: 6px 0; padding-left: 22px; }
+.lecon li { margin: 4px 0; }
+.astuce-b { background: var(--ecume); border-radius: var(--r-s); padding: 12px 14px; margin: 10px 0; color: var(--encre); }
+.defi-b { background: var(--citron); border-radius: var(--r-s); padding: 14px 16px; margin: 16px 0 6px; }
+.defi-b h3 { margin-top: 0; color: var(--citron-f); }
+.quiz fieldset { border: 0; padding: 12px 0; margin: 0; border-top: 1px solid var(--sable2); }
+.quiz legend { font-weight: 800; padding: 0; margin-bottom: 8px; }
+.quiz label { display: flex; gap: 10px; align-items: center; min-height: 44px; padding: 6px 12px; border-radius: 14px; background: var(--sable); margin: 6px 0; cursor: pointer; }
+.quiz input { width: 20px; height: 20px; flex: none; }
+.quiz .bon { box-shadow: inset 0 0 0 2px var(--menthe-f); }
+.quiz .faux { box-shadow: inset 0 0 0 2px var(--flamant-f); }
+.quiz .expl { font-size: 14px; background: var(--sable2); border-radius: 12px; padding: 10px 12px; margin-top: 6px; }
+.cadeau-b { background: var(--flamant); border-radius: var(--r-m); padding: 16px; margin: 12px 0; color: var(--encre); }
+.cadeau-b b { color: var(--flamant-f); }
+@media (min-width: 700px) { #dlg-case { width: min(760px, calc(100vw - 32px)); } }
+</style>
+</head>
+<body>
+<div id="loader" class="loader actif" role="status"><div><div class="rond"></div><span class="txt">Chargement du calendrier...</span></div></div>
+<div id="annonces" class="sr" aria-live="polite"></div>
+<div class="page">
+  <header class="barre">
+    <div class="titre"><h1>🎄 Calendrier de l'Avent</h1><span class="marque">Mon Grist perso</span></div>
+    <div class="actions"><button type="button" class="btn sec" id="btn-reglages">⚙️ Réglages</button></div>
+  </header>
+  <div id="bandeaux"></div>
+  <section class="hero" aria-live="polite">
+    <div class="soleil" aria-hidden="true"></div><div class="palmier" aria-hidden="true">🌴</div>
+    <h2 id="hero-titre"></h2>
+    <p id="hero-sous"></p>
+  </section>
+  <nav aria-label="Les 24 cases"><div class="portes" id="portes"></div></nav>
+  <div class="pied-cal">
+    <span class="pil t-citron" id="lutin"></span>
+    <div id="lutin-jauge" style="flex:1;min-width:140px"></div>
+    <span class="mini" id="jn"></span>
+  </div>
+</div>
+
+<dialog class="feuille" id="dlg-case" aria-labelledby="case-titre">
+  <div class="poignee" aria-hidden="true"></div>
+  <div class="corps" id="case-corps"></div>
+</dialog>
+
+<dialog class="feuille" id="dlg-reglages" aria-labelledby="reg-titre">
+  <div class="poignee" aria-hidden="true"></div>
+  <form class="corps" id="form-reglages" novalidate>
+    <h2 id="reg-titre">Réglages du calendrier</h2>
+    <div class="champ"><label for="reg-annee">Année du calendrier</label><input type="number" id="reg-annee" min="2026" max="2100" inputmode="numeric" autocomplete="off"></div>
+    <div class="champ"><label style="display:flex;gap:10px;align-items:center;min-height:44px;font-weight:700"><input type="checkbox" id="reg-test" style="width:22px;height:22px" autocomplete="off"> Mode test (date simulée)</label>
+      <p class="aide">Pour essayer le calendrier avant décembre : choisissez une date, les cases s'ouvrent comme ce jour-là. Le contenu doit quand même être publié.</p></div>
+    <div class="champ"><label for="reg-date">Date simulée</label><input type="datetime-local" id="reg-date" autocomplete="off" style="width:100%;min-height:46px;border-radius:14px;border:0;background:var(--sable);box-shadow:inset 0 0 0 1.5px var(--trait);padding:10px 14px"></div>
+    <p class="mini" id="reg-info"></p>
+    <div class="pied"><button type="button" class="btn sec" data-fermer>Annuler</button><button type="submit" class="btn">Enregistrer</button></div>
+  </form>
+</dialog>
+<div id="toasts" class="toasts"></div>
+
+<script>
+'use strict';
+/* ==========================================================================
+   Mon Grist perso - outils partagés (sécurité, dates, montants, annonces)
+   Fichier commun concaténé dans chaque widget par build.py.
+   ========================================================================== */
+var MGP = window.MGP = window.MGP || {};
+
+/* ---- Sécurité ---- */
+function echapperHTML(v) {
+  if (v === null || v === undefined) { return ''; }
+  return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function logSecurite(evenement, detail) {
+  try { console.info('[securite] ' + evenement + (detail ? ' : ' + String(detail).slice(0, 300) : '')); } catch (e) { /* console indisponible */ }
+}
+function masquerLoader() {
+  var el = document.getElementById('loader');
+  if (!el) { return; }
+  void el.offsetHeight;
+  el.classList.remove('actif');
+}
+function montrerLoader(texte) {
+  var el = document.getElementById('loader');
+  if (!el) { return; }
+  var t = el.querySelector('.txt');
+  if (t && texte) { t.textContent = texte; }
+  el.classList.add('actif');
+}
+/* Lien sûr : seulement http(s), sinon chaîne vide. */
+function urlSure(u) {
+  var s = String(u || '').trim();
+  if (!s) { return ''; }
+  if (!/^https?:\/\//i.test(s)) { s = 'https://' + s; }
+  try { var x = new URL(s); return (x.protocol === 'http:' || x.protocol === 'https:') ? x.href : ''; } catch (e) { return ''; }
+}
+MGP.echapperHTML = echapperHTML;
+MGP.urlSure = urlSure;
+
+/* Inline sûr pour les contenus : échappe puis transforme `code` et **gras**. */
+MGP.texteRiche = function (t) {
+  return echapperHTML(t).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+};
+
+/* ---- Paramètres d'URL ---- */
+MGP.param = function (nom) {
+  try { return new URLSearchParams(location.search).get(nom); } catch (e) { return null; }
+};
+
+/* ---- Locale et monnaie (document Grist si possible) ---- */
+MGP.locale = 'fr-FR';
+MGP.devise = 'EUR';
+MGP.formatMontant = function (n, avecDecimales) {
+  if (n === null || n === undefined || n === '' || isNaN(Number(n))) { return ''; }
+  var v = Number(n);
+  var dec = (avecDecimales === true || Math.round(v) !== v) ? 2 : 0;
+  try {
+    return new Intl.NumberFormat(MGP.locale, { style: 'currency', currency: MGP.devise, minimumFractionDigits: dec, maximumFractionDigits: dec }).format(v);
+  } catch (e) { return v.toFixed(dec) + ' ' + MGP.devise; }
+};
+MGP.formatNombre = function (n) {
+  try { return new Intl.NumberFormat(MGP.locale).format(n); } catch (e) { return String(n); }
+};
+/* Lit un montant saisi ("35", "35,50", "35 €") ; null si vide ou invalide. */
+MGP.lireMontant = function (s) {
+  var t = String(s === null || s === undefined ? '' : s).replace(/\s/g, '').replace(/[^\d,.-]/g, '').replace(',', '.');
+  if (!t) { return null; }
+  var v = parseFloat(t);
+  return isNaN(v) ? null : Math.round(v * 100) / 100;
+};
+
+/* ---- Dates ----
+   Grist Date = secondes Unix à minuit UTC. Affichage : "1 déc. 2026" ou "mardi 1er décembre". */
+var MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+var MOIS_COURTS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+var JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+MGP.MOIS_LONGS = MOIS_LONGS;
+MGP.dateCourte = function (sec) {
+  if (sec === null || sec === undefined || sec === '' || isNaN(Number(sec))) { return ''; }
+  var d = new Date(Number(sec) * 1000);
+  return d.getUTCDate() + ' ' + MOIS_COURTS[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+};
+/* "mardi 1er décembre" à partir d'année, mois (1-12), jour. */
+MGP.dateLongue = function (a, m, j, avecAnnee) {
+  var d = new Date(Date.UTC(a, m - 1, j));
+  return JOURS[d.getUTCDay()] + ' ' + (j === 1 ? '1er' : j) + ' ' + MOIS_LONGS[m - 1] + (avecAnnee ? ' ' + a : '');
+};
+/* Secondes Grist (minuit UTC) depuis "AAAA-MM-JJ", et l'inverse. */
+MGP.isoVersSec = function (iso) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+  return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) / 1000 : null;
+};
+MGP.secVersIso = function (sec) {
+  if (sec === null || sec === undefined || sec === '') { return ''; }
+  return new Date(Number(sec) * 1000).toISOString().slice(0, 10);
+};
+
+/* Décalage (ms) d'un fuseau à un instant donné, via Intl. */
+MGP.decalageFuseau = function (fuseau, t) {
+  var f = new Intl.DateTimeFormat('en-US', { timeZone: fuseau, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  var p = {};
+  f.formatToParts(new Date(t)).forEach(function (x) { p[x.type] = x.value; });
+  var h = Number(p.hour) === 24 ? 0 : Number(p.hour);
+  return Date.UTC(+p.year, +p.month - 1, +p.day, h, +p.minute, +p.second) - Math.floor(t / 1000) * 1000;
+};
+/* Instant (ms) correspondant à une heure locale de Paris. */
+MGP.instantParis = function (a, m, j, h, mi) {
+  var devine = Date.UTC(a, m - 1, j, h, mi || 0);
+  var t = devine - MGP.decalageFuseau('Europe/Paris', devine);
+  return devine - MGP.decalageFuseau('Europe/Paris', t);
+};
+/* Date du jour à Paris : {a, m, j, h, mi}. */
+MGP.partiesParis = function (t) {
+  var f = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Paris', hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' });
+  var p = {};
+  f.formatToParts(new Date(t)).forEach(function (x) { p[x.type] = x.value; });
+  return { a: +p.year, m: +p.month, j: +p.day, h: (+p.hour) % 24, mi: +p.minute };
+};
+/* "2 jours, 21 heures et 14 minutes" */
+MGP.dureeTexte = function (ms) {
+  if (ms <= 0) { return 'quelques secondes'; }
+  var min = Math.floor(ms / 60000), j = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), mn = min % 60;
+  var morceaux = [];
+  if (j) { morceaux.push(j + (j > 1 ? ' jours' : ' jour')); }
+  if (h) { morceaux.push(h + (h > 1 ? ' heures' : ' heure')); }
+  if (mn || !morceaux.length) { morceaux.push(mn + (mn > 1 ? ' minutes' : ' minute')); }
+  if (ms < 60000) { return Math.ceil(ms / 1000) + ' secondes'; }
+  return morceaux.length > 1 ? morceaux.slice(0, -1).join(', ') + ' et ' + morceaux[morceaux.length - 1] : morceaux[0];
+};
+/* Nombre de jours avant Noël (25 décembre de l'année du jour à Paris). */
+MGP.joursAvantNoel = function (t) {
+  var p = MGP.partiesParis(t);
+  var auj = Date.UTC(p.a, p.m - 1, p.j);
+  var noel = Date.UTC(p.a, 11, 25);
+  if (auj > noel) { noel = Date.UTC(p.a + 1, 11, 25); }
+  return Math.round((noel - auj) / 86400000);
+};
+
+/* "Maintenant", simulable : ?maintenant=2026-12-09T10:00 (heure de Paris). */
+MGP.maintenantSimule = null;
+MGP.lireDateSimulee = function (s) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(String(s || ''));
+  return m ? MGP.instantParis(+m[1], +m[2], +m[3], m[4] ? +m[4] : 9, m[5] ? +m[5] : 0) : null;
+};
+MGP.maintenant = function () {
+  return MGP.maintenantSimule !== null ? MGP.maintenantSimule : Date.now();
+};
+(function () {
+  var p = MGP.param('maintenant');
+  var t = p ? MGP.lireDateSimulee(p) : null;
+  if (t !== null) { MGP.maintenantSimule = t; }
+})();
+
+/* ---- Annonces (aria-live + toasts) ---- */
+MGP.annoncer = function (texte, genre) {
+  var zone = document.getElementById('annonces');
+  if (zone) { zone.textContent = ''; setTimeout(function () { zone.textContent = texte; }, 30); }
+  var pile = document.getElementById('toasts');
+  if (!pile || genre === 'sr') { return; }
+  var t = document.createElement('div');
+  t.className = 'toast' + (genre ? ' ' + genre : '');
+  t.textContent = texte;
+  pile.appendChild(t);
+  setTimeout(function () { if (t.parentNode) { t.parentNode.removeChild(t); } }, 3800);
+};
+
+/* Couleurs pastel : nom de choix vers classe CSS. */
+MGP.COULEURS = ['Écume', 'Flamant', 'Citron', 'Pêche', 'Lavande', 'Menthe'];
+MGP.classeCouleur = function (nom) {
+  var n = String(nom || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return ['ecume', 'flamant', 'citron', 'peche', 'lavande', 'menthe'].indexOf(n) >= 0 ? 't-' + n : 't-sable';
+};
+MGP.HEX = { 'Écume': ['#A8E6E2', '#1F7F7A'], 'Flamant': ['#FFC2D1', '#C2406A'], 'Citron': ['#FFF1A8', '#8A6D00'], 'Pêche': ['#FFD3B5', '#C25A2C'], 'Lavande': ['#DCD0F7', '#6A4FB8'], 'Menthe': ['#CDEDC8', '#3D7F44'] };
+
+/* Valeur de liste Grist (['L', a, b] ou tableau) vers tableau JS. */
+MGP.liste = function (v) {
+  if (!v) { return []; }
+  if (Array.isArray(v)) { return v[0] === 'L' ? v.slice(1) : v.slice(); }
+  return [];
+};
+
+/* ==========================================================================
+   Mon Grist perso - composants d'interface partagés
+   (dialogues, confirmation dans la page, onglets, jauge, autocomplete).
+   ========================================================================== */
+
+/* autocomplete="off" sur tous les champs, y compris ceux créés plus tard. */
+MGP.couperAutocomplete = function (racine) {
+  (racine || document).querySelectorAll('input, select, textarea').forEach(function (el) { el.setAttribute('autocomplete', 'off'); });
+};
+(function () {
+  try {
+    new MutationObserver(function (muts) {
+      muts.forEach(function (m) {
+        m.addedNodes.forEach(function (n) {
+          if (n.nodeType !== 1) { return; }
+          if (/^(INPUT|SELECT|TEXTAREA)$/.test(n.tagName)) { n.setAttribute('autocomplete', 'off'); }
+          if (n.querySelectorAll) { MGP.couperAutocomplete(n); }
+        });
+      });
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  } catch (e) { logSecurite('observateur indisponible', e); }
+})();
+
+/* ---- Dialogues ---- */
+MGP.ouvrir = function (dlg, focusSel) {
+  if (!dlg) { return; }
+  if (!dlg.open) {
+    if (typeof dlg.showModal === 'function') { dlg.showModal(); } else { dlg.setAttribute('open', ''); }
+  }
+  MGP.couperAutocomplete(dlg);
+  var cible = focusSel ? dlg.querySelector(focusSel) : null;
+  if (cible) { setTimeout(function () { cible.focus(); }, 20); }
+};
+MGP.fermer = function (dlg) {
+  if (dlg && dlg.open) { if (typeof dlg.close === 'function') { dlg.close(); } else { dlg.removeAttribute('open'); } }
+};
+/* Fermeture au clic sur le voile, et boutons [data-fermer]. */
+MGP.brancherDialogues = function () {
+  document.querySelectorAll('dialog.feuille').forEach(function (d) {
+    if (d.dataset.branche) { return; }
+    d.dataset.branche = '1';
+    d.addEventListener('click', function (ev) {
+      if (ev.target === d) { MGP.fermer(d); }
+      var f = ev.target.closest('[data-fermer]');
+      if (f && d.contains(f)) { MGP.fermer(d); }
+    });
+  });
+};
+
+/* Confirmation dans la page (aucune boîte native). Renvoie une promesse booléenne. */
+MGP.confirmer = function (titre, texte, libelleOk, danger) {
+  return new Promise(function (resoudre) {
+    var d = document.getElementById('dlg-confirmer');
+    if (!d) {
+      d = document.createElement('dialog');
+      d.id = 'dlg-confirmer';
+      d.className = 'feuille';
+      d.setAttribute('aria-labelledby', 'dlg-confirmer-titre');
+      d.innerHTML = '<div class="poignee" aria-hidden="true"></div><div class="corps"><h2 id="dlg-confirmer-titre"></h2><p class="txt"></p>' +
+        '<div class="pied"><button type="button" class="btn sec" data-r="non">Annuler</button><button type="button" class="btn" data-r="oui"></button></div></div>';
+      document.body.appendChild(d);
+    }
+    d.querySelector('h2').textContent = titre;
+    d.querySelector('.txt').textContent = texte || '';
+    var ok = d.querySelector('[data-r="oui"]');
+    ok.textContent = libelleOk || 'Confirmer';
+    ok.className = 'btn' + (danger ? ' danger' : '');
+    var fini = false;
+    function terminer(v) { if (fini) { return; } fini = true; MGP.fermer(d); resoudre(v); }
+    d.onclick = null;
+    d.addEventListener('click', function gestion(ev) {
+      var b = ev.target.closest('[data-r]');
+      if (ev.target === d) { d.removeEventListener('click', gestion); terminer(false); return; }
+      if (b) { d.removeEventListener('click', gestion); terminer(b.dataset.r === 'oui'); }
+    });
+    d.addEventListener('close', function () { terminer(false); }, { once: true });
+    MGP.ouvrir(d, '[data-r="non"]');
+  });
+};
+
+/* ---- Onglets accessibles (role=tablist, flèches clavier) ---- */
+MGP.onglets = function (liste, surChange) {
+  var boutons = Array.prototype.slice.call(liste.querySelectorAll('[role="tab"]'));
+  function activer(b, focus) {
+    boutons.forEach(function (x) {
+      var on = x === b;
+      x.setAttribute('aria-selected', on ? 'true' : 'false');
+      x.tabIndex = on ? 0 : -1;
+      var p = document.getElementById(x.getAttribute('aria-controls'));
+      if (p) { p.hidden = !on; }
+    });
+    if (focus) { b.focus(); }
+    if (surChange) { surChange(b.dataset.onglet); }
+  }
+  boutons.forEach(function (b, i) {
+    b.addEventListener('click', function () { activer(b, false); });
+    b.addEventListener('keydown', function (ev) {
+      var n = null;
+      if (ev.key === 'ArrowRight') { n = boutons[(i + 1) % boutons.length]; }
+      if (ev.key === 'ArrowLeft') { n = boutons[(i - 1 + boutons.length) % boutons.length]; }
+      if (ev.key === 'Home') { n = boutons[0]; }
+      if (ev.key === 'End') { n = boutons[boutons.length - 1]; }
+      if (n) { ev.preventDefault(); activer(n, true); }
+    });
+  });
+  return { activer: function (nom) { var b = boutons.filter(function (x) { return x.dataset.onglet === nom; })[0]; if (b) { activer(b, false); } } };
+};
+
+/* ---- Jauge HTML ---- */
+MGP.jaugeHTML = function (valeur, max, libelle, alerte) {
+  var pct = max > 0 ? Math.max(0, Math.min(100, Math.round(valeur / max * 100))) : 0;
+  return '<div class="jauge' + (alerte ? ' alerte' : '') + '" role="progressbar" aria-valuemin="0" aria-valuemax="' + echapperHTML(max) +
+    '" aria-valuenow="' + echapperHTML(Math.min(valeur, max)) + '" aria-label="' + echapperHTML(libelle) + '"><i style="width:' + pct + '%"></i></div>';
+};
+
+/* Choix par pastilles (aria-pressed) : renvoie la valeur choisie via data-val. */
+MGP.brancherChoix = function (conteneur, surChange) {
+  conteneur.addEventListener('click', function (ev) {
+    var b = ev.target.closest('button[data-val]');
+    if (!b || !conteneur.contains(b)) { return; }
+    conteneur.querySelectorAll('button[data-val]').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+    if (surChange) { surChange(b.dataset.val); }
+  });
+};
+MGP.valeurChoix = function (conteneur) {
+  var b = conteneur.querySelector('button[aria-pressed="true"]');
+  return b ? b.dataset.val : null;
+};
+
+/* ==========================================================================
+   Mon Grist perso - accès au document, socle commun et installation
+   - tables trouvées via fetchTable('_grist_Tables') (jamais listTables)
+   - AddTable avec {id, type, label} seulement, formules posées ensuite par ModifyColumn
+   - pages créées automatiquement par Grist supprimées (RemoveRecord _grist_Views)
+   - réglages stockés en lignes dans la table technique (jamais dans les options du widget)
+   ========================================================================== */
+MGP.g = {
+  acces: 'none',
+  pret: false,
+  meta: null,
+  registre: {},      /* CLE -> tableId réel */
+  tech: null,        /* tableId réel de la table technique */
+  techLignes: []     /* lignes de la table technique */
+};
+
+/* ---- Lecture ---- */
+MGP.g.lignes = function (col) {
+  var ids = (col && col.id) || [];
+  var cles = Object.keys(col || {});
+  return ids.map(function (id, i) {
+    var r = {};
+    cles.forEach(function (c) { r[c] = col[c][i]; });
+    return r;
+  });
+};
+MGP.g.lire = async function (tableId) {
+  return MGP.g.lignes(await grist.docApi.fetchTable(tableId));
+};
+MGP.g.actions = async function (liste) {
+  if (!liste.length) { return { retValues: [] }; }
+  return grist.docApi.applyUserActions(liste);
+};
+MGP.g.chargerMeta = async function () {
+  var t = await MGP.g.lire('_grist_Tables');
+  var c = await MGP.g.lire('_grist_Tables_column');
+  MGP.g.meta = { tables: t, colonnes: c };
+  return MGP.g.meta;
+};
+MGP.g.colonnesDe = function (tableRef) {
+  return (MGP.g.meta ? MGP.g.meta.colonnes : []).filter(function (c) { return c.parentId === tableRef; });
+};
+MGP.g.tableParId = function (tableId) {
+  return (MGP.g.meta ? MGP.g.meta.tables : []).filter(function (t) { return t.tableId === tableId; })[0] || null;
+};
+/* Tables visibles par l'utilisateur (exclut tables système, résumés, cachées, visite guidée). */
+MGP.g.estTableUtilisateur = function (t) {
+  var id = String(t.tableId || '');
+  if (!id || id.indexOf('_grist') === 0 || id.indexOf('GristHidden_') === 0 || id === 'GristDocTour') { return false; }
+  if (t.summarySourceTable || id.indexOf('_SUMMARY_') >= 0 || id.toUpperCase().indexOf('GRISTSUMMARY_') === 0) { return false; }
+  return true;
+};
+
+/* Locale et monnaie du document. */
+MGP.g.lireReglagesDoc = async function () {
+  try {
+    var info = await MGP.g.lire('_grist_DocInfo');
+    var s = info[0] && info[0].documentSettings ? JSON.parse(info[0].documentSettings) : {};
+    if (s.locale) { MGP.locale = s.locale; }
+    if (s.currency) { MGP.devise = s.currency; }
+  } catch (e) { logSecurite('réglages du document illisibles', e); }
+};
+
+/* ---- Démarrage commun : accès demandé et niveau obtenu ---- */
+MGP.g.demarrer = function (accesRequis) {
+  return new Promise(function (resoudre) {
+    if (typeof grist === 'undefined') { resoudre('none'); return; }
+    var fini = false;
+    function fin(n) { if (!fini) { fini = true; MGP.g.acces = n || 'none'; resoudre(MGP.g.acces); } }
+    try {
+      grist.ready({ requiredAccess: accesRequis || 'full', allowSelectBy: false });
+      /* Le message initial de Grist donne le niveau d'accès (settings.accessLevel) : aucun réglage n'y est stocké. */
+      grist.on('message', function (msg) { if (msg && msg.settings) { fin(msg.settings.accessLevel); } });
+    } catch (e) { logSecurite('démarrage', e); fin('none'); }
+    setTimeout(function () { fin(MGP.g.acces); }, 2500);
+  });
+};
+
+/* ==========================================================================
+   Définitions du socle commun
+   Type "Ref:@CLE" : référence vers la table de clé CLE (id réel résolu à la création).
+   Formules : "{CLE}" remplacé par l'id réel de la table.
+   ========================================================================== */
+MGP.CHAMPS_SUIVI = ['CREE_LE', 'CREE_PAR', 'MODIFIE_LE', 'MODIFIE_PAR'];
+MGP.SOCLE = {
+  TECH: {
+    cle: 'TECH', id: 'BIBLIOTHEQUE_MON_GRIST_PERSO_', label: '⚙️ BIBLIOTHÈQUE MON GRIST PERSO ⚡', motif: 'BIBLIOTHEQUE_MON_GRIST_PERSO',
+    signature: ['CLE', 'VALEUR'],
+    colonnes: [{ id: 'CLE', type: 'Text' }, { id: 'VALEUR', type: 'Text' }]
+  },
+  PERSONNES: {
+    cle: 'PERSONNES', id: 'Personnes', label: '👥 Personnes', nom: 'Personnes',
+    signature: ['PRENOM', 'FOYER', 'TYPE'],
+    colonnes: [
+      { id: 'PRENOM', type: 'Text' },
+      { id: 'TYPE', type: 'Choice', choix: [['Adulte', 'Pêche'], ['Enfant', 'Lavande'], ['Proche', 'Écume'], ['Ami', 'Menthe']] },
+      { id: 'FOYER', type: 'Bool' },
+      { id: 'NAISSANCE', type: 'Date' },
+      { id: 'EMOJI', type: 'Text' },
+      { id: 'COULEUR', type: 'Choice', choix: [['Écume', 'Écume'], ['Flamant', 'Flamant'], ['Citron', 'Citron'], ['Pêche', 'Pêche'], ['Lavande', 'Lavande'], ['Menthe', 'Menthe']] },
+      { id: 'NOTES', type: 'Text' }
+    ],
+    affichage: 'PRENOM'
+  },
+  CATEGORIES: {
+    cle: 'CATEGORIES', id: 'Categories', label: '🏷️ Catégories', nom: 'Catégories',
+    signature: ['NOM', 'EMOJI', 'COULEUR'],
+    colonnes: [
+      { id: 'NOM', type: 'Text' },
+      { id: 'EMOJI', type: 'Text' },
+      { id: 'COULEUR', type: 'Choice', choix: [['Écume', 'Écume'], ['Flamant', 'Flamant'], ['Citron', 'Citron'], ['Pêche', 'Pêche'], ['Lavande', 'Lavande'], ['Menthe', 'Menthe']] }
+    ],
+    affichage: 'NOM',
+    graines: [['Alimentation', '🛒', 'Menthe'], ['Maison', '🏠', 'Pêche'], ['Transport', '🚗', 'Écume'], ['Loisirs', '🎭', 'Lavande'],
+      ['Cadeaux', '🎁', 'Flamant'], ['Abonnements', '📱', 'Citron'], ['Santé', '🩺', 'Écume'], ['Épargne', '🌱', 'Menthe']]
+  },
+  DOCUMENTS: {
+    cle: 'DOCUMENTS', id: 'Documents', label: '📎 Documents', nom: 'Documents',
+    signature: ['FICHIER', 'TITRE'],
+    colonnes: [
+      { id: 'TITRE', type: 'Text' },
+      { id: 'FICHIER', type: 'Attachments' },
+      { id: 'TYPE', type: 'Choice', choix: [['Facture', 'Citron'], ['Garantie', 'Menthe'], ['Contrat', 'Lavande'], ['Photo', 'Flamant'], ['Autre', 'Écume']] },
+      { id: 'PERSONNE', type: 'Ref:@PERSONNES' },
+      { id: 'CATEGORIE', type: 'Ref:@CATEGORIES' },
+      { id: 'DATE_DOC', type: 'Date' },
+      { id: 'NOTES', type: 'Text' }
+    ],
+    affichage: 'TITRE'
+  }
+};
+MGP.ORDRE_SOCLE = ['TECH', 'PERSONNES', 'CATEGORIES', 'DOCUMENTS'];
+
+/* Colonnes de suivi ajoutées à chaque table (formules automatiques). */
+MGP.colonnesSuivi = function () {
+  return [
+    { id: 'CREE_LE', type: 'DateTime:Europe/Paris', declencheur: 'NOW()', quand: 0 },
+    { id: 'CREE_PAR', type: 'Text', declencheur: 'user.Name', quand: 0 },
+    { id: 'MODIFIE_LE', type: 'DateTime:Europe/Paris', declencheur: 'NOW()', quand: 2 },
+    { id: 'MODIFIE_PAR', type: 'Text', declencheur: 'user.Name', quand: 2 }
+  ];
+};
+
+/* ---- Recherche d'une table : registre, puis id attendu, puis signature ---- */
+MGP.g.trouver = function (def) {
+  var tables = MGP.g.meta.tables.filter(MGP.g.estTableUtilisateur);
+  function aSignature(t) {
+    var ids = MGP.g.colonnesDe(t.id).map(function (c) { return c.colId; });
+    return def.signature.every(function (s) { return ids.indexOf(s) >= 0; });
+  }
+  var parReg = MGP.g.registre[def.cle];
+  var t = parReg ? tables.filter(function (x) { return x.tableId === parReg; })[0] : null;
+  if (t && aSignature(t)) { return t; }
+  t = tables.filter(function (x) { return x.tableId === def.id && aSignature(x); })[0];
+  if (t) { return t; }
+  if (def.motif) {
+    t = tables.filter(function (x) { return x.tableId.toUpperCase().indexOf(def.motif) >= 0 && aSignature(x); })[0];
+    if (t) { return t; }
+  }
+  return def.motif ? null : (tables.filter(aSignature)[0] || null);
+};
+
+/* Lit la table technique et le registre des tables. */
+MGP.g.chargerTech = async function () {
+  var t = MGP.g.trouver(MGP.SOCLE.TECH);
+  MGP.g.tech = t ? t.tableId : null;
+  MGP.g.techLignes = [];
+  MGP.g.registre = {};
+  if (!t) { return; }
+  MGP.g.techLignes = await MGP.g.lire(t.tableId);
+  MGP.g.techLignes.forEach(function (r) {
+    var cle = String(r.CLE || '');
+    if (cle.indexOf('TABLE:') === 0) { MGP.g.registre[cle.slice(6)] = String(r.VALEUR || ''); }
+  });
+  MGP.g.registre.TECH = t.tableId;
+};
+MGP.g.reglage = function (cle, defaut) {
+  var r = MGP.g.techLignes.filter(function (x) { return x.CLE === cle; })[0];
+  if (!r) { return defaut; }
+  try { return JSON.parse(r.VALEUR); } catch (e) { return r.VALEUR; }
+};
+/* Écrit (ou met à jour) un réglage. Renvoie false si impossible (lecture seule). */
+MGP.g.ecrireReglage = async function (cle, valeur) {
+  if (!MGP.g.tech || MGP.g.acces !== 'full') { return false; }
+  var texte = typeof valeur === 'string' ? valeur : JSON.stringify(valeur);
+  var r = MGP.g.techLignes.filter(function (x) { return x.CLE === cle; })[0];
+  if (r) {
+    await MGP.g.actions([['UpdateRecord', MGP.g.tech, r.id, { VALEUR: texte }]]);
+    r.VALEUR = texte;
+  } else {
+    var res = await MGP.g.actions([['AddRecord', MGP.g.tech, null, { CLE: cle, VALEUR: texte }]]);
+    MGP.g.techLignes.push({ id: res.retValues[0], CLE: cle, VALEUR: texte });
+  }
+  return true;
+};
+MGP.g.idTable = function (cle) { return MGP.g.registre[cle] || null; };
+
+/* ==========================================================================
+   creerTables : crée les tables manquantes, idempotent.
+   defs : liste de définitions (socle ou widget). Renvoie {crees:[cle], pagesSupprimees:n}.
+   ========================================================================== */
+MGP.g.resoudreType = function (type) {
+  var m = /^(Ref|RefList):@(\w+)$/.exec(type);
+  return m ? m[1] + ':' + (MGP.g.registre[m[2]] || m[2]) : type;
+};
+MGP.g.resoudreFormule = function (f) {
+  return String(f).replace(/\{(\w+)\}/g, function (_x, cle) { return MGP.g.registre[cle] || cle; });
+};
+MGP.g.optionsChoix = function (choix) {
+  var opts = {};
+  choix.forEach(function (c) {
+    var hex = MGP.HEX[c[1]] || MGP.HEX['Écume'];
+    opts[c[0]] = { fillColor: hex[0], textColor: hex[1] };
+  });
+  return JSON.stringify({ choices: choix.map(function (c) { return c[0]; }), choiceOptions: opts, alignment: 'left' });
+};
+
+/* Actions ModifyColumn qui posent type, libellé, formule, déclencheur, choix. */
+MGP.g.actionsColonne = function (tableId, c, nouvelle) {
+  var a = [];
+  var props = { type: MGP.g.resoudreType(c.type), label: c.id };
+  if (c.formule) {
+    props.isFormula = true;
+    props.formula = MGP.g.resoudreFormule(c.formule);
+  } else if (c.declencheur) {
+    props.isFormula = false;
+    props.formula = c.declencheur;
+    props.recalcWhen = c.quand || 0;
+    props.recalcDeps = null;
+  } else if (nouvelle) {
+    props.isFormula = false;
+  }
+  if (c.choix) { props.widgetOptions = MGP.g.optionsChoix(c.choix); }
+  if (c.options) { props.widgetOptions = JSON.stringify(c.options); }
+  a.push(['ModifyColumn', tableId, c.id, props]);
+  return a;
+};
+
+/* Colonne d'affichage d'une référence (montre le prénom plutôt que le numéro). */
+MGP.g.actionsAffichageRef = function (tableId, c, defs) {
+  var m = /^(Ref|RefList):@(\w+)$/.exec(c.type);
+  if (!m) { return []; }
+  var cible = defs[m[2]] || MGP.SOCLE[m[2]];
+  if (!cible || !cible.affichage) { return []; }
+  var tRef = MGP.g.tableParId(MGP.g.registre[m[2]]);
+  var tSrc = MGP.g.tableParId(tableId);
+  if (!tRef || !tSrc) { return []; }
+  var vis = MGP.g.colonnesDe(tRef.id).filter(function (x) { return x.colId === cible.affichage; })[0];
+  var col = MGP.g.colonnesDe(tSrc.id).filter(function (x) { return x.colId === c.id; })[0];
+  if (!vis || !col || col.visibleCol === vis.id) { return []; }
+  return [['ModifyColumn', tableId, c.id, { visibleCol: vis.id }],
+    ['SetDisplayFormula', tableId, null, col.id, '$' + c.id + '.' + cible.affichage]];
+};
+
+MGP.g.creerTables = async function (defs) {
+  var parCle = {};
+  defs.forEach(function (d) { parCle[d.cle] = d; });
+  var crees = [], vuesASupprimer = [], refsNouvelles = [];
+  await MGP.g.chargerMeta();
+  await MGP.g.chargerTech();
+
+  /* 1. AddTable (une table par appel, dans l'ordre des dépendances), id réel relu. */
+  for (var i = 0; i < defs.length; i++) {
+    var def = defs[i];
+    var existe = MGP.g.trouver(def);
+    if (existe) { MGP.g.registre[def.cle] = existe.tableId; continue; }
+    var cols = def.colonnes.concat(MGP.colonnesSuivi()).map(function (c) {
+      return { id: c.id, type: (c.formule ? 'Any' : MGP.g.resoudreType(c.type)), label: c.id };
+    });
+    var res = await MGP.g.actions([['AddTable', def.id, cols]]);
+    var rv = res.retValues[0] || {};
+    MGP.g.registre[def.cle] = rv.table_id || def.id;
+    (rv.views || []).forEach(function (v) { if (v && v.id) { vuesASupprimer.push(v.id); } });
+    crees.push(def.cle);
+    await MGP.g.chargerMeta();
+    var tr = MGP.g.tableParId(MGP.g.registre[def.cle]);
+    if (tr) { refsNouvelles.push(tr.id); }
+  }
+
+  /* 2. Suppression des pages créées automatiquement (repli : primaryViewId). */
+  MGP.g.meta.tables.forEach(function (t) {
+    if (refsNouvelles.indexOf(t.id) >= 0 && t.primaryViewId && vuesASupprimer.indexOf(t.primaryViewId) < 0) { vuesASupprimer.push(t.primaryViewId); }
+  });
+  var pagesSupprimees = 0;
+  for (var v = 0; v < vuesASupprimer.length; v++) {
+    try { await MGP.g.actions([['RemoveRecord', '_grist_Views', vuesASupprimer[v]]]); pagesSupprimees++; } catch (e) { logSecurite('suppression de page impossible', e); }
+  }
+
+  /* 3. Libellés avec emoji (titre de la section brute), puis relecture des id réels. */
+  if (crees.length) {
+    var ren = [];
+    MGP.g.meta.tables.forEach(function (t) {
+      crees.forEach(function (cle) {
+        if (t.tableId === MGP.g.registre[cle] && parCle[cle].label && t.rawViewSectionRef) {
+          ren.push(['UpdateRecord', '_grist_Views_section', t.rawViewSectionRef, { title: parCle[cle].label }]);
+        }
+      });
+    });
+    var avant = {};
+    crees.forEach(function (cle) { var t = MGP.g.tableParId(MGP.g.registre[cle]); if (t) { avant[cle] = t.id; } });
+    try { await MGP.g.actions(ren); } catch (e) { logSecurite('renommage des tables', e); }
+    await MGP.g.chargerMeta();
+    Object.keys(avant).forEach(function (cle) {
+      var t = MGP.g.meta.tables.filter(function (x) { return x.id === avant[cle]; })[0];
+      if (t) { MGP.g.registre[cle] = t.tableId; }
+    });
+  }
+
+  /* 4. Colonnes : ajout des manquantes, puis formules, déclencheurs et choix. */
+  for (var k = 0; k < defs.length; k++) {
+    var d = defs[k];
+    var tid = MGP.g.registre[d.cle];
+    var tab = MGP.g.tableParId(tid);
+    if (!tab) { continue; }
+    var nouvelleTable = crees.indexOf(d.cle) >= 0;
+    var presentes = MGP.g.colonnesDe(tab.id).map(function (c) { return c.colId; });
+    var mods = [];
+    var toutes = d.colonnes.concat(MGP.colonnesSuivi());
+    for (var j = 0; j < toutes.length; j++) {
+      var c = toutes[j];
+      if (presentes.indexOf(c.id) < 0) {
+        var r = await MGP.g.actions([['AddColumn', tid, c.id, { type: c.formule ? 'Any' : MGP.g.resoudreType(c.type), label: c.id }]]);
+        var vrai = r.retValues[0] && r.retValues[0].colId;
+        if (vrai && vrai !== c.id) { logSecurite('colonne renommée par le document', c.id + ' -> ' + vrai); continue; }
+        mods = mods.concat(MGP.g.actionsColonne(tid, c, true));
+      } else if (nouvelleTable) {
+        mods = mods.concat(MGP.g.actionsColonne(tid, c, true));
+      }
+    }
+    if (mods.length) { await MGP.g.actions(mods); }
+  }
+
+  /* 5. Affichage des références, graines, registre. */
+  await MGP.g.chargerMeta();
+  var aff = [];
+  defs.forEach(function (d) {
+    var tid2 = MGP.g.registre[d.cle];
+    d.colonnes.forEach(function (c) { aff = aff.concat(MGP.g.actionsAffichageRef(tid2, c, parCle)); });
+  });
+  if (aff.length) { try { await MGP.g.actions(aff); } catch (e) { logSecurite('colonne d’affichage', e); } }
+
+  var graines = [];
+  defs.forEach(function (d) {
+    if (crees.indexOf(d.cle) >= 0 && d.graines && d.graines.length) {
+      var cols2 = {};
+      d.colonnes.slice(0, d.graines[0].length).forEach(function (c, ci) { cols2[c.id] = d.graines.map(function (g) { return g[ci]; }); });
+      graines.push(['BulkAddRecord', MGP.g.registre[d.cle], d.graines.map(function () { return null; }), cols2]);
+    }
+  });
+  if (graines.length) { await MGP.g.actions(graines); }
+
+  await MGP.g.chargerTech();
+  if (MGP.g.tech) {
+    for (var q = 0; q < defs.length; q++) {
+      var cle2 = defs[q].cle;
+      var reel = MGP.g.registre[cle2] || (MGP.g.trouver(defs[q]) || {}).tableId;
+      if (reel && cle2 !== 'TECH' && MGP.g.reglage('TABLE:' + cle2, null) !== reel) { await MGP.g.ecrireReglage('TABLE:' + cle2, reel); }
+      if (reel) { MGP.g.registre[cle2] = reel; }
+    }
+  }
+  return { crees: crees, pagesSupprimees: pagesSupprimees };
+};
+
+/* Définitions du socle (toujours créé en premier). */
+MGP.g.defsSocle = function () {
+  return MGP.ORDRE_SOCLE.map(function (c) { return MGP.SOCLE[c]; });
+};
+
+/* ==========================================================================
+   Renommer la page courante : section "custom" dont l'URL est celle du widget.
+   Si plusieurs pages correspondent (ou aucune), on ne renomme pas.
+   ========================================================================== */
+MGP.g.normaliserUrl = function (u) {
+  try {
+    var x = new URL(u, location.href);
+    return (x.origin + x.pathname).replace(/index\.html$/, '').replace(/\/+$/, '');
+  } catch (e) { return String(u || ''); }
+};
+MGP.g.vueCourante = async function () {
+  var moi = MGP.g.normaliserUrl(location.href);
+  var sections = await MGP.g.lire('_grist_Views_section');
+  var vues = [];
+  sections.forEach(function (s) {
+    if (s.parentKey !== 'custom' || !s.parentId) { return; }
+    var cv = {};
+    try { cv = JSON.parse(JSON.parse(s.options || '{}').customView || '{}'); } catch (e) { cv = {}; }
+    if (cv.url && MGP.g.normaliserUrl(cv.url) === moi && vues.indexOf(s.parentId) < 0) { vues.push(s.parentId); }
+  });
+  return vues.length === 1 ? vues[0] : null;
+};
+MGP.g.renommerPage = async function (nom) {
+  try {
+    var v = await MGP.g.vueCourante();
+    if (!v) { logSecurite('page courante introuvable : pas de renommage'); return false; }
+    await MGP.g.actions([['UpdateRecord', '_grist_Views', v, { name: nom }]]);
+    return true;
+  } catch (e) { logSecurite('renommage de page ignoré', e); return false; }
+};
+
+/* ==========================================================================
+   Installation d'un widget en deux temps :
+   1) tables (socle + widget), marqueur INSTALL:<widget> = {etat:'tables'}, rechargement
+   2) au rechargement : exemples éventuels, renommage de la page, etat 'ok'
+   Le rechargement garantit que le widget voit bien les nouvelles tables.
+   ========================================================================== */
+MGP.g.cleInstall = function (widget) { return 'INSTALL:' + widget; };
+MGP.g.etatInstall = function (widget) {
+  var v = MGP.g.reglage(MGP.g.cleInstall(widget), null);
+  if (!v) { try { v = JSON.parse(sessionStorage.getItem('mgp-' + widget) || 'null'); } catch (e) { v = null; } }
+  return v;
+};
+MGP.g.installerTables = async function (widget, defsWidget, exemples) {
+  var res = await MGP.g.creerTables(MGP.g.defsSocle().concat(defsWidget));
+  var marque = { etat: 'tables', exemples: !!exemples };
+  var ok = false;
+  try { ok = await MGP.g.ecrireReglage(MGP.g.cleInstall(widget), marque); } catch (e) { logSecurite('marqueur d’installation', e); }
+  if (!ok) { try { sessionStorage.setItem('mgp-' + widget, JSON.stringify(marque)); } catch (e) { logSecurite('sessionStorage indisponible', e); } }
+  return res;
+};
+MGP.g.terminerInstall = async function (widget, nomPage, fnExemples, exemples) {
+  if (exemples && fnExemples) { await fnExemples(); }
+  await MGP.g.renommerPage(nomPage);
+  await MGP.g.ecrireReglage(MGP.g.cleInstall(widget), { etat: 'ok', le: new Date(MGP.maintenant()).toISOString() });
+  try { sessionStorage.removeItem('mgp-' + widget); } catch (e) { /* rien */ }
+};
+MGP.g.recharger = function () {
+  setTimeout(function () { location.reload(); }, 150);
+};
+
+/* ---- Pièces jointes ---- */
+MGP.g.jeton = null;
+MGP.g.jetonLecture = async function () {
+  if (MGP.g.jeton && MGP.g.jeton.expire > Date.now()) { return MGP.g.jeton; }
+  var t = await grist.docApi.getAccessToken({ readOnly: true });
+  MGP.g.jeton = { token: t.token, baseUrl: t.baseUrl, expire: Date.now() + Math.max(60000, (t.ttlMsecs || 300000) - 30000) };
+  return MGP.g.jeton;
+};
+MGP.g.urlPieceJointe = function (attId) {
+  if (!MGP.g.jeton) { return ''; }
+  return MGP.g.jeton.baseUrl + '/attachments/' + encodeURIComponent(attId) + '/download?auth=' + encodeURIComponent(MGP.g.jeton.token);
+};
+MGP.g.envoyerPieceJointe = async function (fichier) {
+  var t = await grist.docApi.getAccessToken({ readOnly: false });
+  var fd = new FormData();
+  fd.append('upload', fichier, fichier.name || 'photo.jpg');
+  var r = await fetch(t.baseUrl + '/attachments?auth=' + encodeURIComponent(t.token), { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+  if (!r.ok) { throw new Error('envoi refusé (' + r.status + ')'); }
+  var ids = await r.json();
+  return ids[0];
+};
+
+/* ---- Jauge du forfait gratuit : lignes de toutes les tables utilisateur ---- */
+MGP.LIMITE_LIGNES = 5000;
+MGP.g.compterLignes = async function () {
+  if (!MGP.g.meta) { await MGP.g.chargerMeta(); }
+  var total = 0;
+  var tables = MGP.g.meta.tables.filter(MGP.g.estTableUtilisateur);
+  for (var i = 0; i < tables.length; i++) {
+    try { var d = await grist.docApi.fetchTable(tables[i].tableId); total += (d.id || []).length; } catch (e) { logSecurite('comptage', e); }
+  }
+  return total;
+};
+MGP.jaugeLignesHTML = function (n) {
+  var alerte = n > MGP.LIMITE_LIGNES * 0.8;
+  return '<span class="pil ' + (alerte ? 't-flamant' : 't-ecume') + '">' + echapperHTML(MGP.formatNombre(n)) + ' lignes sur ' + echapperHTML(MGP.formatNombre(MGP.LIMITE_LIGNES)) + '</span>';
+};
+
+/* ---- Export CSV (séparateur ;, BOM pour les tableurs) ---- */
+MGP.exporterCSV = function (nomFichier, colonnes, lignes) {
+  function cell(v) {
+    var s = v === null || v === undefined ? '' : String(v);
+    if (/^[=+\-@]/.test(s)) { s = "'" + s; }
+    return /[";\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+  var txt = colonnes.map(function (c) { return cell(c.titre); }).join(';') + '\r\n' +
+    lignes.map(function (l) { return colonnes.map(function (c) { return cell(c.val(l)); }).join(';'); }).join('\r\n');
+  var blob = new Blob(['﻿' + txt], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nomFichier;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  MGP.annoncer('Export prêt : ' + nomFichier, 'ok');
+  return txt;
+};
+
+
+var CAL = {
+  annee: 2026,
+  test: { actif: false, date: '' },
+  contenus: {},     /* jour -> contenu publié (ou null si 404) */
+  progres: {},      /* jour -> {ouvert_le, defi, quiz} */
+  lectureSeule: true,
+  ouvert: null
+};
+CAL.COULEURS = ['Flamant', 'Écume', 'Citron', 'Lavande', 'Pêche', 'Menthe', 'Flamant', 'Écume', 'Lavande', 'Citron', 'Menthe', 'Pêche'];
+CAL.ETIQUETTES = { cadeau: 'Cadeau', capot: 'Sous le capot', quiz: 'Quiz', astuce: 'Astuce', defi: 'Défi' };
+CAL.deux = function (j) { return (j < 10 ? '0' : '') + j; };
+
+/* ---- Temps ---- */
+CAL.maintenant = function () {
+  if (MGP.maintenantSimule !== null) { return MGP.maintenantSimule; }
+  if (CAL.test.actif && CAL.test.date) { var t = MGP.lireDateSimulee(CAL.test.date); if (t !== null) { return t; } }
+  return Date.now();
+};
+CAL.ouverture = function (j) { return MGP.instantParis(CAL.annee, 12, j, 9, 0); };
+CAL.dateAtteinte = function (j, t) { return t >= CAL.ouverture(j); };
+/* Une case est disponible si sa date est atteinte ET si son contenu est publié. */
+CAL.disponible = function (j, t) { return CAL.dateAtteinte(j, t) && !!CAL.contenus[j]; };
+
+/* ---- Contenus publiés : jamais embarqués, lus le jour venu ---- */
+CAL.urlContenu = function (j) { return new URL('../avent/jour-' + CAL.deux(j) + '/contenu.json', location.href).href; };
+CAL.chargerContenu = async function (j) {
+  try {
+    var r = await fetch(CAL.urlContenu(j), { cache: 'no-cache' });
+    if (!r.ok) { return null; }
+    var c = await r.json();
+    return (c && Number(c.jour) === j) ? c : null;
+  } catch (e) { logSecurite('contenu ' + j, e); return null; }
+};
+CAL.chargerContenus = async function () {
+  var t = CAL.maintenant(), attente = [];
+  for (var j = 1; j <= 24; j++) {
+    if (!CAL.dateAtteinte(j, t)) { CAL.contenus[j] = null; continue; }
+    if (CAL.contenus[j]) { continue; }
+    attente.push((function (jj) { return CAL.chargerContenu(jj).then(function (c) { CAL.contenus[jj] = c; }); })(j));
+  }
+  await Promise.all(attente);
+};
+
+/* ---- Progression ---- */
+CAL.lireProgres = function () {
+  CAL.progres = {};
+  for (var j = 1; j <= 24; j++) {
+    var p = MGP.g.reglage('AVENT:' + CAL.deux(j), null);
+    if (p && typeof p === 'object') { CAL.progres[j] = p; }
+  }
+};
+CAL.enregistrer = async function (j) {
+  var p = CAL.progres[j] || {};
+  if (CAL.lectureSeule) { return false; }
+  try {
+    if (!MGP.g.tech) { await MGP.g.creerTables([MGP.SOCLE.TECH]); }
+    return await MGP.g.ecrireReglage('AVENT:' + CAL.deux(j), p);
+  } catch (e) { logSecurite('progression', e); MGP.annoncer('Progression non enregistrée', 'err'); return false; }
+};
+CAL.noterQuiz = function (questions, reponses) {
+  var details = questions.map(function (q, i) { return { bonne: q.bonne, choisie: reponses[i], juste: reponses[i] === q.bonne }; });
+  return { score: details.filter(function (d) { return d.juste; }).length, total: questions.length, details: details };
+};
+
+/* ---- Rendu ---- */
+CAL.etatPorte = function (j, t) {
+  var p = MGP.partiesParis(t);
+  var estAujourdhui = p.a === CAL.annee && p.m === 12 && p.j === j;
+  if (!CAL.disponible(j, t)) { return { genre: 'fermee', aujourdhui: estAujourdhui && CAL.dateAtteinte(j, t) }; }
+  var ouverte = !!(CAL.progres[j] && CAL.progres[j].ouvert_le);
+  return { genre: ouverte ? 'ouverte' : 'a-ouvrir', aujourdhui: estAujourdhui };
+};
+CAL.rendrePortes = function () {
+  var t = CAL.maintenant(), html = '';
+  for (var j = 1; j <= 24; j++) {
+    var e = CAL.etatPorte(j, t), c = CAL.contenus[j];
+    var classes = 'porte', fond = '', interieur = '<span class="num">' + j + '</span>', aria;
+    if (e.genre === 'ouverte') {
+      classes += ' ouverte';
+      var lib = c.etiquette || CAL.ETIQUETTES[c.type] || '';
+      interieur += '<span class="ok" aria-hidden="true">✓</span><span class="ic" aria-hidden="true">' + echapperHTML(c.emoji || '✨') + '</span><span class="et">' + echapperHTML(lib) + '</span>';
+      aria = 'Case ' + j + ', ouverte : ' + lib + ', ' + (c.titre || '') + (CAL.progres[j] && CAL.progres[j].defi ? ', défi relevé' : '');
+    } else {
+      classes += j === 24 ? ' c24' : ' ' + MGP.classeCouleur(CAL.COULEURS[(j - 1) % 12]);
+      if (e.genre === 'a-ouvrir') {
+        interieur += '<span class="ic" aria-hidden="true">🎁</span><span class="et">' + (e.aujourdhui ? 'Aujourd’hui !' : 'À ouvrir') + '</span>';
+        aria = 'Case ' + j + (e.aujourdhui ? ', la case du jour' : '') + ', à ouvrir';
+      } else {
+        if (j === 24) { interieur += '<span class="ic" aria-hidden="true">⭐</span>'; }
+        aria = 'Case ' + j + ', fermée' + (CAL.dateAtteinte(j, t) ? ', contenu pas encore publié' : ', ouvre le ' + MGP.dateLongue(CAL.annee, 12, j) + ' à 9 h');
+      }
+    }
+    if (e.aujourdhui && e.genre !== 'fermee') { classes += ' jour'; }
+    html += '<button type="button" class="' + classes + '" data-jour="' + j + '" data-etat="' + e.genre + '" aria-label="' + echapperHTML(aria) + '">' + interieur + '</button>';
+  }
+  document.getElementById('portes').innerHTML = html;
+};
+CAL.rendreEntete = function () {
+  var t = CAL.maintenant(), p = MGP.partiesParis(t);
+  var dispo = 0, ouvertes = 0, defis = 0;
+  for (var j = 1; j <= 24; j++) {
+    if (CAL.disponible(j, t)) { dispo++; if (CAL.progres[j] && CAL.progres[j].ouvert_le) { ouvertes++; } }
+    if (CAL.progres[j] && CAL.progres[j].defi) { defis++; }
+  }
+  var titre, sous;
+  var debut = CAL.ouverture(1);
+  if (t < debut) {
+    titre = 'Le calendrier commence le ' + MGP.dateLongue(CAL.annee, 12, 1) + ' à 9 h';
+    sous = 'Encore ' + MGP.dureeTexte(debut - t) + '. Chaque jour, une case : 11 cadeaux et 13 leçons pour apprivoiser votre document.';
+  } else if (p.a === CAL.annee && p.m === 12 && p.j <= 24) {
+    titre = 'Bonjour, nous sommes le ' + MGP.dateLongue(p.a, 12, p.j);
+    var duJour = CAL.disponible(p.j, t) && !(CAL.progres[p.j] && CAL.progres[p.j].ouvert_le);
+    sous = (duJour ? 'La case du jour vous attend' : (CAL.dateAtteinte(p.j, t) ? 'Case du jour ouverte' : 'La case du jour s’ouvre à 9 h')) +
+      ' · ' + ouvertes + ' case' + (ouvertes > 1 ? 's' : '') + ' ouverte' + (ouvertes > 1 ? 's' : '') + ' sur ' + dispo + (p.j < 24 ? ' · prochaine surprise demain à 9 h' : '');
+  } else {
+    titre = 'Joyeux Noël !';
+    sous = ouvertes + ' cases ouvertes sur ' + dispo + '. Toutes les cases restent accessibles : revenez quand vous voulez.';
+  }
+  document.getElementById('hero-titre').textContent = titre;
+  document.getElementById('hero-sous').textContent = sous;
+  document.getElementById('lutin').textContent = (defis === 24 ? '🏆 Lutin d’or ! ' : '🏆 Lutin d’or : ') + defis + ' défi' + (defis > 1 ? 's' : '') + ' sur ' + Math.max(dispo, defis);
+  document.getElementById('lutin-jauge').innerHTML = MGP.jaugeHTML(defis, 24, 'Défis relevés sur 24');
+  var n = MGP.joursAvantNoel(t);
+  document.getElementById('jn').textContent = n === 0 ? 'C’est Noël !' : 'J-' + n + ' avant Noël';
+  var b = [];
+  if (CAL.lectureSeule) { b.push('<div class="bandeau t-citron" role="status"><span aria-hidden="true">👀</span><span class="txt">Lecture seule : le calendrier s’affiche, mais votre progression n’est pas enregistrée. Donnez au widget l’accès complet au document pour la garder.</span></div>'); }
+  if (MGP.maintenantSimule !== null || CAL.test.actif) { b.push('<div class="bandeau t-lavande" role="status"><span aria-hidden="true">🧪</span><span class="txt">Mode test : nous faisons comme si nous étions le ' + echapperHTML(MGP.dateLongue(p.a, p.m, p.j, true) + ' à ' + p.h + ' h ' + String(p.mi).padStart(2, '0')) + '.</span></div>'); }
+  document.getElementById('bandeaux').innerHTML = b.join('');
+};
+CAL.rendre = function () { CAL.rendreEntete(); CAL.rendrePortes(); };
+
+/* ---- Contenu d'une case ---- */
+CAL.blocHTML = function (b) {
+  var h = '';
+  if (b.titre) { h += '<h3>' + MGP.texteRiche(b.titre) + '</h3>'; }
+  (b.paragraphes || (b.texte ? [b.texte] : [])).forEach(function (p) { h += '<p>' + MGP.texteRiche(p) + '</p>'; });
+  if (b.liste) { h += '<ul>' + b.liste.map(function (x) { return '<li>' + MGP.texteRiche(x) + '</li>'; }).join('') + '</ul>'; }
+  if (b.code) { h += '<pre class="code">' + echapperHTML(b.code) + '</pre>'; }
+  if (b.astuce) { h += '<div class="astuce-b">💡 ' + MGP.texteRiche(b.astuce) + '</div>'; }
+  return h;
+};
+CAL.ouvrirCase = async function (j) {
+  var t = CAL.maintenant();
+  if (!CAL.dateAtteinte(j, t)) {
+    MGP.annoncer('Patience, petit lutin ! La case ' + j + ' s’ouvrira le ' + MGP.dateLongue(CAL.annee, 12, j) + ' à 9 h.');
+    return;
+  }
+  if (!CAL.contenus[j]) { CAL.contenus[j] = await CAL.chargerContenu(j); }
+  var c = CAL.contenus[j];
+  if (!c) { MGP.annoncer('La case ' + j + ' arrive dans quelques minutes : réessayez un peu plus tard.'); CAL.rendre(); return; }
+  CAL.ouvert = j;
+  if (!CAL.progres[j] || !CAL.progres[j].ouvert_le) {
+    CAL.progres[j] = Object.assign({}, CAL.progres[j] || {}, { ouvert_le: new Date(t).toISOString() });
+    CAL.enregistrer(j);
+  }
+  CAL.rendreCase();
+  CAL.rendre();
+  MGP.ouvrir(document.getElementById('dlg-case'), 'h2');
+};
+CAL.rendreCase = function () {
+  var j = CAL.ouvert, c = CAL.contenus[j], p = CAL.progres[j] || {};
+  var lib = c.etiquette || CAL.ETIQUETTES[c.type] || '';
+  var h = '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="pil t-flamant">' + echapperHTML('Case du ' + MGP.dateLongue(CAL.annee, 12, j)) + '</span><span class="pil t-lavande">' + echapperHTML(lib) + '</span>' +
+    (c.niveau ? '<span class="pil t-ecume">Niveau : ' + echapperHTML(c.niveau) + '</span>' : '') + '</div>' +
+    '<h2 id="case-titre" tabindex="-1" style="margin-top:12px">' + echapperHTML((c.emoji ? c.emoji + ' ' : '') + c.titre) + '</h2>' +
+    (c.intro ? '<p style="font-size:16px;color:var(--gris)">' + MGP.texteRiche(c.intro) + '</p>' : '');
+  if (c.type === 'cadeau' && c.cadeau) {
+    h += '<div class="cadeau-b">🎁 Votre cadeau vous attend sur la page <b>« ' + echapperHTML(c.cadeau.page) + ' »</b>.' + (c.cadeau.texte ? '<p style="margin-top:6px">' + MGP.texteRiche(c.cadeau.texte) + '</p>' : '') + '</div>';
+  }
+  h += '<div class="lecon">' + (c.lecon || []).map(CAL.blocHTML).join('') + '</div>';
+  if (c.quiz && c.quiz.length) {
+    var res = CAL.resultatQuiz;
+    h += '<form class="quiz" id="quiz" novalidate><h3 style="font-size:17px;margin:16px 0 4px">❓ Le quiz</h3>' + (p.quiz ? '<p class="mini">Dernier score enregistré : ' + p.quiz.score + ' sur ' + p.quiz.total + '</p>' : '') +
+      c.quiz.map(function (q, i) {
+        var d = res && res.details[i];
+        return '<fieldset><legend>' + (i + 1) + '. ' + MGP.texteRiche(q.question) + '</legend>' + q.choix.map(function (ch, k) {
+          var cls = d ? (k === q.bonne ? ' class="bon"' : (k === d.choisie ? ' class="faux"' : '')) : '';
+          return '<label' + cls + '><input type="radio" name="q' + i + '" value="' + k + '"' + (d && d.choisie === k ? ' checked' : '') + (d ? ' disabled' : '') + ' autocomplete="off"> <span>' + MGP.texteRiche(ch) + '</span></label>';
+        }).join('') + (d ? '<p class="expl">' + (d.juste ? '✅ Bonne réponse. ' : '❌ La bonne réponse : ' + MGP.texteRiche(q.choix[q.bonne]) + '. ') + MGP.texteRiche(q.explication) + '</p>' : '') + '</fieldset>';
+      }).join('') +
+      '<p id="quiz-res" role="status" class="gras" style="margin:10px 0">' + (res ? 'Votre score : ' + res.score + ' sur ' + res.total + (res.score === res.total ? ' 🎉 Parfait !' : '') : '') + '</p>' +
+      '<div class="pied">' + (res ? '<button type="button" class="btn sec" id="quiz-rejouer">Recommencer</button>' : '<button type="submit" class="btn">Valider mes réponses</button>') + '</div></form>';
+  }
+  if (c.defi) {
+    h += '<section class="defi-b"><h3>🎯 ' + echapperHTML(c.defi.titre || 'Le défi') + '</h3>' + CAL.blocHTML({ paragraphes: c.defi.paragraphes || (c.defi.texte ? [c.defi.texte] : []), liste: c.defi.etapes }) +
+      (c.defi.indice ? '<details style="margin-top:8px"><summary style="min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:700">Un indice ?</summary><p>' + MGP.texteRiche(c.defi.indice) + '</p></details>' : '') +
+      '<div class="pied"><button type="button" class="btn" id="btn-defi" aria-pressed="' + (p.defi ? 'true' : 'false') + '">' + (p.defi ? '✓ Défi relevé' : 'J’ai relevé le défi') + '</button></div></section>';
+  }
+  h += '<div class="pied"><button type="button" class="btn sec" data-fermer>Fermer</button></div>';
+  document.getElementById('case-corps').innerHTML = h;
+};
+
+/* ---- Réglages ---- */
+CAL.ouvrirReglages = function () {
+  document.getElementById('reg-annee').value = CAL.annee;
+  document.getElementById('reg-test').checked = !!CAL.test.actif;
+  document.getElementById('reg-date').value = CAL.test.date || (CAL.annee + '-12-09T10:00');
+  document.getElementById('reg-info').textContent = CAL.lectureSeule ? 'Lecture seule : ces réglages valent seulement jusqu’au prochain chargement.' : 'Les réglages sont enregistrés dans la table technique ⚙️.';
+  MGP.ouvrir(document.getElementById('dlg-reglages'), '#reg-annee');
+};
+CAL.enregistrerReglages = async function () {
+  var a = parseInt(document.getElementById('reg-annee').value, 10);
+  CAL.annee = (a >= 2026 && a <= 2100) ? a : 2026;
+  CAL.test = { actif: document.getElementById('reg-test').checked, date: document.getElementById('reg-date').value };
+  if (!CAL.lectureSeule) {
+    try {
+      if (!MGP.g.tech) { await MGP.g.creerTables([MGP.SOCLE.TECH]); }
+      await MGP.g.ecrireReglage('AVENT:ANNEE', String(CAL.annee));
+      await MGP.g.ecrireReglage('AVENT:TEST', CAL.test);
+    } catch (e) { logSecurite('réglages', e); }
+  }
+  CAL.contenus = {};
+  await CAL.chargerContenus();
+  CAL.rendre();
+  MGP.annoncer('Réglages enregistrés', 'ok');
+};
+
+/* ---- Événements ---- */
+CAL.brancher = function () {
+  MGP.brancherDialogues();
+  document.getElementById('portes').addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-jour]');
+    if (b) { CAL.resultatQuiz = null; CAL.ouvrirCase(parseInt(b.dataset.jour, 10)); }
+  });
+  document.getElementById('btn-reglages').addEventListener('click', CAL.ouvrirReglages);
+  document.getElementById('form-reglages').addEventListener('submit', function (ev) { ev.preventDefault(); MGP.fermer(document.getElementById('dlg-reglages')); CAL.enregistrerReglages(); });
+  var corps = document.getElementById('case-corps');
+  corps.addEventListener('submit', function (ev) {
+    if (ev.target.id !== 'quiz') { return; }
+    ev.preventDefault();
+    var c = CAL.contenus[CAL.ouvert];
+    var rep = c.quiz.map(function (_q, i) { var r = ev.target.querySelector('input[name="q' + i + '"]:checked'); return r ? parseInt(r.value, 10) : null; });
+    if (rep.some(function (r) { return r === null; })) { document.getElementById('quiz-res').textContent = 'Répondez à toutes les questions avant de valider.'; return; }
+    CAL.resultatQuiz = CAL.noterQuiz(c.quiz, rep);
+    var p = CAL.progres[CAL.ouvert] = Object.assign({}, CAL.progres[CAL.ouvert] || {});
+    p.quiz = { score: CAL.resultatQuiz.score, total: CAL.resultatQuiz.total };
+    CAL.enregistrer(CAL.ouvert);
+    CAL.rendreCase();
+    MGP.annoncer('Votre score : ' + p.quiz.score + ' sur ' + p.quiz.total);
+    var r = document.getElementById('quiz-res');
+    if (r) { r.scrollIntoView({ block: 'center' }); }
+  });
+  corps.addEventListener('click', function (ev) {
+    if (ev.target.closest('#quiz-rejouer')) { CAL.resultatQuiz = null; CAL.rendreCase(); return; }
+    var d = ev.target.closest('#btn-defi');
+    if (d) {
+      var p = CAL.progres[CAL.ouvert] = Object.assign({}, CAL.progres[CAL.ouvert] || {});
+      p.defi = !p.defi;
+      if (p.defi) { p.defi_le = new Date(CAL.maintenant()).toISOString(); }
+      CAL.enregistrer(CAL.ouvert);
+      CAL.rendreCase();
+      CAL.rendre();
+      MGP.annoncer(p.defi ? 'Bravo, défi relevé !' : 'Défi marqué comme non relevé', p.defi ? 'ok' : '');
+      var b = document.getElementById('btn-defi');
+      if (b) { b.focus(); }
+    }
+  });
+  setInterval(async function () {
+    if (document.getElementById('dlg-case').open) { return; }
+    await CAL.chargerContenus();
+    CAL.rendre();
+  }, 60000);
+};
+
+CAL.demarrer = async function () {
+  CAL.brancher();
+  var acces = await MGP.g.demarrer('full');
+  CAL.lectureSeule = acces !== 'full';
+  try {
+    await MGP.g.lireReglagesDoc();
+    await MGP.g.chargerMeta();
+    await MGP.g.chargerTech();
+    var a = parseInt(MGP.g.reglage('AVENT:ANNEE', '2026'), 10);
+    CAL.annee = (a >= 2026 && a <= 2100) ? a : 2026;
+    var tst = MGP.g.reglage('AVENT:TEST', null);
+    if (tst && typeof tst === 'object') { CAL.test = { actif: !!tst.actif, date: String(tst.date || '') }; }
+    CAL.lireProgres();
+  } catch (e) { CAL.lectureSeule = true; logSecurite('lecture du document', e); }
+  await CAL.chargerContenus();
+  CAL.rendre();
+  masquerLoader();
+};
+window.CAL = CAL;
+CAL.demarrer();
+</script>
+</body>
+</html>

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Case en attente - Mon Grist perso</title>
+<!--
+  Mon Grist perso - widget "attente" (case pas encore ouverte)
+  Version 1.0.0 - madeXcé - série communautaire gratuite
+  Le numéro du jour vient du dossier (.../avent/jour-12/) ou du paramètre ?jour=12.
+  Année : ?annee=2026 (2026 par défaut). Date simulée pour les tests : ?maintenant=2026-12-11T20:00
+  Aucun accès au document n'est nécessaire.
+  HISTORIQUE
+  1.0.0 : première version.
+-->
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<style>
+/* ==========================================================================
+   Mon Grist perso - styles partagés (style "California pastel")
+   Fichier commun concaténé dans chaque widget par build.py : ne pas modifier
+   dans un widget, modifier ici puis relancer build.py.
+   ========================================================================== */
+:root {
+  --sable: #FFF8F0; --sable2: #FBEFE3; --encre: #2B2D42; --gris: #6B6F80; --trait: #EADFD3; --blanc: #FFFFFF;
+  --ecume: #A8E6E2; --ecume-f: #1F7F7A;
+  --flamant: #FFC2D1; --flamant-f: #C2406A;
+  --citron: #FFF1A8; --citron-f: #8A6D00;
+  --peche: #FFD3B5; --peche-f: #C25A2C;
+  --lavande: #DCD0F7; --lavande-f: #6A4FB8;
+  --menthe: #CDEDC8; --menthe-f: #3D7F44;
+  --coucher: linear-gradient(120deg, var(--peche), var(--flamant) 48%, var(--lavande));
+  --ombre: 0 3px 14px rgba(43, 45, 66, .08);
+  --ombre-forte: 0 12px 32px rgba(43, 45, 66, .18);
+  --voile: rgba(43, 45, 66, .38);
+  --r-s: 16px; --r-m: 20px; --r-l: 24px; --r-xl: 28px;
+  --police: "Avenir Next", "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --focus: 3px solid var(--lavande-f);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--sable); color: var(--encre); font-family: var(--police); font-size: 15px; line-height: 1.45; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+h1, h2, h3 { margin: 0; line-height: 1.2; letter-spacing: -.3px; }
+p { margin: 0; }
+a { color: var(--ecume-f); }
+button, input, select, textarea { font-family: inherit; font-size: 15px; color: var(--encre); }
+:focus-visible { outline: var(--focus); outline-offset: 2px; }
+.cache { display: none; }
+/* L'attribut hidden doit gagner sur les display des composants (spécificité égale ou supérieure, aucune règle forcée). */
+[hidden], .btn[hidden], .fab[hidden], .pil[hidden], .btn-icone[hidden], .bandeau[hidden] { display: none; }
+.sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.mini { font-size: 13px; color: var(--gris); }
+.gras { font-weight: 700; }
+
+/* ---- Chargement ---- */
+.loader { position: fixed; inset: 0; z-index: 90; display: none; place-items: center; background: var(--sable); color: var(--gris); }
+.loader.actif { display: grid; }
+.loader .rond { width: 44px; height: 44px; border-radius: 50%; border: 4px solid var(--sable2); border-top-color: var(--ecume-f); animation: tourne .9s linear infinite; margin: 0 auto 10px; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+
+/* ---- Mise en page ---- */
+.page { padding: 16px 16px 110px; max-width: 1600px; margin: 0 auto; }
+.barre { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.barre .titre { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.barre h1 { font-size: 22px; font-weight: 800; }
+.barre .marque { font-size: 13px; color: var(--gris); font-weight: 600; }
+.barre .actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.grille { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 700px) { .page { padding: 22px 24px 110px; } .grille.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .page { padding: 26px 32px 110px; } .grille.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .grille.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 700px) and (max-width: 1099px) { .grille.g3, .grille.g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---- Cartes ---- */
+.carte { background: var(--blanc); border-radius: var(--r-m); box-shadow: var(--ombre); padding: 16px; min-width: 0; }
+.carte.douce { background: var(--sable2); box-shadow: none; }
+.carte h2 { font-size: 17px; font-weight: 800; }
+.hero { background: var(--coucher); border-radius: var(--r-l); padding: 18px 20px; position: relative; overflow: hidden; color: var(--encre); }
+.hero h2 { font-size: 20px; font-weight: 800; }
+.hero p { color: #4A4458; font-size: 14px; margin-top: 4px; }
+
+/* ---- Boutons et pastilles ---- */
+.btn { min-height: 44px; border: 0; border-radius: 999px; padding: 10px 20px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--ecume-f); color: var(--blanc); text-decoration: none; }
+.btn:hover { filter: brightness(1.06); }
+.btn.sec { background: var(--blanc); color: var(--ecume-f); box-shadow: inset 0 0 0 1.5px var(--ecume-f); }
+.btn.doux { background: var(--sable2); color: var(--encre); }
+.btn.danger { background: var(--flamant-f); color: var(--blanc); }
+.btn.lien { background: transparent; color: var(--ecume-f); padding: 10px 12px; }
+.btn.plein { width: 100%; }
+.btn[disabled] { opacity: .55; cursor: not-allowed; }
+.btn-icone { min-width: 44px; min-height: 44px; border: 0; border-radius: 999px; background: var(--sable2); color: var(--encre); cursor: pointer; display: inline-grid; place-items: center; font-size: 17px; padding: 0 10px; }
+.pil { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 700; white-space: nowrap; border: 0; background: var(--sable2); color: var(--encre); }
+button.pil { min-height: 44px; padding: 6px 14px; cursor: pointer; }
+.t-ecume { background: var(--ecume); color: var(--ecume-f); }
+.t-flamant { background: var(--flamant); color: var(--flamant-f); }
+.t-citron { background: var(--citron); color: var(--citron-f); }
+.t-peche { background: var(--peche); color: var(--peche-f); }
+.t-lavande { background: var(--lavande); color: var(--lavande-f); }
+.t-menthe { background: var(--menthe); color: var(--menthe-f); }
+.t-sable { background: var(--sable2); color: var(--gris); }
+.choix { display: flex; flex-wrap: wrap; gap: 8px; }
+.choix button { min-height: 44px; border: 0; border-radius: 999px; padding: 0 16px; font-weight: 700; background: var(--sable2); color: var(--gris); cursor: pointer; }
+.choix button[aria-pressed="true"] { background: var(--ecume-f); color: var(--blanc); }
+
+/* ---- Onglets ---- */
+.onglets { display: flex; gap: 4px; background: var(--blanc); border-radius: 999px; padding: 5px; box-shadow: var(--ombre); overflow-x: auto; margin-bottom: 16px; max-width: 100%; scrollbar-width: none; }
+.onglets button { flex: none; min-height: 44px; border: 0; border-radius: 999px; padding: 0 16px; background: transparent; color: var(--gris); font-weight: 700; cursor: pointer; white-space: nowrap; }
+.onglets button[aria-selected="true"] { background: var(--ecume-f); color: var(--blanc); }
+@media (max-width: 520px) { .onglets button { padding: 0 12px; } }
+
+/* ---- Jauge ---- */
+.jauge { height: 10px; border-radius: 999px; background: var(--sable2); overflow: hidden; }
+.jauge > i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--menthe-f), var(--ecume-f)); }
+.jauge.alerte > i { background: linear-gradient(90deg, var(--peche-f), var(--flamant-f)); }
+.lignes-jauge { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lignes-jauge .jauge { flex: 1; min-width: 120px; }
+
+/* ---- Champs ---- */
+.champ { margin-bottom: 14px; }
+.champ > label, .champ > .lib { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+.champ input[type=text], .champ input[type=number], .champ input[type=date], .champ input[type=url], .champ select, .champ textarea {
+  width: 100%; min-height: 46px; border-radius: 14px; border: 0; background: var(--sable); box-shadow: inset 0 0 0 1.5px var(--trait); padding: 10px 14px; }
+.champ textarea { min-height: 80px; resize: vertical; }
+.champ input:focus-visible, .champ select:focus-visible, .champ textarea:focus-visible { box-shadow: inset 0 0 0 2px var(--ecume-f); }
+.champ .aide { font-size: 13px; color: var(--gris); margin-top: 4px; }
+.champ > label.photo-btn, .photo-btn { display: flex; margin-bottom: 0; font-size: 15px; align-items: center; gap: 8px; min-height: 46px; border-radius: 14px; background: var(--sable); box-shadow: inset 0 0 0 1.5px var(--trait); padding: 0 14px; color: var(--ecume-f); font-weight: 700; cursor: pointer; }
+.photo-btn input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.photo-btn:focus-within { outline: var(--focus); outline-offset: 2px; }
+
+/* ---- FAB ---- */
+.fab { position: fixed; right: 18px; bottom: 22px; z-index: 40; width: 60px; height: 60px; border-radius: 50%; border: 0; background: var(--ecume-f); color: var(--blanc); font-size: 30px; line-height: 1; cursor: pointer; box-shadow: 0 8px 20px rgba(31, 127, 122, .4); display: grid; place-items: center; }
+
+/* ---- Feuilles et dialogues (element dialog natif) ---- */
+dialog.feuille { border: 0; padding: 0; background: var(--blanc); color: var(--encre); width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 40px); border-radius: var(--r-xl); box-shadow: var(--ombre-forte); }
+dialog.feuille::backdrop { background: var(--voile); }
+dialog.feuille .corps { padding: 12px 20px 22px; overflow-y: auto; max-height: calc(100vh - 60px); }
+dialog.feuille .poignee { width: 44px; height: 5px; border-radius: 999px; background: var(--trait); margin: 10px auto 6px; }
+dialog.feuille h2 { font-size: 19px; font-weight: 800; margin: 4px 0 14px; }
+dialog.feuille .pied { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 10px; }
+@media (max-width: 699px) {
+  dialog.feuille { width: 100vw; max-width: 100vw; margin: auto 0 0 0; border-radius: var(--r-xl) var(--r-xl) 0 0; max-height: 92vh; }
+  dialog.feuille .corps { max-height: calc(92vh - 24px); }
+  dialog.feuille .pied .btn { flex: 1; }
+}
+@media (min-width: 700px) { dialog.feuille .poignee { display: none; } }
+
+/* ---- Annonces (toasts) ---- */
+.toasts { position: fixed; left: 50%; transform: translateX(-50%); bottom: 96px; z-index: 95; display: flex; flex-direction: column; gap: 8px; width: min(440px, calc(100vw - 32px)); pointer-events: none; }
+.toast { background: var(--encre); color: var(--blanc); border-radius: var(--r-s); padding: 12px 16px; font-weight: 600; box-shadow: var(--ombre-forte); }
+.toast.ok { background: var(--menthe-f); }
+.toast.err { background: var(--flamant-f); }
+
+/* ---- Bandeau d'information ---- */
+.bandeau { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-radius: var(--r-m); padding: 12px 16px; margin-bottom: 14px; }
+.bandeau .txt { flex: 1; min-width: 200px; }
+
+/* ---- Vide ---- */
+.vide { text-align: center; padding: 28px 16px; color: var(--gris); }
+.vide .gros { font-size: 40px; }
+
+/* ---- Avatar ---- */
+.av { width: 44px; height: 44px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 22px; }
+.av.grand { width: 84px; height: 84px; font-size: 40px; }
+
+/* ---- Liste de lignes dans une carte ---- */
+.ligne { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--sable2); min-width: 0; }
+.ligne .x { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+
+/* ---- Sous le capot ---- */
+.capot-grille { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1400px) { .capot-grille { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; } }
+.schema-svg { width: 100%; max-width: 880px; height: auto; display: block; }
+.schema-svg .boite-fond { fill: var(--blanc); stroke: var(--trait); stroke-width: 2; }
+.schema-svg text { font-family: var(--police); font-size: 13px; fill: var(--encre); }
+.schema-svg .type { fill: var(--gris); font-size: 12px; }
+.schema-svg .ent { font-weight: 800; font-size: 14px; }
+.schema-svg .champ-l { cursor: pointer; }
+.schema-svg .champ-l:focus-visible rect.surv, .schema-svg .champ-l:hover rect.surv { fill: var(--sable2); stroke: var(--lavande-f); stroke-width: 2; }
+.schema-svg .lien { fill: none; stroke: var(--ecume-f); stroke-width: 2.5; }
+.schema-svg .lien-txt { fill: var(--gris); font-size: 11px; }
+.schema-mobile details { border-radius: var(--r-s); background: var(--sable); margin-bottom: 10px; }
+.schema-mobile summary { min-height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 14px; font-weight: 800; cursor: pointer; border-radius: var(--r-s); }
+.schema-mobile ul { list-style: none; margin: 0; padding: 0 14px 10px; }
+.schema-mobile li button { width: 100%; min-height: 44px; display: flex; justify-content: space-between; gap: 8px; align-items: center; border: 0; background: transparent; border-top: 1px solid var(--trait); padding: 6px 0; text-align: left; cursor: pointer; }
+.schema-mobile .fleche { color: var(--ecume-f); font-size: 13px; font-weight: 700; }
+.vue-bureau { display: none; }
+@media (min-width: 1100px) { .vue-bureau { display: block; } .vue-mobile { display: none; } }
+.fiche-champ { border-radius: var(--r-s); padding: 14px; background: var(--sable); }
+.fiche-champ h3 { font-size: 15px; font-weight: 800; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fiche-champ .ex { margin-top: 8px; font-size: 13px; }
+.fiche-champ.active { box-shadow: inset 0 0 0 2px var(--lavande-f); }
+pre.code { background: var(--encre); color: #FFF1A8; border-radius: var(--r-s); padding: 14px 16px; font-family: var(--mono); font-size: 13.5px; white-space: pre-wrap; overflow-wrap: anywhere; margin: 10px 0; }
+code { font-family: var(--mono); font-size: .92em; background: var(--sable2); border-radius: 6px; padding: 1px 5px; overflow-wrap: anywhere; }
+.jeton { display: grid; grid-template-columns: minmax(90px, 150px) minmax(0, 1fr); gap: 12px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--sable2); }
+.jeton .j { background: var(--citron); color: var(--citron-f); border-radius: 999px; padding: 4px 12px; font-family: var(--mono); font-weight: 700; font-size: 13px; overflow-wrap: anywhere; }
+.a-vous { background: var(--citron); border-radius: var(--r-s); padding: 14px 16px; margin-top: 12px; }
+.a-vous b { color: var(--citron-f); }
+.formule-carte + .formule-carte { margin-top: 14px; }
+
+/* ---- Kanban partagé ---- */
+.kanban { display: grid; gap: 12px; grid-template-columns: repeat(var(--kb-cols, 4), minmax(0, 1fr)); align-items: start; }
+.kb-col { background: var(--sable2); border-radius: var(--r-m); padding: 10px; min-height: 140px; min-width: 0; }
+.kb-col.survol { box-shadow: inset 0 0 0 2px var(--ecume-f); background: var(--ecume); }
+.kb-tete { display: flex; align-items: center; gap: 8px; padding: 4px 4px 10px; flex-wrap: wrap; }
+.kb-tete h3 { font-size: 15px; font-weight: 800; }
+.kb-tete .tot { margin-left: auto; font-size: 13px; color: var(--gris); font-weight: 700; }
+.kb-liste { display: flex; flex-direction: column; gap: 10px; min-height: 60px; }
+.kb-carte { background: var(--blanc); border-radius: var(--r-s); box-shadow: var(--ombre); padding: 12px; cursor: grab; touch-action: pan-y; }
+.kb-carte.traine { opacity: .45; }
+.kb-carte .kb-act { display: flex; gap: 6px; margin-top: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.kb-seg { display: none; }
+@media (max-width: 699px) {
+  .kb-seg { display: flex; gap: 4px; background: var(--blanc); border-radius: 999px; padding: 5px; box-shadow: var(--ombre); margin-bottom: 12px; position: sticky; top: 0; z-index: 5; }
+  .kb-seg button { flex: 1; min-height: 44px; border: 0; border-radius: 999px; background: transparent; color: var(--gris); font-weight: 700; font-size: 13px; cursor: pointer; padding: 0 4px; line-height: 1.15; }
+  .kb-seg button[aria-pressed="true"] { background: var(--ecume-f); color: var(--blanc); }
+  .kanban { grid-template-columns: 1fr; }
+  .kanban .kb-col:not(.visible) { display: none; }
+}
+.menu-etapes { display: flex; flex-direction: column; gap: 8px; }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none; transition: none; } }
+
+.scene { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; text-align: center; position: relative; overflow: hidden; }
+.boite { max-width: 440px; }
+.cadeau { width: 200px; height: 200px; margin: 30px auto 22px; border-radius: 28px; background: var(--flamant); position: relative; box-shadow: var(--ombre); }
+.cadeau::before { content: ""; position: absolute; left: 88px; top: 0; bottom: 0; width: 24px; background: var(--citron); }
+.cadeau::after { content: ""; position: absolute; top: 88px; left: 0; right: 0; height: 24px; background: var(--citron); }
+.cadeau b { position: absolute; inset: 0; display: grid; place-items: center; font-size: 64px; color: var(--blanc); z-index: 2; text-shadow: 0 2px 6px rgba(194, 64, 106, .55); font-weight: 800; }
+.noeud { position: absolute; top: -32px; left: 70px; font-size: 50px; z-index: 3; }
+.boite h1 { font-size: 26px; font-weight: 800; }
+.boite p { font-size: 16px; color: var(--gris); margin: 10px 0 18px; }
+.boite p b { color: var(--encre); }
+.compte { font-size: 15px; padding: 8px 16px; white-space: normal; }
+.neige i { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: var(--blanc); opacity: .9; box-shadow: 0 0 4px rgba(255, 255, 255, .8); }
+@media (max-width: 420px) { .cadeau { width: 160px; height: 160px; } .cadeau::before { left: 68px; } .cadeau::after { top: 68px; } .noeud { left: 52px; } .cadeau b { font-size: 52px; } }
+</style>
+</head>
+<body>
+<div id="loader" class="loader actif" role="status"><div><div class="rond"></div><span class="txt">Chargement...</span></div></div>
+<div id="annonces" class="sr" aria-live="polite"></div>
+<main class="scene">
+  <div class="neige" aria-hidden="true"><i style="left:14%;top:12%"></i><i style="left:26%;top:66%"></i><i style="left:76%;top:20%"></i><i style="left:86%;top:74%"></i><i style="left:64%;top:9%"></i></div>
+  <div class="boite">
+    <div class="cadeau" aria-hidden="true"><span class="noeud">🎀</span><b id="num">?</b></div>
+    <h1 id="titre">Patience, petit lutin !</h1>
+    <p id="quand"></p>
+    <span class="pil t-lavande compte" id="compte" role="timer" aria-live="off"></span>
+    <p class="mini" id="aide" style="margin-top:16px"></p>
+  </div>
+</main>
+<div id="toasts" class="toasts"></div>
+<script>
+'use strict';
+/* ==========================================================================
+   Mon Grist perso - outils partagés (sécurité, dates, montants, annonces)
+   Fichier commun concaténé dans chaque widget par build.py.
+   ========================================================================== */
+var MGP = window.MGP = window.MGP || {};
+
+/* ---- Sécurité ---- */
+function echapperHTML(v) {
+  if (v === null || v === undefined) { return ''; }
+  return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function logSecurite(evenement, detail) {
+  try { console.info('[securite] ' + evenement + (detail ? ' : ' + String(detail).slice(0, 300) : '')); } catch (e) { /* console indisponible */ }
+}
+function masquerLoader() {
+  var el = document.getElementById('loader');
+  if (!el) { return; }
+  void el.offsetHeight;
+  el.classList.remove('actif');
+}
+function montrerLoader(texte) {
+  var el = document.getElementById('loader');
+  if (!el) { return; }
+  var t = el.querySelector('.txt');
+  if (t && texte) { t.textContent = texte; }
+  el.classList.add('actif');
+}
+/* Lien sûr : seulement http(s), sinon chaîne vide. */
+function urlSure(u) {
+  var s = String(u || '').trim();
+  if (!s) { return ''; }
+  if (!/^https?:\/\//i.test(s)) { s = 'https://' + s; }
+  try { var x = new URL(s); return (x.protocol === 'http:' || x.protocol === 'https:') ? x.href : ''; } catch (e) { return ''; }
+}
+MGP.echapperHTML = echapperHTML;
+MGP.urlSure = urlSure;
+
+/* Inline sûr pour les contenus : échappe puis transforme `code` et **gras**. */
+MGP.texteRiche = function (t) {
+  return echapperHTML(t).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+};
+
+/* ---- Paramètres d'URL ---- */
+MGP.param = function (nom) {
+  try { return new URLSearchParams(location.search).get(nom); } catch (e) { return null; }
+};
+
+/* ---- Locale et monnaie (document Grist si possible) ---- */
+MGP.locale = 'fr-FR';
+MGP.devise = 'EUR';
+MGP.formatMontant = function (n, avecDecimales) {
+  if (n === null || n === undefined || n === '' || isNaN(Number(n))) { return ''; }
+  var v = Number(n);
+  var dec = (avecDecimales === true || Math.round(v) !== v) ? 2 : 0;
+  try {
+    return new Intl.NumberFormat(MGP.locale, { style: 'currency', currency: MGP.devise, minimumFractionDigits: dec, maximumFractionDigits: dec }).format(v);
+  } catch (e) { return v.toFixed(dec) + ' ' + MGP.devise; }
+};
+MGP.formatNombre = function (n) {
+  try { return new Intl.NumberFormat(MGP.locale).format(n); } catch (e) { return String(n); }
+};
+/* Lit un montant saisi ("35", "35,50", "35 €") ; null si vide ou invalide. */
+MGP.lireMontant = function (s) {
+  var t = String(s === null || s === undefined ? '' : s).replace(/\s/g, '').replace(/[^\d,.-]/g, '').replace(',', '.');
+  if (!t) { return null; }
+  var v = parseFloat(t);
+  return isNaN(v) ? null : Math.round(v * 100) / 100;
+};
+
+/* ---- Dates ----
+   Grist Date = secondes Unix à minuit UTC. Affichage : "1 déc. 2026" ou "mardi 1er décembre". */
+var MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+var MOIS_COURTS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+var JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+MGP.MOIS_LONGS = MOIS_LONGS;
+MGP.dateCourte = function (sec) {
+  if (sec === null || sec === undefined || sec === '' || isNaN(Number(sec))) { return ''; }
+  var d = new Date(Number(sec) * 1000);
+  return d.getUTCDate() + ' ' + MOIS_COURTS[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+};
+/* "mardi 1er décembre" à partir d'année, mois (1-12), jour. */
+MGP.dateLongue = function (a, m, j, avecAnnee) {
+  var d = new Date(Date.UTC(a, m - 1, j));
+  return JOURS[d.getUTCDay()] + ' ' + (j === 1 ? '1er' : j) + ' ' + MOIS_LONGS[m - 1] + (avecAnnee ? ' ' + a : '');
+};
+/* Secondes Grist (minuit UTC) depuis "AAAA-MM-JJ", et l'inverse. */
+MGP.isoVersSec = function (iso) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+  return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) / 1000 : null;
+};
+MGP.secVersIso = function (sec) {
+  if (sec === null || sec === undefined || sec === '') { return ''; }
+  return new Date(Number(sec) * 1000).toISOString().slice(0, 10);
+};
+
+/* Décalage (ms) d'un fuseau à un instant donné, via Intl. */
+MGP.decalageFuseau = function (fuseau, t) {
+  var f = new Intl.DateTimeFormat('en-US', { timeZone: fuseau, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  var p = {};
+  f.formatToParts(new Date(t)).forEach(function (x) { p[x.type] = x.value; });
+  var h = Number(p.hour) === 24 ? 0 : Number(p.hour);
+  return Date.UTC(+p.year, +p.month - 1, +p.day, h, +p.minute, +p.second) - Math.floor(t / 1000) * 1000;
+};
+/* Instant (ms) correspondant à une heure locale de Paris. */
+MGP.instantParis = function (a, m, j, h, mi) {
+  var devine = Date.UTC(a, m - 1, j, h, mi || 0);
+  var t = devine - MGP.decalageFuseau('Europe/Paris', devine);
+  return devine - MGP.decalageFuseau('Europe/Paris', t);
+};
+/* Date du jour à Paris : {a, m, j, h, mi}. */
+MGP.partiesParis = function (t) {
+  var f = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Paris', hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' });
+  var p = {};
+  f.formatToParts(new Date(t)).forEach(function (x) { p[x.type] = x.value; });
+  return { a: +p.year, m: +p.month, j: +p.day, h: (+p.hour) % 24, mi: +p.minute };
+};
+/* "2 jours, 21 heures et 14 minutes" */
+MGP.dureeTexte = function (ms) {
+  if (ms <= 0) { return 'quelques secondes'; }
+  var min = Math.floor(ms / 60000), j = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), mn = min % 60;
+  var morceaux = [];
+  if (j) { morceaux.push(j + (j > 1 ? ' jours' : ' jour')); }
+  if (h) { morceaux.push(h + (h > 1 ? ' heures' : ' heure')); }
+  if (mn || !morceaux.length) { morceaux.push(mn + (mn > 1 ? ' minutes' : ' minute')); }
+  if (ms < 60000) { return Math.ceil(ms / 1000) + ' secondes'; }
+  return morceaux.length > 1 ? morceaux.slice(0, -1).join(', ') + ' et ' + morceaux[morceaux.length - 1] : morceaux[0];
+};
+/* Nombre de jours avant Noël (25 décembre de l'année du jour à Paris). */
+MGP.joursAvantNoel = function (t) {
+  var p = MGP.partiesParis(t);
+  var auj = Date.UTC(p.a, p.m - 1, p.j);
+  var noel = Date.UTC(p.a, 11, 25);
+  if (auj > noel) { noel = Date.UTC(p.a + 1, 11, 25); }
+  return Math.round((noel - auj) / 86400000);
+};
+
+/* "Maintenant", simulable : ?maintenant=2026-12-09T10:00 (heure de Paris). */
+MGP.maintenantSimule = null;
+MGP.lireDateSimulee = function (s) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(String(s || ''));
+  return m ? MGP.instantParis(+m[1], +m[2], +m[3], m[4] ? +m[4] : 9, m[5] ? +m[5] : 0) : null;
+};
+MGP.maintenant = function () {
+  return MGP.maintenantSimule !== null ? MGP.maintenantSimule : Date.now();
+};
+(function () {
+  var p = MGP.param('maintenant');
+  var t = p ? MGP.lireDateSimulee(p) : null;
+  if (t !== null) { MGP.maintenantSimule = t; }
+})();
+
+/* ---- Annonces (aria-live + toasts) ---- */
+MGP.annoncer = function (texte, genre) {
+  var zone = document.getElementById('annonces');
+  if (zone) { zone.textContent = ''; setTimeout(function () { zone.textContent = texte; }, 30); }
+  var pile = document.getElementById('toasts');
+  if (!pile || genre === 'sr') { return; }
+  var t = document.createElement('div');
+  t.className = 'toast' + (genre ? ' ' + genre : '');
+  t.textContent = texte;
+  pile.appendChild(t);
+  setTimeout(function () { if (t.parentNode) { t.parentNode.removeChild(t); } }, 3800);
+};
+
+/* Couleurs pastel : nom de choix vers classe CSS. */
+MGP.COULEURS = ['Écume', 'Flamant', 'Citron', 'Pêche', 'Lavande', 'Menthe'];
+MGP.classeCouleur = function (nom) {
+  var n = String(nom || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return ['ecume', 'flamant', 'citron', 'peche', 'lavande', 'menthe'].indexOf(n) >= 0 ? 't-' + n : 't-sable';
+};
+MGP.HEX = { 'Écume': ['#A8E6E2', '#1F7F7A'], 'Flamant': ['#FFC2D1', '#C2406A'], 'Citron': ['#FFF1A8', '#8A6D00'], 'Pêche': ['#FFD3B5', '#C25A2C'], 'Lavande': ['#DCD0F7', '#6A4FB8'], 'Menthe': ['#CDEDC8', '#3D7F44'] };
+
+/* Valeur de liste Grist (['L', a, b] ou tableau) vers tableau JS. */
+MGP.liste = function (v) {
+  if (!v) { return []; }
+  if (Array.isArray(v)) { return v[0] === 'L' ? v.slice(1) : v.slice(); }
+  return [];
+};
+
+
+var ATT = {};
+/* Jour : dossier jour-NN dans l'URL, sinon ?jour= */
+ATT.lireJour = function () {
+  var m = /jour-(\d{1,2})(?:\/|$|\/index\.html)/.exec(location.pathname);
+  var j = m ? parseInt(m[1], 10) : parseInt(MGP.param('jour') || '', 10);
+  return (j >= 1 && j <= 24) ? j : null;
+};
+ATT.lireAnnee = function () {
+  var a = parseInt(MGP.param('annee') || '', 10);
+  return (a >= 2000 && a <= 2100) ? a : 2026;
+};
+ATT.etat = function (jour, annee, maintenant) {
+  var ouverture = MGP.instantParis(annee, 12, jour, 9, 0);
+  return { ouverture: ouverture, reste: ouverture - maintenant, ouverte: maintenant >= ouverture };
+};
+ATT.rendre = function () {
+  var jour = ATT.lireJour(), annee = ATT.lireAnnee();
+  var num = document.getElementById('num'), quand = document.getElementById('quand'), compte = document.getElementById('compte'), aide = document.getElementById('aide');
+  if (!jour) {
+    num.textContent = '?';
+    quand.textContent = 'Cette case ne connaît pas son numéro. Ajoutez ?jour=1 à 24 à l’adresse du widget.';
+    compte.textContent = '';
+    return null;
+  }
+  var e = ATT.etat(jour, annee, MGP.maintenant());
+  num.textContent = String(jour);
+  quand.innerHTML = 'Cette case s’ouvrira le <b>' + echapperHTML(MGP.dateLongue(annee, 12, jour) + ' à 9 h') + '</b>.<br>Un cadeau se cache derrière.';
+  if (e.ouverte) {
+    document.getElementById('titre').textContent = 'C’est l’heure !';
+    compte.textContent = '🎁 Le cadeau arrive dans quelques minutes';
+    aide.textContent = 'La page se recharge toute seule. Si rien ne change, rechargez le document dans quelques minutes.';
+  } else {
+    compte.textContent = '⏳ Encore ' + MGP.dureeTexte(e.reste);
+    compte.setAttribute('aria-label', 'Encore ' + MGP.dureeTexte(e.reste));
+    aide.textContent = '';
+  }
+  return e;
+};
+ATT.demarrer = function () {
+  try { if (typeof grist !== 'undefined') { grist.ready({ requiredAccess: 'none' }); } } catch (e) { logSecurite('grist.ready', e); }
+  var e = ATT.rendre();
+  masquerLoader();
+  var dejaRecharge = false;
+  setInterval(function () {
+    var x = ATT.rendre();
+    if (x && x.ouverte && !dejaRecharge) {
+      dejaRecharge = true;
+      /* Le contenu réel est publié à la même adresse : on réessaie toutes les 2 minutes. */
+      setTimeout(function () { location.reload(); }, 120000);
+    }
+  }, 1000);
+  return e;
+};
+window.ATT = ATT;
+ATT.demarrer();
+</script>
+</body>
+</html>
