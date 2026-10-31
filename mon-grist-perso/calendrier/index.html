@@ -6,7 +6,7 @@
 <title>Calendrier de l'Avent - Mon Grist perso</title>
 <!--
   Mon Grist perso - widget "Calendrier de l'Avent"
-  Version 1.1.0 - madeXcé - série communautaire gratuite
+  Version 1.1.1 - madeXcé - série communautaire gratuite
   - 24 cases ; une case s'ouvre le jour J à 9 h (heure de Paris).
   - Le contenu de chaque case est lu au moment voulu dans ../avent/jour-NN/contenu.json :
     rien n'est embarqué dans ce fichier. Un 404 ou une date non atteinte = case fermée.
@@ -23,6 +23,8 @@
           facile à trouver ; habillage de fête et grille par semaines (lundi en premier, le 25 « Joyeux Noël ») ;
           « Terminer l'Avent » (à partir du 25 décembre et dans les réglages) : supprime le calendrier, ses données
           et les pages cadeau jamais installées, après un aperçu du menu final ; option « carnet des leçons ».
+  1.1.1 : panneaux toujours refermables (✕, Échap, clic à côté ; le panneau « patience » ne se redessine plus en boucle) ;
+          en mode essai, une case dont le contenu n'est pas publié le dit clairement ; aperçu privé à coller (build).
 -->
 <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
 <style>
@@ -158,6 +160,8 @@ button.pil { min-height: 44px; padding: 6px 14px; cursor: pointer; }
 dialog.feuille { border: 0; padding: 0; background: var(--blanc); color: var(--encre); width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 40px); border-radius: var(--r-xl); box-shadow: var(--ombre-forte); }
 dialog.feuille::backdrop { background: var(--voile); }
 dialog.feuille .corps { padding: 12px 20px 22px; overflow-y: auto; max-height: calc(100vh - 60px); }
+dialog.feuille > .fermer-x { position: absolute; right: 10px; top: 10px; z-index: 3; background: var(--sable2); }
+dialog.feuille h2 { padding-right: 48px; }
 dialog.feuille .poignee { width: 44px; height: 5px; border-radius: 999px; background: var(--trait); margin: 10px auto 6px; }
 dialog.feuille h2 { font-size: 19px; font-weight: 800; margin: 4px 0 14px; }
 dialog.feuille .pied { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 10px; }
@@ -641,11 +645,20 @@ MGP.ouvrir = function (dlg, focusSel) {
 MGP.fermer = function (dlg) {
   if (dlg && dlg.open) { if (typeof dlg.close === 'function') { dlg.close(); } else { dlg.removeAttribute('open'); } }
 };
-/* Fermeture au clic sur le voile, et boutons [data-fermer]. */
+/* Toujours refermable : bouton ✕ visible (44 px), touche Échap (native), clic sur le voile, boutons [data-fermer]. */
 MGP.brancherDialogues = function () {
   document.querySelectorAll('dialog.feuille').forEach(function (d) {
     if (d.dataset.branche) { return; }
     d.dataset.branche = '1';
+    if (!d.querySelector(':scope > .fermer-x')) {
+      var x = document.createElement('button');
+      x.type = 'button';
+      x.className = 'btn-icone fermer-x';
+      x.setAttribute('data-fermer', '');
+      x.setAttribute('aria-label', 'Fermer');
+      x.textContent = '✕';
+      d.insertBefore(x, d.firstChild);
+    }
     d.addEventListener('click', function (ev) {
       if (ev.target === d) { MGP.fermer(d); }
       var f = ev.target.closest('[data-fermer]');
@@ -1504,13 +1517,17 @@ CAL.disponible = function (j, t) { return CAL.dateAtteinte(j, t) && !!CAL.conten
 
 /* ---- Contenus publiés : jamais embarqués, lus le jour venu ---- */
 CAL.urlContenu = function (j) { return new URL('../avent/jour-' + CAL.deux(j) + '/contenu.json', location.href).href; };
+/* Version d'essai embarquée (dist/a-coller/calendrier_apercu_a_coller.html seulement) : build.py remplace la ligne suivante
+   par les 24 contenus, utilisés quand la lecture du contenu publié échoue. Jamais dans dist/public. */
+CAL.APERCU = null;
 CAL.chargerContenu = async function (j) {
+  var c = null;
   try {
     var r = await fetch(CAL.urlContenu(j), { cache: 'no-cache' });
-    if (!r.ok) { return null; }
-    var c = await r.json();
-    return (c && Number(c.jour) === j) ? c : null;
-  } catch (e) { logSecurite('contenu ' + j, e); return null; }
+    if (r.ok) { c = await r.json(); }
+  } catch (e) { logSecurite('contenu ' + j, e); }
+  if ((!c || Number(c.jour) !== j) && CAL.APERCU && CAL.APERCU.contenus) { c = CAL.APERCU.contenus[String(j)] || null; }
+  return (c && Number(c.jour) === j) ? c : null;
 };
 CAL.chargerContenus = async function () {
   var t = CAL.maintenant(), attente = [];
@@ -1556,6 +1573,8 @@ CAL.relire = async function () {
    - plus tard : « pas encore disponible, réessayez ». */
 CAL.messageVerrou = function (j, t) {
   var o = CAL.ouverture(j);
+  /* Mode essai (date simulée dans les réglages) : le contenu n'est publié que le vrai jour J, on le dit clairement. */
+  if (t >= o && CAL.test.actif) { return { genre: 'essai', titre: 'Mode essai', texte: 'Mode essai : le contenu de cette case n’est pas encore publié (il le sera le ' + MGP.dateLongue(CAL.annee, 12, j) + ' à 9 h). Fermez ce message pour continuer à explorer le calendrier.' }; }
   if (t < o) { return { genre: 'avant', titre: 'Patience, petit lutin !', texte: 'Cette case s’ouvrira le ' + MGP.dateLongue(CAL.annee, 12, j) + ' à 9 h.', reste: o - t }; }
   if (t - o < 30 * 60000) { return { genre: 'bientot', titre: 'Presque prêt !', texte: 'La case ' + j + ' arrive dans quelques minutes.' }; }
   return { genre: 'plus-tard', titre: 'Encore un peu de patience', texte: 'Le contenu n’est pas encore disponible. Réessayez un peu plus tard.' };
@@ -1652,6 +1671,7 @@ CAL.rendreEntete = function () {
   var n = MGP.joursAvantNoel(t);
   document.getElementById('jn').textContent = n === 0 ? 'C’est Noël !' : 'J-' + n + ' avant Noël';
   var b = [];
+  if (CAL.APERCU && CAL.APERCU.bandeau) { b.push('<div class="bandeau t-flamant" role="status"><span aria-hidden="true">🔒</span><span class="txt"><b>' + echapperHTML(CAL.APERCU.bandeau) + '</b></span></div>'); }
   if (CAL.lectureSeule) { b.push('<div class="bandeau t-citron" role="status"><span aria-hidden="true">👀</span><span class="txt">Lecture seule : le calendrier s’affiche, mais votre progression n’est pas enregistrée. Donnez au widget l’accès complet au document pour la garder.</span></div>'); }
   if (MGP.maintenantSimule !== null || CAL.test.actif) { b.push('<div class="bandeau t-lavande" role="status"><span aria-hidden="true">🧪</span><span class="txt">Mode essai : nous faisons comme si nous étions le ' + echapperHTML(MGP.dateLongue(p.a, p.m, p.j, true) + ' à ' + p.h + ' h ' + String(p.mi).padStart(2, '0')) + '.</span>' + (CAL.test.actif ? '<button type="button" class="btn sec" data-essai>Changer ou désactiver</button>' : '') + '</div>'); }
   if (t >= MGP.instantParis(CAL.annee, 12, 25, 0, 0) && !CAL.lectureSeule && !CAL.carnet) {
@@ -1712,14 +1732,17 @@ CAL.montrerVerrou = function (j) {
   clearInterval(CAL.minuteur);
   CAL.minuteur = setInterval(function () {
     if (!document.getElementById('dlg-case').open || CAL.verrou === null) { clearInterval(CAL.minuteur); return; }
+    /* Seul le compte à rebours change chaque seconde ; le panneau n'est redessiné que si son état change
+       (le redessiner sans cesse faisait perdre les clics sur « Fermer »). */
     var m = CAL.messageVerrou(CAL.verrou, CAL.maintenant()), z = document.getElementById('verrou-compte');
-    if (m.genre === 'avant' && z) { z.textContent = 'Encore ' + MGP.dureeTexte(m.reste); } else if (m.genre !== 'avant') { CAL.rendreVerrou(); }
+    var actuel = document.querySelector('#case-corps [data-verrou]');
+    if (actuel && actuel.dataset.verrou !== m.genre) { CAL.rendreVerrou(); } else if (m.genre === 'avant' && z) { z.textContent = 'Encore ' + MGP.dureeTexte(m.reste); }
   }, 1000);
 };
 CAL.rendreVerrou = function () {
   var j = CAL.verrou, m = CAL.messageVerrou(j, CAL.maintenant());
-  document.getElementById('case-corps').innerHTML = '<div class="verrou" data-verrou="' + m.genre + '"><div class="gros" aria-hidden="true">' + (m.genre === 'avant' ? '🔒' : '⏳') + '</div>' +
-    '<span class="pil t-flamant">' + echapperHTML('Case du ' + MGP.dateLongue(CAL.annee, 12, j)) + '</span>' +
+  document.getElementById('case-corps').innerHTML = '<div class="verrou" data-verrou="' + m.genre + '"><div class="gros" aria-hidden="true">' + (m.genre === 'avant' ? '🔒' : (m.genre === 'essai' ? '🧪' : '⏳')) + '</div>' +
+    '<span class="pil ' + (m.genre === 'essai' ? 't-lavande' : 't-flamant') + '">' + echapperHTML('Case du ' + MGP.dateLongue(CAL.annee, 12, j)) + '</span>' +
     '<h2 id="case-titre" tabindex="-1" style="margin-top:12px">' + echapperHTML(m.titre) + '</h2><p style="margin-top:8px;font-size:16px" id="verrou-texte">' + echapperHTML(m.texte) + '</p>' +
     (m.genre === 'avant' ? '<span class="pil t-lavande compte" id="verrou-compte" role="timer" aria-live="off">Encore ' + echapperHTML(MGP.dureeTexte(m.reste)) + '</span>' : '') + '</div>' +
     '<div class="pied">' + (m.genre === 'plus-tard' || m.genre === 'bientot' ? '<button type="button" class="btn" id="btn-reessayer">Réessayer</button>' : '') + '<button type="button" class="btn sec" data-fermer>Fermer</button></div>';
@@ -2026,6 +2049,8 @@ CAL.brancher = function () {
 
 CAL.demarrer = async function () {
   CAL.brancher();
+  /* Version d'essai embarquée : mode essai au 9 décembre par défaut (un réglage enregistré l'emporte). */
+  if (CAL.APERCU && CAL.APERCU.essai) { CAL.test = { actif: true, date: CAL.APERCU.essai }; }
   var acces = await MGP.g.demarrer('full');
   CAL.lectureSeule = acces !== 'full';
   try {
