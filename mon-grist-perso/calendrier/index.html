@@ -691,9 +691,13 @@ MGP.g.demarrer = function (accesRequis) {
     try {
       grist.ready({ requiredAccess: accesRequis || 'full', allowSelectBy: false });
       /* Le message initial de Grist donne le niveau d'accès (settings.accessLevel) : aucun réglage n'y est stocké. */
-      grist.on('message', function (msg) { if (msg && msg.settings) { fin(msg.settings.accessLevel); } });
+      grist.on('message', function (msg) { if (msg && msg.settings && msg.settings.accessLevel) { fin(msg.settings.accessLevel); } });
+      /* Sonde fiable : seule une lecture en accès complet peut lire une table technique. Elle couvre les cas où le message initial n'arrive pas (widget « Créer le vôtre », message reçu avant l'écoute). */
+      if (accesRequis === 'full' || !accesRequis) {
+        grist.docApi.fetchTable('_grist_Tables').then(function () { fin('full'); }, function () { /* pas d'accès complet : on attend le message ou le délai */ });
+      }
     } catch (e) { logSecurite('démarrage', e); fin('none'); }
-    setTimeout(function () { fin(MGP.g.acces); }, 2500);
+    setTimeout(function () { fin(MGP.g.acces); }, 5000);
   });
 };
 
