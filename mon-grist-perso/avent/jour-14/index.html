@@ -6,12 +6,14 @@
 <title>Case en attente - Mon Grist perso</title>
 <!--
   Mon Grist perso - widget "attente" (case pas encore ouverte)
-  Version 1.0.0 - madeXcé - série communautaire gratuite
+  Version 1.1.0 - madeXcé - série communautaire gratuite
   Le numéro du jour vient du dossier (.../avent/jour-12/) ou du paramètre ?jour=12.
   Année : ?annee=2026 (2026 par défaut). Date simulée pour les tests : ?maintenant=2026-12-11T20:00
   Aucun accès au document n'est nécessaire.
   HISTORIQUE
   1.0.0 : première version.
+  1.0.1 : la scène occupe toute la largeur du widget (carte pastel bord à bord).
+  1.1.0 : habillage de fête (ciel de nuit, guirlande, flocons, sapin), comme le calendrier.
 -->
 <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
 <style>
@@ -36,6 +38,8 @@
   --police: "Avenir Next", "Segoe UI", Helvetica, Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --focus: 3px solid var(--lavande-f);
+  /* Bouton + flottant : taille, distance au bas, et marge laissée sous le contenu pour qu'il ne cache jamais la dernière carte. */
+  --fab: 60px; --fab-bas: 22px; --fab-reserve: calc(var(--fab) + var(--fab-bas) + 28px + env(safe-area-inset-bottom, 0px));
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -47,7 +51,7 @@ button, input, select, textarea { font-family: inherit; font-size: 15px; color: 
 :focus-visible { outline: var(--focus); outline-offset: 2px; }
 .cache { display: none; }
 /* L'attribut hidden doit gagner sur les display des composants (spécificité égale ou supérieure, aucune règle forcée). */
-[hidden], .btn[hidden], .fab[hidden], .pil[hidden], .btn-icone[hidden], .bandeau[hidden] { display: none; }
+[hidden], .btn[hidden], .fab[hidden], .pil[hidden], .btn-icone[hidden], .bandeau[hidden], .choix[hidden], .carte[hidden] { display: none; }
 .sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .mini { font-size: 13px; color: var(--gris); }
 .gras { font-weight: 700; }
@@ -59,15 +63,19 @@ button, input, select, textarea { font-family: inherit; font-size: 15px; color: 
 @keyframes tourne { to { transform: rotate(360deg); } }
 
 /* ---- Mise en page ---- */
-.page { padding: 16px 16px 110px; max-width: 1600px; margin: 0 auto; }
+.page { padding: 16px 16px var(--fab-reserve); width: 100%; }
+/* Pleine largeur : aucune largeur maximale, seulement des marges de 16 à 24 px. Les paragraphes longs gardent une longueur de ligne lisible (.lisible). */
+.lisible { max-width: 75ch; }
 .barre { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
 .barre .titre { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
 .barre h1 { font-size: 22px; font-weight: 800; }
 .barre .marque { font-size: 13px; color: var(--gris); font-weight: 600; }
 .barre .actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .grille { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 700px) { .page { padding: 22px 24px 110px; } .grille.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1100px) { .page { padding: 26px 32px 110px; } .grille.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .grille.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 700px) { .page { padding: 20px 20px var(--fab-reserve); } .grille.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .page { padding: 24px 24px var(--fab-reserve); } .grille.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .grille.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1500px) { .grille.g2 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .grille.g3 { grid-template-columns: repeat(4, minmax(0, 1fr)); } .grille.g4 { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (min-width: 1850px) { .grille.g3 { grid-template-columns: repeat(5, minmax(0, 1fr)); } .grille.g4 { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 @media (min-width: 700px) and (max-width: 1099px) { .grille.g3, .grille.g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* ---- Cartes ---- */
@@ -102,8 +110,16 @@ button.pil { min-height: 44px; padding: 6px 14px; cursor: pointer; }
 .choix button[aria-pressed="true"] { background: var(--ecume-f); color: var(--blanc); }
 
 /* ---- Onglets ---- */
-.onglets { display: flex; gap: 4px; background: var(--blanc); border-radius: 999px; padding: 5px; box-shadow: var(--ombre); overflow-x: auto; margin-bottom: 16px; max-width: 100%; scrollbar-width: none; }
-.onglets button { flex: none; min-height: 44px; border: 0; border-radius: 999px; padding: 0 16px; background: transparent; color: var(--gris); font-weight: 700; cursor: pointer; white-space: nowrap; }
+.onglets { position: relative; display: flex; gap: 4px; background: var(--blanc); border-radius: 999px; padding: 5px; box-shadow: var(--ombre); overflow-x: auto; margin-bottom: 16px; max-width: 100%; scrollbar-width: none; scroll-snap-type: x proximity; scroll-padding: 0 36px; -webkit-overflow-scrolling: touch; }
+.onglets::-webkit-scrollbar { display: none; }
+.onglets button { flex: none; min-height: 44px; border: 0; border-radius: 999px; padding: 0 16px; background: transparent; color: var(--gris); font-weight: 700; cursor: pointer; white-space: nowrap; scroll-snap-align: start; }
+/* Onglets qui débordent : fondu et chevron sur le bord où il reste des onglets cachés (classes .g et .d posées par MGP.onglets). */
+.onglets-cadre { position: relative; margin-bottom: 16px; }
+.onglets-cadre > .onglets { margin-bottom: 0; }
+.onglets-cadre::before, .onglets-cadre::after { position: absolute; top: 0; bottom: 0; width: 46px; z-index: 2; pointer-events: none; opacity: 0; transition: opacity .2s; display: grid; align-items: center; color: var(--ecume-f); font-weight: 800; font-size: 22px; }
+.onglets-cadre::before { content: "‹"; left: 0; justify-items: start; padding-left: 10px; border-radius: 999px 0 0 999px; background: linear-gradient(90deg, var(--blanc) 45%, rgba(255, 255, 255, 0)); }
+.onglets-cadre::after { content: "›"; right: 0; justify-items: end; padding-right: 10px; border-radius: 0 999px 999px 0; background: linear-gradient(270deg, var(--blanc) 45%, rgba(255, 255, 255, 0)); }
+.onglets-cadre.g::before, .onglets-cadre.d::after { opacity: 1; }
 .onglets button[aria-selected="true"] { background: var(--ecume-f); color: var(--blanc); }
 @media (max-width: 520px) { .onglets button { padding: 0 12px; } }
 
@@ -127,7 +143,7 @@ button.pil { min-height: 44px; padding: 6px 14px; cursor: pointer; }
 .photo-btn:focus-within { outline: var(--focus); outline-offset: 2px; }
 
 /* ---- FAB ---- */
-.fab { position: fixed; right: 18px; bottom: 22px; z-index: 40; width: 60px; height: 60px; border-radius: 50%; border: 0; background: var(--ecume-f); color: var(--blanc); font-size: 30px; line-height: 1; cursor: pointer; box-shadow: 0 8px 20px rgba(31, 127, 122, .4); display: grid; place-items: center; }
+.fab { position: fixed; right: 18px; bottom: calc(var(--fab-bas) + env(safe-area-inset-bottom, 0px)); z-index: 40; width: var(--fab); height: var(--fab); border-radius: 50%; border: 0; background: var(--ecume-f); color: var(--blanc); font-size: 30px; line-height: 1; cursor: pointer; box-shadow: 0 8px 20px rgba(31, 127, 122, .4); display: grid; place-items: center; }
 
 /* ---- Feuilles et dialogues (element dialog natif) ---- */
 dialog.feuille { border: 0; padding: 0; background: var(--blanc); color: var(--encre); width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 40px); border-radius: var(--r-xl); box-shadow: var(--ombre-forte); }
@@ -167,7 +183,8 @@ dialog.feuille .pied { display: flex; gap: 10px; justify-content: flex-end; flex
 
 /* ---- Sous le capot ---- */
 .capot-grille { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 1400px) { .capot-grille { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; } }
+/* Deux colonnes seulement quand le schéma garde sa taille réelle (880 px) : ses lignes restent des cibles de 44 px. */
+@media (min-width: 1800px) { .capot-grille { grid-template-columns: minmax(880px, 1.1fr) minmax(0, 1fr); align-items: start; } }
 .schema-svg { width: 100%; max-width: 880px; height: auto; display: block; }
 .schema-svg .boite-fond { fill: var(--blanc); stroke: var(--trait); stroke-width: 2; }
 .schema-svg text { font-family: var(--police); font-size: 13px; fill: var(--encre); }
@@ -219,26 +236,62 @@ code { font-family: var(--mono); font-size: .92em; background: var(--sable2); bo
 
 @media (prefers-reduced-motion: reduce) { * { animation: none; transition: none; } }
 
-.scene { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; text-align: center; position: relative; overflow: hidden; }
+/* ==========================================================================
+   Mon Grist perso - habillage de fête (calendrier, case en attente, écrans de déballage)
+   Les widgets installés gardent le style California pastel : n'appliquer .noel qu'à ces écrans.
+   Contraste : crème #FFF8F0 et lilas #D9D2EE sur la nuit (AA), encre sur l'or.
+   ========================================================================== */
+.noel {
+  --nuit1: #1B2440; --nuit2: #3A2D5C; --nuit0: #4A3B73;
+  --creme: #FFF8F0; --lune: #D9D2EE;
+  --or: #F2C76E; --or-clair: #FFE7A8; --or-f: #B8862B;
+  --focus: 3px solid var(--or-clair);
+  position: relative; overflow: hidden; min-height: 100vh;
+  background: radial-gradient(ellipse at 50% -10%, var(--nuit0) 0%, var(--nuit2) 35%, var(--nuit1) 85%);
+  color: var(--creme);
+}
+body.noel-fond { background: var(--nuit1, #1B2440); background-color: #1B2440; }
+.noel :focus-visible { outline: 3px solid #FFE7A8; outline-offset: 3px; }
+.noel > h1, .noel .barre h1, .noel .deb h1 { color: var(--creme); }
+.noel .barre .marque, .noel .accroche, .noel > .mini, .noel .avantages .mini { color: var(--lune); }
+.noel .avantages b { color: var(--creme); }
+.noel .carte, .noel dialog { color: var(--encre); }
+.noel .carte .mini { color: var(--gris); }
+.noel .hero { background: rgba(255, 255, 255, .08); color: var(--creme); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12); }
+.noel .hero p { color: var(--lune); }
+.noel .jauge { background: rgba(255, 255, 255, .16); }
+.noel .jauge > i { background: linear-gradient(90deg, var(--or), var(--or-clair)); }
+.noel .pil.or { background: var(--or); color: var(--encre); }
+/* Décor : guirlande, flocons, sapin (posés par MGP.noel.decorer) */
+.noel .guirlande { position: absolute; top: 0; left: 0; width: 100%; height: 46px; pointer-events: none; z-index: 0; }
+.noel .flocons { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.noel .flocons i { position: absolute; top: -10px; border-radius: 50%; background: #fff; opacity: .8; animation: neige 14s linear infinite; }
+@keyframes neige { 0% { transform: translateY(-10px); opacity: 0; } 10% { opacity: .85; } 100% { transform: translateY(105vh); opacity: .2; } }
+.noel .sapin { position: absolute; right: 18px; bottom: -4px; font-size: 72px; opacity: .9; pointer-events: none; z-index: 0; }
+@media (max-width: 699px) { .noel .sapin { font-size: 48px; right: 8px; } }
+.noel > *:not(.guirlande):not(.flocons):not(.sapin) { position: relative; z-index: 1; }
+@media (prefers-reduced-motion: reduce) { .noel .flocons i { animation: none; top: auto; opacity: .7; } }
+.page.noel { padding-top: 46px; }
+
+.scene { min-height: 100vh; display: grid; place-items: center; padding: 56px 16px 24px; text-align: center; }
 .boite { max-width: 440px; }
 .cadeau { width: 200px; height: 200px; margin: 30px auto 22px; border-radius: 28px; background: var(--flamant); position: relative; box-shadow: var(--ombre); }
 .cadeau::before { content: ""; position: absolute; left: 88px; top: 0; bottom: 0; width: 24px; background: var(--citron); }
 .cadeau::after { content: ""; position: absolute; top: 88px; left: 0; right: 0; height: 24px; background: var(--citron); }
 .cadeau b { position: absolute; inset: 0; display: grid; place-items: center; font-size: 64px; color: var(--blanc); z-index: 2; text-shadow: 0 2px 6px rgba(194, 64, 106, .55); font-weight: 800; }
 .noeud { position: absolute; top: -32px; left: 70px; font-size: 50px; z-index: 3; }
-.boite h1 { font-size: 26px; font-weight: 800; }
-.boite p { font-size: 16px; color: var(--gris); margin: 10px 0 18px; }
-.boite p b { color: var(--encre); }
+.boite h1 { font-size: 26px; font-weight: 800; color: var(--creme); }
+.boite p { font-size: 16px; color: var(--lune); margin: 10px 0 18px; }
+.boite p b { color: var(--creme); }
+.boite .mini { color: var(--lune); }
 .compte { font-size: 15px; padding: 8px 16px; white-space: normal; }
-.neige i { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: var(--blanc); opacity: .9; box-shadow: 0 0 4px rgba(255, 255, 255, .8); }
 @media (max-width: 420px) { .cadeau { width: 160px; height: 160px; } .cadeau::before { left: 68px; } .cadeau::after { top: 68px; } .noeud { left: 52px; } .cadeau b { font-size: 52px; } }
 </style>
 </head>
 <body>
 <div id="loader" class="loader actif" role="status"><div><div class="rond"></div><span class="txt">Chargement...</span></div></div>
 <div id="annonces" class="sr" aria-live="polite"></div>
-<main class="scene">
-  <div class="neige" aria-hidden="true"><i style="left:14%;top:12%"></i><i style="left:26%;top:66%"></i><i style="left:76%;top:20%"></i><i style="left:86%;top:74%"></i><i style="left:64%;top:9%"></i></div>
+<main class="scene noel" id="scene">
   <div class="boite">
     <div class="cadeau" aria-hidden="true"><span class="noeud">🎀</span><b id="num">?</b></div>
     <h1 id="titre">Patience, petit lutin !</h1>
@@ -430,6 +483,26 @@ MGP.liste = function (v) {
   return [];
 };
 
+/* ==========================================================================
+   Mon Grist perso - décor de fête : guirlande lumineuse (SVG), flocons, petit sapin.
+   MGP.noel.decorer(element) : ajoute le décor une seule fois, purement décoratif (aria-hidden).
+   ========================================================================== */
+MGP.noel = {};
+MGP.noel.decorer = function (el) {
+  if (!el || el.querySelector(':scope > .guirlande')) { return; }
+  var couleurs = ['#F2C76E', '#FFC2D1', '#A8E6E2', '#F2C76E', '#CDEDC8', '#FFC2D1', '#DCD0F7', '#F2C76E'];
+  var g = '<svg class="guirlande" viewBox="0 0 1280 46" preserveAspectRatio="none" aria-hidden="true" focusable="false">' +
+    '<path d="M0 8 Q 80 40 160 10 T 320 10 T 480 10 T 640 10 T 800 10 T 960 10 T 1120 10 T 1280 10" stroke="#5E5480" stroke-width="2" fill="none"/>' +
+    couleurs.map(function (c, i) { return '<circle cx="' + (80 + i * 160) + '" cy="25" r="6" fill="' + c + '"/>'; }).join('') + '</svg>';
+  var f = '<div class="flocons" aria-hidden="true">' + [[6, 3, 5], [18, 9, 4], [31, 1, 6], [44, 6, 4], [57, 11, 5], [69, 4, 6], [81, 8, 4], [92, 2, 5], [12, 12, 4], [74, 13, 5]].map(function (x) {
+    return '<i style="left:' + x[0] + '%;width:' + x[2] + 'px;height:' + x[2] + 'px;animation-delay:-' + x[1] + 's"></i>';
+  }).join('') + '</div>';
+  el.insertAdjacentHTML('afterbegin', g + f);
+  el.insertAdjacentHTML('beforeend', '<div class="sapin" aria-hidden="true">🎄</div>');
+};
+
+document.body.classList.add('noel-fond');
+MGP.noel.decorer(document.getElementById('scene'));
 
 var ATT = {};
 /* Jour : dossier jour-NN dans l'URL, sinon ?jour= */

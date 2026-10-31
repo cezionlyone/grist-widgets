@@ -6,7 +6,7 @@
 <title>Calendrier de l'Avent - Mon Grist perso</title>
 <!--
   Mon Grist perso - widget "Calendrier de l'Avent"
-  Version 1.0.0 - madeXcé - série communautaire gratuite
+  Version 1.1.0 - madeXcé - série communautaire gratuite
   - 24 cases ; une case s'ouvre le jour J à 9 h (heure de Paris).
   - Le contenu de chaque case est lu au moment voulu dans ../avent/jour-NN/contenu.json :
     rien n'est embarqué dans ce fichier. Un 404 ou une date non atteinte = case fermée.
@@ -16,6 +16,13 @@
   - Réglages : année (2026 par défaut), mode test avec date simulée. ?maintenant=AAAA-MM-JJTHH:MM pour les tests.
   HISTORIQUE
   1.0.0 : première version.
+  1.0.1 : pleine largeur sur grand écran (les portes s'élargissent), onglets et marges communs mis à jour.
+  1.1.0 : jour de la semaine sur chaque porte ; case fermée expliquée selon la date (compte à rebours, « dans quelques minutes » seulement juste après 9 h,
+          sinon « réessayez plus tard » avec un bouton) ; un cadeau installé ouvre sa case quelle que soit la date
+          (marqueurs cadeau.jour-NN de la table technique, nom de page relu en direct) ; « Mode essai : simuler une date »
+          facile à trouver ; habillage de fête et grille par semaines (lundi en premier, le 25 « Joyeux Noël ») ;
+          « Terminer l'Avent » (à partir du 25 décembre et dans les réglages) : supprime le calendrier, ses données
+          et les pages cadeau jamais installées, après un aperçu du menu final ; option « carnet des leçons ».
 -->
 <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
 <style>
@@ -40,6 +47,8 @@
   --police: "Avenir Next", "Segoe UI", Helvetica, Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --focus: 3px solid var(--lavande-f);
+  /* Bouton + flottant : taille, distance au bas, et marge laissée sous le contenu pour qu'il ne cache jamais la dernière carte. */
+  --fab: 60px; --fab-bas: 22px; --fab-reserve: calc(var(--fab) + var(--fab-bas) + 28px + env(safe-area-inset-bottom, 0px));
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -51,7 +60,7 @@ button, input, select, textarea { font-family: inherit; font-size: 15px; color: 
 :focus-visible { outline: var(--focus); outline-offset: 2px; }
 .cache { display: none; }
 /* L'attribut hidden doit gagner sur les display des composants (spécificité égale ou supérieure, aucune règle forcée). */
-[hidden], .btn[hidden], .fab[hidden], .pil[hidden], .btn-icone[hidden], .bandeau[hidden] { display: none; }
+[hidden], .btn[hidden], .fab[hidden], .pil[hidden], .btn-icone[hidden], .bandeau[hidden], .choix[hidden], .carte[hidden] { display: none; }
 .sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .mini { font-size: 13px; color: var(--gris); }
 .gras { font-weight: 700; }
@@ -63,15 +72,19 @@ button, input, select, textarea { font-family: inherit; font-size: 15px; color: 
 @keyframes tourne { to { transform: rotate(360deg); } }
 
 /* ---- Mise en page ---- */
-.page { padding: 16px 16px 110px; max-width: 1600px; margin: 0 auto; }
+.page { padding: 16px 16px var(--fab-reserve); width: 100%; }
+/* Pleine largeur : aucune largeur maximale, seulement des marges de 16 à 24 px. Les paragraphes longs gardent une longueur de ligne lisible (.lisible). */
+.lisible { max-width: 75ch; }
 .barre { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
 .barre .titre { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
 .barre h1 { font-size: 22px; font-weight: 800; }
 .barre .marque { font-size: 13px; color: var(--gris); font-weight: 600; }
 .barre .actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .grille { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 700px) { .page { padding: 22px 24px 110px; } .grille.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1100px) { .page { padding: 26px 32px 110px; } .grille.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .grille.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 700px) { .page { padding: 20px 20px var(--fab-reserve); } .grille.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .page { padding: 24px 24px var(--fab-reserve); } .grille.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .grille.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1500px) { .grille.g2 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .grille.g3 { grid-template-columns: repeat(4, minmax(0, 1fr)); } .grille.g4 { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (min-width: 1850px) { .grille.g3 { grid-template-columns: repeat(5, minmax(0, 1fr)); } .grille.g4 { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 @media (min-width: 700px) and (max-width: 1099px) { .grille.g3, .grille.g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* ---- Cartes ---- */
@@ -106,8 +119,16 @@ button.pil { min-height: 44px; padding: 6px 14px; cursor: pointer; }
 .choix button[aria-pressed="true"] { background: var(--ecume-f); color: var(--blanc); }
 
 /* ---- Onglets ---- */
-.onglets { display: flex; gap: 4px; background: var(--blanc); border-radius: 999px; padding: 5px; box-shadow: var(--ombre); overflow-x: auto; margin-bottom: 16px; max-width: 100%; scrollbar-width: none; }
-.onglets button { flex: none; min-height: 44px; border: 0; border-radius: 999px; padding: 0 16px; background: transparent; color: var(--gris); font-weight: 700; cursor: pointer; white-space: nowrap; }
+.onglets { position: relative; display: flex; gap: 4px; background: var(--blanc); border-radius: 999px; padding: 5px; box-shadow: var(--ombre); overflow-x: auto; margin-bottom: 16px; max-width: 100%; scrollbar-width: none; scroll-snap-type: x proximity; scroll-padding: 0 36px; -webkit-overflow-scrolling: touch; }
+.onglets::-webkit-scrollbar { display: none; }
+.onglets button { flex: none; min-height: 44px; border: 0; border-radius: 999px; padding: 0 16px; background: transparent; color: var(--gris); font-weight: 700; cursor: pointer; white-space: nowrap; scroll-snap-align: start; }
+/* Onglets qui débordent : fondu et chevron sur le bord où il reste des onglets cachés (classes .g et .d posées par MGP.onglets). */
+.onglets-cadre { position: relative; margin-bottom: 16px; }
+.onglets-cadre > .onglets { margin-bottom: 0; }
+.onglets-cadre::before, .onglets-cadre::after { position: absolute; top: 0; bottom: 0; width: 46px; z-index: 2; pointer-events: none; opacity: 0; transition: opacity .2s; display: grid; align-items: center; color: var(--ecume-f); font-weight: 800; font-size: 22px; }
+.onglets-cadre::before { content: "‹"; left: 0; justify-items: start; padding-left: 10px; border-radius: 999px 0 0 999px; background: linear-gradient(90deg, var(--blanc) 45%, rgba(255, 255, 255, 0)); }
+.onglets-cadre::after { content: "›"; right: 0; justify-items: end; padding-right: 10px; border-radius: 0 999px 999px 0; background: linear-gradient(270deg, var(--blanc) 45%, rgba(255, 255, 255, 0)); }
+.onglets-cadre.g::before, .onglets-cadre.d::after { opacity: 1; }
 .onglets button[aria-selected="true"] { background: var(--ecume-f); color: var(--blanc); }
 @media (max-width: 520px) { .onglets button { padding: 0 12px; } }
 
@@ -131,7 +152,7 @@ button.pil { min-height: 44px; padding: 6px 14px; cursor: pointer; }
 .photo-btn:focus-within { outline: var(--focus); outline-offset: 2px; }
 
 /* ---- FAB ---- */
-.fab { position: fixed; right: 18px; bottom: 22px; z-index: 40; width: 60px; height: 60px; border-radius: 50%; border: 0; background: var(--ecume-f); color: var(--blanc); font-size: 30px; line-height: 1; cursor: pointer; box-shadow: 0 8px 20px rgba(31, 127, 122, .4); display: grid; place-items: center; }
+.fab { position: fixed; right: 18px; bottom: calc(var(--fab-bas) + env(safe-area-inset-bottom, 0px)); z-index: 40; width: var(--fab); height: var(--fab); border-radius: 50%; border: 0; background: var(--ecume-f); color: var(--blanc); font-size: 30px; line-height: 1; cursor: pointer; box-shadow: 0 8px 20px rgba(31, 127, 122, .4); display: grid; place-items: center; }
 
 /* ---- Feuilles et dialogues (element dialog natif) ---- */
 dialog.feuille { border: 0; padding: 0; background: var(--blanc); color: var(--encre); width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 40px); border-radius: var(--r-xl); box-shadow: var(--ombre-forte); }
@@ -171,7 +192,8 @@ dialog.feuille .pied { display: flex; gap: 10px; justify-content: flex-end; flex
 
 /* ---- Sous le capot ---- */
 .capot-grille { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 1400px) { .capot-grille { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; } }
+/* Deux colonnes seulement quand le schéma garde sa taille réelle (880 px) : ses lignes restent des cibles de 44 px. */
+@media (min-width: 1800px) { .capot-grille { grid-template-columns: minmax(880px, 1.1fr) minmax(0, 1fr); align-items: start; } }
 .schema-svg { width: 100%; max-width: 880px; height: auto; display: block; }
 .schema-svg .boite-fond { fill: var(--blanc); stroke: var(--trait); stroke-width: 2; }
 .schema-svg text { font-family: var(--police); font-size: 13px; fill: var(--encre); }
@@ -223,29 +245,106 @@ code { font-family: var(--mono); font-size: .92em; background: var(--sable2); bo
 
 @media (prefers-reduced-motion: reduce) { * { animation: none; transition: none; } }
 
+/* ==========================================================================
+   Mon Grist perso - habillage de fête (calendrier, case en attente, écrans de déballage)
+   Les widgets installés gardent le style California pastel : n'appliquer .noel qu'à ces écrans.
+   Contraste : crème #FFF8F0 et lilas #D9D2EE sur la nuit (AA), encre sur l'or.
+   ========================================================================== */
+.noel {
+  --nuit1: #1B2440; --nuit2: #3A2D5C; --nuit0: #4A3B73;
+  --creme: #FFF8F0; --lune: #D9D2EE;
+  --or: #F2C76E; --or-clair: #FFE7A8; --or-f: #B8862B;
+  --focus: 3px solid var(--or-clair);
+  position: relative; overflow: hidden; min-height: 100vh;
+  background: radial-gradient(ellipse at 50% -10%, var(--nuit0) 0%, var(--nuit2) 35%, var(--nuit1) 85%);
+  color: var(--creme);
+}
+body.noel-fond { background: var(--nuit1, #1B2440); background-color: #1B2440; }
+.noel :focus-visible { outline: 3px solid #FFE7A8; outline-offset: 3px; }
+.noel > h1, .noel .barre h1, .noel .deb h1 { color: var(--creme); }
+.noel .barre .marque, .noel .accroche, .noel > .mini, .noel .avantages .mini { color: var(--lune); }
+.noel .avantages b { color: var(--creme); }
+.noel .carte, .noel dialog { color: var(--encre); }
+.noel .carte .mini { color: var(--gris); }
+.noel .hero { background: rgba(255, 255, 255, .08); color: var(--creme); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12); }
+.noel .hero p { color: var(--lune); }
+.noel .jauge { background: rgba(255, 255, 255, .16); }
+.noel .jauge > i { background: linear-gradient(90deg, var(--or), var(--or-clair)); }
+.noel .pil.or { background: var(--or); color: var(--encre); }
+/* Décor : guirlande, flocons, sapin (posés par MGP.noel.decorer) */
+.noel .guirlande { position: absolute; top: 0; left: 0; width: 100%; height: 46px; pointer-events: none; z-index: 0; }
+.noel .flocons { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.noel .flocons i { position: absolute; top: -10px; border-radius: 50%; background: #fff; opacity: .8; animation: neige 14s linear infinite; }
+@keyframes neige { 0% { transform: translateY(-10px); opacity: 0; } 10% { opacity: .85; } 100% { transform: translateY(105vh); opacity: .2; } }
+.noel .sapin { position: absolute; right: 18px; bottom: -4px; font-size: 72px; opacity: .9; pointer-events: none; z-index: 0; }
+@media (max-width: 699px) { .noel .sapin { font-size: 48px; right: 8px; } }
+.noel > *:not(.guirlande):not(.flocons):not(.sapin) { position: relative; z-index: 1; }
+@media (prefers-reduced-motion: reduce) { .noel .flocons i { animation: none; top: auto; opacity: .7; } }
+.page.noel { padding-top: 46px; }
+
 .hero { min-height: 120px; padding: 20px 22px; }
 .hero h2 { font-size: 24px; max-width: 75%; }
 .hero p { max-width: 75%; }
 .soleil { position: absolute; right: 32px; top: 14px; width: 96px; height: 96px; border-radius: 50%; background: radial-gradient(circle, #FFF6C9, var(--citron) 60%, rgba(255, 241, 168, 0) 72%); }
 .palmier { position: absolute; right: 118px; bottom: -10px; font-size: 60px; }
 @media (max-width: 699px) { .soleil, .palmier { display: none; } .hero h2, .hero p { max-width: none; } .hero h2 { font-size: 19px; } .hero { min-height: 0; padding: 16px 18px; } }
-.portes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin: 16px 0; }
-@media (min-width: 700px) { .portes { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; } }
-@media (min-width: 1100px) { .portes { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
-.porte { position: relative; height: 78px; border: 0; border-radius: 16px; box-shadow: var(--ombre); padding: 8px 10px; text-align: left; font-weight: 800; font-size: 19px; color: var(--encre); cursor: pointer; display: block; overflow: hidden; }
-@media (min-width: 700px) { .porte { height: 118px; font-size: 22px; border-radius: 18px; padding: 10px 12px; } }
-.porte .num { position: absolute; left: 10px; top: 6px; }
-.porte .ok { position: absolute; right: 10px; top: 8px; color: var(--menthe-f); font-size: 15px; }
-.porte .ic { position: absolute; right: 8px; bottom: 6px; font-size: 20px; }
-.porte .et { position: absolute; left: 10px; bottom: 9px; right: 34px; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-@media (max-width: 699px) { .porte .et { display: none; } .porte .ok { font-size: 13px; right: 8px; top: 6px; } }
-@media (min-width: 700px) { .porte .ic { font-size: 24px; right: 12px; bottom: 10px; } .porte .num { left: 12px; top: 10px; } }
-.porte.ouverte { background: var(--blanc); color: var(--gris); }
-.porte.jour { outline: 3px solid var(--flamant-f); outline-offset: 3px; }
-.porte.jour .et { color: var(--flamant-f); }
-.porte:focus-visible { outline: var(--focus); outline-offset: 3px; }
-.porte.jour:focus-visible { outline: 3px solid var(--lavande-f); }
-.porte.c24 { background: linear-gradient(135deg, var(--peche), var(--flamant), var(--lavande)); }
+/* Grille par semaines : 7 colonnes, lundi en premier. Cases hors Avent estompées, le 25 « Joyeux Noël ». */
+.semaine, .portes { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.semaine { margin: 16px 0 6px; }
+.semaine span { text-align: center; font-size: 12px; font-weight: 700; color: var(--lune, var(--gris)); }
+.portes { margin: 0 0 16px; }
+@media (min-width: 700px) { .semaine, .portes { gap: 10px; } .semaine span { font-size: 14px; } }
+@media (min-width: 1100px) { .semaine, .portes { gap: 14px; } }
+.porte, .case-vide, .case-noel { position: relative; height: 58px; border-radius: 12px; min-width: 0; }
+@media (min-width: 700px) { .porte, .case-vide, .case-noel { height: 104px; border-radius: 16px; } }
+@media (min-width: 1100px) { .porte, .case-vide, .case-noel { height: 124px; border-radius: 18px; } }
+@media (min-width: 1440px) { .porte, .case-vide, .case-noel { height: 140px; } }
+.porte { border: 0; padding: 0; text-align: left; font-weight: 800; font-size: 16px; color: var(--encre); cursor: pointer; display: block; overflow: hidden; box-shadow: 0 6px 16px rgba(0, 0, 0, .25); }
+@media (min-width: 700px) { .porte { font-size: 22px; } }
+@media (min-width: 1100px) { .porte { font-size: 26px; } }
+.porte .num { position: absolute; left: 6px; top: 3px; z-index: 2; }
+@media (min-width: 700px) { .porte .num { left: 12px; top: 8px; } }
+.porte.boite { color: var(--encre); }
+.porte.boite::before { content: ""; position: absolute; top: 0; bottom: 0; left: 62%; width: 7px; background: rgba(255, 255, 255, .55); }
+.porte.boite::after { content: ""; position: absolute; left: 0; right: 0; top: 62%; height: 7px; background: rgba(255, 255, 255, .55); }
+@media (min-width: 700px) { .porte.boite::before { width: 12px; } .porte.boite::after { height: 12px; } }
+.porte .noeud { position: absolute; left: calc(62% - 9px); top: calc(62% - 11px); font-size: 16px; z-index: 2; }
+@media (min-width: 700px) { .porte .noeud { left: calc(62% - 12px); top: calc(62% - 16px); font-size: 22px; } }
+.porte.ouverte { background: #FFF8F0; color: var(--encre); }
+.porte .ok { position: absolute; right: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #F2C76E; color: var(--encre); display: grid; place-items: center; font-size: 10px; font-weight: 800; z-index: 2; }
+@media (min-width: 700px) { .porte .ok { right: 10px; top: 10px; width: 24px; height: 24px; font-size: 13px; } }
+.porte .ic { position: absolute; right: 3px; bottom: 2px; font-size: 16px; z-index: 2; }
+@media (min-width: 700px) { .porte .ic { right: 10px; bottom: 8px; font-size: 24px; } }
+.porte .et { display: none; }
+@media (min-width: 1100px) { .porte .et { display: block; position: absolute; left: 12px; bottom: 10px; right: 44px; font-size: 12px; font-weight: 700; color: #5B5F70; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } }
+.porte.jour { box-shadow: 0 0 0 3px #F2C76E, 0 0 26px 6px rgba(242, 199, 110, .55); }
+.porte:focus-visible { outline: 3px solid #FFE7A8; outline-offset: 3px; }
+.porte.c24 { background: linear-gradient(135deg, #F2C76E, #FFE7A8); }
+.porte.c24.boite::before, .porte.c24.boite::after { display: none; }
+.porte.c24 .ic { font-size: 22px; }
+@media (min-width: 700px) { .porte.c24 .ic { font-size: 34px; } }
+.case-vide { display: grid; place-items: center; font-weight: 700; font-size: 13px; color: rgba(217, 210, 238, .5); box-shadow: inset 0 0 0 1px rgba(217, 210, 238, .22); }
+.case-noel { display: grid; place-items: center; text-align: center; background: rgba(255, 255, 255, .1); color: #FFE7A8; font-weight: 800; font-size: 10px; line-height: 1.1; box-shadow: inset 0 0 0 2px #F2C76E; padding: 2px; }
+.case-noel b { display: block; font-size: 18px; }
+@media (min-width: 700px) { .case-noel { font-size: 15px; } .case-noel b { font-size: 30px; } }
+.page:not(.noel) .case-vide { color: var(--gris); box-shadow: inset 0 0 0 1px var(--trait); }
+.page:not(.noel) .case-noel { color: var(--citron-f); background: var(--citron); }
+.noel .soleil, .noel .palmier { display: none; }
+.noel #jn { color: var(--lune); }
+.noel .pied-cal { color: var(--creme); }
+/* Carnet des leçons (après l'Avent) */
+.carnet h2.notion { font-size: 18px; font-weight: 800; margin: 18px 0 10px; }
+.carnet .lecons { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 700px) { .carnet .lecons { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .carnet .lecons { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1500px) { .carnet .lecons { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.carnet .lecon-b { border: 0; text-align: left; cursor: pointer; display: flex; gap: 12px; align-items: center; width: 100%; font: inherit; color: var(--encre); min-height: 64px; }
+.carnet .lecon-b .ic { font-size: 26px; }
+/* Terminer l'Avent */
+.term-l { display: flex; gap: 10px; align-items: flex-start; min-height: 44px; padding: 8px 0; border-top: 1px solid var(--sable2); font-weight: 600; }
+.term-l input { width: 22px; height: 22px; flex: none; margin-top: 2px; }
+.arbre { list-style: none; margin: 8px 0; padding: 12px 14px; background: var(--sable); border-radius: var(--r-s); }
+.arbre li { padding: 2px 0; }
 .pied-cal { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .pied-cal .jauge { flex: 1; min-width: 140px; }
 .lecon h3 { font-size: 16px; font-weight: 800; margin: 16px 0 6px; }
@@ -264,15 +363,21 @@ code { font-family: var(--mono); font-size: .92em; background: var(--sable2); bo
 .quiz .expl { font-size: 14px; background: var(--sable2); border-radius: 12px; padding: 10px 12px; margin-top: 6px; }
 .cadeau-b { background: var(--flamant); border-radius: var(--r-m); padding: 16px; margin: 12px 0; color: var(--encre); }
 .cadeau-b b { color: var(--flamant-f); }
+.verrou { text-align: center; padding: 8px 0 4px; }
+.verrou .gros { font-size: 46px; }
+.verrou .compte { display: inline-flex; margin-top: 12px; white-space: normal; font-size: 15px; padding: 8px 16px; }
+.essai { border-radius: var(--r-m); background: var(--lavande); padding: 12px 14px; margin-bottom: 14px; }
+.essai legend { font-weight: 800; padding: 0; color: var(--lavande-f); }
+.essai fieldset { border: 0; margin: 0; padding: 0; }
 @media (min-width: 700px) { #dlg-case { width: min(760px, calc(100vw - 32px)); } }
 </style>
 </head>
 <body>
 <div id="loader" class="loader actif" role="status"><div><div class="rond"></div><span class="txt">Chargement du calendrier...</span></div></div>
 <div id="annonces" class="sr" aria-live="polite"></div>
-<div class="page">
+<div class="page noel" id="cal-page">
   <header class="barre">
-    <div class="titre"><h1>🎄 Calendrier de l'Avent</h1><span class="marque">Mon Grist perso</span></div>
+    <div class="titre"><h1 id="cal-titre">🎄 Calendrier de l'Avent</h1><span class="marque">Mon Grist perso</span></div>
     <div class="actions"><button type="button" class="btn sec" id="btn-reglages">⚙️ Réglages</button></div>
   </header>
   <div id="bandeaux"></div>
@@ -281,9 +386,10 @@ code { font-family: var(--mono); font-size: .92em; background: var(--sable2); bo
     <h2 id="hero-titre"></h2>
     <p id="hero-sous"></p>
   </section>
-  <nav aria-label="Les 24 cases"><div class="portes" id="portes"></div></nav>
-  <div class="pied-cal">
-    <span class="pil t-citron" id="lutin"></span>
+  <nav aria-label="Les 24 cases" id="cal-grille"><div class="semaine" id="semaine" aria-hidden="true"></div><div class="portes" id="portes"></div></nav>
+  <section class="carnet" id="carnet" hidden></section>
+  <div class="pied-cal" id="cal-pied">
+    <span class="pil or" id="lutin"></span>
     <div id="lutin-jauge" style="flex:1;min-width:140px"></div>
     <span class="mini" id="jn"></span>
   </div>
@@ -298,13 +404,22 @@ code { font-family: var(--mono); font-size: .92em; background: var(--sable2); bo
   <div class="poignee" aria-hidden="true"></div>
   <form class="corps" id="form-reglages" novalidate>
     <h2 id="reg-titre">Réglages du calendrier</h2>
+    <div class="essai"><fieldset><legend>🧪 Mode essai : simuler une date</legend>
+      <div class="champ" style="margin:8px 0 6px"><label style="display:flex;gap:10px;align-items:center;min-height:44px;font-weight:700"><input type="checkbox" id="reg-test" style="width:22px;height:22px" autocomplete="off"> Activer le mode essai</label>
+        <p class="aide" style="color:var(--encre)">Pour découvrir décembre dès maintenant : les cases s'ouvrent comme le jour choisi. Désactivé, le calendrier suit la vraie date. Une case ne montre son contenu que s'il est déjà publié.</p></div>
+      <div class="champ" style="margin-bottom:0"><label for="reg-date">Date et heure simulées</label><input type="datetime-local" id="reg-date" autocomplete="off" style="width:100%;min-height:46px;border-radius:14px;border:0;background:var(--blanc);box-shadow:inset 0 0 0 1.5px var(--trait);padding:10px 14px"></div>
+    </fieldset></div>
     <div class="champ"><label for="reg-annee">Année du calendrier</label><input type="number" id="reg-annee" min="2026" max="2100" inputmode="numeric" autocomplete="off"></div>
-    <div class="champ"><label style="display:flex;gap:10px;align-items:center;min-height:44px;font-weight:700"><input type="checkbox" id="reg-test" style="width:22px;height:22px" autocomplete="off"> Mode test (date simulée)</label>
-      <p class="aide">Pour essayer le calendrier avant décembre : choisissez une date, les cases s'ouvrent comme ce jour-là. Le contenu doit quand même être publié.</p></div>
-    <div class="champ"><label for="reg-date">Date simulée</label><input type="datetime-local" id="reg-date" autocomplete="off" style="width:100%;min-height:46px;border-radius:14px;border:0;background:var(--sable);box-shadow:inset 0 0 0 1.5px var(--trait);padding:10px 14px"></div>
     <p class="mini" id="reg-info"></p>
+    <div class="champ" style="border-top:1px solid var(--sable2);padding-top:12px"><span class="lib">Fin de l’Avent</span>
+      <p class="aide" style="margin-bottom:8px">Supprime le calendrier et ses données, et range votre document pour toute l’année. Vous voyez tout avant de confirmer.</p>
+      <button type="button" class="btn sec" id="reg-terminer">🎄 Terminer l’Avent...</button></div>
     <div class="pied"><button type="button" class="btn sec" data-fermer>Annuler</button><button type="submit" class="btn">Enregistrer</button></div>
   </form>
+</dialog>
+<dialog class="feuille" id="dlg-terminer" aria-labelledby="term-titre">
+  <div class="poignee" aria-hidden="true"></div>
+  <div class="corps" id="term-corps"></div>
 </dialog>
 <div id="toasts" class="toasts"></div>
 
@@ -573,6 +688,28 @@ MGP.confirmer = function (titre, texte, libelleOk, danger) {
 /* ---- Onglets accessibles (role=tablist, flèches clavier) ---- */
 MGP.onglets = function (liste, surChange) {
   var boutons = Array.prototype.slice.call(liste.querySelectorAll('[role="tab"]'));
+  /* Cadre autour de la barre : fondus et chevrons quand des onglets sont cachés à gauche ou à droite. */
+  var cadre = liste.parentNode;
+  if (!cadre.classList || !cadre.classList.contains('onglets-cadre')) {
+    cadre = document.createElement('div');
+    cadre.className = 'onglets-cadre';
+    liste.parentNode.insertBefore(cadre, liste);
+    cadre.appendChild(liste);
+  }
+  function bords() {
+    var max = liste.scrollWidth - liste.clientWidth;
+    cadre.classList.toggle('g', liste.scrollLeft > 2);
+    cadre.classList.toggle('d', max > 2 && liste.scrollLeft < max - 2);
+  }
+  /* L'onglet actif est ramené au centre de la barre (sans faire défiler la page). */
+  function montrer(b, doux) {
+    if (liste.scrollWidth <= liste.clientWidth) { bords(); return; }
+    var cible = b.offsetLeft - (liste.clientWidth - b.offsetWidth) / 2;
+    try { liste.scrollTo({ left: Math.max(0, cible), behavior: doux ? 'smooth' : 'auto' }); } catch (e) { liste.scrollLeft = Math.max(0, cible); }
+    bords();
+  }
+  liste.addEventListener('scroll', bords, { passive: true });
+  window.addEventListener('resize', function () { var a = liste.querySelector('[aria-selected="true"]'); if (a) { montrer(a, false); } else { bords(); } });
   function activer(b, focus) {
     boutons.forEach(function (x) {
       var on = x === b;
@@ -581,7 +718,8 @@ MGP.onglets = function (liste, surChange) {
       var p = document.getElementById(x.getAttribute('aria-controls'));
       if (p) { p.hidden = !on; }
     });
-    if (focus) { b.focus(); }
+    if (focus) { b.focus({ preventScroll: true }); }
+    montrer(b, true);
     if (surChange) { surChange(b.dataset.onglet); }
   }
   boutons.forEach(function (b, i) {
@@ -595,7 +733,8 @@ MGP.onglets = function (liste, surChange) {
       if (n) { ev.preventDefault(); activer(n, true); }
     });
   });
-  return { activer: function (nom) { var b = boutons.filter(function (x) { return x.dataset.onglet === nom; })[0]; if (b) { activer(b, false); } } };
+  setTimeout(function () { var a = liste.querySelector('[aria-selected="true"]') || boutons[0]; if (a) { montrer(a, false); } }, 0);
+  return { bords: bords, activer: function (nom) { var b = boutons.filter(function (x) { return x.dataset.onglet === nom; })[0]; if (b) { activer(b, false); } } };
 };
 
 /* ---- Jauge HTML ---- */
@@ -1001,17 +1140,34 @@ MGP.g.normaliserUrl = function (u) {
     return (x.origin + x.pathname).replace(/index\.html$/, '').replace(/\/+$/, '');
   } catch (e) { return String(u || ''); }
 };
+/* Adresse du widget lue dans une section : options.customView (texte JSON, ou objet selon les versions). */
+MGP.g.urlSection = function (s) {
+  var o = {}, cv = {};
+  try { o = typeof s.options === 'string' ? JSON.parse(s.options || '{}') : (s.options || {}); } catch (e) { o = {}; }
+  try { cv = typeof o.customView === 'string' ? JSON.parse(o.customView || '{}') : (o.customView || {}); } catch (e) { cv = {}; }
+  return String(cv.url || o.url || '');
+};
+/* Page (vue) qui contient ce widget :
+   1) une section « custom » dont l'adresse est exactement celle du widget (sans paramètres ni index.html) ;
+   2) sinon, une section dont l'adresse contient le même dossier jour-NN ;
+   plusieurs pages candidates, ou aucune : null (on ne renomme rien). */
 MGP.g.vueCourante = async function () {
   var moi = MGP.g.normaliserUrl(location.href);
+  var mj = /\/(jour-\d{2})(?:\/|$)/.exec(location.pathname + '/');
   var sections = await MGP.g.lire('_grist_Views_section');
-  var vues = [];
+  var vues = (await MGP.g.lire('_grist_Views')).map(function (v) { return v.id; });
+  var exactes = [], parJour = [];
   sections.forEach(function (s) {
-    if (s.parentKey !== 'custom' || !s.parentId) { return; }
-    var cv = {};
-    try { cv = JSON.parse(JSON.parse(s.options || '{}').customView || '{}'); } catch (e) { cv = {}; }
-    if (cv.url && MGP.g.normaliserUrl(cv.url) === moi && vues.indexOf(s.parentId) < 0) { vues.push(s.parentId); }
+    if (s.parentKey !== 'custom' || !s.parentId || vues.indexOf(s.parentId) < 0) { return; }
+    var u = MGP.g.urlSection(s);
+    if (!u) { return; }
+    var n = MGP.g.normaliserUrl(u);
+    if (n === moi) { if (exactes.indexOf(s.parentId) < 0) { exactes.push(s.parentId); } }
+    else if (mj && (n + '/').indexOf('/' + mj[1] + '/') >= 0 && parJour.indexOf(s.parentId) < 0) { parJour.push(s.parentId); }
   });
-  return vues.length === 1 ? vues[0] : null;
+  if (exactes.length === 1) { return exactes[0]; }
+  if (exactes.length > 1) { logSecurite('plusieurs pages contiennent ce widget : pas de renommage'); return null; }
+  return parJour.length === 1 ? parJour[0] : null;
 };
 MGP.g.renommerPage = async function (nom) {
   try {
@@ -1020,6 +1176,21 @@ MGP.g.renommerPage = async function (nom) {
     await MGP.g.actions([['UpdateRecord', '_grist_Views', v, { name: nom }]]);
     return true;
   } catch (e) { logSecurite('renommage de page ignoré', e); return false; }
+};
+/* Petit rappel quand la page n'a pas pu être renommée (plusieurs pages candidates, ou widget collé). */
+MGP.g.afficherIndicePage = function () {
+  var c = MGP.g.CADEAU, app = document.getElementById('ecran-app');
+  var ancien = document.getElementById('indice-page');
+  if (ancien) { ancien.remove(); }
+  var textes = (MGP.g.pageInconnue && c ? ['Vous pouvez renommer cette page « ' + c.page + ' » (menu de gauche, trois points, Renommer).'] : []).concat(MGP.g.indices);
+  if (!c || !app || !textes.length) { return; }
+  var barre = app.querySelector('.barre');
+  var p = document.createElement('p');
+  p.id = 'indice-page';
+  p.className = 'mini';
+  p.style.margin = '-6px 0 12px';
+  p.textContent = textes.filter(function (x, i) { return textes.indexOf(x) === i; }).join(' ');
+  if (barre && barre.parentNode) { barre.parentNode.insertBefore(p, barre.nextSibling); }
 };
 
 /* ==========================================================================
@@ -1042,14 +1213,162 @@ MGP.g.installerTables = async function (widget, defsWidget, exemples) {
   if (!ok) { try { sessionStorage.setItem('mgp-' + widget, JSON.stringify(marque)); } catch (e) { logSecurite('sessionStorage indisponible', e); } }
   return res;
 };
+/* ==========================================================================
+   Cadeau installé = case ouverte dans le calendrier.
+   Chaque widget cadeau déclare son jour : MGP.g.CADEAU = {jour: 1, nom: 'Mes cadeaux'}.
+   Chaque widget cadeau déclare aussi le nom définitif de sa page : MGP.g.CADEAU.page = '🎁 Mes cadeaux'.
+   À l'installation (et à chaque démarrage, pour les documents installés avant ce marqueur), une ligne
+   CLE "cadeau.jour-01" / VALEUR {widget, installe_le, vue} est écrite dans la table technique : vue est l'id de la
+   page (jamais son nom, qui peut changer ; le calendrier relit le nom en direct). Idempotent : la date d'installation
+   d'origine est gardée, rien n'est réécrit si rien n'a changé.
+   ========================================================================== */
+MGP.g.CADEAU = null;
+MGP.g.cleCadeau = function (jour) { return 'cadeau.jour-' + (jour < 10 ? '0' : '') + jour; };
+MGP.g.pageInconnue = false;
+MGP.g.indices = [];
+
+/* ==========================================================================
+   Arborescence finale du document (après la saison) : des sections thématiques.
+   Chaque tête de section est une vraie page avec le widget public « resume » (?section=...).
+   Ordre des sections et ordre des sous-pages dans chaque section.
+   ========================================================================== */
+MGP.SECTIONS = {
+  argent: { ordre: 1, page: '💶 Mon argent', widgets: ['comptes', 'abonnements', 'achats'] },
+  maison: { ordre: 2, page: '🏡 Ma maison', widgets: ['energie', 'travaux', 'taches', 'menus'] },
+  famille: { ordre: 3, page: '🎉 Famille et fêtes', widgets: ['cadeaux', 'repas'] },
+  loisirs: { ordre: 4, page: '🌴 Temps libre', widgets: ['conges', 'voyages'] }
+};
+/* Adresse du widget public de récapitulatif, déduite de l'adresse publiée de ce widget
+   (.../avent/jour-NN/ ou .../widgets/nom/ -> .../resume/?section=...). Inconnue pour un widget collé. */
+MGP.g.urlResume = function (section) {
+  var m = /^(https?:\/\/.*?\/)(?:avent\/jour-\d{2}|widgets\/[\w-]+)\/(?:index\.html)?(?:[?#].*)?$/.exec(location.href);
+  return m ? m[1] + 'resume/?section=' + encodeURIComponent(section) : null;
+};
+MGP.g.pagesTriees = async function () {
+  return (await MGP.g.lire('_grist_Pages')).sort(function (a, b) { return (Number(a.pagePos) || 0) - (Number(b.pagePos) || 0); });
+};
+/* Position entre deux pages (PositionNumber : un nombre à virgule suffit). */
+MGP.g.positionEntre = function (avant, apres) {
+  var a = avant ? Number(avant.pagePos) || 0 : null, b = apres ? Number(apres.pagePos) || 0 : null;
+  if (a === null && b === null) { return 1; }
+  if (a === null) { return b - 1; }
+  if (b === null) { return a + 1; }
+  return (a + b) / 2;
+};
+/* Index de la dernière page du sous-arbre qui commence à l'index i. */
+MGP.g.finSousArbre = function (pages, i) {
+  var ind = pages[i].indentation || 0, j = i;
+  while (j + 1 < pages.length && (pages[j + 1].indentation || 0) > ind) { j++; }
+  return j;
+};
+/* Trouve ou crée la page tête de section. Renvoie l'id de la vue, ou null (avec un indice). */
+MGP.g.assurerSection = async function (cle) {
+  var sec = MGP.SECTIONS[cle];
+  if (!sec || !MGP.g.tech) { return null; }
+  var vues = await MGP.g.lire('_grist_Views'), ids = vues.map(function (v) { return v.id; });
+  var reg = MGP.g.reglage('section.' + cle, null);
+  if (reg && reg.vue && ids.indexOf(reg.vue) >= 0) { return reg.vue; }
+  var memeNom = vues.filter(function (v) { return v.name === sec.page; });
+  if (memeNom.length === 1) { await MGP.g.ecrireReglage('section.' + cle, { vue: memeNom[0].id }); return memeNom[0].id; }
+  if (memeNom.length > 1) { MGP.g.indices.push('Plusieurs pages s’appellent « ' + sec.page + ' » : rangez cette page dessous à la main si vous le souhaitez.'); return null; }
+  var url = MGP.g.urlResume(cle), tech = MGP.g.tableParId(MGP.g.tech);
+  if (!url || !tech) { MGP.g.indices.push('Vous pouvez créer une page « ' + sec.page + ' » et y glisser cette page.'); return null; }
+  /* Section « custom » liée à la table technique : aucune table ni page brute en plus. */
+  var r = await MGP.g.actions([['CreateViewSection', tech.id, 0, 'custom', null, null]]);
+  var res = r.retValues[0] || {};
+  if (!res.viewRef || !res.sectionRef) { return null; }
+  var cv = { mode: 'url', url: url, widgetDef: null, access: 'full', pluginId: '', sectionId: '', renderAfterReady: false };
+  /* Place de la tête : après la dernière section d'ordre inférieur, sinon avant la première d'ordre supérieur, sinon à la fin. */
+  var pages = await MGP.g.pagesTriees();
+  var moi = pages.filter(function (x) { return x.viewRef === res.viewRef; })[0];
+  var autres = pages.filter(function (x) { return x !== moi; });
+  var tetes = Object.keys(MGP.SECTIONS).map(function (k) { var g = MGP.g.reglage('section.' + k, null); return g && g.vue ? { ordre: MGP.SECTIONS[k].ordre, vue: g.vue } : null; }).filter(Boolean);
+  var avant = null, apres = null;
+  tetes.forEach(function (t) {
+    var i = autres.map(function (x) { return x.viewRef; }).indexOf(t.vue);
+    if (i < 0) { return; }
+    if (t.ordre < sec.ordre) { var f = MGP.g.finSousArbre(autres, i); if (avant === null || f > avant) { avant = f; } }
+    else if (t.ordre > sec.ordre && (apres === null || i < apres)) { apres = i; }
+  });
+  var a = [['UpdateRecord', '_grist_Views', res.viewRef, { name: sec.page }],
+    ['UpdateRecord', '_grist_Views_section', res.sectionRef, { title: '', options: JSON.stringify({ customView: JSON.stringify(cv) }) }]];
+  if (moi && (avant !== null || apres !== null)) {
+    var pos = avant !== null ? MGP.g.positionEntre(autres[avant], autres[avant + 1] || null) : MGP.g.positionEntre(autres[apres - 1] || null, autres[apres]);
+    a.push(['UpdateRecord', '_grist_Pages', moi.id, { pagePos: pos, indentation: 0 }]);
+  }
+  await MGP.g.actions(a);
+  await MGP.g.ecrireReglage('section.' + cle, { vue: res.viewRef });
+  return res.viewRef;
+};
+/* Range la page du widget sous sa tête de section, à la première installation seulement
+   (marqueur place.<widget>) : une page déplacée ensuite par l'utilisateur n'est jamais touchée. */
+MGP.g.rangerDansSection = async function () {
+  var c = MGP.g.CADEAU;
+  if (!c || !c.section || !c.cle || !MGP.g.tech || MGP.g.acces !== 'full') { return false; }
+  if (MGP.g.reglage('place.' + c.cle, null)) { return false; }
+  var sec = MGP.SECTIONS[c.section];
+  try {
+    var vue = await MGP.g.vueCourante();
+    if (!vue) { MGP.g.indices.push('Vous pouvez glisser cette page sous « ' + sec.page + ' ».'); return false; }
+    var tete = await MGP.g.assurerSection(c.section);
+    if (!tete) { return false; }
+    var pages = await MGP.g.pagesTriees();
+    var iMoi = pages.map(function (x) { return x.viewRef; }).indexOf(vue);
+    if (iMoi < 0) { return false; }
+    if (MGP.g.finSousArbre(pages, iMoi) !== iMoi) { MGP.g.indices.push('Cette page a des sous-pages : glissez-la à la main sous « ' + sec.page + ' » si vous le souhaitez.'); return false; }
+    var moi = pages[iMoi];
+    var autres = pages.filter(function (x) { return x !== moi; });
+    var iT = autres.map(function (x) { return x.viewRef; }).indexOf(tete);
+    if (iT < 0) { return false; }
+    var indT = autres[iT].indentation || 0, finT = MGP.g.finSousArbre(autres, iT);
+    /* Après la dernière sœur connue de rang inférieur (selon l'ordre de la section), sinon juste sous la tête. */
+    var monRang = sec.widgets.indexOf(c.cle), apres = iT;
+    Object.keys(MGP.g.techLignes.reduce(function (o, l) { if (String(l.CLE).indexOf('cadeau.jour-') === 0) { o[l.CLE] = 1; } return o; }, {})).forEach(function (k) {
+      var m = MGP.g.reglage(k, null);
+      if (!m || !m.vue || m.cle === c.cle || sec.widgets.indexOf(m.cle) < 0 || sec.widgets.indexOf(m.cle) > monRang) { return; }
+      var i = autres.map(function (x) { return x.viewRef; }).indexOf(m.vue);
+      if (i > iT && i <= finT && (autres[i].indentation || 0) === indT + 1) { var f = MGP.g.finSousArbre(autres, i); if (f > apres) { apres = f; } }
+    });
+    await MGP.g.actions([['UpdateRecord', '_grist_Pages', moi.id, { pagePos: MGP.g.positionEntre(autres[apres], autres[apres + 1] || null), indentation: indT + 1 }]]);
+    await MGP.g.ecrireReglage('place.' + c.cle, new Date(MGP.maintenant()).toISOString());
+    return true;
+  } catch (e) {
+    logSecurite('rangement dans la section', e);
+    MGP.g.indices.push('Vous pouvez glisser cette page sous « ' + sec.page + ' ».');
+    return false;
+  }
+};
+MGP.g.marquerCadeau = async function () {
+  var c = MGP.g.CADEAU;
+  if (!c || !MGP.g.tech || MGP.g.acces !== 'full') { return false; }
+  try {
+    var cle = MGP.g.cleCadeau(c.jour), avant = MGP.g.reglage(cle, null);
+    if (!avant || typeof avant !== 'object') { avant = null; }
+    var vue = await MGP.g.vueCourante();
+    MGP.g.pageInconnue = !vue && !(avant && avant.vue);
+    var v = { widget: c.nom, cle: c.cle || null, section: c.section || null, installe_le: (avant && avant.installe_le) || new Date(MGP.maintenant()).toISOString(), vue: vue || (avant && avant.vue) || null };
+    if (avant && JSON.stringify(avant) === JSON.stringify(v)) { return false; }
+    return await MGP.g.ecrireReglage(cle, v);
+  } catch (e) { logSecurite('marqueur de cadeau', e); return false; }
+};
 MGP.g.terminerInstall = async function (widget, nomPage, fnExemples, exemples) {
   if (exemples && fnExemples) { await fnExemples(); }
-  await MGP.g.renommerPage(nomPage);
+  var renommee = await MGP.g.renommerPage(nomPage);
+  await MGP.g.marquerCadeau();
+  await MGP.g.rangerDansSection();
+  await MGP.g.marquerCadeau();
+  if (!renommee) { MGP.g.pageInconnue = true; }
   await MGP.g.ecrireReglage(MGP.g.cleInstall(widget), { etat: 'ok', le: new Date(MGP.maintenant()).toISOString() });
   try { sessionStorage.removeItem('mgp-' + widget); } catch (e) { /* rien */ }
 };
+/* Mode « à coller » (widget Créer le vôtre / Custom Widget Builder) : pas de rechargement de la page,
+   le widget rejoue la suite de son démarrage (MGP.g.reprendre). build.py passe ce drapeau à true. */
+MGP.g.SANS_RECHARGEMENT = false;
+MGP.g.reprendre = null;
 MGP.g.recharger = function () {
-  setTimeout(function () { location.reload(); }, 150);
+  setTimeout(function () {
+    if (MGP.g.SANS_RECHARGEMENT && typeof MGP.g.reprendre === 'function') { montrerLoader('Dernière touche...'); MGP.g.reprendre(); } else { location.reload(); }
+  }, 150);
 };
 
 /* ---- Pièces jointes ---- */
@@ -1110,16 +1429,65 @@ MGP.exporterCSV = function (nomFichier, colonnes, lignes) {
   return txt;
 };
 
+/* ==========================================================================
+   Mon Grist perso - décor de fête : guirlande lumineuse (SVG), flocons, petit sapin.
+   MGP.noel.decorer(element) : ajoute le décor une seule fois, purement décoratif (aria-hidden).
+   ========================================================================== */
+MGP.noel = {};
+MGP.noel.decorer = function (el) {
+  if (!el || el.querySelector(':scope > .guirlande')) { return; }
+  var couleurs = ['#F2C76E', '#FFC2D1', '#A8E6E2', '#F2C76E', '#CDEDC8', '#FFC2D1', '#DCD0F7', '#F2C76E'];
+  var g = '<svg class="guirlande" viewBox="0 0 1280 46" preserveAspectRatio="none" aria-hidden="true" focusable="false">' +
+    '<path d="M0 8 Q 80 40 160 10 T 320 10 T 480 10 T 640 10 T 800 10 T 960 10 T 1120 10 T 1280 10" stroke="#5E5480" stroke-width="2" fill="none"/>' +
+    couleurs.map(function (c, i) { return '<circle cx="' + (80 + i * 160) + '" cy="25" r="6" fill="' + c + '"/>'; }).join('') + '</svg>';
+  var f = '<div class="flocons" aria-hidden="true">' + [[6, 3, 5], [18, 9, 4], [31, 1, 6], [44, 6, 4], [57, 11, 5], [69, 4, 6], [81, 8, 4], [92, 2, 5], [12, 12, 4], [74, 13, 5]].map(function (x) {
+    return '<i style="left:' + x[0] + '%;width:' + x[2] + 'px;height:' + x[2] + 'px;animation-delay:-' + x[1] + 's"></i>';
+  }).join('') + '</div>';
+  el.insertAdjacentHTML('afterbegin', g + f);
+  el.insertAdjacentHTML('beforeend', '<div class="sapin" aria-hidden="true">🎄</div>');
+};
+
 
 var CAL = {
   annee: 2026,
   test: { actif: false, date: '' },
   contenus: {},     /* jour -> contenu publié (ou null si 404) */
   progres: {},      /* jour -> {ouvert_le, defi, quiz} */
+  cadeaux: {},      /* jour -> marqueur d'un cadeau installé {widget, installe_le, vue} */
+  vues: {},         /* id de page -> nom actuel (lu en direct dans _grist_Views) */
+  verrou: null,     /* jour dont le message « fermée » est affiché (compte à rebours) */
   lectureSeule: true,
-  ouvert: null
+  ouvert: null,
+  carnet: false     /* après « Terminer l'Avent » avec l'option carnet : les leçons rangées par notion */
 };
 CAL.COULEURS = ['Flamant', 'Écume', 'Citron', 'Lavande', 'Pêche', 'Menthe', 'Flamant', 'Écume', 'Lavande', 'Citron', 'Menthe', 'Pêche'];
+/* Jour de la semaine abrégé, dans la langue du document ("mar." en français). */
+/* Grille de décembre par semaines (lundi en premier) : du lundi de la semaine du 1er au dimanche de celle du 25.
+   [{genre: 'vide'|'porte'|'noel', j, m}] ; utilisable pour n'importe quelle année. */
+CAL.grille = function (annee) {
+  var d1 = Date.UTC(annee, 11, 1), d25 = Date.UTC(annee, 11, 25), jour = 86400000;
+  var debut = d1 - ((new Date(d1).getUTCDay() + 6) % 7) * jour;
+  var fin = d25 + ((7 - new Date(d25).getUTCDay()) % 7) * jour;
+  var l = [];
+  for (var t = debut; t <= fin; t += jour) {
+    var d = new Date(t), m = d.getUTCMonth() + 1, j = d.getUTCDate();
+    l.push({ genre: m === 12 && j <= 24 ? 'porte' : (m === 12 && j === 25 ? 'noel' : 'vide'), j: j, m: m });
+  }
+  return l;
+};
+CAL.entetesSemaine = function () {
+  var l = [];
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(Date.UTC(2024, 0, 1 + i));
+    try { l.push(new Intl.DateTimeFormat(MGP.locale, { weekday: 'short', timeZone: 'UTC' }).format(d)); } catch (e) { l.push(['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'][i]); }
+  }
+  return l;
+};
+CAL.jourSemaine = function (j) {
+  try { return new Intl.DateTimeFormat(MGP.locale, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(CAL.annee, 11, j))); }
+  catch (e) { return MGP.dateLongue(CAL.annee, 12, j).split(' ')[0].slice(0, 3) + '.'; }
+};
+CAL.dateComplete = function (j) { var d = MGP.dateLongue(CAL.annee, 12, j); return d.charAt(0).toUpperCase() + d.slice(1); };
 CAL.ETIQUETTES = { cadeau: 'Cadeau', capot: 'Sous le capot', quiz: 'Quiz', astuce: 'Astuce', defi: 'Défi' };
 CAL.deux = function (j) { return (j < 10 ? '0' : '') + j; };
 
@@ -1157,10 +1525,40 @@ CAL.chargerContenus = async function () {
 /* ---- Progression ---- */
 CAL.lireProgres = function () {
   CAL.progres = {};
+  CAL.cadeaux = {};
   for (var j = 1; j <= 24; j++) {
     var p = MGP.g.reglage('AVENT:' + CAL.deux(j), null);
     if (p && typeof p === 'object') { CAL.progres[j] = p; }
+    var c = MGP.g.reglage(MGP.g.cleCadeau(j), null);
+    if (c && typeof c === 'object' && c.widget) { CAL.cadeaux[j] = c; }
   }
+};
+CAL.installe = function (j) { return !!CAL.cadeaux[j]; };
+/* Une case compte comme ouverte si on l'a ouverte, ou si son cadeau est installé. */
+CAL.estOuverte = function (j) { return CAL.installe(j) || !!(CAL.progres[j] && CAL.progres[j].ouvert_le); };
+CAL.dateInstall = function (iso) {
+  var t = Date.parse(iso || '');
+  if (isNaN(t)) { return ''; }
+  var p = MGP.partiesParis(t);
+  return p.j + ' ' + MOIS_COURTS[p.m - 1] + ' ' + p.a;
+};
+/* Relit les marqueurs et la progression (au démarrage, à chaque changement du document, au retour sur la page).
+   Sans accès complet, la table technique n'est pas lisible : le calendrier reste sur les dates. */
+CAL.relire = async function () {
+  try { await MGP.g.chargerMeta(); await MGP.g.chargerTech(); CAL.lireProgres(); }
+  catch (e) { logSecurite('marqueurs illisibles (accès limité)', e); }
+  try { CAL.vues = {}; (await MGP.g.lire('_grist_Views')).forEach(function (v) { CAL.vues[v.id] = v.name; }); }
+  catch (e) { logSecurite('pages illisibles', e); }
+};
+/* Message d'une case pas encore disponible :
+   - avant le jour J à 9 h : la date d'ouverture et un compte à rebours ;
+   - après 9 h, contenu absent depuis moins de 30 minutes : « dans quelques minutes » ;
+   - plus tard : « pas encore disponible, réessayez ». */
+CAL.messageVerrou = function (j, t) {
+  var o = CAL.ouverture(j);
+  if (t < o) { return { genre: 'avant', titre: 'Patience, petit lutin !', texte: 'Cette case s’ouvrira le ' + MGP.dateLongue(CAL.annee, 12, j) + ' à 9 h.', reste: o - t }; }
+  if (t - o < 30 * 60000) { return { genre: 'bientot', titre: 'Presque prêt !', texte: 'La case ' + j + ' arrive dans quelques minutes.' }; }
+  return { genre: 'plus-tard', titre: 'Encore un peu de patience', texte: 'Le contenu n’est pas encore disponible. Réessayez un peu plus tard.' };
 };
 CAL.enregistrer = async function (j) {
   var p = CAL.progres[j] || {};
@@ -1179,24 +1577,35 @@ CAL.noterQuiz = function (questions, reponses) {
 CAL.etatPorte = function (j, t) {
   var p = MGP.partiesParis(t);
   var estAujourdhui = p.a === CAL.annee && p.m === 12 && p.j === j;
+  if (CAL.installe(j)) { return { genre: 'ouverte', cadeau: true, aujourdhui: estAujourdhui && CAL.dateAtteinte(j, t) }; }
   if (!CAL.disponible(j, t)) { return { genre: 'fermee', aujourdhui: estAujourdhui && CAL.dateAtteinte(j, t) }; }
   var ouverte = !!(CAL.progres[j] && CAL.progres[j].ouvert_le);
   return { genre: ouverte ? 'ouverte' : 'a-ouvrir', aujourdhui: estAujourdhui };
 };
 CAL.rendrePortes = function () {
   var t = CAL.maintenant(), html = '';
-  for (var j = 1; j <= 24; j++) {
+  document.getElementById('semaine').innerHTML = CAL.entetesSemaine().map(function (x) { return '<span>' + echapperHTML(x) + '</span>'; }).join('');
+  CAL.grille(CAL.annee).forEach(function (g) {
+    if (g.genre === 'vide') { html += '<span class="case-vide" aria-hidden="true">' + g.j + '</span>'; return; }
+    if (g.genre === 'noel') { html += '<span class="case-noel" role="img" aria-label="Vendredi 25 décembre : Joyeux Noël !"><span><b aria-hidden="true">🎄</b>Joyeux Noël</span></span>'; return; }
+    var j = g.j;
     var e = CAL.etatPorte(j, t), c = CAL.contenus[j];
-    var classes = 'porte', fond = '', interieur = '<span class="num">' + j + '</span>', aria;
-    if (e.genre === 'ouverte') {
+    var classes = 'porte', interieur = '<span class="num">' + j + '</span>', aria;
+    if (e.genre === 'ouverte' && e.cadeau) {
+      classes += ' ouverte cadeau-installe';
+      var nom = CAL.cadeaux[j].widget;
+      interieur += '<span class="ok" aria-hidden="true">✓</span><span class="ic" aria-hidden="true">' + echapperHTML((c && c.emoji) || '🎁') + '</span><span class="et">' + echapperHTML(nom) + '</span>';
+      aria = 'Case ' + j + ', ouverte : cadeau installé, ' + nom + (CAL.progres[j] && CAL.progres[j].defi ? ', défi réussi' : '');
+    } else if (e.genre === 'ouverte') {
       classes += ' ouverte';
       var lib = c.etiquette || CAL.ETIQUETTES[c.type] || '';
       interieur += '<span class="ok" aria-hidden="true">✓</span><span class="ic" aria-hidden="true">' + echapperHTML(c.emoji || '✨') + '</span><span class="et">' + echapperHTML(lib) + '</span>';
       aria = 'Case ' + j + ', ouverte : ' + lib + ', ' + (c.titre || '') + (CAL.progres[j] && CAL.progres[j].defi ? ', défi relevé' : '');
     } else {
-      classes += j === 24 ? ' c24' : ' ' + MGP.classeCouleur(CAL.COULEURS[(j - 1) % 12]);
+      classes += ' boite' + (j === 24 ? ' c24' : ' ' + MGP.classeCouleur(CAL.COULEURS[(j - 1) % 12]));
+      if (e.aujourdhui) { interieur += '<span class="noeud" aria-hidden="true">🎀</span>'; }
       if (e.genre === 'a-ouvrir') {
-        interieur += '<span class="ic" aria-hidden="true">🎁</span><span class="et">' + (e.aujourdhui ? 'Aujourd’hui !' : 'À ouvrir') + '</span>';
+        interieur += '<span class="ic" aria-hidden="true">' + (j === 24 ? '⭐' : '🎁') + '</span><span class="et">' + (e.aujourdhui ? 'Aujourd’hui !' : 'À ouvrir') + '</span>';
         aria = 'Case ' + j + (e.aujourdhui ? ', la case du jour' : '') + ', à ouvrir';
       } else {
         if (j === 24) { interieur += '<span class="ic" aria-hidden="true">⭐</span>'; }
@@ -1204,25 +1613,32 @@ CAL.rendrePortes = function () {
       }
     }
     if (e.aujourdhui && e.genre !== 'fermee') { classes += ' jour'; }
-    html += '<button type="button" class="' + classes + '" data-jour="' + j + '" data-etat="' + e.genre + '" aria-label="' + echapperHTML(aria) + '">' + interieur + '</button>';
-  }
+    html += '<button type="button" class="' + classes + '" data-jour="' + j + '" data-etat="' + e.genre + '" aria-label="' + echapperHTML(CAL.dateComplete(j) + '. ' + aria) + '">' + interieur + '</button>';
+  });
   document.getElementById('portes').innerHTML = html;
+  var n25 = document.querySelector('.case-noel');
+  if (n25) { n25.setAttribute('aria-label', CAL.dateComplete(25) + ' : Joyeux Noël !'); }
 };
 CAL.rendreEntete = function () {
   var t = CAL.maintenant(), p = MGP.partiesParis(t);
   var dispo = 0, ouvertes = 0, defis = 0;
   for (var j = 1; j <= 24; j++) {
-    if (CAL.disponible(j, t)) { dispo++; if (CAL.progres[j] && CAL.progres[j].ouvert_le) { ouvertes++; } }
+    if (CAL.disponible(j, t) || CAL.installe(j)) { dispo++; if (CAL.estOuverte(j)) { ouvertes++; } }
     if (CAL.progres[j] && CAL.progres[j].defi) { defis++; }
   }
+  var nbCadeaux = Object.keys(CAL.cadeaux).length;
   var titre, sous;
   var debut = CAL.ouverture(1);
-  if (t < debut) {
+  if (CAL.carnet) {
+    titre = 'Les leçons de l’Avent, rangées par notion';
+    sous = 'Tables, formules, vues : retrouvez chaque leçon et son défi quand vous en avez besoin.';
+  } else if (t < debut) {
     titre = 'Le calendrier commence le ' + MGP.dateLongue(CAL.annee, 12, 1) + ' à 9 h';
-    sous = 'Encore ' + MGP.dureeTexte(debut - t) + '. Chaque jour, une case : 11 cadeaux et 13 leçons pour apprivoiser votre document.';
+    sous = 'Encore ' + MGP.dureeTexte(debut - t) + '. Chaque jour, une case : 11 cadeaux et 13 leçons pour apprivoiser votre document.' +
+      (nbCadeaux ? ' Déjà ' + nbCadeaux + (nbCadeaux > 1 ? ' cadeaux installés' : ' cadeau installé') + ' : sa case est ouverte.' : '');
   } else if (p.a === CAL.annee && p.m === 12 && p.j <= 24) {
     titre = 'Bonjour, nous sommes le ' + MGP.dateLongue(p.a, 12, p.j);
-    var duJour = CAL.disponible(p.j, t) && !(CAL.progres[p.j] && CAL.progres[p.j].ouvert_le);
+    var duJour = CAL.disponible(p.j, t) && !CAL.estOuverte(p.j);
     sous = (duJour ? 'La case du jour vous attend' : (CAL.dateAtteinte(p.j, t) ? 'Case du jour ouverte' : 'La case du jour s’ouvre à 9 h')) +
       ' · ' + ouvertes + ' case' + (ouvertes > 1 ? 's' : '') + ' ouverte' + (ouvertes > 1 ? 's' : '') + ' sur ' + dispo + (p.j < 24 ? ' · prochaine surprise demain à 9 h' : '');
   } else {
@@ -1237,10 +1653,25 @@ CAL.rendreEntete = function () {
   document.getElementById('jn').textContent = n === 0 ? 'C’est Noël !' : 'J-' + n + ' avant Noël';
   var b = [];
   if (CAL.lectureSeule) { b.push('<div class="bandeau t-citron" role="status"><span aria-hidden="true">👀</span><span class="txt">Lecture seule : le calendrier s’affiche, mais votre progression n’est pas enregistrée. Donnez au widget l’accès complet au document pour la garder.</span></div>'); }
-  if (MGP.maintenantSimule !== null || CAL.test.actif) { b.push('<div class="bandeau t-lavande" role="status"><span aria-hidden="true">🧪</span><span class="txt">Mode test : nous faisons comme si nous étions le ' + echapperHTML(MGP.dateLongue(p.a, p.m, p.j, true) + ' à ' + p.h + ' h ' + String(p.mi).padStart(2, '0')) + '.</span></div>'); }
+  if (MGP.maintenantSimule !== null || CAL.test.actif) { b.push('<div class="bandeau t-lavande" role="status"><span aria-hidden="true">🧪</span><span class="txt">Mode essai : nous faisons comme si nous étions le ' + echapperHTML(MGP.dateLongue(p.a, p.m, p.j, true) + ' à ' + p.h + ' h ' + String(p.mi).padStart(2, '0')) + '.</span>' + (CAL.test.actif ? '<button type="button" class="btn sec" data-essai>Changer ou désactiver</button>' : '') + '</div>'); }
+  if (t >= MGP.instantParis(CAL.annee, 12, 25, 0, 0) && !CAL.lectureSeule && !CAL.carnet) {
+    b.push('<div class="bandeau" id="bandeau-terminer" style="background:#F2C76E;color:var(--encre)"><span aria-hidden="true">🎄</span><span class="txt"><b>L’Avent est terminé.</b> Vos cadeaux restent : ce sont maintenant des pages comme les autres. Terminez l’Avent pour ranger votre document pour toute l’année.</span><button type="button" class="btn" id="btn-terminer">Terminer l’Avent</button></div>');
+  }
+  if (MGP.maintenantSimule !== null || CAL.test.actif) { /* bandeau d'essai déjà ajouté */ } else if (t < debut) { b.push('<div class="bandeau t-lavande"><span aria-hidden="true">🧪</span><span class="txt">Envie de voir décembre dès maintenant ? Le mode essai simule une date, sans rien changer pour de vrai.</span><button type="button" class="btn sec" data-essai>Mode essai : simuler une date</button></div>'); }
   document.getElementById('bandeaux').innerHTML = b.join('');
 };
-CAL.rendre = function () { CAL.rendreEntete(); CAL.rendrePortes(); };
+CAL.rendre = function () {
+  var page = document.getElementById('cal-page');
+  page.classList.toggle('noel', !CAL.carnet);
+  document.body.classList.toggle('noel-fond', !CAL.carnet);
+  if (!CAL.carnet) { MGP.noel.decorer(page); }
+  document.getElementById('cal-grille').hidden = CAL.carnet;
+  document.getElementById('cal-pied').hidden = CAL.carnet;
+  document.getElementById('carnet').hidden = !CAL.carnet;
+  document.getElementById('cal-titre').textContent = CAL.carnet ? '📚 Mon carnet Grist' : '🎄 Calendrier de l’Avent';
+  CAL.rendreEntete();
+  if (CAL.carnet) { CAL.rendreCarnet(); } else { CAL.rendrePortes(); }
+};
 
 /* ---- Contenu d'une case ---- */
 CAL.blocHTML = function (b) {
@@ -1254,13 +1685,15 @@ CAL.blocHTML = function (b) {
 };
 CAL.ouvrirCase = async function (j) {
   var t = CAL.maintenant();
-  if (!CAL.dateAtteinte(j, t)) {
-    MGP.annoncer('Patience, petit lutin ! La case ' + j + ' s’ouvrira le ' + MGP.dateLongue(CAL.annee, 12, j) + ' à 9 h.');
+  if (CAL.dateAtteinte(j, t) && !CAL.contenus[j]) { CAL.contenus[j] = await CAL.chargerContenu(j); }
+  var c = CAL.contenus[j];
+  if (!c && CAL.installe(j)) {
+    CAL.ouvert = j;
+    CAL.rendreCase();
+    MGP.ouvrir(document.getElementById('dlg-case'), 'h2');
     return;
   }
-  if (!CAL.contenus[j]) { CAL.contenus[j] = await CAL.chargerContenu(j); }
-  var c = CAL.contenus[j];
-  if (!c) { MGP.annoncer('La case ' + j + ' arrive dans quelques minutes : réessayez un peu plus tard.'); CAL.rendre(); return; }
+  if (!c) { CAL.montrerVerrou(j); CAL.rendre(); return; }
   CAL.ouvert = j;
   if (!CAL.progres[j] || !CAL.progres[j].ouvert_le) {
     CAL.progres[j] = Object.assign({}, CAL.progres[j] || {}, { ouvert_le: new Date(t).toISOString() });
@@ -1270,15 +1703,52 @@ CAL.ouvrirCase = async function (j) {
   CAL.rendre();
   MGP.ouvrir(document.getElementById('dlg-case'), 'h2');
 };
+/* Case fermée : message selon la date, compte à rebours en direct, bouton « Réessayer ». */
+CAL.montrerVerrou = function (j) {
+  CAL.verrou = j;
+  CAL.ouvert = null;
+  CAL.rendreVerrou();
+  MGP.ouvrir(document.getElementById('dlg-case'), 'h2');
+  clearInterval(CAL.minuteur);
+  CAL.minuteur = setInterval(function () {
+    if (!document.getElementById('dlg-case').open || CAL.verrou === null) { clearInterval(CAL.minuteur); return; }
+    var m = CAL.messageVerrou(CAL.verrou, CAL.maintenant()), z = document.getElementById('verrou-compte');
+    if (m.genre === 'avant' && z) { z.textContent = 'Encore ' + MGP.dureeTexte(m.reste); } else if (m.genre !== 'avant') { CAL.rendreVerrou(); }
+  }, 1000);
+};
+CAL.rendreVerrou = function () {
+  var j = CAL.verrou, m = CAL.messageVerrou(j, CAL.maintenant());
+  document.getElementById('case-corps').innerHTML = '<div class="verrou" data-verrou="' + m.genre + '"><div class="gros" aria-hidden="true">' + (m.genre === 'avant' ? '🔒' : '⏳') + '</div>' +
+    '<span class="pil t-flamant">' + echapperHTML('Case du ' + MGP.dateLongue(CAL.annee, 12, j)) + '</span>' +
+    '<h2 id="case-titre" tabindex="-1" style="margin-top:12px">' + echapperHTML(m.titre) + '</h2><p style="margin-top:8px;font-size:16px" id="verrou-texte">' + echapperHTML(m.texte) + '</p>' +
+    (m.genre === 'avant' ? '<span class="pil t-lavande compte" id="verrou-compte" role="timer" aria-live="off">Encore ' + echapperHTML(MGP.dureeTexte(m.reste)) + '</span>' : '') + '</div>' +
+    '<div class="pied">' + (m.genre === 'plus-tard' || m.genre === 'bientot' ? '<button type="button" class="btn" id="btn-reessayer">Réessayer</button>' : '') + '<button type="button" class="btn sec" data-fermer>Fermer</button></div>';
+};
+/* Cadeau installé dont le contenu n'est pas encore publié (avant le jour J, par exemple). */
+CAL.blocCadeauInstalle = function (j) {
+  var k = CAL.cadeaux[j];
+  return '<div class="cadeau-b">🎁 <b>Votre cadeau : ' + echapperHTML(k.widget) + '</b>' + (k.installe_le ? ', installé le ' + echapperHTML(CAL.dateInstall(k.installe_le)) : '') + '.' +
+    '<p style="margin-top:6px">' + (k.vue && CAL.vues[k.vue] ? 'Rendez-vous sur la page « ' + echapperHTML(CAL.vues[k.vue]) + ' ».' : 'Rendez-vous sur sa page, dans le menu de gauche.') + '</p></div>';
+};
+CAL.rendreCadeau = function () {
+  var j = CAL.ouvert, p = CAL.progres[j] || {}, k = CAL.cadeaux[j];
+  document.getElementById('case-corps').innerHTML =
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="pil t-flamant">' + echapperHTML('Case du ' + MGP.dateLongue(CAL.annee, 12, j)) + '</span><span class="pil t-menthe">✓ Cadeau installé</span></div>' +
+    '<h2 id="case-titre" tabindex="-1" style="margin-top:12px">🎁 ' + echapperHTML(k.widget) + '</h2>' + CAL.blocCadeauInstalle(j) +
+    '<section class="defi-b"><h3>🎯 Le défi</h3><p>' + (p.defi ? 'Défi réussi, bravo !' : 'Le défi de cette case sera dévoilé le ' + echapperHTML(MGP.dateLongue(CAL.annee, 12, j)) + '. Vous l’avez déjà relevé ? Dites-le.') + '</p>' +
+    '<div class="pied"><button type="button" class="btn" id="btn-defi" aria-pressed="' + (p.defi ? 'true' : 'false') + '">' + (p.defi ? '✓ Défi réussi' : 'Défi réussi') + '</button></div></section>' +
+    '<div class="pied"><button type="button" class="btn sec" data-fermer>Fermer</button></div>';
+};
 CAL.rendreCase = function () {
   var j = CAL.ouvert, c = CAL.contenus[j], p = CAL.progres[j] || {};
+  if (!c) { CAL.rendreCadeau(); return; }
   var lib = c.etiquette || CAL.ETIQUETTES[c.type] || '';
   var h = '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="pil t-flamant">' + echapperHTML('Case du ' + MGP.dateLongue(CAL.annee, 12, j)) + '</span><span class="pil t-lavande">' + echapperHTML(lib) + '</span>' +
     (c.niveau ? '<span class="pil t-ecume">Niveau : ' + echapperHTML(c.niveau) + '</span>' : '') + '</div>' +
     '<h2 id="case-titre" tabindex="-1" style="margin-top:12px">' + echapperHTML((c.emoji ? c.emoji + ' ' : '') + c.titre) + '</h2>' +
     (c.intro ? '<p style="font-size:16px;color:var(--gris)">' + MGP.texteRiche(c.intro) + '</p>' : '');
-  if (c.type === 'cadeau' && c.cadeau) {
-    h += '<div class="cadeau-b">🎁 Votre cadeau vous attend sur la page <b>« ' + echapperHTML(c.cadeau.page) + ' »</b>.' + (c.cadeau.texte ? '<p style="margin-top:6px">' + MGP.texteRiche(c.cadeau.texte) + '</p>' : '') + '</div>';
+  if (CAL.installe(j)) { h += CAL.blocCadeauInstalle(j); } else if (c.type === 'cadeau' && c.cadeau) {
+    h += '<div class="cadeau-b">🎁 Votre cadeau <b>« ' + echapperHTML(c.titre || c.cadeau.page) + ' »</b> vous attend dans le menu de gauche, sur sa page marquée 🎁. Une fois installé, la page s’appellera <b>« ' + echapperHTML(c.cadeau.page) + ' »</b>.' + (c.cadeau.texte ? '<p style="margin-top:6px">' + MGP.texteRiche(c.cadeau.texte) + '</p>' : '') + '</div>';
   }
   h += '<div class="lecon">' + (c.lecon || []).map(CAL.blocHTML).join('') + '</div>';
   if (c.quiz && c.quiz.length) {
@@ -1303,13 +1773,149 @@ CAL.rendreCase = function () {
   document.getElementById('case-corps').innerHTML = h;
 };
 
+/* ==========================================================================
+   Terminer l'Avent : un document propre pour toute l'année.
+   - la page du calendrier est supprimée (en dernier, après un message d'au revoir), sauf si l'on garde le carnet ;
+   - les données du calendrier (lignes AVENT:... de la table technique) sont supprimées ;
+   - les pages cadeau jamais installées (widget d'attente ou d'installation, adresse .../avent/jour-NN/) sont supprimées
+     si on les coche ; les pages des widgets installés (marqueurs cadeau.jour-NN) ne sont jamais touchées ;
+   - une tête de section restée vide (aucune sous-page, aucun widget installé de sa section) est supprimée ;
+   - la table technique est supprimée si plus rien ne s'en sert.
+   Tout est d'abord calculé à blanc (CAL.analyserFin) et montré avant confirmation. Idempotent.
+   ========================================================================== */
+CAL.analyserFin = async function () {
+  await MGP.g.chargerMeta();
+  await MGP.g.chargerTech();
+  var vues = await MGP.g.lire('_grist_Views'), sections = await MGP.g.lire('_grist_Views_section');
+  var pages = await MGP.g.pagesTriees();
+  var nom = {}; vues.forEach(function (v) { nom[v.id] = v.name; });
+  var calVue = await MGP.g.vueCourante();
+  var lignes = MGP.g.techLignes || [];
+  var marqueurs = lignes.filter(function (l) { return String(l.CLE).indexOf('cadeau.jour-') === 0; }).map(function (l) { try { return JSON.parse(l.VALEUR); } catch (e) { return null; } }).filter(Boolean);
+  var joursInstalles = lignes.filter(function (l) { return String(l.CLE).indexOf('cadeau.jour-') === 0; }).map(function (l) { return parseInt(String(l.CLE).slice(12), 10); });
+  var vuesInstallees = marqueurs.map(function (m) { return m.vue; }).filter(Boolean);
+  var cadeauxNon = [];
+  vues.forEach(function (v) {
+    if (v.id === calVue || vuesInstallees.indexOf(v.id) >= 0) { return; }
+    var secs = sections.filter(function (x) { return x.parentId === v.id; });
+    if (!secs.length) { return; }
+    var jours = secs.map(function (x) { var m = x.parentKey === 'custom' ? /\/avent\/jour-(\d{2})\/?(?:index\.html)?(?:[?#]|$)/.exec(MGP.g.urlSection(x)) : null; return m ? parseInt(m[1], 10) : null; });
+    if (jours.every(function (x) { return x !== null && joursInstalles.indexOf(x) < 0; })) { cadeauxNon.push({ vue: v.id, nom: v.name || ('Page ' + v.id), jour: jours[0] }); }
+  });
+  var tetes = Object.keys(MGP.SECTIONS).map(function (k) { var g = MGP.g.reglage('section.' + k, null); return g && g.vue && nom[g.vue] !== undefined ? { cle: k, vue: g.vue } : null; }).filter(Boolean);
+  return { vues: vues, nom: nom, pages: pages, calVue: calVue, lignesAvent: lignes.filter(function (l) { return String(l.CLE).indexOf('AVENT:') === 0; }), lignes: lignes,
+    marqueurs: marqueurs, cadeauxNon: cadeauxNon, tetes: tetes };
+};
+/* Plan à partir de l'analyse et des choix : {suppVues, suppLignes, suppTetes, suppTech, carnet, arbre} */
+CAL.planFin = function (a, choix) {
+  var supp = a.cadeauxNon.filter(function (c) { return choix.pages[c.vue] !== false; }).map(function (c) { return c.vue; });
+  if (!choix.carnet && a.calVue) { supp.push(a.calVue); }
+  var restent = a.pages.filter(function (p) { return supp.indexOf(p.viewRef) < 0; });
+  var suppTetes = [];
+  a.tetes.forEach(function (t) {
+    var i = restent.map(function (p) { return p.viewRef; }).indexOf(t.vue);
+    var vide = i < 0 || MGP.g.finSousArbre(restent, i) === i;
+    var installe = a.marqueurs.some(function (m) { return m.section === t.cle; });
+    if (vide && !installe) { suppTetes.push(t); }
+  });
+  var tousSupp = supp.concat(suppTetes.map(function (t) { return t.vue; }));
+  var finales = a.pages.filter(function (p) { return tousSupp.indexOf(p.viewRef) < 0; });
+  var arbre = finales.filter(function (p) { return !(choix.carnet && p.viewRef === a.calVue); }).map(function (p) { return { nom: a.nom[p.viewRef] || '', niveau: p.indentation || 0 }; });
+  if (choix.carnet && a.calVue) { arbre.push({ nom: '📚 Mon carnet Grist', niveau: 0 }); }
+  var suppLignes = (choix.donnees ? a.lignesAvent : []).concat(a.lignes.filter(function (l) { return suppTetes.some(function (t) { return l.CLE === 'section.' + t.cle; }); }));
+  var restLignes = a.lignes.filter(function (l) { return suppLignes.indexOf(l) < 0; });
+  return { suppVues: supp, suppTetes: suppTetes, suppLignes: suppLignes, suppTech: !choix.carnet && !restLignes.length && !!MGP.g.tech, carnet: !!choix.carnet, arbre: arbre };
+};
+CAL.arbreHTML = function (arbre) {
+  return '<ul class="arbre" aria-label="Votre menu de pages après">' + (arbre.length ? arbre.map(function (x) {
+    return '<li style="padding-left:' + (x.niveau * 22) + 'px">' + (x.niveau ? '└ ' : '') + echapperHTML(x.nom) + '</li>';
+  }).join('') : '<li class="mini">Aucune autre page.</li>') + '</ul>';
+};
+CAL.ouvrirTerminer = async function () {
+  var d = document.getElementById('dlg-terminer');
+  try { CAL.fin = await CAL.analyserFin(); } catch (e) { logSecurite('analyse de fin', e); MGP.annoncer('Analyse impossible : le calendrier a besoin de l’accès complet.', 'err'); return; }
+  CAL.choixFin = { donnees: true, carnet: false, pages: {} };
+  CAL.fin.cadeauxNon.forEach(function (c) { CAL.choixFin.pages[c.vue] = true; });
+  CAL.rendreTerminer();
+  MGP.ouvrir(d, '#term-titre');
+};
+CAL.rendreTerminer = function () {
+  var a = CAL.fin, ch = CAL.choixFin, plan = CAL.planFin(a, ch);
+  var calNom = a.calVue ? a.nom[a.calVue] : null;
+  var h = '<h2 id="term-titre" tabindex="-1">🎄 Terminer l’Avent</h2><p class="mini" style="margin-bottom:6px">Voici exactement ce qui va se passer. Rien n’est fait avant votre confirmation.</p>' +
+    '<label class="term-l"><input type="checkbox" checked disabled id="term-page" autocomplete="off"><span>' +
+    (ch.carnet ? 'La page du calendrier devient « 📚 Mon carnet Grist », en fin de liste, avec les 13 leçons rangées par notion.' : 'La page du calendrier' + (calNom ? ' « ' + echapperHTML(calNom) + ' »' : '') + ' est supprimée.') +
+    (a.calVue ? '' : ' <b>Page introuvable avec certitude : vous la supprimerez à la main.</b>') + '</span></label>' +
+    '<label class="term-l"><input type="checkbox" id="term-donnees" autocomplete="off"' + (ch.donnees ? ' checked' : '') + '><span>Les données du calendrier sont supprimées : progression, défis, réglages (' + a.lignesAvent.length + ' ligne' + (a.lignesAvent.length > 1 ? 's' : '') + '). Vos cadeaux installés et leurs réglages sont gardés.</span></label>' +
+    (a.cadeauxNon.length ? '<p class="gras" style="margin-top:10px">Pages cadeau jamais installées</p>' + a.cadeauxNon.map(function (c) {
+      return '<label class="term-l"><input type="checkbox" id="term-v' + c.vue + '" data-vue="' + c.vue + '" autocomplete="off"' + (ch.pages[c.vue] !== false ? ' checked' : '') + '><span>Supprimer « ' + echapperHTML(c.nom) + ' »</span></label>';
+    }).join('') : '') +
+    '<label class="term-l"><input type="checkbox" id="term-carnet" autocomplete="off"' + (ch.carnet ? ' checked' : '') + '><span>Garder un carnet des leçons (la page n’est pas supprimée)</span></label>' +
+    (plan.suppTetes.length ? '<p class="mini" style="margin-top:6px">Section vide retirée : ' + echapperHTML(plan.suppTetes.map(function (t) { return a.nom[t.vue]; }).join(', ')) + '.</p>' : '') +
+    (plan.suppTech ? '<p class="mini">La table technique ⚙️, qui ne sert plus à rien, est supprimée.</p>' : '') +
+    '<p class="gras" style="margin-top:12px">Votre menu de pages après</p>' + CAL.arbreHTML(plan.arbre) +
+    '<div class="pied"><button type="button" class="btn sec" data-fermer>Annuler</button><button type="button" class="btn" id="term-ok">' + (ch.carnet ? 'Terminer et garder le carnet' : 'Terminer l’Avent') + '</button></div>';
+  document.getElementById('term-corps').innerHTML = h;
+};
+CAL.appliquerFin = async function () {
+  var a = CAL.fin, plan = CAL.planFin(a, CAL.choixFin), act = [];
+  var tid = MGP.g.tech;
+  if (plan.suppLignes.length && tid) { act.push(['BulkRemoveRecord', tid, plan.suppLignes.map(function (l) { return l.id; })]); }
+  plan.suppVues.filter(function (v) { return v !== a.calVue; }).concat(plan.suppTetes.map(function (t) { return t.vue; })).forEach(function (v) { act.push(['RemoveRecord', '_grist_Views', v]); });
+  if (act.length) { await MGP.g.actions(act); }
+  if (plan.suppTech && tid) { await MGP.g.actions([['RemoveTable', tid]]); MGP.g.tech = null; }
+  if (plan.carnet) {
+    if (a.calVue) {
+      var pages = await MGP.g.pagesTriees();
+      var i = pages.map(function (x) { return x.viewRef; }).indexOf(a.calVue);
+      var c = [['UpdateRecord', '_grist_Views', a.calVue, { name: '📚 Mon carnet Grist' }]];
+      if (i >= 0 && MGP.g.finSousArbre(pages, i) === i && i < pages.length - 1) { c.push(['UpdateRecord', '_grist_Pages', pages[i].id, { pagePos: MGP.g.positionEntre(pages[pages.length - 1], null), indentation: 0 }]); }
+      await MGP.g.actions(c);
+    }
+    if (!MGP.g.tech) { await MGP.g.creerTables([MGP.SOCLE.TECH]); }
+    await MGP.g.ecrireReglage('AVENT:CARNET', { annee: CAL.annee, le: new Date(CAL.maintenant()).toISOString() });
+    await MGP.g.ecrireReglage('AVENT:ANNEE', String(CAL.annee));
+    CAL.carnet = true;
+    MGP.fermer(document.getElementById('dlg-terminer'));
+    await CAL.chargerContenus();
+    CAL.rendre();
+    MGP.annoncer('Joyeuses fêtes ! Votre carnet des leçons est prêt.', 'ok');
+    return;
+  }
+  document.getElementById('term-corps').innerHTML = '<div class="verrou"><div class="gros" aria-hidden="true">🎄</div><h2 id="term-titre" tabindex="-1">Joyeuses fêtes !</h2><p style="margin-top:8px;font-size:16px">Votre document est prêt pour toute l’année.</p>' +
+    (a.calVue ? '<p class="mini" style="margin-top:6px">Cette page va disparaître dans un instant.</p>' : '<p class="mini" style="margin-top:6px">Supprimez maintenant la page du calendrier à la main : menu de gauche, trois points, Supprimer.</p>') + '</div>';
+  document.getElementById('term-titre').focus();
+  CAL.termine = true;
+  if (a.calVue) { setTimeout(function () { MGP.g.actions([['RemoveRecord', '_grist_Views', a.calVue]]).catch(function (e) { logSecurite('suppression de la page du calendrier', e); }); }, 2500); }
+};
+
+/* ---- Carnet des leçons ---- */
+CAL.NOTIONS_ORDRE = ['Tables, colonnes et liens', 'Les formules', 'Vues, graphiques et pièces jointes'];
+CAL.rendreCarnet = function () {
+  var groupes = {};
+  for (var j = 1; j <= 24; j++) {
+    var c = CAL.contenus[j];
+    if (!c || c.type === 'cadeau') { continue; }
+    var n = c.notion || 'Autres leçons';
+    (groupes[n] = groupes[n] || []).push({ j: j, c: c });
+  }
+  var noms = Object.keys(groupes).sort(function (a, b) { var i = CAL.NOTIONS_ORDRE.indexOf(a), k = CAL.NOTIONS_ORDRE.indexOf(b); return (i < 0 ? 99 : i) - (k < 0 ? 99 : k); });
+  var nb = noms.reduce(function (s, n) { return s + groupes[n].length; }, 0);
+  document.getElementById('carnet').innerHTML = (nb ? '' : '<div class="carte vide"><p>Les leçons se chargent... Si rien n’apparaît, réessayez un peu plus tard.</p></div>') + noms.map(function (n) {
+    return '<h2 class="notion">' + echapperHTML(n) + ' <span class="mini">' + groupes[n].length + '</span></h2><div class="lecons">' + groupes[n].map(function (x) {
+      var p = CAL.progres[x.j] || {};
+      return '<button type="button" class="carte lecon-b" data-jour="' + x.j + '"><span class="ic" aria-hidden="true">' + echapperHTML(x.c.emoji || '📘') + '</span><span><b>' + echapperHTML(x.c.titre) + '</b><br><span class="mini">' + echapperHTML((CAL.ETIQUETTES[x.c.type] || '') + (p.defi ? ' · défi réussi' : '')) + '</span></span></button>';
+    }).join('') + '</div>';
+  }).join('');
+};
+
 /* ---- Réglages ---- */
-CAL.ouvrirReglages = function () {
+CAL.ouvrirReglages = function (focusEssai) {
   document.getElementById('reg-annee').value = CAL.annee;
   document.getElementById('reg-test').checked = !!CAL.test.actif;
-  document.getElementById('reg-date').value = CAL.test.date || (CAL.annee + '-12-09T10:00');
+  document.getElementById('reg-date').value = CAL.test.date || (CAL.annee + '-12-01T09:30');
   document.getElementById('reg-info').textContent = CAL.lectureSeule ? 'Lecture seule : ces réglages valent seulement jusqu’au prochain chargement.' : 'Les réglages sont enregistrés dans la table technique ⚙️.';
-  MGP.ouvrir(document.getElementById('dlg-reglages'), '#reg-annee');
+  MGP.ouvrir(document.getElementById('dlg-reglages'), focusEssai ? '#reg-test' : '#reg-annee');
 };
 CAL.enregistrerReglages = async function () {
   var a = parseInt(document.getElementById('reg-annee').value, 10);
@@ -1335,7 +1941,33 @@ CAL.brancher = function () {
     var b = ev.target.closest('[data-jour]');
     if (b) { CAL.resultatQuiz = null; CAL.ouvrirCase(parseInt(b.dataset.jour, 10)); }
   });
-  document.getElementById('btn-reglages').addEventListener('click', CAL.ouvrirReglages);
+  document.getElementById('btn-reglages').addEventListener('click', function () { CAL.ouvrirReglages(false); });
+  document.getElementById('reg-terminer').addEventListener('click', function () { MGP.fermer(document.getElementById('dlg-reglages')); CAL.ouvrirTerminer(); });
+  document.getElementById('carnet').addEventListener('click', function (ev) { var b = ev.target.closest('[data-jour]'); if (b) { CAL.resultatQuiz = null; CAL.ouvrirCase(parseInt(b.dataset.jour, 10)); } });
+  var term = document.getElementById('term-corps');
+  term.addEventListener('change', function (ev) {
+    var x = ev.target;
+    if (x.id === 'term-donnees') { CAL.choixFin.donnees = x.checked; }
+    else if (x.id === 'term-carnet') { CAL.choixFin.carnet = x.checked; }
+    else if (x.dataset.vue) { CAL.choixFin.pages[x.dataset.vue] = x.checked; }
+    else { return; }
+    var id = x.id;
+    CAL.rendreTerminer();
+    var n = document.getElementById(id);
+    if (n) { n.focus(); }
+  });
+  term.addEventListener('click', async function (ev) {
+    if (ev.target.closest('[data-fermer]')) { MGP.fermer(document.getElementById('dlg-terminer')); return; }
+    var b = ev.target.closest('#term-ok');
+    if (!b) { return; }
+    b.disabled = true;
+    try { await CAL.appliquerFin(); } catch (e) { logSecurite('fin de l’Avent', e); MGP.annoncer('Une étape a échoué : rien d’autre n’a été modifié.', 'err'); b.disabled = false; }
+  });
+  document.getElementById('bandeaux').addEventListener('click', function (ev) {
+    if (ev.target.closest('[data-essai]')) { CAL.ouvrirReglages(true); }
+    if (ev.target.closest('#btn-terminer')) { CAL.ouvrirTerminer(); }
+  });
+  document.getElementById('dlg-case').addEventListener('close', function () { CAL.verrou = null; clearInterval(CAL.minuteur); });
   document.getElementById('form-reglages').addEventListener('submit', function (ev) { ev.preventDefault(); MGP.fermer(document.getElementById('dlg-reglages')); CAL.enregistrerReglages(); });
   var corps = document.getElementById('case-corps');
   corps.addEventListener('submit', function (ev) {
@@ -1353,8 +1985,18 @@ CAL.brancher = function () {
     var r = document.getElementById('quiz-res');
     if (r) { r.scrollIntoView({ block: 'center' }); }
   });
-  corps.addEventListener('click', function (ev) {
+  corps.addEventListener('click', async function (ev) {
     if (ev.target.closest('#quiz-rejouer')) { CAL.resultatQuiz = null; CAL.rendreCase(); return; }
+    if (ev.target.closest('#btn-reessayer')) {
+      var jv = CAL.verrou;
+      CAL.contenus[jv] = await CAL.chargerContenu(jv);
+      if (CAL.contenus[jv]) { MGP.fermer(document.getElementById('dlg-case')); CAL.rendre(); CAL.ouvrirCase(jv); return; }
+      CAL.rendreVerrou();
+      MGP.annoncer('Toujours pas disponible. Réessayez dans un moment.');
+      var rb = document.getElementById('btn-reessayer');
+      if (rb) { rb.focus(); }
+      return;
+    }
     var d = ev.target.closest('#btn-defi');
     if (d) {
       var p = CAL.progres[CAL.ouvert] = Object.assign({}, CAL.progres[CAL.ouvert] || {});
@@ -1363,16 +2005,23 @@ CAL.brancher = function () {
       CAL.enregistrer(CAL.ouvert);
       CAL.rendreCase();
       CAL.rendre();
-      MGP.annoncer(p.defi ? 'Bravo, défi relevé !' : 'Défi marqué comme non relevé', p.defi ? 'ok' : '');
+      MGP.annoncer(p.defi ? 'Bravo, défi réussi !' : 'Défi marqué comme non réussi', p.defi ? 'ok' : '');
       var b = document.getElementById('btn-defi');
       if (b) { b.focus(); }
     }
   });
   setInterval(async function () {
     if (document.getElementById('dlg-case').open) { return; }
+    if (!CAL.lectureSeule) { await CAL.relire(); }
     await CAL.chargerContenus();
     CAL.rendre();
   }, 60000);
+  /* Un cadeau installé sur une autre page : le calendrier le voit dès que le document change, ou au retour sur la page. */
+  var attente = null;
+  function bientot() { clearTimeout(attente); attente = setTimeout(async function () { if (document.querySelector('dialog[open]')) { return; } await CAL.relire(); CAL.rendre(); }, 400); }
+  try { grist.on('message', function (m) { if (m && (m.dataChange || m.docChange)) { bientot(); } }); } catch (e) { logSecurite('écoute des changements', e); }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { bientot(); } });
+  window.addEventListener('focus', bientot);
 };
 
 CAL.demarrer = async function () {
@@ -1385,9 +2034,10 @@ CAL.demarrer = async function () {
     await MGP.g.chargerTech();
     var a = parseInt(MGP.g.reglage('AVENT:ANNEE', '2026'), 10);
     CAL.annee = (a >= 2026 && a <= 2100) ? a : 2026;
+    CAL.carnet = !!MGP.g.reglage('AVENT:CARNET', null);
     var tst = MGP.g.reglage('AVENT:TEST', null);
     if (tst && typeof tst === 'object') { CAL.test = { actif: !!tst.actif, date: String(tst.date || '') }; }
-    CAL.lireProgres();
+    await CAL.relire();
   } catch (e) { CAL.lectureSeule = true; logSecurite('lecture du document', e); }
   await CAL.chargerContenus();
   CAL.rendre();

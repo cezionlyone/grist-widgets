@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Récapitulatif - Mon Grist perso</title>
+<!--
+  Mon Grist perso - widget public "resume" (tête de section)
+  Version 1.0.0 - madeXcé - série communautaire gratuite
+  Posé par les widgets cadeau sur les pages têtes de section (💶 Mon argent, 🏡 Ma maison, 🎉 Famille et fêtes,
+  🌴 Temps libre), avec l'adresse .../resume/?section=argent|maison|famille|loisirs.
+  Montre une carte par widget INSTALLÉ de la section (marqueurs cadeau.jour-NN de la table technique), en lisant
+  ses tables : rien n'est écrit. Public : il ne contient aucun contenu du calendrier, seulement les récapitulatifs.
+  Accès complet au document nécessaire pour lire les tables des widgets.
+  HISTORIQUE
+  1.0.0 : première version (Mes cadeaux, Repas de fête, Mes congés).
+-->
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<style>
+/* ==========================================================================
+   Mon Grist perso - styles partagés (style "California pastel")
+   Fichier commun concaténé dans chaque widget par build.py : ne pas modifier
+   dans un widget, modifier ici puis relancer build.py.
+   ========================================================================== */
+:root {
+  --sable: #FFF8F0; --sable2: #FBEFE3; --encre: #2B2D42; --gris: #6B6F80; --trait: #EADFD3; --blanc: #FFFFFF;
+  --ecume: #A8E6E2; --ecume-f: #1F7F7A;
+  --flamant: #FFC2D1; --flamant-f: #C2406A;
+  --citron: #FFF1A8; --citron-f: #8A6D00;
+  --peche: #FFD3B5; --peche-f: #C25A2C;
+  --lavande: #DCD0F7; --lavande-f: #6A4FB8;
+  --menthe: #CDEDC8; --menthe-f: #3D7F44;
+  --coucher: linear-gradient(120deg, var(--peche), var(--flamant) 48%, var(--lavande));
+  --ombre: 0 3px 14px rgba(43, 45, 66, .08);
+  --ombre-forte: 0 12px 32px rgba(43, 45, 66, .18);
+  --voile: rgba(43, 45, 66, .38);
+  --r-s: 16px; --r-m: 20px; --r-l: 24px; --r-xl: 28px;
+  --police: "Avenir Next", "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --focus: 3px solid var(--lavande-f);
+  /* Bouton + flottant : taille, distance au bas, et marge laissée sous le contenu pour qu'il ne cache jamais la dernière carte. */
+  --fab: 60px; --fab-bas: 22px; --fab-reserve: calc(var(--fab) + var(--fab-bas) + 28px + env(safe-area-inset-bottom, 0px));
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--sable); color: var(--encre); font-family: var(--police); font-size: 15px; line-height: 1.45; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+h1, h2, h3 { margin: 0; line-height: 1.2; letter-spacing: -.3px; }
+p { margin: 0; }
+a { color: var(--ecume-f); }
+button, input, select, textarea { font-family: inherit; font-size: 15px; color: var(--encre); }
+:focus-visible { outline: var(--focus); outline-offset: 2px; }
+.cache { display: none; }
+/* L'attribut hidden doit gagner sur les display des composants (spécificité égale ou supérieure, aucune règle forcée). */
+[hidden], .btn[hidden], .fab[hidden], .pil[hidden], .btn-icone[hidden], .bandeau[hidden], .choix[hidden], .carte[hidden] { display: none; }
+.sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.mini { font-size: 13px; color: var(--gris); }
+.gras { font-weight: 700; }
+
+/* ---- Chargement ---- */
+.loader { position: fixed; inset: 0; z-index: 90; display: none; place-items: center; background: var(--sable); color: var(--gris); }
+.loader.actif { display: grid; }
+.loader .rond { width: 44px; height: 44px; border-radius: 50%; border: 4px solid var(--sable2); border-top-color: var(--ecume-f); animation: tourne .9s linear infinite; margin: 0 auto 10px; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+
+/* ---- Mise en page ---- */
+.page { padding: 16px 16px var(--fab-reserve); width: 100%; }
+/* Pleine largeur : aucune largeur maximale, seulement des marges de 16 à 24 px. Les paragraphes longs gardent une longueur de ligne lisible (.lisible). */
+.lisible { max-width: 75ch; }
+.barre { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.barre .titre { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.barre h1 { font-size: 22px; font-weight: 800; }
+.barre .marque { font-size: 13px; color: var(--gris); font-weight: 600; }
+.barre .actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.grille { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 700px) { .page { padding: 20px 20px var(--fab-reserve); } .grille.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .page { padding: 24px 24px var(--fab-reserve); } .grille.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .grille.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1500px) { .grille.g2 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .grille.g3 { grid-template-columns: repeat(4, minmax(0, 1fr)); } .grille.g4 { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (min-width: 1850px) { .grille.g3 { grid-template-columns: repeat(5, minmax(0, 1fr)); } .grille.g4 { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (min-width: 700px) and (max-width: 1099px) { .grille.g3, .grille.g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---- Cartes ---- */
+.carte { background: var(--blanc); border-radius: var(--r-m); box-shadow: var(--ombre); padding: 16px; min-width: 0; }
+.carte.douce { background: var(--sable2); box-shadow: none; }
+.carte h2 { font-size: 17px; font-weight: 800; }
+.hero { background: var(--coucher); border-radius: var(--r-l); padding: 18px 20px; position: relative; overflow: hidden; color: var(--encre); }
+.hero h2 { font-size: 20px; font-weight: 800; }
+.hero p { color: #4A4458; font-size: 14px; margin-top: 4px; }
+
+/* ---- Boutons et pastilles ---- */
+.btn { min-height: 44px; border: 0; border-radius: 999px; padding: 10px 20px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--ecume-f); color: var(--blanc); text-decoration: none; }
+.btn:hover { filter: brightness(1.06); }
+.btn.sec { background: var(--blanc); color: var(--ecume-f); box-shadow: inset 0 0 0 1.5px var(--ecume-f); }
+.btn.doux { background: var(--sable2); color: var(--encre); }
+.btn.danger { background: var(--flamant-f); color: var(--blanc); }
+.btn.lien { background: transparent; color: var(--ecume-f); padding: 10px 12px; }
+.btn.plein { width: 100%; }
+.btn[disabled] { opacity: .55; cursor: not-allowed; }
+.btn-icone { min-width: 44px; min-height: 44px; border: 0; border-radius: 999px; background: var(--sable2); color: var(--encre); cursor: pointer; display: inline-grid; place-items: center; font-size: 17px; padding: 0 10px; }
+.pil { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 700; white-space: nowrap; border: 0; background: var(--sable2); color: var(--encre); }
+button.pil { min-height: 44px; padding: 6px 14px; cursor: pointer; }
+.t-ecume { background: var(--ecume); color: var(--ecume-f); }
+.t-flamant { background: var(--flamant); color: var(--flamant-f); }
+.t-citron { background: var(--citron); color: var(--citron-f); }
+.t-peche { background: var(--peche); color: var(--peche-f); }
+.t-lavande { background: var(--lavande); color: var(--lavande-f); }
+.t-menthe { background: var(--menthe); color: var(--menthe-f); }
+.t-sable { background: var(--sable2); color: var(--gris); }
+.choix { display: flex; flex-wrap: wrap; gap: 8px; }
+.choix button { min-height: 44px; border: 0; border-radius: 999px; padding: 0 16px; font-weight: 700; background: var(--sable2); color: var(--gris); cursor: pointer; }
+.choix button[aria-pressed="true"] { background: var(--ecume-f); color: var(--blanc); }
+
+/* ---- Onglets ---- */
+.onglets { position: relative; display: flex; gap: 4px; background: var(--blanc); border-radius: 999px; padding: 5px; box-shadow: var(--ombre); overflow-x: auto; margin-bottom: 16px; max-width: 100%; scrollbar-width: none; scroll-snap-type: x proximity; scroll-padding: 0 36px; -webkit-overflow-scrolling: touch; }
+.onglets::-webkit-scrollbar { display: none; }
+.onglets button { flex: none; min-height: 44px; border: 0; border-radius: 999px; padding: 0 16px; background: transparent; color: var(--gris); font-weight: 700; cursor: pointer; white-space: nowrap; scroll-snap-align: start; }
+/* Onglets qui débordent : fondu et chevron sur le bord où il reste des onglets cachés (classes .g et .d posées par MGP.onglets). */
+.onglets-cadre { position: relative; margin-bottom: 16px; }
+.onglets-cadre > .onglets { margin-bottom: 0; }
+.onglets-cadre::before, .onglets-cadre::after { position: absolute; top: 0; bottom: 0; width: 46px; z-index: 2; pointer-events: none; opacity: 0; transition: opacity .2s; display: grid; align-items: center; color: var(--ecume-f); font-weight: 800; font-size: 22px; }
+.onglets-cadre::before { content: "‹"; left: 0; justify-items: start; padding-left: 10px; border-radius: 999px 0 0 999px; background: linear-gradient(90deg, var(--blanc) 45%, rgba(255, 255, 255, 0)); }
+.onglets-cadre::after { content: "›"; right: 0; justify-items: end; padding-right: 10px; border-radius: 0 999px 999px 0; background: linear-gradient(270deg, var(--blanc) 45%, rgba(255, 255, 255, 0)); }
+.onglets-cadre.g::before, .onglets-cadre.d::after { opacity: 1; }
+.onglets button[aria-selected="true"] { background: var(--ecume-f); color: var(--blanc); }
+@media (max-width: 520px) { .onglets button { padding: 0 12px; } }
+
+/* ---- Jauge ---- */
+.jauge { height: 10px; border-radius: 999px; background: var(--sable2); overflow: hidden; }
+.jauge > i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--menthe-f), var(--ecume-f)); }
+.jauge.alerte > i { background: linear-gradient(90deg, var(--peche-f), var(--flamant-f)); }
+.lignes-jauge { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lignes-jauge .jauge { flex: 1; min-width: 120px; }
+
+/* ---- Champs ---- */
+.champ { margin-bottom: 14px; }
+.champ > label, .champ > .lib { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+.champ input[type=text], .champ input[type=number], .champ input[type=date], .champ input[type=url], .champ select, .champ textarea {
+  width: 100%; min-height: 46px; border-radius: 14px; border: 0; background: var(--sable); box-shadow: inset 0 0 0 1.5px var(--trait); padding: 10px 14px; }
+.champ textarea { min-height: 80px; resize: vertical; }
+.champ input:focus-visible, .champ select:focus-visible, .champ textarea:focus-visible { box-shadow: inset 0 0 0 2px var(--ecume-f); }
+.champ .aide { font-size: 13px; color: var(--gris); margin-top: 4px; }
+.champ > label.photo-btn, .photo-btn { display: flex; margin-bottom: 0; font-size: 15px; align-items: center; gap: 8px; min-height: 46px; border-radius: 14px; background: var(--sable); box-shadow: inset 0 0 0 1.5px var(--trait); padding: 0 14px; color: var(--ecume-f); font-weight: 700; cursor: pointer; }
+.photo-btn input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.photo-btn:focus-within { outline: var(--focus); outline-offset: 2px; }
+
+/* ---- FAB ---- */
+.fab { position: fixed; right: 18px; bottom: calc(var(--fab-bas) + env(safe-area-inset-bottom, 0px)); z-index: 40; width: var(--fab); height: var(--fab); border-radius: 50%; border: 0; background: var(--ecume-f); color: var(--blanc); font-size: 30px; line-height: 1; cursor: pointer; box-shadow: 0 8px 20px rgba(31, 127, 122, .4); display: grid; place-items: center; }
+
+/* ---- Feuilles et dialogues (element dialog natif) ---- */
+dialog.feuille { border: 0; padding: 0; background: var(--blanc); color: var(--encre); width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 40px); border-radius: var(--r-xl); box-shadow: var(--ombre-forte); }
+dialog.feuille::backdrop { background: var(--voile); }
+dialog.feuille .corps { padding: 12px 20px 22px; overflow-y: auto; max-height: calc(100vh - 60px); }
+dialog.feuille .poignee { width: 44px; height: 5px; border-radius: 999px; background: var(--trait); margin: 10px auto 6px; }
+dialog.feuille h2 { font-size: 19px; font-weight: 800; margin: 4px 0 14px; }
+dialog.feuille .pied { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 10px; }
+@media (max-width: 699px) {
+  dialog.feuille { width: 100vw; max-width: 100vw; margin: auto 0 0 0; border-radius: var(--r-xl) var(--r-xl) 0 0; max-height: 92vh; }
+  dialog.feuille .corps { max-height: calc(92vh - 24px); }
+  dialog.feuille .pied .btn { flex: 1; }
+}
+@media (min-width: 700px) { dialog.feuille .poignee { display: none; } }
+
+/* ---- Annonces (toasts) ---- */
+.toasts { position: fixed; left: 50%; transform: translateX(-50%); bottom: 96px; z-index: 95; display: flex; flex-direction: column; gap: 8px; width: min(440px, calc(100vw - 32px)); pointer-events: none; }
+.toast { background: var(--encre); color: var(--blanc); border-radius: var(--r-s); padding: 12px 16px; font-weight: 600; box-shadow: var(--ombre-forte); }
+.toast.ok { background: var(--menthe-f); }
+.toast.err { background: var(--flamant-f); }
+
+/* ---- Bandeau d'information ---- */
+.bandeau { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-radius: var(--r-m); padding: 12px 16px; margin-bottom: 14px; }
+.bandeau .txt { flex: 1; min-width: 200px; }
+
+/* ---- Vide ---- */
+.vide { text-align: center; padding: 28px 16px; color: var(--gris); }
+.vide .gros { font-size: 40px; }
+
+/* ---- Avatar ---- */
+.av { width: 44px; height: 44px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 22px; }
+.av.grand { width: 84px; height: 84px; font-size: 40px; }
+
+/* ---- Liste de lignes dans une carte ---- */
+.ligne { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--sable2); min-width: 0; }
+.ligne .x { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+
+/* ---- Sous le capot ---- */
+.capot-grille { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+/* Deux colonnes seulement quand le schéma garde sa taille réelle (880 px) : ses lignes restent des cibles de 44 px. */
+@media (min-width: 1800px) { .capot-grille { grid-template-columns: minmax(880px, 1.1fr) minmax(0, 1fr); align-items: start; } }
+.schema-svg { width: 100%; max-width: 880px; height: auto; display: block; }
+.schema-svg .boite-fond { fill: var(--blanc); stroke: var(--trait); stroke-width: 2; }
+.schema-svg text { font-family: var(--police); font-size: 13px; fill: var(--encre); }
+.schema-svg .type { fill: var(--gris); font-size: 12px; }
+.schema-svg .ent { font-weight: 800; font-size: 14px; }
+.schema-svg .champ-l { cursor: pointer; }
+.schema-svg .champ-l:focus-visible rect.surv, .schema-svg .champ-l:hover rect.surv { fill: var(--sable2); stroke: var(--lavande-f); stroke-width: 2; }
+.schema-svg .lien { fill: none; stroke: var(--ecume-f); stroke-width: 2.5; }
+.schema-svg .lien-txt { fill: var(--gris); font-size: 11px; }
+.schema-mobile details { border-radius: var(--r-s); background: var(--sable); margin-bottom: 10px; }
+.schema-mobile summary { min-height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 14px; font-weight: 800; cursor: pointer; border-radius: var(--r-s); }
+.schema-mobile ul { list-style: none; margin: 0; padding: 0 14px 10px; }
+.schema-mobile li button { width: 100%; min-height: 44px; display: flex; justify-content: space-between; gap: 8px; align-items: center; border: 0; background: transparent; border-top: 1px solid var(--trait); padding: 6px 0; text-align: left; cursor: pointer; }
+.schema-mobile .fleche { color: var(--ecume-f); font-size: 13px; font-weight: 700; }
+.vue-bureau { display: none; }
+@media (min-width: 1100px) { .vue-bureau { display: block; } .vue-mobile { display: none; } }
+.fiche-champ { border-radius: var(--r-s); padding: 14px; background: var(--sable); }
+.fiche-champ h3 { font-size: 15px; font-weight: 800; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fiche-champ .ex { margin-top: 8px; font-size: 13px; }
+.fiche-champ.active { box-shadow: inset 0 0 0 2px var(--lavande-f); }
+pre.code { background: var(--encre); color: #FFF1A8; border-radius: var(--r-s); padding: 14px 16px; font-family: var(--mono); font-size: 13.5px; white-space: pre-wrap; overflow-wrap: anywhere; margin: 10px 0; }
+code { font-family: var(--mono); font-size: .92em; background: var(--sable2); border-radius: 6px; padding: 1px 5px; overflow-wrap: anywhere; }
+.jeton { display: grid; grid-template-columns: minmax(90px, 150px) minmax(0, 1fr); gap: 12px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--sable2); }
+.jeton .j { background: var(--citron); color: var(--citron-f); border-radius: 999px; padding: 4px 12px; font-family: var(--mono); font-weight: 700; font-size: 13px; overflow-wrap: anywhere; }
+.a-vous { background: var(--citron); border-radius: var(--r-s); padding: 14px 16px; margin-top: 12px; }
+.a-vous b { color: var(--citron-f); }
+.formule-carte + .formule-carte { margin-top: 14px; }
+
+/* ---- Kanban partagé ---- */
+.kanban { display: grid; gap: 12px; grid-template-columns: repeat(var(--kb-cols, 4), minmax(0, 1fr)); align-items: start; }
+.kb-col { background: var(--sable2); border-radius: var(--r-m); padding: 10px; min-height: 140px; min-width: 0; }
+.kb-col.survol { box-shadow: inset 0 0 0 2px var(--ecume-f); background: var(--ecume); }
+.kb-tete { display: flex; align-items: center; gap: 8px; padding: 4px 4px 10px; flex-wrap: wrap; }
+.kb-tete h3 { font-size: 15px; font-weight: 800; }
+.kb-tete .tot { margin-left: auto; font-size: 13px; color: var(--gris); font-weight: 700; }
+.kb-liste { display: flex; flex-direction: column; gap: 10px; min-height: 60px; }
+.kb-carte { background: var(--blanc); border-radius: var(--r-s); box-shadow: var(--ombre); padding: 12px; cursor: grab; touch-action: pan-y; }
+.kb-carte.traine { opacity: .45; }
+.kb-carte .kb-act { display: flex; gap: 6px; margin-top: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.kb-seg { display: none; }
+@media (max-width: 699px) {
+  .kb-seg { display: flex; gap: 4px; background: var(--blanc); border-radius: 999px; padding: 5px; box-shadow: var(--ombre); margin-bottom: 12px; position: sticky; top: 0; z-index: 5; }
+  .kb-seg button { flex: 1; min-height: 44px; border: 0; border-radius: 999px; background: transparent; color: var(--gris); font-weight: 700; font-size: 13px; cursor: pointer; padding: 0 4px; line-height: 1.15; }
+  .kb-seg button[aria-pressed="true"] { background: var(--ecume-f); color: var(--blanc); }
+  .kanban { grid-template-columns: 1fr; }
+  .kanban .kb-col:not(.visible) { display: none; }
+}
+.menu-etapes { display: flex; flex-direction: column; gap: 8px; }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none; transition: none; } }
+
+.recaps { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 760px) { .recaps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1300px) { .recaps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.recap h2 { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.recap h2 .em { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; flex: none; }
+.recap .gros { font-size: 32px; font-weight: 800; line-height: 1.1; }
+.recap .duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 6px 0; }
+.recap .duo > div { border-radius: var(--r-s); padding: 10px 12px; }
+.recap .voir { margin-top: 12px; font-size: 13px; font-weight: 700; color: var(--ecume-f); }
+.recap .ligne b { font-weight: 700; }
+</style>
+</head>
+<body>
+<div id="loader" class="loader actif" role="status"><div><div class="rond"></div><span class="txt">Chargement...</span></div></div>
+<div id="annonces" class="sr" aria-live="polite"></div>
+<main class="page" id="page">
+  <header class="barre"><div class="titre"><h1 id="titre">Récapitulatif</h1><span class="marque">Mon Grist perso</span></div></header>
+  <p class="mini lisible" id="sous" style="margin:-4px 0 14px"></p>
+  <div id="zone"></div>
+</main>
+<div id="toasts" class="toasts"></div>
+<script>
+'use strict';
+/* ==========================================================================
+   Mon Grist perso - outils partagés (sécurité, dates, montants, annonces)
+   Fichier commun concaténé dans chaque widget par build.py.
+   ========================================================================== */
+var MGP = window.MGP = window.MGP || {};
+
+/* ---- Sécurité ---- */
+function echapperHTML(v) {
+  if (v === null || v === undefined) { return ''; }
+  return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function logSecurite(evenement, detail) {
+  try { console.info('[securite] ' + evenement + (detail ? ' : ' + String(detail).slice(0, 300) : '')); } catch (e) { /* console indisponible */ }
+}
+function masquerLoader() {
+  var el = document.getElementById('loader');
+  if (!el) { return; }
+  void el.offsetHeight;
+  el.classList.remove('actif');
+}
+function montrerLoader(texte) {
+  var el = document.getElementById('loader');
+  if (!el) { return; }
+  var t = el.querySelector('.txt');
+  if (t && texte) { t.textContent = texte; }
+  el.classList.add('actif');
+}
+/* Lien sûr : seulement http(s), sinon chaîne vide. */
+function urlSure(u) {
+  var s = String(u || '').trim();
+  if (!s) { return ''; }
+  if (!/^https?:\/\//i.test(s)) { s = 'https://' + s; }
+  try { var x = new URL(s); return (x.protocol === 'http:' || x.protocol === 'https:') ? x.href : ''; } catch (e) { return ''; }
+}
+MGP.echapperHTML = echapperHTML;
+MGP.urlSure = urlSure;
+
+/* Inline sûr pour les contenus : échappe puis transforme `code` et **gras**. */
+MGP.texteRiche = function (t) {
+  return echapperHTML(t).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+};
+
+/* ---- Paramètres d'URL ---- */
+MGP.param = function (nom) {
+  try { return new URLSearchParams(location.search).get(nom); } catch (e) { return null; }
+};
+
+/* ---- Locale et monnaie (document Grist si possible) ---- */
+MGP.locale = 'fr-FR';
+MGP.devise = 'EUR';
+MGP.formatMontant = function (n, avecDecimales) {
+  if (n === null || n === undefined || n === '' || isNaN(Number(n))) { return ''; }
+  var v = Number(n);
+  var dec = (avecDecimales === true || Math.round(v) !== v) ? 2 : 0;
+  try {
+    return new Intl.NumberFormat(MGP.locale, { style: 'currency', currency: MGP.devise, minimumFractionDigits: dec, maximumFractionDigits: dec }).format(v);
+  } catch (e) { return v.toFixed(dec) + ' ' + MGP.devise; }
+};
+MGP.formatNombre = function (n) {
+  try { return new Intl.NumberFormat(MGP.locale).format(n); } catch (e) { return String(n); }
+};
+/* Lit un montant saisi ("35", "35,50", "35 €") ; null si vide ou invalide. */
+MGP.lireMontant = function (s) {
+  var t = String(s === null || s === undefined ? '' : s).replace(/\s/g, '').replace(/[^\d,.-]/g, '').replace(',', '.');
+  if (!t) { return null; }
+  var v = parseFloat(t);
+  return isNaN(v) ? null : Math.round(v * 100) / 100;
+};
+
+/* ---- Dates ----
+   Grist Date = secondes Unix à minuit UTC. Affichage : "1 déc. 2026" ou "mardi 1er décembre". */
+var MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+var MOIS_COURTS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+var JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+MGP.MOIS_LONGS = MOIS_LONGS;
+MGP.dateCourte = function (sec) {
+  if (sec === null || sec === undefined || sec === '' || isNaN(Number(sec))) { return ''; }
+  var d = new Date(Number(sec) * 1000);
+  return d.getUTCDate() + ' ' + MOIS_COURTS[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+};
+/* "mardi 1er décembre" à partir d'année, mois (1-12), jour. */
+MGP.dateLongue = function (a, m, j, avecAnnee) {
+  var d = new Date(Date.UTC(a, m - 1, j));
+  return JOURS[d.getUTCDay()] + ' ' + (j === 1 ? '1er' : j) + ' ' + MOIS_LONGS[m - 1] + (avecAnnee ? ' ' + a : '');
+};
+/* Secondes Grist (minuit UTC) depuis "AAAA-MM-JJ", et l'inverse. */
+MGP.isoVersSec = function (iso) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+  return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) / 1000 : null;
+};
+MGP.secVersIso = function (sec) {
+  if (sec === null || sec === undefined || sec === '') { return ''; }
+  return new Date(Number(sec) * 1000).toISOString().slice(0, 10);
+};
+
+/* Décalage (ms) d'un fuseau à un instant donné, via Intl. */
+MGP.decalageFuseau = function (fuseau, t) {
+  var f = new Intl.DateTimeFormat('en-US', { timeZone: fuseau, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  var p = {};
+  f.formatToParts(new Date(t)).forEach(function (x) { p[x.type] = x.value; });
+  var h = Number(p.hour) === 24 ? 0 : Number(p.hour);
+  return Date.UTC(+p.year, +p.month - 1, +p.day, h, +p.minute, +p.second) - Math.floor(t / 1000) * 1000;
+};
+/* Instant (ms) correspondant à une heure locale de Paris. */
+MGP.instantParis = function (a, m, j, h, mi) {
+  var devine = Date.UTC(a, m - 1, j, h, mi || 0);
+  var t = devine - MGP.decalageFuseau('Europe/Paris', devine);
+  return devine - MGP.decalageFuseau('Europe/Paris', t);
+};
+/* Date du jour à Paris : {a, m, j, h, mi}. */
+MGP.partiesParis = function (t) {
+  var f = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Paris', hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' });
+  var p = {};
+  f.formatToParts(new Date(t)).forEach(function (x) { p[x.type] = x.value; });
+  return { a: +p.year, m: +p.month, j: +p.day, h: (+p.hour) % 24, mi: +p.minute };
+};
+/* "2 jours, 21 heures et 14 minutes" */
+MGP.dureeTexte = function (ms) {
+  if (ms <= 0) { return 'quelques secondes'; }
+  var min = Math.floor(ms / 60000), j = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), mn = min % 60;
+  var morceaux = [];
+  if (j) { morceaux.push(j + (j > 1 ? ' jours' : ' jour')); }
+  if (h) { morceaux.push(h + (h > 1 ? ' heures' : ' heure')); }
+  if (mn || !morceaux.length) { morceaux.push(mn + (mn > 1 ? ' minutes' : ' minute')); }
+  if (ms < 60000) { return Math.ceil(ms / 1000) + ' secondes'; }
+  return morceaux.length > 1 ? morceaux.slice(0, -1).join(', ') + ' et ' + morceaux[morceaux.length - 1] : morceaux[0];
+};
+/* Nombre de jours avant Noël (25 décembre de l'année du jour à Paris). */
+MGP.joursAvantNoel = function (t) {
+  var p = MGP.partiesParis(t);
+  var auj = Date.UTC(p.a, p.m - 1, p.j);
+  var noel = Date.UTC(p.a, 11, 25);
+  if (auj > noel) { noel = Date.UTC(p.a + 1, 11, 25); }
+  return Math.round((noel - auj) / 86400000);
+};
+
+/* "Maintenant", simulable : ?maintenant=2026-12-09T10:00 (heure de Paris). */
+MGP.maintenantSimule = null;
+MGP.lireDateSimulee = function (s) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(String(s || ''));
+  return m ? MGP.instantParis(+m[1], +m[2], +m[3], m[4] ? +m[4] : 9, m[5] ? +m[5] : 0) : null;
+};
+MGP.maintenant = function () {
+  return MGP.maintenantSimule !== null ? MGP.maintenantSimule : Date.now();
+};
+(function () {
+  var p = MGP.param('maintenant');
+  var t = p ? MGP.lireDateSimulee(p) : null;
+  if (t !== null) { MGP.maintenantSimule = t; }
+})();
+
+/* ---- Annonces (aria-live + toasts) ---- */
+MGP.annoncer = function (texte, genre) {
+  var zone = document.getElementById('annonces');
+  if (zone) { zone.textContent = ''; setTimeout(function () { zone.textContent = texte; }, 30); }
+  var pile = document.getElementById('toasts');
+  if (!pile || genre === 'sr') { return; }
+  var t = document.createElement('div');
+  t.className = 'toast' + (genre ? ' ' + genre : '');
+  t.textContent = texte;
+  pile.appendChild(t);
+  setTimeout(function () { if (t.parentNode) { t.parentNode.removeChild(t); } }, 3800);
+};
+
+/* Couleurs pastel : nom de choix vers classe CSS. */
+MGP.COULEURS = ['Écume', 'Flamant', 'Citron', 'Pêche', 'Lavande', 'Menthe'];
+MGP.classeCouleur = function (nom) {
+  var n = String(nom || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return ['ecume', 'flamant', 'citron', 'peche', 'lavande', 'menthe'].indexOf(n) >= 0 ? 't-' + n : 't-sable';
+};
+MGP.HEX = { 'Écume': ['#A8E6E2', '#1F7F7A'], 'Flamant': ['#FFC2D1', '#C2406A'], 'Citron': ['#FFF1A8', '#8A6D00'], 'Pêche': ['#FFD3B5', '#C25A2C'], 'Lavande': ['#DCD0F7', '#6A4FB8'], 'Menthe': ['#CDEDC8', '#3D7F44'] };
+
+/* Valeur de liste Grist (['L', a, b] ou tableau) vers tableau JS. */
+MGP.liste = function (v) {
+  if (!v) { return []; }
+  if (Array.isArray(v)) { return v[0] === 'L' ? v.slice(1) : v.slice(); }
+  return [];
+};
+
+/* ==========================================================================
+   Mon Grist perso - accès au document, socle commun et installation
+   - tables trouvées via fetchTable('_grist_Tables') (jamais listTables)
+   - AddTable avec {id, type, label} seulement, formules posées ensuite par ModifyColumn
+   - pages créées automatiquement par Grist supprimées (RemoveRecord _grist_Views)
+   - réglages stockés en lignes dans la table technique (jamais dans les options du widget)
+   ========================================================================== */
+MGP.g = {
+  acces: 'none',
+  pret: false,
+  meta: null,
+  registre: {},      /* CLE -> tableId réel */
+  tech: null,        /* tableId réel de la table technique */
+  techLignes: []     /* lignes de la table technique */
+};
+
+/* ---- Lecture ---- */
+MGP.g.lignes = function (col) {
+  var ids = (col && col.id) || [];
+  var cles = Object.keys(col || {});
+  return ids.map(function (id, i) {
+    var r = {};
+    cles.forEach(function (c) { r[c] = col[c][i]; });
+    return r;
+  });
+};
+MGP.g.lire = async function (tableId) {
+  return MGP.g.lignes(await grist.docApi.fetchTable(tableId));
+};
+MGP.g.actions = async function (liste) {
+  if (!liste.length) { return { retValues: [] }; }
+  return grist.docApi.applyUserActions(liste);
+};
+MGP.g.chargerMeta = async function () {
+  var t = await MGP.g.lire('_grist_Tables');
+  var c = await MGP.g.lire('_grist_Tables_column');
+  MGP.g.meta = { tables: t, colonnes: c };
+  return MGP.g.meta;
+};
+MGP.g.colonnesDe = function (tableRef) {
+  return (MGP.g.meta ? MGP.g.meta.colonnes : []).filter(function (c) { return c.parentId === tableRef; });
+};
+MGP.g.tableParId = function (tableId) {
+  return (MGP.g.meta ? MGP.g.meta.tables : []).filter(function (t) { return t.tableId === tableId; })[0] || null;
+};
+/* Tables visibles par l'utilisateur (exclut tables système, résumés, cachées, visite guidée). */
+MGP.g.estTableUtilisateur = function (t) {
+  var id = String(t.tableId || '');
+  if (!id || id.indexOf('_grist') === 0 || id.indexOf('GristHidden_') === 0 || id === 'GristDocTour') { return false; }
+  if (t.summarySourceTable || id.indexOf('_SUMMARY_') >= 0 || id.toUpperCase().indexOf('GRISTSUMMARY_') === 0) { return false; }
+  return true;
+};
+
+/* Locale et monnaie du document. */
+MGP.g.lireReglagesDoc = async function () {
+  try {
+    var info = await MGP.g.lire('_grist_DocInfo');
+    var s = info[0] && info[0].documentSettings ? JSON.parse(info[0].documentSettings) : {};
+    if (s.locale) { MGP.locale = s.locale; }
+    if (s.currency) { MGP.devise = s.currency; }
+  } catch (e) { logSecurite('réglages du document illisibles', e); }
+};
+
+/* ---- Démarrage commun : accès demandé et niveau obtenu ---- */
+MGP.g.demarrer = function (accesRequis) {
+  return new Promise(function (resoudre) {
+    if (typeof grist === 'undefined') { resoudre('none'); return; }
+    var fini = false;
+    function fin(n) { if (!fini) { fini = true; MGP.g.acces = n || 'none'; resoudre(MGP.g.acces); } }
+    try {
+      grist.ready({ requiredAccess: accesRequis || 'full', allowSelectBy: false });
+      /* Le message initial de Grist donne le niveau d'accès (settings.accessLevel) : aucun réglage n'y est stocké. */
+      grist.on('message', function (msg) { if (msg && msg.settings && msg.settings.accessLevel) { fin(msg.settings.accessLevel); } });
+      /* Sonde fiable : seule une lecture en accès complet peut lire une table technique. Elle couvre les cas où le message initial n'arrive pas (widget « Créer le vôtre », message reçu avant l'écoute). */
+      if (accesRequis === 'full' || !accesRequis) {
+        grist.docApi.fetchTable('_grist_Tables').then(function () { fin('full'); }, function () { /* pas d'accès complet : on attend le message ou le délai */ });
+      }
+    } catch (e) { logSecurite('démarrage', e); fin('none'); }
+    setTimeout(function () { fin(MGP.g.acces); }, 5000);
+  });
+};
+
+/* ==========================================================================
+   Définitions du socle commun
+   Type "Ref:@CLE" : référence vers la table de clé CLE (id réel résolu à la création).
+   Formules : "{CLE}" remplacé par l'id réel de la table.
+   ========================================================================== */
+MGP.CHAMPS_SUIVI = ['CREE_LE', 'CREE_PAR', 'MODIFIE_LE', 'MODIFIE_PAR'];
+MGP.SOCLE = {
+  TECH: {
+    cle: 'TECH', id: 'BIBLIOTHEQUE_MON_GRIST_PERSO_', label: '⚙️ BIBLIOTHÈQUE MON GRIST PERSO ⚡', motif: 'BIBLIOTHEQUE_MON_GRIST_PERSO',
+    signature: ['CLE', 'VALEUR'],
+    colonnes: [{ id: 'CLE', type: 'Text' }, { id: 'VALEUR', type: 'Text' }]
+  },
+  PERSONNES: {
+    cle: 'PERSONNES', id: 'Personnes', label: '👥 Personnes', nom: 'Personnes',
+    signature: ['PRENOM', 'FOYER', 'TYPE'],
+    colonnes: [
+      { id: 'PRENOM', type: 'Text' },
+      { id: 'TYPE', type: 'Choice', choix: [['Adulte', 'Pêche'], ['Enfant', 'Lavande'], ['Proche', 'Écume'], ['Ami', 'Menthe']] },
+      { id: 'FOYER', type: 'Bool' },
+      { id: 'NAISSANCE', type: 'Date' },
+      { id: 'EMOJI', type: 'Text' },
+      { id: 'COULEUR', type: 'Choice', choix: [['Écume', 'Écume'], ['Flamant', 'Flamant'], ['Citron', 'Citron'], ['Pêche', 'Pêche'], ['Lavande', 'Lavande'], ['Menthe', 'Menthe']] },
+      { id: 'NOTES', type: 'Text' }
+    ],
+    affichage: 'PRENOM'
+  },
+  CATEGORIES: {
+    cle: 'CATEGORIES', id: 'Categories', label: '🏷️ Catégories', nom: 'Catégories',
+    signature: ['NOM', 'EMOJI', 'COULEUR'],
+    colonnes: [
+      { id: 'NOM', type: 'Text' },
+      { id: 'EMOJI', type: 'Text' },
+      { id: 'COULEUR', type: 'Choice', choix: [['Écume', 'Écume'], ['Flamant', 'Flamant'], ['Citron', 'Citron'], ['Pêche', 'Pêche'], ['Lavande', 'Lavande'], ['Menthe', 'Menthe']] }
+    ],
+    affichage: 'NOM',
+    graines: [['Alimentation', '🛒', 'Menthe'], ['Maison', '🏠', 'Pêche'], ['Transport', '🚗', 'Écume'], ['Loisirs', '🎭', 'Lavande'],
+      ['Cadeaux', '🎁', 'Flamant'], ['Abonnements', '📱', 'Citron'], ['Santé', '🩺', 'Écume'], ['Épargne', '🌱', 'Menthe']]
+  },
+  DOCUMENTS: {
+    cle: 'DOCUMENTS', id: 'Documents', label: '📎 Documents', nom: 'Documents',
+    signature: ['FICHIER', 'TITRE'],
+    colonnes: [
+      { id: 'TITRE', type: 'Text' },
+      { id: 'FICHIER', type: 'Attachments' },
+      { id: 'TYPE', type: 'Choice', choix: [['Facture', 'Citron'], ['Garantie', 'Menthe'], ['Contrat', 'Lavande'], ['Photo', 'Flamant'], ['Autre', 'Écume']] },
+      { id: 'PERSONNE', type: 'Ref:@PERSONNES' },
+      { id: 'CATEGORIE', type: 'Ref:@CATEGORIES' },
+      { id: 'DATE_DOC', type: 'Date' },
+      { id: 'NOTES', type: 'Text' }
+    ],
+    affichage: 'TITRE'
+  }
+};
+MGP.ORDRE_SOCLE = ['TECH', 'PERSONNES', 'CATEGORIES', 'DOCUMENTS'];
+
+/* Colonnes de suivi ajoutées à chaque table (formules automatiques). */
+MGP.colonnesSuivi = function () {
+  return [
+    { id: 'CREE_LE', type: 'DateTime:Europe/Paris', declencheur: 'NOW()', quand: 0 },
+    { id: 'CREE_PAR', type: 'Text', declencheur: 'user.Name', quand: 0 },
+    { id: 'MODIFIE_LE', type: 'DateTime:Europe/Paris', declencheur: 'NOW()', quand: 2 },
+    { id: 'MODIFIE_PAR', type: 'Text', declencheur: 'user.Name', quand: 2 }
+  ];
+};
+
+/* ---- Recherche d'une table : registre, puis id attendu, puis signature ---- */
+MGP.g.trouver = function (def) {
+  var tables = MGP.g.meta.tables.filter(MGP.g.estTableUtilisateur);
+  function aSignature(t) {
+    var ids = MGP.g.colonnesDe(t.id).map(function (c) { return c.colId; });
+    return def.signature.every(function (s) { return ids.indexOf(s) >= 0; });
+  }
+  var parReg = MGP.g.registre[def.cle];
+  var t = parReg ? tables.filter(function (x) { return x.tableId === parReg; })[0] : null;
+  if (t && aSignature(t)) { return t; }
+  t = tables.filter(function (x) { return x.tableId === def.id && aSignature(x); })[0];
+  if (t) { return t; }
+  if (def.motif) {
+    t = tables.filter(function (x) { return x.tableId.toUpperCase().indexOf(def.motif) >= 0 && aSignature(x); })[0];
+    if (t) { return t; }
+  }
+  return def.motif ? null : (tables.filter(aSignature)[0] || null);
+};
+
+/* Lit la table technique et le registre des tables. */
+MGP.g.chargerTech = async function () {
+  var t = MGP.g.trouver(MGP.SOCLE.TECH);
+  MGP.g.tech = t ? t.tableId : null;
+  MGP.g.techLignes = [];
+  MGP.g.registre = {};
+  if (!t) { return; }
+  MGP.g.techLignes = await MGP.g.lire(t.tableId);
+  MGP.g.techLignes.forEach(function (r) {
+    var cle = String(r.CLE || '');
+    if (cle.indexOf('TABLE:') === 0) { MGP.g.registre[cle.slice(6)] = String(r.VALEUR || ''); }
+  });
+  MGP.g.registre.TECH = t.tableId;
+};
+MGP.g.reglage = function (cle, defaut) {
+  var r = MGP.g.techLignes.filter(function (x) { return x.CLE === cle; })[0];
+  if (!r) { return defaut; }
+  try { return JSON.parse(r.VALEUR); } catch (e) { return r.VALEUR; }
+};
+/* Écrit (ou met à jour) un réglage. Renvoie false si impossible (lecture seule). */
+MGP.g.ecrireReglage = async function (cle, valeur) {
+  if (!MGP.g.tech || MGP.g.acces !== 'full') { return false; }
+  var texte = typeof valeur === 'string' ? valeur : JSON.stringify(valeur);
+  var r = MGP.g.techLignes.filter(function (x) { return x.CLE === cle; })[0];
+  if (r) {
+    await MGP.g.actions([['UpdateRecord', MGP.g.tech, r.id, { VALEUR: texte }]]);
+    r.VALEUR = texte;
+  } else {
+    var res = await MGP.g.actions([['AddRecord', MGP.g.tech, null, { CLE: cle, VALEUR: texte }]]);
+    MGP.g.techLignes.push({ id: res.retValues[0], CLE: cle, VALEUR: texte });
+  }
+  return true;
+};
+MGP.g.idTable = function (cle) { return MGP.g.registre[cle] || null; };
+
+/* ==========================================================================
+   creerTables : crée les tables manquantes, idempotent.
+   defs : liste de définitions (socle ou widget). Renvoie {crees:[cle], pagesSupprimees:n}.
+   ========================================================================== */
+MGP.g.resoudreType = function (type) {
+  var m = /^(Ref|RefList):@(\w+)$/.exec(type);
+  return m ? m[1] + ':' + (MGP.g.registre[m[2]] || m[2]) : type;
+};
+MGP.g.resoudreFormule = function (f) {
+  return String(f).replace(/\{(\w+)\}/g, function (_x, cle) { return MGP.g.registre[cle] || cle; });
+};
+MGP.g.optionsChoix = function (choix) {
+  var opts = {};
+  choix.forEach(function (c) {
+    var hex = MGP.HEX[c[1]] || MGP.HEX['Écume'];
+    opts[c[0]] = { fillColor: hex[0], textColor: hex[1] };
+  });
+  return JSON.stringify({ choices: choix.map(function (c) { return c[0]; }), choiceOptions: opts, alignment: 'left' });
+};
+
+/* Actions ModifyColumn qui posent type, libellé, formule, déclencheur, choix. */
+MGP.g.actionsColonne = function (tableId, c, nouvelle) {
+  var a = [];
+  var props = { type: MGP.g.resoudreType(c.type), label: c.id };
+  if (c.formule) {
+    props.isFormula = true;
+    props.formula = MGP.g.resoudreFormule(c.formule);
+  } else if (c.declencheur) {
+    props.isFormula = false;
+    props.formula = c.declencheur;
+    props.recalcWhen = c.quand || 0;
+    props.recalcDeps = null;
+  } else if (nouvelle) {
+    props.isFormula = false;
+  }
+  if (c.choix) { props.widgetOptions = MGP.g.optionsChoix(c.choix); }
+  if (c.options) { props.widgetOptions = JSON.stringify(c.options); }
+  a.push(['ModifyColumn', tableId, c.id, props]);
+  return a;
+};
+
+/* Colonne d'affichage d'une référence (montre le prénom plutôt que le numéro). */
+MGP.g.actionsAffichageRef = function (tableId, c, defs) {
+  var m = /^(Ref|RefList):@(\w+)$/.exec(c.type);
+  if (!m) { return []; }
+  var cible = defs[m[2]] || MGP.SOCLE[m[2]];
+  if (!cible || !cible.affichage) { return []; }
+  var tRef = MGP.g.tableParId(MGP.g.registre[m[2]]);
+  var tSrc = MGP.g.tableParId(tableId);
+  if (!tRef || !tSrc) { return []; }
+  var vis = MGP.g.colonnesDe(tRef.id).filter(function (x) { return x.colId === cible.affichage; })[0];
+  var col = MGP.g.colonnesDe(tSrc.id).filter(function (x) { return x.colId === c.id; })[0];
+  if (!vis || !col || col.visibleCol === vis.id) { return []; }
+  return [['ModifyColumn', tableId, c.id, { visibleCol: vis.id }],
+    ['SetDisplayFormula', tableId, null, col.id, '$' + c.id + '.' + cible.affichage]];
+};
+
+MGP.g.creerTables = async function (defs) {
+  var parCle = {};
+  defs.forEach(function (d) { parCle[d.cle] = d; });
+  var crees = [], vuesASupprimer = [], refsNouvelles = [];
+  await MGP.g.chargerMeta();
+  await MGP.g.chargerTech();
+
+  /* 1. AddTable (une table par appel, dans l'ordre des dépendances), id réel relu. */
+  for (var i = 0; i < defs.length; i++) {
+    var def = defs[i];
+    var existe = MGP.g.trouver(def);
+    if (existe) { MGP.g.registre[def.cle] = existe.tableId; continue; }
+    var cols = def.colonnes.concat(MGP.colonnesSuivi()).map(function (c) {
+      return { id: c.id, type: (c.formule ? 'Any' : MGP.g.resoudreType(c.type)), label: c.id };
+    });
+    var res = await MGP.g.actions([['AddTable', def.id, cols]]);
+    var rv = res.retValues[0] || {};
+    MGP.g.registre[def.cle] = rv.table_id || def.id;
+    (rv.views || []).forEach(function (v) { if (v && v.id) { vuesASupprimer.push(v.id); } });
+    crees.push(def.cle);
+    await MGP.g.chargerMeta();
+    var tr = MGP.g.tableParId(MGP.g.registre[def.cle]);
+    if (tr) { refsNouvelles.push(tr.id); }
+  }
+
+  /* 2. Suppression des pages créées automatiquement (repli : primaryViewId). */
+  MGP.g.meta.tables.forEach(function (t) {
+    if (refsNouvelles.indexOf(t.id) >= 0 && t.primaryViewId && vuesASupprimer.indexOf(t.primaryViewId) < 0) { vuesASupprimer.push(t.primaryViewId); }
+  });
+  var pagesSupprimees = 0;
+  for (var v = 0; v < vuesASupprimer.length; v++) {
+    try { await MGP.g.actions([['RemoveRecord', '_grist_Views', vuesASupprimer[v]]]); pagesSupprimees++; } catch (e) { logSecurite('suppression de page impossible', e); }
+  }
+
+  /* 3. Libellés avec emoji (titre de la section brute), puis relecture des id réels. */
+  if (crees.length) {
+    var ren = [];
+    MGP.g.meta.tables.forEach(function (t) {
+      crees.forEach(function (cle) {
+        if (t.tableId === MGP.g.registre[cle] && parCle[cle].label && t.rawViewSectionRef) {
+          ren.push(['UpdateRecord', '_grist_Views_section', t.rawViewSectionRef, { title: parCle[cle].label }]);
+        }
+      });
+    });
+    var avant = {};
+    crees.forEach(function (cle) { var t = MGP.g.tableParId(MGP.g.registre[cle]); if (t) { avant[cle] = t.id; } });
+    try { await MGP.g.actions(ren); } catch (e) { logSecurite('renommage des tables', e); }
+    await MGP.g.chargerMeta();
+    Object.keys(avant).forEach(function (cle) {
+      var t = MGP.g.meta.tables.filter(function (x) { return x.id === avant[cle]; })[0];
+      if (t) { MGP.g.registre[cle] = t.tableId; }
+    });
+  }
+
+  /* 4. Colonnes : ajout des manquantes, puis formules, déclencheurs et choix. */
+  for (var k = 0; k < defs.length; k++) {
+    var d = defs[k];
+    var tid = MGP.g.registre[d.cle];
+    var tab = MGP.g.tableParId(tid);
+    if (!tab) { continue; }
+    var nouvelleTable = crees.indexOf(d.cle) >= 0;
+    var presentes = MGP.g.colonnesDe(tab.id).map(function (c) { return c.colId; });
+    var mods = [];
+    var toutes = d.colonnes.concat(MGP.colonnesSuivi());
+    for (var j = 0; j < toutes.length; j++) {
+      var c = toutes[j];
+      if (presentes.indexOf(c.id) < 0) {
+        var r = await MGP.g.actions([['AddColumn', tid, c.id, { type: c.formule ? 'Any' : MGP.g.resoudreType(c.type), label: c.id }]]);
+        var vrai = r.retValues[0] && r.retValues[0].colId;
+        if (vrai && vrai !== c.id) { logSecurite('colonne renommée par le document', c.id + ' -> ' + vrai); continue; }
+        mods = mods.concat(MGP.g.actionsColonne(tid, c, true));
+      } else if (nouvelleTable) {
+        mods = mods.concat(MGP.g.actionsColonne(tid, c, true));
+      }
+    }
+    if (mods.length) { await MGP.g.actions(mods); }
+  }
+
+  /* 5. Affichage des références, graines, registre. */
+  await MGP.g.chargerMeta();
+  var aff = [];
+  defs.forEach(function (d) {
+    var tid2 = MGP.g.registre[d.cle];
+    d.colonnes.forEach(function (c) { aff = aff.concat(MGP.g.actionsAffichageRef(tid2, c, parCle)); });
+  });
+  if (aff.length) { try { await MGP.g.actions(aff); } catch (e) { logSecurite('colonne d’affichage', e); } }
+
+  var graines = [];
+  defs.forEach(function (d) {
+    if (crees.indexOf(d.cle) >= 0 && d.graines && d.graines.length) {
+      var cols2 = {};
+      d.colonnes.slice(0, d.graines[0].length).forEach(function (c, ci) { cols2[c.id] = d.graines.map(function (g) { return g[ci]; }); });
+      graines.push(['BulkAddRecord', MGP.g.registre[d.cle], d.graines.map(function () { return null; }), cols2]);
+    }
+  });
+  if (graines.length) { await MGP.g.actions(graines); }
+
+  await MGP.g.chargerTech();
+  if (MGP.g.tech) {
+    for (var q = 0; q < defs.length; q++) {
+      var cle2 = defs[q].cle;
+      var reel = MGP.g.registre[cle2] || (MGP.g.trouver(defs[q]) || {}).tableId;
+      if (reel && cle2 !== 'TECH' && MGP.g.reglage('TABLE:' + cle2, null) !== reel) { await MGP.g.ecrireReglage('TABLE:' + cle2, reel); }
+      if (reel) { MGP.g.registre[cle2] = reel; }
+    }
+  }
+  return { crees: crees, pagesSupprimees: pagesSupprimees };
+};
+
+/* Définitions du socle (toujours créé en premier). */
+MGP.g.defsSocle = function () {
+  return MGP.ORDRE_SOCLE.map(function (c) { return MGP.SOCLE[c]; });
+};
+
+/* ==========================================================================
+   Renommer la page courante : section "custom" dont l'URL est celle du widget.
+   Si plusieurs pages correspondent (ou aucune), on ne renomme pas.
+   ========================================================================== */
+MGP.g.normaliserUrl = function (u) {
+  try {
+    var x = new URL(u, location.href);
+    return (x.origin + x.pathname).replace(/index\.html$/, '').replace(/\/+$/, '');
+  } catch (e) { return String(u || ''); }
+};
+/* Adresse du widget lue dans une section : options.customView (texte JSON, ou objet selon les versions). */
+MGP.g.urlSection = function (s) {
+  var o = {}, cv = {};
+  try { o = typeof s.options === 'string' ? JSON.parse(s.options || '{}') : (s.options || {}); } catch (e) { o = {}; }
+  try { cv = typeof o.customView === 'string' ? JSON.parse(o.customView || '{}') : (o.customView || {}); } catch (e) { cv = {}; }
+  return String(cv.url || o.url || '');
+};
+/* Page (vue) qui contient ce widget :
+   1) une section « custom » dont l'adresse est exactement celle du widget (sans paramètres ni index.html) ;
+   2) sinon, une section dont l'adresse contient le même dossier jour-NN ;
+   plusieurs pages candidates, ou aucune : null (on ne renomme rien). */
+MGP.g.vueCourante = async function () {
+  var moi = MGP.g.normaliserUrl(location.href);
+  var mj = /\/(jour-\d{2})(?:\/|$)/.exec(location.pathname + '/');
+  var sections = await MGP.g.lire('_grist_Views_section');
+  var vues = (await MGP.g.lire('_grist_Views')).map(function (v) { return v.id; });
+  var exactes = [], parJour = [];
+  sections.forEach(function (s) {
+    if (s.parentKey !== 'custom' || !s.parentId || vues.indexOf(s.parentId) < 0) { return; }
+    var u = MGP.g.urlSection(s);
+    if (!u) { return; }
+    var n = MGP.g.normaliserUrl(u);
+    if (n === moi) { if (exactes.indexOf(s.parentId) < 0) { exactes.push(s.parentId); } }
+    else if (mj && (n + '/').indexOf('/' + mj[1] + '/') >= 0 && parJour.indexOf(s.parentId) < 0) { parJour.push(s.parentId); }
+  });
+  if (exactes.length === 1) { return exactes[0]; }
+  if (exactes.length > 1) { logSecurite('plusieurs pages contiennent ce widget : pas de renommage'); return null; }
+  return parJour.length === 1 ? parJour[0] : null;
+};
+MGP.g.renommerPage = async function (nom) {
+  try {
+    var v = await MGP.g.vueCourante();
+    if (!v) { logSecurite('page courante introuvable : pas de renommage'); return false; }
+    await MGP.g.actions([['UpdateRecord', '_grist_Views', v, { name: nom }]]);
+    return true;
+  } catch (e) { logSecurite('renommage de page ignoré', e); return false; }
+};
+/* Petit rappel quand la page n'a pas pu être renommée (plusieurs pages candidates, ou widget collé). */
+MGP.g.afficherIndicePage = function () {
+  var c = MGP.g.CADEAU, app = document.getElementById('ecran-app');
+  var ancien = document.getElementById('indice-page');
+  if (ancien) { ancien.remove(); }
+  var textes = (MGP.g.pageInconnue && c ? ['Vous pouvez renommer cette page « ' + c.page + ' » (menu de gauche, trois points, Renommer).'] : []).concat(MGP.g.indices);
+  if (!c || !app || !textes.length) { return; }
+  var barre = app.querySelector('.barre');
+  var p = document.createElement('p');
+  p.id = 'indice-page';
+  p.className = 'mini';
+  p.style.margin = '-6px 0 12px';
+  p.textContent = textes.filter(function (x, i) { return textes.indexOf(x) === i; }).join(' ');
+  if (barre && barre.parentNode) { barre.parentNode.insertBefore(p, barre.nextSibling); }
+};
+
+/* ==========================================================================
+   Installation d'un widget en deux temps :
+   1) tables (socle + widget), marqueur INSTALL:<widget> = {etat:'tables'}, rechargement
+   2) au rechargement : exemples éventuels, renommage de la page, etat 'ok'
+   Le rechargement garantit que le widget voit bien les nouvelles tables.
+   ========================================================================== */
+MGP.g.cleInstall = function (widget) { return 'INSTALL:' + widget; };
+MGP.g.etatInstall = function (widget) {
+  var v = MGP.g.reglage(MGP.g.cleInstall(widget), null);
+  if (!v) { try { v = JSON.parse(sessionStorage.getItem('mgp-' + widget) || 'null'); } catch (e) { v = null; } }
+  return v;
+};
+MGP.g.installerTables = async function (widget, defsWidget, exemples) {
+  var res = await MGP.g.creerTables(MGP.g.defsSocle().concat(defsWidget));
+  var marque = { etat: 'tables', exemples: !!exemples };
+  var ok = false;
+  try { ok = await MGP.g.ecrireReglage(MGP.g.cleInstall(widget), marque); } catch (e) { logSecurite('marqueur d’installation', e); }
+  if (!ok) { try { sessionStorage.setItem('mgp-' + widget, JSON.stringify(marque)); } catch (e) { logSecurite('sessionStorage indisponible', e); } }
+  return res;
+};
+/* ==========================================================================
+   Cadeau installé = case ouverte dans le calendrier.
+   Chaque widget cadeau déclare son jour : MGP.g.CADEAU = {jour: 1, nom: 'Mes cadeaux'}.
+   Chaque widget cadeau déclare aussi le nom définitif de sa page : MGP.g.CADEAU.page = '🎁 Mes cadeaux'.
+   À l'installation (et à chaque démarrage, pour les documents installés avant ce marqueur), une ligne
+   CLE "cadeau.jour-01" / VALEUR {widget, installe_le, vue} est écrite dans la table technique : vue est l'id de la
+   page (jamais son nom, qui peut changer ; le calendrier relit le nom en direct). Idempotent : la date d'installation
+   d'origine est gardée, rien n'est réécrit si rien n'a changé.
+   ========================================================================== */
+MGP.g.CADEAU = null;
+MGP.g.cleCadeau = function (jour) { return 'cadeau.jour-' + (jour < 10 ? '0' : '') + jour; };
+MGP.g.pageInconnue = false;
+MGP.g.indices = [];
+
+/* ==========================================================================
+   Arborescence finale du document (après la saison) : des sections thématiques.
+   Chaque tête de section est une vraie page avec le widget public « resume » (?section=...).
+   Ordre des sections et ordre des sous-pages dans chaque section.
+   ========================================================================== */
+MGP.SECTIONS = {
+  argent: { ordre: 1, page: '💶 Mon argent', widgets: ['comptes', 'abonnements', 'achats'] },
+  maison: { ordre: 2, page: '🏡 Ma maison', widgets: ['energie', 'travaux', 'taches', 'menus'] },
+  famille: { ordre: 3, page: '🎉 Famille et fêtes', widgets: ['cadeaux', 'repas'] },
+  loisirs: { ordre: 4, page: '🌴 Temps libre', widgets: ['conges', 'voyages'] }
+};
+/* Adresse du widget public de récapitulatif, déduite de l'adresse publiée de ce widget
+   (.../avent/jour-NN/ ou .../widgets/nom/ -> .../resume/?section=...). Inconnue pour un widget collé. */
+MGP.g.urlResume = function (section) {
+  var m = /^(https?:\/\/.*?\/)(?:avent\/jour-\d{2}|widgets\/[\w-]+)\/(?:index\.html)?(?:[?#].*)?$/.exec(location.href);
+  return m ? m[1] + 'resume/?section=' + encodeURIComponent(section) : null;
+};
+MGP.g.pagesTriees = async function () {
+  return (await MGP.g.lire('_grist_Pages')).sort(function (a, b) { return (Number(a.pagePos) || 0) - (Number(b.pagePos) || 0); });
+};
+/* Position entre deux pages (PositionNumber : un nombre à virgule suffit). */
+MGP.g.positionEntre = function (avant, apres) {
+  var a = avant ? Number(avant.pagePos) || 0 : null, b = apres ? Number(apres.pagePos) || 0 : null;
+  if (a === null && b === null) { return 1; }
+  if (a === null) { return b - 1; }
+  if (b === null) { return a + 1; }
+  return (a + b) / 2;
+};
+/* Index de la dernière page du sous-arbre qui commence à l'index i. */
+MGP.g.finSousArbre = function (pages, i) {
+  var ind = pages[i].indentation || 0, j = i;
+  while (j + 1 < pages.length && (pages[j + 1].indentation || 0) > ind) { j++; }
+  return j;
+};
+/* Trouve ou crée la page tête de section. Renvoie l'id de la vue, ou null (avec un indice). */
+MGP.g.assurerSection = async function (cle) {
+  var sec = MGP.SECTIONS[cle];
+  if (!sec || !MGP.g.tech) { return null; }
+  var vues = await MGP.g.lire('_grist_Views'), ids = vues.map(function (v) { return v.id; });
+  var reg = MGP.g.reglage('section.' + cle, null);
+  if (reg && reg.vue && ids.indexOf(reg.vue) >= 0) { return reg.vue; }
+  var memeNom = vues.filter(function (v) { return v.name === sec.page; });
+  if (memeNom.length === 1) { await MGP.g.ecrireReglage('section.' + cle, { vue: memeNom[0].id }); return memeNom[0].id; }
+  if (memeNom.length > 1) { MGP.g.indices.push('Plusieurs pages s’appellent « ' + sec.page + ' » : rangez cette page dessous à la main si vous le souhaitez.'); return null; }
+  var url = MGP.g.urlResume(cle), tech = MGP.g.tableParId(MGP.g.tech);
+  if (!url || !tech) { MGP.g.indices.push('Vous pouvez créer une page « ' + sec.page + ' » et y glisser cette page.'); return null; }
+  /* Section « custom » liée à la table technique : aucune table ni page brute en plus. */
+  var r = await MGP.g.actions([['CreateViewSection', tech.id, 0, 'custom', null, null]]);
+  var res = r.retValues[0] || {};
+  if (!res.viewRef || !res.sectionRef) { return null; }
+  var cv = { mode: 'url', url: url, widgetDef: null, access: 'full', pluginId: '', sectionId: '', renderAfterReady: false };
+  /* Place de la tête : après la dernière section d'ordre inférieur, sinon avant la première d'ordre supérieur, sinon à la fin. */
+  var pages = await MGP.g.pagesTriees();
+  var moi = pages.filter(function (x) { return x.viewRef === res.viewRef; })[0];
+  var autres = pages.filter(function (x) { return x !== moi; });
+  var tetes = Object.keys(MGP.SECTIONS).map(function (k) { var g = MGP.g.reglage('section.' + k, null); return g && g.vue ? { ordre: MGP.SECTIONS[k].ordre, vue: g.vue } : null; }).filter(Boolean);
+  var avant = null, apres = null;
+  tetes.forEach(function (t) {
+    var i = autres.map(function (x) { return x.viewRef; }).indexOf(t.vue);
+    if (i < 0) { return; }
+    if (t.ordre < sec.ordre) { var f = MGP.g.finSousArbre(autres, i); if (avant === null || f > avant) { avant = f; } }
+    else if (t.ordre > sec.ordre && (apres === null || i < apres)) { apres = i; }
+  });
+  var a = [['UpdateRecord', '_grist_Views', res.viewRef, { name: sec.page }],
+    ['UpdateRecord', '_grist_Views_section', res.sectionRef, { title: '', options: JSON.stringify({ customView: JSON.stringify(cv) }) }]];
+  if (moi && (avant !== null || apres !== null)) {
+    var pos = avant !== null ? MGP.g.positionEntre(autres[avant], autres[avant + 1] || null) : MGP.g.positionEntre(autres[apres - 1] || null, autres[apres]);
+    a.push(['UpdateRecord', '_grist_Pages', moi.id, { pagePos: pos, indentation: 0 }]);
+  }
+  await MGP.g.actions(a);
+  await MGP.g.ecrireReglage('section.' + cle, { vue: res.viewRef });
+  return res.viewRef;
+};
+/* Range la page du widget sous sa tête de section, à la première installation seulement
+   (marqueur place.<widget>) : une page déplacée ensuite par l'utilisateur n'est jamais touchée. */
+MGP.g.rangerDansSection = async function () {
+  var c = MGP.g.CADEAU;
+  if (!c || !c.section || !c.cle || !MGP.g.tech || MGP.g.acces !== 'full') { return false; }
+  if (MGP.g.reglage('place.' + c.cle, null)) { return false; }
+  var sec = MGP.SECTIONS[c.section];
+  try {
+    var vue = await MGP.g.vueCourante();
+    if (!vue) { MGP.g.indices.push('Vous pouvez glisser cette page sous « ' + sec.page + ' ».'); return false; }
+    var tete = await MGP.g.assurerSection(c.section);
+    if (!tete) { return false; }
+    var pages = await MGP.g.pagesTriees();
+    var iMoi = pages.map(function (x) { return x.viewRef; }).indexOf(vue);
+    if (iMoi < 0) { return false; }
+    if (MGP.g.finSousArbre(pages, iMoi) !== iMoi) { MGP.g.indices.push('Cette page a des sous-pages : glissez-la à la main sous « ' + sec.page + ' » si vous le souhaitez.'); return false; }
+    var moi = pages[iMoi];
+    var autres = pages.filter(function (x) { return x !== moi; });
+    var iT = autres.map(function (x) { return x.viewRef; }).indexOf(tete);
+    if (iT < 0) { return false; }
+    var indT = autres[iT].indentation || 0, finT = MGP.g.finSousArbre(autres, iT);
+    /* Après la dernière sœur connue de rang inférieur (selon l'ordre de la section), sinon juste sous la tête. */
+    var monRang = sec.widgets.indexOf(c.cle), apres = iT;
+    Object.keys(MGP.g.techLignes.reduce(function (o, l) { if (String(l.CLE).indexOf('cadeau.jour-') === 0) { o[l.CLE] = 1; } return o; }, {})).forEach(function (k) {
+      var m = MGP.g.reglage(k, null);
+      if (!m || !m.vue || m.cle === c.cle || sec.widgets.indexOf(m.cle) < 0 || sec.widgets.indexOf(m.cle) > monRang) { return; }
+      var i = autres.map(function (x) { return x.viewRef; }).indexOf(m.vue);
+      if (i > iT && i <= finT && (autres[i].indentation || 0) === indT + 1) { var f = MGP.g.finSousArbre(autres, i); if (f > apres) { apres = f; } }
+    });
+    await MGP.g.actions([['UpdateRecord', '_grist_Pages', moi.id, { pagePos: MGP.g.positionEntre(autres[apres], autres[apres + 1] || null), indentation: indT + 1 }]]);
+    await MGP.g.ecrireReglage('place.' + c.cle, new Date(MGP.maintenant()).toISOString());
+    return true;
+  } catch (e) {
+    logSecurite('rangement dans la section', e);
+    MGP.g.indices.push('Vous pouvez glisser cette page sous « ' + sec.page + ' ».');
+    return false;
+  }
+};
+MGP.g.marquerCadeau = async function () {
+  var c = MGP.g.CADEAU;
+  if (!c || !MGP.g.tech || MGP.g.acces !== 'full') { return false; }
+  try {
+    var cle = MGP.g.cleCadeau(c.jour), avant = MGP.g.reglage(cle, null);
+    if (!avant || typeof avant !== 'object') { avant = null; }
+    var vue = await MGP.g.vueCourante();
+    MGP.g.pageInconnue = !vue && !(avant && avant.vue);
+    var v = { widget: c.nom, cle: c.cle || null, section: c.section || null, installe_le: (avant && avant.installe_le) || new Date(MGP.maintenant()).toISOString(), vue: vue || (avant && avant.vue) || null };
+    if (avant && JSON.stringify(avant) === JSON.stringify(v)) { return false; }
+    return await MGP.g.ecrireReglage(cle, v);
+  } catch (e) { logSecurite('marqueur de cadeau', e); return false; }
+};
+MGP.g.terminerInstall = async function (widget, nomPage, fnExemples, exemples) {
+  if (exemples && fnExemples) { await fnExemples(); }
+  var renommee = await MGP.g.renommerPage(nomPage);
+  await MGP.g.marquerCadeau();
+  await MGP.g.rangerDansSection();
+  await MGP.g.marquerCadeau();
+  if (!renommee) { MGP.g.pageInconnue = true; }
+  await MGP.g.ecrireReglage(MGP.g.cleInstall(widget), { etat: 'ok', le: new Date(MGP.maintenant()).toISOString() });
+  try { sessionStorage.removeItem('mgp-' + widget); } catch (e) { /* rien */ }
+};
+/* Mode « à coller » (widget Créer le vôtre / Custom Widget Builder) : pas de rechargement de la page,
+   le widget rejoue la suite de son démarrage (MGP.g.reprendre). build.py passe ce drapeau à true. */
+MGP.g.SANS_RECHARGEMENT = false;
+MGP.g.reprendre = null;
+MGP.g.recharger = function () {
+  setTimeout(function () {
+    if (MGP.g.SANS_RECHARGEMENT && typeof MGP.g.reprendre === 'function') { montrerLoader('Dernière touche...'); MGP.g.reprendre(); } else { location.reload(); }
+  }, 150);
+};
+
+/* ---- Pièces jointes ---- */
+MGP.g.jeton = null;
+MGP.g.jetonLecture = async function () {
+  if (MGP.g.jeton && MGP.g.jeton.expire > Date.now()) { return MGP.g.jeton; }
+  var t = await grist.docApi.getAccessToken({ readOnly: true });
+  MGP.g.jeton = { token: t.token, baseUrl: t.baseUrl, expire: Date.now() + Math.max(60000, (t.ttlMsecs || 300000) - 30000) };
+  return MGP.g.jeton;
+};
+MGP.g.urlPieceJointe = function (attId) {
+  if (!MGP.g.jeton) { return ''; }
+  return MGP.g.jeton.baseUrl + '/attachments/' + encodeURIComponent(attId) + '/download?auth=' + encodeURIComponent(MGP.g.jeton.token);
+};
+MGP.g.envoyerPieceJointe = async function (fichier) {
+  var t = await grist.docApi.getAccessToken({ readOnly: false });
+  var fd = new FormData();
+  fd.append('upload', fichier, fichier.name || 'photo.jpg');
+  var r = await fetch(t.baseUrl + '/attachments?auth=' + encodeURIComponent(t.token), { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+  if (!r.ok) { throw new Error('envoi refusé (' + r.status + ')'); }
+  var ids = await r.json();
+  return ids[0];
+};
+
+/* ---- Jauge du forfait gratuit : lignes de toutes les tables utilisateur ---- */
+MGP.LIMITE_LIGNES = 5000;
+MGP.g.compterLignes = async function () {
+  if (!MGP.g.meta) { await MGP.g.chargerMeta(); }
+  var total = 0;
+  var tables = MGP.g.meta.tables.filter(MGP.g.estTableUtilisateur);
+  for (var i = 0; i < tables.length; i++) {
+    try { var d = await grist.docApi.fetchTable(tables[i].tableId); total += (d.id || []).length; } catch (e) { logSecurite('comptage', e); }
+  }
+  return total;
+};
+MGP.jaugeLignesHTML = function (n) {
+  var alerte = n > MGP.LIMITE_LIGNES * 0.8;
+  return '<span class="pil ' + (alerte ? 't-flamant' : 't-ecume') + '">' + echapperHTML(MGP.formatNombre(n)) + ' lignes sur ' + echapperHTML(MGP.formatNombre(MGP.LIMITE_LIGNES)) + '</span>';
+};
+
+/* ---- Export CSV (séparateur ;, BOM pour les tableurs) ---- */
+MGP.exporterCSV = function (nomFichier, colonnes, lignes) {
+  function cell(v) {
+    var s = v === null || v === undefined ? '' : String(v);
+    if (/^[=+\-@]/.test(s)) { s = "'" + s; }
+    return /[";\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+  var txt = colonnes.map(function (c) { return cell(c.titre); }).join(';') + '\r\n' +
+    lignes.map(function (l) { return colonnes.map(function (c) { return cell(c.val(l)); }).join(';'); }).join('\r\n');
+  var blob = new Blob(['﻿' + txt], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nomFichier;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  MGP.annoncer('Export prêt : ' + nomFichier, 'ok');
+  return txt;
+};
+
+
+var RES = { section: null, d: {} };
+RES.WIDGETS = {
+  cadeaux: { emoji: '🎁', nom: 'Mes cadeaux', couleur: 't-flamant' },
+  repas: { emoji: '🍽️', nom: 'Repas de fête', couleur: 't-peche' },
+  conges: { emoji: '🏖️', nom: 'Mes congés', couleur: 't-ecume' }
+};
+RES.jour = function (sec) { return sec === null || sec === undefined || sec === '' ? null : Math.round(Number(sec) / 86400); };
+RES.aujourdhui = function () { var p = MGP.partiesParis(MGP.maintenant()); return Math.round(Date.UTC(p.a, p.m - 1, p.j) / 86400000); };
+RES.texteJour = function (j) { var d = new Date(j * 86400000); return MGP.dateLongue(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate()); };
+RES.jm = function (n) { return n === 0 ? 'aujourd’hui' : 'J-' + n; };
+RES.nb = function (n) { return MGP.formatNombre(Math.round(Number(n || 0) * 10) / 10); };
+RES.table = async function (cle) {
+  var id = MGP.g.registre[cle];
+  if (!id || !MGP.g.tableParId(id)) { return null; }
+  try { return await MGP.g.lire(id); } catch (e) { logSecurite('lecture ' + cle, e); return null; }
+};
+
+/* ---- Récapitulatifs ---- */
+RES.cadeaux = async function () {
+  var cad = await RES.table('CADEAUX'), pers = await RES.table('PERSONNES') || [];
+  if (!cad) { return null; }
+  var auj = RES.aujourdhui(), an = MGP.partiesParis(MGP.maintenant()).a;
+  var anniv = pers.filter(function (p) { return p.NAISSANCE; }).map(function (p) {
+    var d = new Date(p.NAISSANCE * 1000), m = d.getUTCMonth(), j = d.getUTCDate();
+    var prochain = Math.round(Date.UTC(an, m, j) / 86400000);
+    if (prochain < auj) { prochain = Math.round(Date.UTC(an + 1, m, j) / 86400000); }
+    return { p: p, j: prochain, age: new Date(prochain * 86400000).getUTCFullYear() - d.getUTCFullYear() };
+  }).sort(function (a, b) { return a.j - b.j; }).slice(0, 3);
+  var premier = 'Idée';
+  try {
+    var t = MGP.g.tableParId(MGP.g.registre.CADEAUX);
+    var col = MGP.g.colonnesDe(t.id).filter(function (c) { return c.colId === 'STATUT'; })[0];
+    var o = JSON.parse(col.widgetOptions || '{}');
+    if (o.choices && o.choices.length) { premier = o.choices[0]; }
+  } catch (e) { /* défaut */ }
+  var aAcheter = cad.filter(function (c) { return (c.STATUT || premier) === premier; });
+  var noel = MGP.joursAvantNoel(MGP.maintenant());
+  return '<div class="duo"><div class="t-citron"><span class="mini" style="color:var(--citron-f)">À acheter</span><div class="gros">' + aAcheter.length + '</div></div>' +
+    '<div class="t-flamant"><span class="mini" style="color:var(--flamant-f)">Noël</span><div class="gros">' + echapperHTML(RES.jm(noel)) + '</div></div></div>' +
+    (anniv.length ? '<p class="gras" style="margin-top:10px">Prochains anniversaires</p>' + anniv.map(function (a) {
+      return '<div class="ligne"><span aria-hidden="true">' + echapperHTML(a.p.EMOJI || '🎂') + '</span><span class="x"><b>' + echapperHTML(a.p.PRENOM || '') + '</b> : ' + echapperHTML(RES.texteJour(a.j)) + ' <span class="mini">(' + echapperHTML(RES.jm(a.j - auj)) + ', ' + a.age + ' ans)</span></span></div>';
+    }).join('') : '<p class="mini" style="margin-top:8px">Ajoutez une date de naissance à vos proches pour voir leurs anniversaires ici.</p>') +
+    (aAcheter.length ? '<p class="gras" style="margin-top:10px">Idées à acheter</p>' + aAcheter.slice(0, 3).map(function (c) {
+      var p = pers.filter(function (x) { return x.id === c.POUR; })[0];
+      return '<div class="ligne"><span aria-hidden="true">' + echapperHTML(c.EMOJI || '🎁') + '</span><span class="x">' + echapperHTML((c.IDEE || '') + (p ? ' pour ' + p.PRENOM : '')) + '</span></div>';
+    }).join('') : '');
+};
+RES.repas = async function () {
+  var rep = await RES.table('REPAS'), inv = await RES.table('INVITES') || [];
+  if (!rep) { return null; }
+  var auj = RES.aujourdhui();
+  var prochain = rep.filter(function (r) { return RES.jour(r.DATE) !== null && RES.jour(r.DATE) >= auj; }).sort(function (a, b) { return a.DATE - b.DATE; })[0];
+  if (!prochain) { return '<p class="mini">Aucun repas à venir.</p>'; }
+  var l = inv.filter(function (i) { return i.REPAS === prochain.id; });
+  var n = function (v) { return l.filter(function (i) { return (i.VIENT || 'Peut-être') === v; }).length; };
+  var couverts = typeof prochain.CONVIVES === 'number' ? prochain.CONVIVES : 0;
+  return '<div class="duo"><div class="t-flamant"><span class="mini" style="color:var(--flamant-f)">' + echapperHTML(prochain.TITRE || 'Repas') + '</span><div class="gros">' + echapperHTML(RES.jm(RES.jour(prochain.DATE) - auj)) + '</div></div>' +
+    '<div class="t-menthe"><span class="mini" style="color:var(--menthe-f)">Couverts</span><div class="gros">' + couverts + '</div></div></div>' +
+    '<p>' + echapperHTML(RES.texteJour(RES.jour(prochain.DATE)) + (prochain.LIEU ? ' · ' + prochain.LIEU : '')) + '</p>' +
+    '<div class="choix" style="margin-top:8px"><span class="pil t-menthe">' + n('Oui') + ' oui</span><span class="pil t-citron">' + n('Peut-être') + ' peut-être</span><span class="pil t-flamant">' + n('Non') + ' non</span></div>';
+};
+RES.conges = async function () {
+  var cg = await RES.table('CONGES'), cpt = await RES.table('COMPTEURS') || [];
+  if (!cg) { return null; }
+  var auj = RES.aujourdhui(), an = MGP.partiesParis(MGP.maintenant()).a;
+  var solde = function (t) { var c = cpt.filter(function (x) { return x.TYPE === t && Number(x.ANNEE) === an && !x.PERSONNE; })[0]; return c && typeof c.SOLDE === 'number' ? RES.nb(c.SOLDE) : '-'; };
+  var p = cg.filter(function (c) { return !c.PERSONNE && RES.jour(c.FIN) !== null && RES.jour(c.FIN) >= auj; }).sort(function (a, b) { return a.DEBUT - b.DEBUT; })[0];
+  return '<div class="duo"><div class="t-ecume"><span class="mini" style="color:var(--ecume-f)">CA ' + an + '</span><div class="gros">' + echapperHTML(solde('CA')) + '</div></div>' +
+    '<div class="t-lavande"><span class="mini" style="color:var(--lavande-f)">RTT ' + an + '</span><div class="gros">' + echapperHTML(solde('RTT')) + '</div></div></div>' +
+    (p ? '<div class="ligne"><span class="pil t-flamant">' + echapperHTML(RES.jour(p.DEBUT) <= auj ? 'en congé' : RES.jm(RES.jour(p.DEBUT) - auj)) + '</span><span class="x"><b>' + echapperHTML(p.NOTE || 'Prochain congé') + '</b><br><span class="mini">à partir du ' + echapperHTML(RES.texteJour(RES.jour(p.DEBUT))) + '</span></span></div>' : '<p class="mini">Aucun congé à venir.</p>');
+};
+
+RES.rendre = async function () {
+  var sec = MGP.SECTIONS[RES.section];
+  var z = document.getElementById('zone');
+  if (!sec) { document.getElementById('titre').textContent = 'Récapitulatif'; z.innerHTML = '<div class="carte vide"><p>Section inconnue. L’adresse du widget doit finir par ?section=argent, maison, famille ou loisirs.</p></div>'; return; }
+  document.getElementById('titre').textContent = sec.page;
+  if (MGP.g.acces !== 'full') { z.innerHTML = '<div class="carte vide"><p>Ce récapitulatif lit les tables de vos widgets : donnez-lui l’accès complet au document.</p></div>'; return; }
+  var vues = {};
+  try { (await MGP.g.lire('_grist_Views')).forEach(function (v) { vues[v.id] = v.name; }); } catch (e) { logSecurite('pages', e); }
+  var installes = MGP.g.techLignes.filter(function (l) { return String(l.CLE).indexOf('cadeau.jour-') === 0; })
+    .map(function (l) { try { return JSON.parse(l.VALEUR); } catch (e) { return null; } })
+    .filter(function (m) { return m && m.section === RES.section && RES.WIDGETS[m.cle]; })
+    .sort(function (a, b) { return sec.widgets.indexOf(a.cle) - sec.widgets.indexOf(b.cle); });
+  var cartes = [];
+  for (var i = 0; i < installes.length; i++) {
+    var m = installes[i], w = RES.WIDGETS[m.cle], corps = null;
+    try { corps = await RES[m.cle](); } catch (e) { logSecurite('récapitulatif ' + m.cle, e); }
+    if (corps === null) { continue; }
+    var page = m.vue && vues[m.vue] ? vues[m.vue] : null;
+    cartes.push('<section class="carte recap" data-widget="' + echapperHTML(m.cle) + '"><h2><span class="em ' + w.couleur + '" aria-hidden="true">' + w.emoji + '</span>' + echapperHTML(w.nom) + '</h2>' + corps +
+      '<p class="voir">' + echapperHTML(page ? 'Voir la page « ' + page + ' » dans le menu de gauche' : 'Voir sa page dans le menu de gauche') + '</p></section>');
+  }
+  document.getElementById('sous').textContent = cartes.length ? 'L’essentiel de vos widgets de cette section, d’un coup d’œil.' : '';
+  z.innerHTML = cartes.length ? '<div class="recaps">' + cartes.join('') + '</div>' :
+    '<div class="carte vide"><div class="gros" aria-hidden="true">🎄</div><p>Les widgets de cette section arrivent avec le calendrier de l’Avent.</p></div>';
+};
+RES.demarrer = async function () {
+  RES.section = MGP.param('section');
+  var acces = await MGP.g.demarrer('full');
+  try {
+    if (acces === 'full') { await MGP.g.lireReglagesDoc(); await MGP.g.chargerMeta(); await MGP.g.chargerTech(); }
+    await RES.rendre();
+  } catch (e) { logSecurite('récapitulatif', e); }
+  masquerLoader();
+  try { grist.on('message', function (m) { if (m && (m.dataChange || m.docChange)) { clearTimeout(RES.t); RES.t = setTimeout(async function () { await MGP.g.chargerMeta(); await MGP.g.chargerTech(); RES.rendre(); }, 400); } }); } catch (e) { logSecurite('écoute', e); }
+};
+window.RES = RES;
+RES.demarrer();
+</script>
+</body>
+</html>
