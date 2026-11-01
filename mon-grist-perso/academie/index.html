@@ -1795,9 +1795,22 @@ body.noel-fond {
   gap: 6px;
 }
 .ac-arriere h3 {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
   line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 0;
+  flex-shrink: 1;
+}
+.ac-arriere .mini {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 .ac-arriere .haut {
   display: flex;
@@ -1811,9 +1824,10 @@ body.noel-fond {
 }
 .ac-unites {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
   margin-top: auto;
+  flex-shrink: 0;
 }
 .ac-unites button {
   min-height: 44px;
@@ -1822,9 +1836,10 @@ body.noel-fond {
   background: var(--sable2);
   color: var(--encre);
   font-weight: 700;
-  font-size: 13px;
+  font-size: 20px;
+  line-height: 1;
   cursor: pointer;
-  padding: 2px 4px;
+  padding: 2px;
 }
 .ac-unites button:hover {
   background: var(--lavande);
@@ -5248,9 +5263,9 @@ ACA.carteHTML = function(m) {
   var e = ACA.etats.etats[m.id], n = P.niveauParcours(m.niveau) || { nom: "" }, c = ACA.COULEURS[m.niveau] || ["#FBEFE3", "#FBEFE3"];
   var fini = e === "terminée", surp = m.surprise || {}, ic = ACA.ICONES[surp.genre] || "🎁";
   var avant = '<button type="button" class="ac-face ac-avant" data-ac-carte="' + m.carte + '" style="background:linear-gradient(135deg,' + c[0] + "," + c[1] + ')" aria-label="' + echapperHTML("Carte " + m.carte + ", niveau " + n.nom + ", " + m.titre + " : " + e + (e === "verrouillée" ? "" : ". Retourner la carte")) + '"' + (fini ? " inert" : "") + '><span class="num" aria-hidden="true">' + m.carte + '</span><span class="niv" aria-hidden="true">' + echapperHTML(n.nom) + '</span><span class="ic" aria-hidden="true">' + (e === "verrouillée" ? "🔒" : "🎀") + '</span><span class="et" aria-hidden="true">' + echapperHTML(ACA.LIB_ETAT[e]) + "</span></button>";
-  var unites = [["capot", "📖 Leçon"], ["mission", "🛠️ Mission"], ["quiz", "🧠 Quiz"], ["surprise", ic + " Surprise"]];
+  var unites = [["capot", "📖", "Leçon"], ["mission", "🛠️", "Mission"], ["quiz", "🧠", "Quiz"], ["surprise", ic, "Surprise"]];
   var arriere = '<section class="ac-face ac-arriere" aria-labelledby="ac-t-' + m.carte + '"' + (fini ? "" : " inert") + '><div class="haut"><span class="surp" aria-hidden="true">' + (fini ? ic : "") + '</span><span class="pil ' + (fini ? "t-menthe" : "t-lavande") + '">' + echapperHTML((fini ? "✅ " : "") + "Carte " + m.carte) + '</span></div><h3 id="ac-t-' + m.carte + '" tabindex="-1">' + echapperHTML(m.titre) + "</h3>" + (fini ? '<span class="mini">' + echapperHTML((ACA.LIB_SURPRISE[surp.genre] || "Surprise") + " : " + (surp.nom || "")) + "</span>" : "") + (fini ? "" : '<button type="button" class="btn-icone ac-retourner" data-ac-retourner="' + m.carte + '" aria-label="Retourner la carte ' + m.carte + ' face cachée">↩</button>') + '<div class="ac-unites" role="group" aria-label="' + echapperHTML("Contenu de la carte " + m.carte) + '">' + unites.map(function(u) {
-    return '<button type="button" data-ac-ouvrir="' + u[0] + '" data-ac-id="' + echapperHTML(m.id) + '">' + u[1] + "</button>";
+    return '<button type="button" data-ac-ouvrir="' + u[0] + '" data-ac-id="' + echapperHTML(m.id) + '" title="' + u[2] + '" aria-label="' + echapperHTML(u[2] + ", carte " + m.carte) + '"><span aria-hidden="true">' + u[1] + "</span></button>";
   }).join("") + "</div></section>";
   return '<div class="ac-carte' + (fini ? " retournee terminee" : "") + '" data-id="' + echapperHTML(m.id) + '" data-carte="' + m.carte + '" data-etat="' + e + '"><div class="ac-int">' + avant + arriere + "</div></div>";
 };
