@@ -2931,11 +2931,11 @@ MGP.g.actionsAffichageRef = function(tableId, c, defs) {
   }
   return [["ModifyColumn", tableId, c.id, { visibleCol: vis.id }], ["SetDisplayFormula", tableId, null, col.id, "$" + c.id + "." + cible.affichage]];
 };
-MGP.g.retirerTable1 = async function() {
+MGP.g.table1Vierge = async function() {
   try {
     var t = MGP.g.tableParId("Table1");
     if (!t) {
-      return false;
+      return null;
     }
     var cols = (await MGP.g.lire("_grist_Tables_column")).filter(function(c) {
       return c.parentId === t.id && c.colId !== "manualSort" && !/^gristHelper_/.test(c.colId);
@@ -2946,17 +2946,36 @@ MGP.g.retirerTable1 = async function() {
     if (ids !== "A,B,C" || cols.some(function(c) {
       return c.formula;
     })) {
-      return false;
+      return null;
     }
     var lignes = await grist.docApi.fetchTable("Table1");
     if (lignes && lignes.id && lignes.id.length) {
-      return false;
+      return null;
     }
-    await MGP.g.actions([["RemoveTable", "Table1"]]);
-    return true;
+    return t;
   } catch (e) {
-    return false;
+    return null;
   }
+};
+MGP.g.reprendreTable1 = async function(def) {
+  var t = await MGP.g.table1Vierge();
+  if (!t) {
+    return null;
+  }
+  var cols = def.colonnes.concat(MGP.colonnesSuivi());
+  var a = cols.map(function(c) {
+    return ["AddColumn", "Table1", c.id, { type: c.formule ? "Any" : MGP.g.resoudreType(c.type), isFormula: false, label: c.id }];
+  });
+  ["A", "B", "C"].forEach(function(id) {
+    a.push(["RemoveColumn", "Table1", id]);
+  });
+  a.push(["RenameTable", "Table1", def.id]);
+  await MGP.g.actions(a);
+  await MGP.g.chargerMeta();
+  var n = MGP.g.meta.tables.filter(function(x) {
+    return x.id === t.id;
+  })[0];
+  return n ? n.tableId : null;
 };
 MGP.g.creerTables = async function(defs) {
   var parCle = {};
@@ -2966,15 +2985,20 @@ MGP.g.creerTables = async function(defs) {
   var crees = [], vuesASupprimer = [], refsNouvelles = [];
   await MGP.g.chargerMeta();
   await MGP.g.chargerTech();
-  if (await MGP.g.retirerTable1()) {
-    await MGP.g.chargerMeta();
-  }
   for (var i = 0; i < defs.length; i++) {
     var def = defs[i];
     var existe = MGP.g.trouver(def);
     if (existe) {
       MGP.g.registre[def.cle] = existe.tableId;
       continue;
+    }
+    if (def.cle === "TECH") {
+      var repris = await MGP.g.reprendreTable1(def);
+      if (repris) {
+        MGP.g.registre[def.cle] = repris;
+        crees.push(def.cle);
+        continue;
+      }
     }
     var cols = def.colonnes.concat(MGP.colonnesSuivi()).map(function(c2) {
       return { id: c2.id, type: c2.formule ? "Any" : MGP.g.resoudreType(c2.type), label: c2.id };
