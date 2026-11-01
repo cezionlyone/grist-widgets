@@ -5260,11 +5260,39 @@ ACA.surpriseHTML = function(m) {
   if (inst) {
     h += '<p style="margin-top:8px"><b>✅ Installé</b> : retrouvez-le sur sa page, dans le menu de gauche.</p>';
   } else if (url) {
-    h += '<p style="margin-top:8px">Pour l’ouvrir : ajoutez une page avec un widget personnalisé (« Ajouter un widget à la page », puis « Personnalisé »), donnez-lui l’accès complet et collez cette adresse :</p><div class="ac-url"><code id="ac-url">' + echapperHTML(url) + '</code><button type="button" class="btn sec" data-ac-copier>Copier l’adresse</button></div><p class="mini" style="margin-top:8px;color:var(--encre)">Dans le widget, deux façons de l’ouvrir : « Je le construis » (la mission) ou « Installe pour moi ».</p>';
+    h += (ACA.lectureSeule ? "" : '<div class="pc-pied" style="justify-content:flex-end"><button type="button" class="btn" data-ac-ajouter="' + echapperHTML(m.id) + '">🎁 Ajouter la page de mon cadeau</button></div>') + '<p style="margin-top:8px">Ou à la main : ajoutez une page avec un widget personnalisé (« Ajouter un widget à la page », puis « Personnalisé »), donnez-lui l’accès complet et collez cette adresse :</p><div class="ac-url"><code id="ac-url">' + echapperHTML(url) + '</code><button type="button" class="btn sec" data-ac-copier>Copier l’adresse</button></div><p class="mini" style="margin-top:8px;color:var(--encre)">Dans le widget, deux façons de l’ouvrir : « Je le construis » (la mission) ou « Installe pour moi ».</p>';
   } else if (s.genre !== "astuce" || !s.texte) {
     h += '<p style="margin-top:8px">Cette surprise arrive bientôt.</p>';
   }
   return h + "</section>";
+};
+ACA.ajouterPage = async function(id) {
+  try {
+    var m = P.module(id);
+    if (!m || !m.url) {
+      return false;
+    }
+    var url = new URL("../" + m.url, location.href).href;
+    if (!MGP.g.tech) {
+      await MGP.g.creerTables([MGP.SOCLE.TECH]);
+    }
+    await MGP.g.chargerMeta();
+    var tech = MGP.g.tableParId(MGP.g.tech);
+    if (!tech) {
+      return false;
+    }
+    var r = await MGP.g.actions([["CreateViewSection", tech.id, 0, "custom", null, null]]);
+    var res = r.retValues[0] || {};
+    if (!res.viewRef || !res.sectionRef) {
+      return false;
+    }
+    var cv = { mode: "url", url, widgetDef: null, access: "full", pluginId: "", sectionId: "", renderAfterReady: false };
+    await MGP.g.actions([["UpdateRecord", "_grist_Views", res.viewRef, { name: "🎁 " + (m.surprise && m.surprise.nom || m.titre || "Mon cadeau") }], ["UpdateRecord", "_grist_Views_section", res.sectionRef, { title: "", options: JSON.stringify({ customView: JSON.stringify(cv) }) }]]);
+    return true;
+  } catch (e) {
+    logSecurite("ajout de page", e);
+    return false;
+  }
 };
 ACA.ouvrirBilan = function(titre, rendre) {
   var d = document.getElementById("dlg-bilan");
@@ -5318,6 +5346,15 @@ ACA.brancher = function() {
     var b;
     if (b = ev.target.closest(".pc-nav [data-pc-vue]")) {
       ACA.vue(b.dataset.pcVue);
+      return;
+    }
+    if (b = ev.target.closest("[data-ac-ajouter]")) {
+      b.disabled = true;
+      var ok2 = await ACA.ajouterPage(b.dataset.acAjouter);
+      MGP.annoncer(ok2 ? "Page ajoutée : ouvrez-la dans le menu de gauche" : "Ajout impossible : vérifiez que l’Académie a l’accès complet", ok2 ? "ok" : "err");
+      if (!ok2) {
+        b.disabled = false;
+      }
       return;
     }
     if (ev.target.closest("[data-ac-copier]")) {
