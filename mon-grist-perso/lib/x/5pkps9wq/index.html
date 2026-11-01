@@ -3266,7 +3266,7 @@ MGP.g.estMarqueurCadeau = function(cle) {
 };
 MGP.g.pageInconnue = false;
 MGP.g.indices = [];
-MGP.SECTIONS = { argent: { ordre: 1, page: "💶 Mon argent", widgets: ["comptes", "abonnements", "garanties", "logement", "patrimoine", "epargne"] }, maison: { ordre: 2, page: "🏡 Ma maison", widgets: ["energie", "voiture", "travaux", "taches", "menus", "demenagement"] }, famille: { ordre: 3, page: "🎉 Famille et fêtes", widgets: ["cadeaux", "repas", "sante", "papiers"] }, loisirs: { ordre: 4, page: "🌴 Temps libre", widgets: ["envies", "conges", "voyages"] } };
+MGP.SECTIONS = { argent: { ordre: 1, page: "💶 Mon argent", widgets: ["comptes", "abonnements", "garanties", "logement", "patrimoine", "epargne"] }, maison: { ordre: 2, page: "🏡 Ma maison", widgets: ["energie", "voiture", "travaux", "taches", "menus", "demenagement"] }, famille: { ordre: 3, page: "🎉 Famille et fêtes", widgets: ["cadeaux", "repas", "sante", "papiers", "evenement"] }, loisirs: { ordre: 4, page: "🌴 Temps libre", widgets: ["envies", "conges", "voyages"] } };
 MGP.g.urlResume = function(section) {
   var m = /^(https?:\/\/.*?\/)(?:avent\/jour-\d{2}|widgets\/[\w-]+|lib\/x\/[\w-]+)\/(?:index\.html)?(?:[?#].*)?$/.exec(location.href);
   var base = m ? m[1] : "https://cezionlyone.github.io/grist-widgets/mon-grist-perso/";
@@ -3368,8 +3368,77 @@ MGP.g.assurerSection = async function(cle) {
   await MGP.g.ecrireReglage("section." + cle, { vue: res.viewRef });
   return res.viewRef;
 };
+MGP.g.pageAcademie = async function(sauf) {
+  var vues = await MGP.g.lire("_grist_Views"), sections = await MGP.g.lire("_grist_Views_section");
+  var ids = vues.map(function(v) {
+    return v.id;
+  });
+  var parUrl = sections.filter(function(s) {
+    return s.parentKey === "custom" && ids.indexOf(s.parentId) >= 0 && s.parentId !== sauf && /\/academie$/.test(MGP.g.normaliserUrl(MGP.g.urlSection(s)));
+  }).map(function(s) {
+    return s.parentId;
+  });
+  if (parUrl.length) {
+    return parUrl;
+  }
+  return vues.filter(function(v) {
+    return v.id !== sauf && /acad[ée]mie/i.test(String(v.name || ""));
+  }).map(function(v) {
+    return v.id;
+  });
+};
+MGP.g.placerEnTete = async function() {
+  var c = MGP.g.CADEAU;
+  if (MGP.g.reglage("place." + c.cle, null)) {
+    return false;
+  }
+  try {
+    var vue = await MGP.g.vueCourante();
+    if (!vue) {
+      MGP.g.indices.push("Vous pouvez glisser cette page en haut du menu, juste après l’Académie.");
+      return false;
+    }
+    var pages = await MGP.g.pagesTriees();
+    var iMoi = pages.map(function(x) {
+      return x.viewRef;
+    }).indexOf(vue);
+    if (iMoi < 0) {
+      return false;
+    }
+    if (MGP.g.finSousArbre(pages, iMoi) !== iMoi) {
+      MGP.g.indices.push("Cette page a des sous-pages : glissez-la à la main en haut du menu si vous le souhaitez.");
+      return false;
+    }
+    var moi = pages[iMoi], autres = pages.filter(function(x) {
+      return x !== moi;
+    });
+    var acas = await MGP.g.pageAcademie(vue), iA = -1;
+    autres.forEach(function(x, i) {
+      if (iA < 0 && acas.indexOf(x.viewRef) >= 0) {
+        iA = i;
+      }
+    });
+    var pos;
+    if (iA >= 0) {
+      var f = MGP.g.finSousArbre(autres, iA);
+      pos = MGP.g.positionEntre(autres[f], autres[f + 1] || null);
+    } else {
+      pos = MGP.g.positionEntre(null, autres[0] || null);
+    }
+    await MGP.g.actions([["UpdateRecord", "_grist_Pages", moi.id, { pagePos: pos, indentation: 0 }]]);
+    await MGP.g.ecrireReglage("place." + c.cle, new Date(MGP.maintenant()).toISOString());
+    return true;
+  } catch (e) {
+    logSecurite("page de tête", e);
+    MGP.g.indices.push("Vous pouvez glisser cette page en haut du menu, juste après l’Académie.");
+    return false;
+  }
+};
 MGP.g.rangerDansSection = async function() {
   var c = MGP.g.CADEAU;
+  if (c && c.enTete && !c.section && c.cle && MGP.g.tech && MGP.g.acces === "full") {
+    return MGP.g.placerEnTete();
+  }
   if (!c || !c.section || !c.cle || !MGP.g.tech || MGP.g.acces !== "full") {
     return false;
   }
