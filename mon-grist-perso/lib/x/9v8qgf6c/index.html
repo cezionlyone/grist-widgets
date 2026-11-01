@@ -1053,6 +1053,41 @@ code {
 .pc-voie b {
   font-size: 16px;
 }
+.pc-voie[aria-expanded=true] {
+  box-shadow: inset 0 0 0 2px var(--ecume-f);
+  background: var(--blanc);
+}
+.pc-installe {
+  margin-top: 12px;
+}
+.pc-installe .pc-inst {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+.pc-installe .pc-inst:focus-visible {
+  outline: 3px solid var(--ecume-f);
+  outline-offset: 3px;
+}
+.pc-installe .pc-inst .act {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+.pc-doublon {
+  margin-top: 8px;
+}
+.pc-partielle {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-s);
+  background: var(--citron);
+  color: var(--encre);
+}
 .pc-liens {
   display: flex;
   flex-wrap: wrap;
@@ -2102,8 +2137,8 @@ mark {
 <body>
 <div id="loader" class="loader actif" role="status"><div><div class="rond"></div><span class="txt">Chargement...</span></div></div>
 <div id="annonces" class="sr" aria-live="polite"></div>
-<main class="page noel" id="ecran-deballage" hidden>
-  <span class="pil t-menthe" id="deb-pil">🎁 Votre cadeau</span>
+<main class="page" id="ecran-deballage" hidden>
+  <span class="pil t-lavande" id="deb-pil" hidden></span>
   <div class="deb" style="margin-top:8px">
     <div>
       <h1>🚚 Je déménage</h1>
@@ -2752,10 +2787,10 @@ MGP.g.demarrer = function(accesRequis) {
   });
 };
 MGP.CHAMPS_SUIVI = ["CREE_LE", "CREE_PAR", "MODIFIE_LE", "MODIFIE_PAR"];
-MGP.SOCLE = { TECH: { cle: "TECH", id: "BIBLIOTHEQUE_MON_GRIST_PERSO_", label: "⚙️ BIBLIOTHÈQUE MON GRIST PERSO ⚡", motif: "BIBLIOTHEQUE_MON_GRIST_PERSO", signature: ["CLE", "VALEUR"], colonnes: [{ id: "CLE", type: "Text" }, { id: "VALEUR", type: "Text" }] }, PERSONNES: { cle: "PERSONNES", id: "Personnes", label: "👥 Personnes", nom: "Personnes", signature: ["PRENOM", "FOYER", "TYPE"], colonnes: [{ id: "PRENOM", type: "Text" }, { id: "TYPE", type: "Choice", choix: [["Adulte", "Pêche"], ["Enfant", "Lavande"], ["Proche", "Écume"], ["Ami", "Menthe"]] }, { id: "FOYER", type: "Bool" }, { id: "NAISSANCE", type: "Date" }, { id: "EMOJI", type: "Text" }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]] }, { id: "NOTES", type: "Text" }], affichage: "PRENOM" }, CATEGORIES: { cle: "CATEGORIES", id: "Categories", label: "🏷️ Catégories", nom: "Catégories", signature: ["NOM", "EMOJI", "COULEUR"], colonnes: [{ id: "NOM", type: "Text" }, { id: "EMOJI", type: "Text" }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]] }], affichage: "NOM", graines: [["Alimentation", "🛒", "Menthe"], ["Maison", "🏠", "Pêche"], ["Transport", "🚗", "Écume"], ["Loisirs", "🎭", "Lavande"], ["Cadeaux", "🎁", "Flamant"], ["Abonnements", "📱", "Citron"], ["Santé", "🩺", "Écume"], ["Épargne", "🌱", "Menthe"]] }, DOCUMENTS: { cle: "DOCUMENTS", id: "Documents", label: "📎 Documents", nom: "Documents", signature: ["FICHIER", "TITRE"], colonnes: [{ id: "TITRE", type: "Text" }, { id: "FICHIER", type: "Attachments" }, { id: "TYPE", type: "Choice", choix: [["Facture", "Citron"], ["Garantie", "Menthe"], ["Contrat", "Lavande"], ["Photo", "Flamant"], ["Autre", "Écume"]] }, { id: "PERSONNE", type: "Ref:@PERSONNES" }, { id: "CATEGORIE", type: "Ref:@CATEGORIES" }, { id: "DATE_DOC", type: "Date" }, { id: "NOTES", type: "Text" }], affichage: "TITRE" } };
+MGP.SOCLE = { TECH: { cle: "TECH", id: "BIBLIOTHEQUE_MON_GRIST_PERSO_", label: "⚙️ BIBLIOTHÈQUE MON GRIST PERSO ⚡", motif: "BIBLIOTHEQUE_MON_GRIST_PERSO", description: "Table technique des widgets Mon Grist perso : réglages, tables installées, cadeaux ouverts et progression. Une ligne par réglage, à ne pas modifier à la main.", signature: ["CLE", "VALEUR"], colonnes: [{ id: "CLE", type: "Text", description: "Nom du réglage (par exemple TABLE:CADEAUX, INSTALL:conges ou cadeau.jour-01). Une seule ligne par nom." }, { id: "VALEUR", type: "Text", description: "Valeur du réglage, en texte ou en JSON : l’id réel d’une table, l’état d’une installation, une date..." }] }, PERSONNES: { cle: "PERSONNES", id: "Personnes", label: "👥 Personnes", nom: "Personnes", description: "Les personnes du foyer et les proches, partagées par tous les widgets (cadeaux, congés, santé...). Une ligne par personne.", signature: ["PRENOM", "FOYER", "TYPE"], colonnes: [{ id: "PRENOM", type: "Text", description: "Prénom ou surnom de la personne, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "TYPE", type: "Choice", choix: [["Adulte", "Pêche"], ["Enfant", "Lavande"], ["Proche", "Écume"], ["Ami", "Menthe"]], description: "Lien avec vous, en Choix unique : Adulte, Enfant, Proche ou Ami." }, { id: "FOYER", type: "Bool", description: "Coché si la personne vit sous votre toit (Booléen)." }, { id: "NAISSANCE", type: "Date", description: "Date de naissance, facultative : elle sert aux anniversaires et aux âges." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la personne dans les widgets." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la personne dans les widgets (Choix unique)." }, { id: "NOTES", type: "Text", description: "Notes libres : tailles, goûts, idées..." }], affichage: "PRENOM" }, CATEGORIES: { cle: "CATEGORIES", id: "Categories", label: "🏷️ Catégories", nom: "Catégories", description: "Catégories de dépenses et de documents, partagées par tous les widgets (Alimentation, Maison, Transport...). Une ligne par catégorie.", signature: ["NOM", "EMOJI", "COULEUR"], colonnes: [{ id: "NOM", type: "Text", description: "Nom de la catégorie, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la catégorie." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la catégorie dans les widgets (Choix unique)." }], affichage: "NOM", graines: [["Alimentation", "🛒", "Menthe"], ["Maison", "🏠", "Pêche"], ["Transport", "🚗", "Écume"], ["Loisirs", "🎭", "Lavande"], ["Cadeaux", "🎁", "Flamant"], ["Abonnements", "📱", "Citron"], ["Santé", "🩺", "Écume"], ["Épargne", "🌱", "Menthe"]] }, DOCUMENTS: { cle: "DOCUMENTS", id: "Documents", label: "📎 Documents", nom: "Documents", description: "Fichiers rangés par les widgets : factures, garanties, contrats, photos. Une ligne par document, reliée aux autres tables par des colonnes de type Référence.", signature: ["FICHIER", "TITRE"], colonnes: [{ id: "TITRE", type: "Text", description: "Nom du document, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "FICHIER", type: "Attachments", description: "Le fichier lui-même (Pièce jointe) : il compte dans la taille du document Grist." }, { id: "TYPE", type: "Choice", choix: [["Facture", "Citron"], ["Garantie", "Menthe"], ["Contrat", "Lavande"], ["Photo", "Flamant"], ["Autre", "Écume"]], description: "Nature du document, en Choix unique : Facture, Garantie, Contrat, Photo... Certains widgets ajoutent leurs choix." }, { id: "PERSONNE", type: "Ref:@PERSONNES", description: "Personne concernée (Référence vers Personnes), facultative." }, { id: "CATEGORIE", type: "Ref:@CATEGORIES", description: "Catégorie du document (Référence vers Catégories), facultative." }, { id: "DATE_DOC", type: "Date", description: "Date du document (date de la facture, du contrat...)." }, { id: "NOTES", type: "Text", description: "Notes libres sur le document." }], affichage: "TITRE" } };
 MGP.ORDRE_SOCLE = ["TECH", "PERSONNES", "CATEGORIES", "DOCUMENTS"];
 MGP.colonnesSuivi = function() {
-  return [{ id: "CREE_LE", type: "DateTime:Europe/Paris", declencheur: "NOW()", quand: 0 }, { id: "CREE_PAR", type: "Text", declencheur: "user.Name", quand: 0 }, { id: "MODIFIE_LE", type: "DateTime:Europe/Paris", declencheur: "NOW()", quand: 2 }, { id: "MODIFIE_PAR", type: "Text", declencheur: "user.Name", quand: 2 }];
+  return [{ id: "CREE_LE", type: "DateTime:Europe/Paris", declencheur: "NOW()", quand: 0, description: "Date et heure de création de la ligne, posées une fois par une formule d’initialisation (NOW())." }, { id: "CREE_PAR", type: "Text", declencheur: "user.Name", quand: 0, description: "Nom de la personne qui a créé la ligne, posé une fois par une formule d’initialisation (user.Name)." }, { id: "MODIFIE_LE", type: "DateTime:Europe/Paris", declencheur: "NOW()", quand: 2, description: "Date et heure de la dernière modification de la ligne : formule d’initialisation (NOW()) recalculée à chaque changement." }, { id: "MODIFIE_PAR", type: "Text", declencheur: "user.Name", quand: 2, description: "Nom de la dernière personne qui a modifié la ligne : formule d’initialisation (user.Name) recalculée à chaque changement." }];
 };
 MGP.g.trouver = function(def) {
   var tables = MGP.g.meta.tables.filter(MGP.g.estTableUtilisateur);
@@ -2907,6 +2942,70 @@ MGP.g.actionsAffichageRef = function(tableId, c, defs) {
   }
   return [["ModifyColumn", tableId, c.id, { visibleCol: vis.id }], ["SetDisplayFormula", tableId, null, col.id, "$" + c.id + "." + cible.affichage]];
 };
+MGP.g.estVide = function(v) {
+  return v === null || v === void 0 || String(v).trim() === "";
+};
+MGP.g.actionsDescriptions = async function(defs) {
+  var a = [];
+  if (!MGP.g.meta) {
+    await MGP.g.chargerMeta();
+  }
+  var sections = [];
+  try {
+    sections = await MGP.g.lire("_grist_Views_section");
+  } catch (e) {
+    logSecurite("sections illisibles", e);
+  }
+  defs.forEach(function(d) {
+    var tid = MGP.g.registre[d.cle] || (MGP.g.trouver(d) || {}).tableId;
+    var t = tid ? MGP.g.tableParId(tid) : null;
+    if (!t) {
+      return;
+    }
+    var brute = sections.filter(function(s) {
+      return s.id === t.rawViewSectionRef;
+    })[0];
+    if (d.description && brute && "description" in brute && MGP.g.estVide(brute.description)) {
+      a.push(["UpdateRecord", "_grist_Views_section", brute.id, { description: d.description }]);
+    }
+    var cols = MGP.g.colonnesDe(t.id);
+    d.colonnes.concat(MGP.colonnesSuivi()).forEach(function(c) {
+      var col = cols.filter(function(x) {
+        return x.colId === c.id;
+      })[0];
+      if (c.description && col && "description" in col && MGP.g.estVide(col.description)) {
+        a.push(["ModifyColumn", t.tableId, c.id, { description: c.description }]);
+      }
+    });
+  });
+  return a;
+};
+MGP.g.completerDescriptions = async function(defs) {
+  try {
+    var a = await MGP.g.actionsDescriptions(defs);
+    if (a.length) {
+      await MGP.g.actions(a);
+    }
+    return a.length;
+  } catch (e) {
+    logSecurite("descriptions", e);
+    return 0;
+  }
+};
+MGP.g.DESCRIPTION_ATTENTE = "Page préparée par l’Académie : le widget cadeau s’y installe, puis lui donne son nom et sa description.";
+MGP.g.actionDecrireSection = function(s, titre, description) {
+  if (!s) {
+    return null;
+  }
+  var attente = s.description === MGP.g.DESCRIPTION_ATTENTE, maj = {};
+  if (titre && (MGP.g.estVide(s.title) || attente) && s.title !== titre) {
+    maj.title = titre;
+  }
+  if (description && "description" in s && (MGP.g.estVide(s.description) || attente) && s.description !== description) {
+    maj.description = description;
+  }
+  return Object.keys(maj).length ? ["UpdateRecord", "_grist_Views_section", s.id, maj] : null;
+};
 MGP.g.table1Vierge = async function() {
   try {
     var t = MGP.g.tableParId("Table1");
@@ -2947,6 +3046,24 @@ MGP.g.reprendreTable1 = async function(def) {
   });
   a.push(["RenameTable", "Table1", def.id]);
   await MGP.g.actions(a);
+  try {
+    var sections = await MGP.g.lire("_grist_Views_section");
+    var aRetirer = sections.filter(function(s) {
+      if (s.tableRef !== t.id || !s.parentId || s.parentKey === "custom") {
+        return false;
+      }
+      return sections.some(function(o) {
+        return o.id !== s.id && o.parentId === s.parentId;
+      });
+    }).map(function(s) {
+      return ["RemoveRecord", "_grist_Views_section", s.id];
+    });
+    if (aRetirer.length) {
+      await MGP.g.actions(aRetirer);
+    }
+  } catch (e) {
+    logSecurite("table1", e);
+  }
   await MGP.g.chargerMeta();
   var n = MGP.g.meta.tables.filter(function(x) {
     return x.id === t.id;
@@ -3087,6 +3204,7 @@ MGP.g.creerTables = async function(defs) {
       logSecurite("colonne d’affichage", e);
     }
   }
+  await MGP.g.completerDescriptions(defs);
   var graines = [];
   defs.forEach(function(d2) {
     if (crees.indexOf(d2.cle) >= 0 && d2.graines && d2.graines.length) {
@@ -3150,6 +3268,10 @@ MGP.g.estDiscret = function() {
   return /\/lib\/x\/[\w-]+\/?(?:index\.html)?$/.test(location.pathname);
 };
 MGP.g.vueCourante = async function() {
+  var s = await MGP.g.sectionCourante();
+  return s ? s.parentId : null;
+};
+MGP.g.sectionCourante = async function() {
   var moi = MGP.g.normaliserUrl(location.href);
   var mj = /\/(jour-\d{2})(?:\/|$)/.exec(location.pathname + "/");
   if (!mj && MGP.g.estDiscret() && MGP.g.CADEAU && MGP.g.CADEAU.jour) {
@@ -3159,7 +3281,7 @@ MGP.g.vueCourante = async function() {
   var vues = (await MGP.g.lire("_grist_Views")).map(function(v) {
     return v.id;
   });
-  var exactes = [], parJour = [];
+  var exactes = [], parJour = [], secE = {}, secJ = {};
   sections.forEach(function(s) {
     if (s.parentKey !== "custom" || !s.parentId || vues.indexOf(s.parentId) < 0) {
       return;
@@ -3172,19 +3294,29 @@ MGP.g.vueCourante = async function() {
     if (n === moi) {
       if (exactes.indexOf(s.parentId) < 0) {
         exactes.push(s.parentId);
+        secE[s.parentId] = s;
       }
     } else if (mj && (n + "/").indexOf("/" + mj[1] + "/") >= 0 && parJour.indexOf(s.parentId) < 0) {
       parJour.push(s.parentId);
+      secJ[s.parentId] = s;
     }
   });
+  var choisie = MGP.g.pageChoisie();
+  if (choisie && exactes.indexOf(choisie.vue) >= 0) {
+    return secE[choisie.vue];
+  }
   if (exactes.length === 1) {
-    return exactes[0];
+    return secE[exactes[0]];
   }
   if (exactes.length > 1) {
     logSecurite("plusieurs pages contiennent ce widget : pas de renommage");
     return null;
   }
-  return parJour.length === 1 ? parJour[0] : null;
+  return parJour.length === 1 ? secJ[parJour[0]] : null;
+};
+MGP.g.pageChoisie = function() {
+  var c = MGP.g.CADEAU, r = c && c.cle && MGP.g.tech ? MGP.g.reglage("page." + c.cle, null) : null;
+  return r && typeof r === "object" && r.vue ? r : null;
 };
 MGP.g.renommerPage = async function(nom) {
   try {
@@ -3192,6 +3324,10 @@ MGP.g.renommerPage = async function(nom) {
     if (!v) {
       logSecurite("page courante introuvable : pas de renommage");
       return false;
+    }
+    var choisie = MGP.g.pageChoisie();
+    if (choisie && choisie.vue === v) {
+      return true;
     }
     await MGP.g.actions([["UpdateRecord", "_grist_Views", v, { name: nom }]]);
     return true;
@@ -3237,6 +3373,9 @@ MGP.g.etatInstall = function(widget) {
   return v;
 };
 MGP.g.installerTables = async function(widget, defsWidget, exemples) {
+  if (MGP.parcours && MGP.parcours.avantInstallation) {
+    await MGP.parcours.avantInstallation(defsWidget);
+  }
   var res = await MGP.g.creerTables(MGP.g.defsSocle().concat(defsWidget));
   var marque = { etat: "tables", exemples: !!exemples };
   var ok = false;
@@ -3297,6 +3436,10 @@ MGP.g.finSousArbre = function(pages, i) {
     j++;
   }
   return j;
+};
+MGP.g.descriptionSection = function(cle) {
+  var sec = MGP.SECTIONS[cle];
+  return sec ? "Récapitulatif de la section « " + sec.page + " » (widget public resume) : un résumé de chaque widget rangé dessous, lu en direct dans vos tables." : "";
 };
 MGP.g.assurerSection = async function(cle) {
   var sec = MGP.SECTIONS[cle];
@@ -3360,7 +3503,7 @@ MGP.g.assurerSection = async function(cle) {
       apres = i;
     }
   });
-  var a = [["UpdateRecord", "_grist_Views", res.viewRef, { name: sec.page }], ["UpdateRecord", "_grist_Views_section", res.sectionRef, { title: "", options: JSON.stringify({ customView: JSON.stringify(cv) }) }]];
+  var a = [["UpdateRecord", "_grist_Views", res.viewRef, { name: sec.page }], ["UpdateRecord", "_grist_Views_section", res.sectionRef, { title: sec.page, description: MGP.g.descriptionSection(cle), options: JSON.stringify({ customView: JSON.stringify(cv) }) }]];
   if (moi && (avant !== null || apres !== null)) {
     var pos = avant !== null ? MGP.g.positionEntre(autres[avant], autres[avant + 1] || null) : MGP.g.positionEntre(autres[apres - 1] || null, autres[apres]);
     a.push(["UpdateRecord", "_grist_Pages", moi.id, { pagePos: pos, indentation: 0 }]);
@@ -3388,13 +3531,13 @@ MGP.g.pageAcademie = async function(sauf) {
     return v.id;
   });
 };
-MGP.g.placerEnTete = async function() {
+MGP.g.placerEnTete = async function(vueForcee) {
   var c = MGP.g.CADEAU;
   if (MGP.g.reglage("place." + c.cle, null)) {
     return false;
   }
   try {
-    var vue = await MGP.g.vueCourante();
+    var vue = vueForcee || await MGP.g.vueCourante();
     if (!vue) {
       MGP.g.indices.push("Vous pouvez glisser cette page en haut du menu, juste après l’Académie.");
       return false;
@@ -3435,10 +3578,10 @@ MGP.g.placerEnTete = async function() {
     return false;
   }
 };
-MGP.g.rangerDansSection = async function() {
+MGP.g.rangerDansSection = async function(vueForcee) {
   var c = MGP.g.CADEAU;
   if (c && c.enTete && !c.section && c.cle && MGP.g.tech && MGP.g.acces === "full") {
-    return MGP.g.placerEnTete();
+    return MGP.g.placerEnTete(vueForcee);
   }
   if (!c || !c.section || !c.cle || !MGP.g.tech || MGP.g.acces !== "full") {
     return false;
@@ -3448,7 +3591,7 @@ MGP.g.rangerDansSection = async function() {
   }
   var sec = MGP.SECTIONS[c.section];
   try {
-    var vue = await MGP.g.vueCourante();
+    var vue = vueForcee || await MGP.g.vueCourante();
     if (!vue) {
       MGP.g.indices.push("Vous pouvez glisser cette page sous « " + sec.page + " ».");
       return false;
@@ -3509,11 +3652,47 @@ MGP.g.rangerDansSection = async function() {
     return false;
   }
 };
+MGP.g.decrit = false;
+MGP.g.decrireWidget = async function() {
+  var c = MGP.g.CADEAU;
+  if (!c || MGP.g.decrit || !MGP.g.tech || MGP.g.acces !== "full") {
+    return false;
+  }
+  MGP.g.decrit = true;
+  try {
+    var a = [];
+    var s = await MGP.g.sectionCourante();
+    if (s && c.page && s.title === c.nom) {
+      s = Object.assign({}, s, { title: "" });
+    }
+    var x = MGP.g.actionDecrireSection(s, c.page || c.nom, c.description || "Widget « " + (c.nom || c.page) + " » de Mon Grist perso.");
+    if (x) {
+      a.push(x);
+    }
+    if (a.length) {
+      await MGP.g.actions(a);
+    }
+    await MGP.g.chargerMeta();
+    var defs = MGP.g.defsSocle();
+    if (MGP.parcours && MGP.parcours.DEF && MGP.g.trouver(MGP.parcours.DEF)) {
+      defs.push(MGP.parcours.DEF);
+    }
+    if (typeof c.defs === "function") {
+      defs = defs.concat(c.defs());
+    }
+    await MGP.g.completerDescriptions(defs);
+    return true;
+  } catch (e) {
+    logSecurite("description de la vue", e);
+    return false;
+  }
+};
 MGP.g.marquerCadeau = async function() {
   var c = MGP.g.CADEAU;
   if (!c || !MGP.g.tech || MGP.g.acces !== "full") {
     return false;
   }
+  await MGP.g.decrireWidget();
   try {
     var cle = MGP.g.cleCadeau(c), avant = MGP.g.reglage(cle, null);
     if (!avant || typeof avant !== "object") {
@@ -3535,6 +3714,7 @@ MGP.g.terminerInstall = async function(widget, nomPage, fnExemples, exemples) {
   if (exemples && fnExemples) {
     await fnExemples();
   }
+  MGP.g.decrit = false;
   var renommee = await MGP.g.renommerPage(nomPage);
   await MGP.g.marquerCadeau();
   await MGP.g.rangerDansSection();
@@ -3636,7 +3816,7 @@ MGP.exporterCSV = function(nomFichier, colonnes, lignes) {
   return txt;
 };
 MGP.capot = {};
-MGP.capot.TYPES = { Text: "Texte", Numeric: "Numérique", Int: "Numérique", Date: "Date", DateTime: "Date et heure", Choice: "Choix", ChoiceList: "Choix multiple", Ref: "Référence", RefList: "Liste de références", Attachments: "Pièce jointe", Bool: "Booléen", Any: "Formule" };
+MGP.capot.TYPES = { Text: "Texte", Numeric: "Numérique", Int: "Entier", Date: "Date", DateTime: "Date et Heure", Choice: "Choix unique", ChoiceList: "Choix multiple", Ref: "Référence", RefList: "Référence multiple", Attachments: "Pièce jointe", Bool: "Booléen", Any: "Formule" };
 MGP.capot.ROLES_SUIVI = { CREE_LE: "date et heure de création de la ligne, remplies toutes seules", CREE_PAR: "qui a créé la ligne, rempli tout seul", MODIFIE_LE: "date et heure de la dernière modification, mises à jour toutes seules", MODIFIE_PAR: "qui a modifié la ligne en dernier, rempli tout seul" };
 MGP.capot.typeFr = function(col) {
   var base = String(col.type || "Any").split(":")[0];
@@ -3848,7 +4028,7 @@ MGP.capot.rendre = function(conteneur, cfg) {
     conteneur.querySelector("#capot-role").textContent = t.role;
     conteneur.querySelector("#capot-fiches").innerHTML = MGP.capot.fiches(t, cfg, etat.champ);
   }
-  conteneur.innerHTML = '<div class="capot-grille"><section class="carte"><h2>Les tables et leurs liens <span class="mini" style="font-weight:600">· lu en direct dans votre document</span></h2><p class="mini" style="margin:6px 0 10px">Une flèche = une colonne <b>Référence</b> : elle pointe vers une ligne d’une autre table. En pointillés : une <b>liste de références</b>. Touchez un champ pour voir sa fiche.</p><div class="vue-bureau">' + MGP.capot.schemaSVG(tables) + '</div><div class="vue-mobile">' + MGP.capot.schemaMobile(tables) + "</div></section><div>" + MGP.capot.formules(cfg, tables) + MGP.capot.extras(cfg) + '</div></div><section class="carte" style="margin-top:16px" id="capot-champs"><h2>Les champs, un par un</h2><div class="choix" id="capot-choix-table" role="group" aria-label="Choisir la table" style="margin:10px 0"></div><p class="mini" id="capot-role" style="margin-bottom:12px"></p><div id="capot-fiches"></div></section>';
+  conteneur.innerHTML = '<div class="capot-grille"><section class="carte"><h2>Les tables et leurs liens <span class="mini" style="font-weight:600">· lu en direct dans votre document</span></h2><p class="mini" style="margin:6px 0 10px">Une flèche = une colonne <b>Référence</b> : elle pointe vers une ligne d’une autre table. En pointillés : une <b>Référence multiple</b>. Touchez un champ pour voir sa fiche.</p><div class="vue-bureau">' + MGP.capot.schemaSVG(tables) + '</div><div class="vue-mobile">' + MGP.capot.schemaMobile(tables) + "</div></section><div>" + MGP.capot.formules(cfg, tables) + MGP.capot.extras(cfg) + '</div></div><section class="carte" style="margin-top:16px" id="capot-champs"><h2>Les champs, un par un</h2><div class="choix" id="capot-choix-table" role="group" aria-label="Choisir la table" style="margin:10px 0"></div><p class="mini" id="capot-role" style="margin-bottom:12px"></p><div id="capot-fiches"></div></section>';
   rendreFiches();
   function montrerChamp(cle, col) {
     etat.table = cle;
@@ -4115,10 +4295,10 @@ MGP.parcours = MGP.parcours || {};
   P.cfg = null;
   P.lignes = [];
   P.table = null;
-  P.COMPETENCES = [["priseenmain", "Prendre en main : document, pages, widgets de page", "https://support.getgrist.com/page-widgets/"], ["tables", "Les types de champs", "https://support.getgrist.com/col-types/"], ["trier", "Trier, filtrer, chercher", "https://support.getgrist.com/search-sort-filter/"], ["choix", "Choix et listes de choix", "https://support.getgrist.com/col-types/"], ["formules", "Premières formules", "https://support.getgrist.com/formulas/"], ["dates", "Les dates", "https://support.getgrist.com/dates/"], ["references", "Références entre tables", "https://support.getgrist.com/col-refs/"], ["listes", "Listes de références", "https://support.getgrist.com/col-refs/"], ["piecesjointes", "Pièces jointes", "https://support.getgrist.com/col-types/"], ["lies", "Lier des widgets entre eux", "https://support.getgrist.com/linking-widgets/"], ["fiches", "Vue fiche et liste de fiches", "https://support.getgrist.com/widget-card/"], ["miseenforme", "Mise en forme conditionnelle", "https://support.getgrist.com/conditional-formatting/"], ["graphiques", "Graphiques", "https://support.getgrist.com/widget-chart/"], ["import", "Import et export", "https://support.getgrist.com/imports/"], ["conditions", "Conditions dans les formules", "https://support.getgrist.com/formulas/"], ["lookups", "lookupRecords, lookupOne et totaux", "https://support.getgrist.com/references-lookups/"], ["resumes", "Tables de résumé", "https://support.getgrist.com/summary-tables/"], ["liaison", "Table de liaison", "https://support.getgrist.com/col-refs/"], ["declencheurs", "Formules déclencheurs", "https://support.getgrist.com/formulas/"], ["precedent", "PREVIOUS et cumuls", "https://support.getgrist.com/functions/"], ["formulaires", "Formulaires", "https://support.getgrist.com/widget-form/"], ["partage", "Partage, rôles et invités", "https://support.getgrist.com/sharing/"], ["acces", "Règles d’accès", "https://support.getgrist.com/access-rules/"], ["historique", "Historique, copies et modèles", "https://support.getgrist.com/automatic-backups/"], ["widgets", "Widgets personnalisés", "https://support.getgrist.com/widget-custom/"], ["conception", "Bien concevoir son document, limites du forfait gratuit", "https://support.getgrist.com/limits/"]];
+  P.COMPETENCES = [["priseenmain", "Prendre en main : document, pages, vues", "https://support.getgrist.com/page-widgets/", "Prendre en main : document, pages, widgets de page"], ["tables", "Les types de colonnes", "https://support.getgrist.com/col-types/", "Les types de champs"], ["trier", "Trier, filtrer, chercher", "https://support.getgrist.com/search-sort-filter/"], ["choix", "Choix unique et Choix multiple", "https://support.getgrist.com/col-types/", "Choix et listes de choix"], ["formules", "Premières formules", "https://support.getgrist.com/formulas/"], ["dates", "Les dates", "https://support.getgrist.com/dates/"], ["references", "Références entre tables", "https://support.getgrist.com/col-refs/"], ["listes", "Références multiples", "https://support.getgrist.com/col-refs/", "Listes de références"], ["piecesjointes", "Pièces jointes", "https://support.getgrist.com/col-types/"], ["lies", "Lier des vues entre elles", "https://support.getgrist.com/linking-widgets/", "Lier des widgets entre eux"], ["fiches", "Vue fiche et liste de fiches", "https://support.getgrist.com/widget-card/"], ["miseenforme", "Styles conditionnels", "https://support.getgrist.com/conditional-formatting/", "Mise en forme conditionnelle"], ["graphiques", "Graphiques", "https://support.getgrist.com/widget-chart/"], ["import", "Import et export", "https://support.getgrist.com/imports/"], ["conditions", "Conditions dans les formules", "https://support.getgrist.com/formulas/"], ["lookups", "lookupRecords, lookupOne et totaux", "https://support.getgrist.com/references-lookups/"], ["resumes", "Tables récapitulatives", "https://support.getgrist.com/summary-tables/", "Tables de résumé"], ["liaison", "Table de liaison", "https://support.getgrist.com/col-refs/"], ["declencheurs", "Formules d’initialisation", "https://support.getgrist.com/formulas/", "Formules déclencheurs"], ["precedent", "PREVIOUS et cumuls", "https://support.getgrist.com/functions/"], ["formulaires", "Formulaires", "https://support.getgrist.com/widget-form/"], ["partage", "Partage, rôles et invités", "https://support.getgrist.com/sharing/"], ["acces", "Règles d’accès", "https://support.getgrist.com/access-rules/"], ["historique", "Historique, copies et modèles", "https://support.getgrist.com/automatic-backups/"], ["widgets", "Vues personnalisées", "https://support.getgrist.com/widget-custom/", "Widgets personnalisés"], ["conception", "Bien concevoir son document, limites du forfait gratuit", "https://support.getgrist.com/limits/"]];
   P.competence = function(cle) {
     var c = P.COMPETENCES.filter(function(x) {
-      return x[0] === cle || x[1] === cle;
+      return x[0] === cle || x[1] === cle || x[3] === cle;
     })[0];
     return c ? { cle: c[0], nom: c[1], aide: c[2] } : null;
   };
@@ -4251,9 +4431,9 @@ MGP.parcours = MGP.parcours || {};
     } });
   };
   P.GENRES = ["Module", "Compétence", "Placement", "Bilan de niveau", "Bilan final"];
-  P.DEF = { cle: "PARCOURS", id: "PARCOURS_MON_GRIST_PERSO_", label: "🎓 PARCOURS MON GRIST PERSO ✨", motif: "PARCOURS_MON_GRIST_PERSO", signature: ["MODULE", "COMPETENCE", "MISSION"], colonnes: [{ id: "GENRE", type: "Choice", choix: [["Module", "Écume"], ["Compétence", "Menthe"], ["Placement", "Citron"], ["Bilan de niveau", "Lavande"], ["Bilan final", "Flamant"]] }, { id: "MODULE", type: "Text" }, { id: "NIVEAU", type: "Text" }, { id: "COMPETENCE", type: "Choice", choix: P.COMPETENCES.map(function(c, i) {
+  P.DEF = { cle: "PARCOURS", id: "PARCOURS_MON_GRIST_PERSO_", label: "🎓 PARCOURS MON GRIST PERSO ✨", motif: "PARCOURS_MON_GRIST_PERSO", description: "Progression dans l’Académie Grist : une ligne par module, compétence ou bilan, avec missions, quiz et niveaux atteints. Écrite par l’Académie.", signature: ["MODULE", "COMPETENCE", "MISSION"], colonnes: [{ id: "GENRE", type: "Choice", choix: [["Module", "Écume"], ["Compétence", "Menthe"], ["Placement", "Citron"], ["Bilan de niveau", "Lavande"], ["Bilan final", "Flamant"]], description: "Genre de ligne, en Choix unique : Module (une leçon), Compétence, Placement (test de niveau), Bilan de niveau ou Bilan final." }, { id: "MODULE", type: "Text", description: "Identifiant du module, de la compétence ou du bilan suivi par la ligne." }, { id: "NIVEAU", type: "Text", description: "Niveau du module (Découverte, Pratique ou Maîtrise)." }, { id: "COMPETENCE", type: "Choice", choix: P.COMPETENCES.map(function(c, i) {
     return [c[1], MGP.COULEURS[i % MGP.COULEURS.length]];
-  }) }, { id: "MISSION", type: "Choice", choix: [["Non commencée", "Citron"], ["Réussie", "Menthe"], ["Passée", "Écume"]] }, { id: "MISSION_POINTS", type: "Int" }, { id: "INDICES", type: "Int" }, { id: "ESSAIS_MISSION", type: "Int" }, { id: "MISSION_LE", type: "DateTime:Europe/Paris" }, { id: "QUIZ_POINTS", type: "Int" }, { id: "QUIZ_MAX", type: "Int" }, { id: "QUIZ_SCORE", type: "Int" }, { id: "ESSAIS_QUIZ", type: "Int" }, { id: "QUIZ_LE", type: "DateTime:Europe/Paris" }, { id: "QUIZ_REPONSES", type: "Text" }, { id: "SCORE", type: "Int" }, { id: "ACQUIS", type: "Choice", choix: [["Découverte", "Pêche"], ["Pratique", "Citron"], ["Maîtrise", "Menthe"]] }, { id: "DETAIL", type: "Text" }, { id: "NIVEAUX", type: "Text" }, { id: "NOM", type: "Text" }] };
+  }), description: "Compétence Grist travaillée, en Choix unique." }, { id: "MISSION", type: "Choice", choix: [["Non commencée", "Citron"], ["Réussie", "Menthe"], ["Passée", "Écume"]], description: "État de la mission du module, en Choix unique : Non commencée, Réussie ou Passée." }, { id: "MISSION_POINTS", type: "Int", description: "Points gagnés à la mission." }, { id: "INDICES", type: "Int", description: "Nombre d’indices demandés pendant la mission." }, { id: "ESSAIS_MISSION", type: "Int", description: "Nombre de vérifications de la mission." }, { id: "MISSION_LE", type: "DateTime:Europe/Paris", description: "Date et heure de la mission réussie ou passée." }, { id: "QUIZ_POINTS", type: "Int", description: "Points obtenus au dernier quiz." }, { id: "QUIZ_MAX", type: "Int", description: "Points possibles au quiz." }, { id: "QUIZ_SCORE", type: "Int", description: "Meilleur score au quiz." }, { id: "ESSAIS_QUIZ", type: "Int", description: "Nombre de fois où le quiz a été fait." }, { id: "QUIZ_LE", type: "DateTime:Europe/Paris", description: "Date et heure du dernier quiz." }, { id: "QUIZ_REPONSES", type: "Text", description: "Réponses du dernier quiz, en JSON (question et bonne ou mauvaise réponse)." }, { id: "SCORE", type: "Int", description: "Score de la compétence, sur 100." }, { id: "ACQUIS", type: "Choice", choix: [["Découverte", "Pêche"], ["Pratique", "Citron"], ["Maîtrise", "Menthe"]], description: "Niveau atteint sur la compétence, en Choix unique : Découverte, Pratique ou Maîtrise." }, { id: "DETAIL", type: "Text", description: "Détail du résultat, en JSON, écrit par l’Académie." }, { id: "NIVEAUX", type: "Text", description: "Niveaux obtenus à un bilan, en texte." }, { id: "NOM", type: "Text", description: "Nom à imprimer sur le badge du bilan final." }] };
   P.maintenantSec = function() {
     return Math.floor(MGP.maintenant() / 1e3);
   };
@@ -4424,7 +4604,7 @@ MGP.parcours = MGP.parcours || {};
   P.norm = function(s) {
     return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
   };
-  P.TYPES_COL = { Text: "Texte", Numeric: "Numérique", Int: "Entier", Bool: "Case à cocher", Date: "Date", DateTime: "Date et heure", Choice: "Choix", ChoiceList: "Choix multiple", Ref: "Référence", RefList: "Liste de références", Attachments: "Pièce jointe", Any: "Formule" };
+  P.TYPES_COL = { Text: "Texte", Numeric: "Numérique", Int: "Entier", Bool: "Booléen", Date: "Date", DateTime: "Date et Heure", Choice: "Choix unique", ChoiceList: "Choix multiple", Ref: "Référence", RefList: "Référence multiple", Attachments: "Pièce jointe", Any: "Formule" };
   P.nomType = function(t) {
     var b = String(t || "").split(":")[0];
     return P.TYPES_COL[b] || b;
@@ -4513,7 +4693,7 @@ MGP.parcours = MGP.parcours || {};
   }, verifier: function(c, m) {
     return t_(c, m) ? { ok: true } : absente(c);
   }, indices: function(c) {
-    return ["Une table, c’est une feuille de votre document : regardez la liste des pages et des tables à gauche.", "Ajoutez une table vide (bouton « Nouveau », puis « Ajouter une table vide »), puis renommez-la.", "Nouveau > Ajouter une table vide, puis double-cliquez sur son nom (Table1) et tapez « " + c.table + " »."];
+    return ["Une table, c’est une feuille de votre document : regardez la liste des pages et des tables à gauche.", "Ajoutez une table vide (bouton « Ajouter », puis « Ajouter une table vide »), puis renommez-la.", "Ajouter > Ajouter une table vide, puis double-cliquez sur son nom (Table1) et tapez « " + c.table + " »."];
   } }, colonne: { libelle: function(c) {
     var ty = [].concat(c.typeCol || []);
     return "La colonne " + c.colonne + " de « " + c.table + " »" + (ty.length ? " est de type " + P.nomType(ty[0]) : " existe");
@@ -4533,7 +4713,7 @@ MGP.parcours = MGP.parcours || {};
     return { ok: true };
   }, indices: function(c) {
     var ty = P.nomType([].concat(c.typeCol || ["Text"])[0]);
-    return ["Le nom et le type d’une colonne se règlent dans son panneau, à droite.", "Cliquez sur l’en-tête de la colonne, nommez-la " + c.colonne + " (en majuscules), puis choisissez le type « " + ty + " » dans le panneau de la colonne.", "Table « " + c.table + " » : clic droit sur l’en-tête > Options de la colonne. Libellé : " + c.colonne + ". Type de colonne : " + ty + "."];
+    return ["Le nom et le type d’une colonne se règlent dans son panneau, à droite.", "Cliquez sur l’en-tête de la colonne, nommez-la " + c.colonne + " (en majuscules), puis choisissez le type « " + ty + " » dans le panneau de la colonne.", "Table « " + c.table + " » : clic droit sur l’en-tête > Options de la colonne. Label et ID de la colonne : " + c.colonne + ". Type de colonne : " + ty + "."];
   } }, choix: { libelle: function(c) {
     return "La colonne " + c.colonne + " propose les choix " + c.choix.join(", ");
   }, verifier: function(c, m) {
@@ -4546,7 +4726,7 @@ MGP.parcours = MGP.parcours || {};
       return { ok: false, detail: "Pas de colonne " + c.colonne + "." };
     }
     if (!/^Choice/.test(String(col.type))) {
-      return { ok: false, detail: "La colonne " + c.colonne + " est de type " + P.nomType(col.type) + ", pas Choix." };
+      return { ok: false, detail: "La colonne " + c.colonne + " est de type " + P.nomType(col.type) + ", pas Choix unique ni Choix multiple." };
     }
     var l = (P.optionsCol(col).choices || []).map(P.norm);
     var manque = c.choix.filter(function(x) {
@@ -4560,7 +4740,7 @@ MGP.parcours = MGP.parcours || {};
     }
     return { ok: true };
   }, indices: function(c) {
-    return ["Une colonne Choix propose une liste de valeurs fixes : elles se tapent dans le panneau de la colonne.", "Passez la colonne " + c.colonne + " en type « Choix », puis ajoutez les valeurs une par une dans la zone « Choix ».", "Panneau de la colonne " + c.colonne + " > Type : Choix > Modifier les choix : " + c.choix.join(", ") + ", puis Enregistrer."];
+    return ["Une colonne Choix unique propose une liste de valeurs fixes : elles se tapent dans le panneau de la colonne.", "Passez la colonne " + c.colonne + " en type « Choix unique », puis ajoutez les valeurs une par une dans la rubrique « Choix ».", "Panneau de la colonne " + c.colonne + " > Type de colonne : Choix unique > Choix > Modifier : " + c.choix.join(", ") + ", puis Sauvegarder."];
   } }, formule: { libelle: function(c) {
     return "La colonne " + c.colonne + " est une formule" + (c.valeur !== void 0 ? " qui donne " + c.valeur : "");
   }, verifier: async function(c, m) {
@@ -4601,7 +4781,7 @@ MGP.parcours = MGP.parcours || {};
   }, indices: function(c) {
     return ["Une formule commence par = dans la cellule, ou se tape dans le panneau de la colonne.", "Videz la colonne " + c.colonne + ", tapez = puis la formule" + (c.contient ? " (elle doit utiliser " + c.contient + ")" : "") + ". Une formule s’applique à toute la colonne.", c.solution ? "La formule : " + c.solution : "Colonne " + c.colonne + " > tapez = puis la formule demandée dans l’énoncé, et Entrée."];
   } }, reference: { libelle: function(c) {
-    return "La colonne " + c.colonne + " est une " + (c.liste ? "liste de références" : "référence") + " vers « " + c.cible + " »";
+    return "La colonne " + c.colonne + " est une " + (c.liste ? "Référence multiple" : "référence") + " vers « " + c.cible + " »";
   }, verifier: function(c, m) {
     var t = t_(c, m);
     if (!t) {
@@ -4620,7 +4800,7 @@ MGP.parcours = MGP.parcours || {};
     }
     return { ok: true };
   }, indices: function(c) {
-    return ["Une référence relie une ligne à une ligne d’une autre table : c’est un type de colonne.", "Choisissez le type « " + (c.liste ? "Liste de références" : "Référence") + " » pour " + c.colonne + ", puis la table « " + c.cible + " » dans « Données de la table ».", "Panneau de la colonne " + c.colonne + " > Type : " + (c.liste ? "Liste de références" : "Référence") + " > Données de la table : " + c.cible + "."];
+    return ["Une référence relie une ligne à une ligne d’une autre table : c’est un type de colonne.", "Choisissez le type « " + (c.liste ? "Référence multiple" : "Référence") + " » pour " + c.colonne + ", puis la table « " + c.cible + " » dans « Données de la table ».", "Panneau de la colonne " + c.colonne + " > Type de colonne : " + (c.liste ? "Référence multiple" : "Référence") + " > Données de la table : " + c.cible + "."];
   } }, lignes: { libelle: function(c) {
     return "La table « " + c.table + " » contient au moins " + c.min + " ligne" + (c.min > 1 ? "s" : "");
   }, verifier: async function(c, m) {
@@ -4633,7 +4813,7 @@ MGP.parcours = MGP.parcours || {};
   }, indices: function(c) {
     return ["Remplissez quelques lignes, comme dans un tableur.", "Tapez dans la dernière ligne vide de « " + c.table + " » : une nouvelle ligne se crée.", "Ajoutez " + c.min + " lignes dans « " + c.table + " »."];
   } }, declencheur: { libelle: function(c) {
-    return "La colonne " + c.colonne + " est une formule déclencheur";
+    return "La colonne " + c.colonne + " est une formule d’initialisation";
   }, verifier: function(c, m) {
     var t = t_(c, m);
     if (!t) {
@@ -4644,16 +4824,16 @@ MGP.parcours = MGP.parcours || {};
       return { ok: false, detail: "Pas de colonne " + c.colonne + "." };
     }
     if (col.isFormula || !col.formula) {
-      return { ok: false, detail: col.isFormula ? "C’est une formule ordinaire : elle se recalcule tout le temps." : "Pas de formule déclencheur sur cette colonne." };
+      return { ok: false, detail: col.isFormula ? "C’est une formule ordinaire : elle se recalcule tout le temps." : "Pas de formule d’initialisation sur cette colonne." };
     }
     if (c.formule && String(col.formula).replace(/\s/g, "") !== String(c.formule).replace(/\s/g, "")) {
       return { ok: false, detail: "La formule est " + col.formula + "." };
     }
     return { ok: true };
   }, indices: function(c) {
-    return ["Une formule déclencheur calcule une valeur une fois, puis la garde.", "Dans le panneau de la colonne " + c.colonne + ", choisissez « Définir une formule déclencheur » plutôt qu’une formule ordinaire.", "Panneau de la colonne " + c.colonne + " > Comportement > Définir une formule déclencheur" + (c.formule ? " : " + c.formule : "") + ", appliquée aux nouvelles lignes."];
+    return ["Une formule d’initialisation calcule une valeur une fois, puis la garde.", "Dans le panneau de la colonne " + c.colonne + ", choisissez « Définir une formule d’initialisation » plutôt qu’une formule ordinaire.", "Panneau de la colonne " + c.colonne + " > Nature de colonne > Définir une formule d’initialisation" + (c.formule ? " : " + c.formule : "") + ", avec « Appliquer sur les nouvelles lignes uniquement »."];
   } }, resume: { libelle: function(c) {
-    return "Un résumé de « " + c.table + " »" + (c.groupes && c.groupes.length ? " groupé par " + c.groupes.join(", ") : "") + " existe";
+    return "Une table récapitulative de « " + c.table + " »" + (c.groupes && c.groupes.length ? " groupée par " + c.groupes.join(", ") : "") + " existe";
   }, verifier: function(c, m) {
     var t = t_(c, m);
     if (!t) {
@@ -4663,7 +4843,7 @@ MGP.parcours = MGP.parcours || {};
       return x.summarySourceTable === t.id;
     });
     if (!res.length) {
-      return { ok: false, detail: "Aucune table de résumé de « " + c.table + " »." };
+      return { ok: false, detail: "Aucune table récapitulative de « " + c.table + " »." };
     }
     var bon = res.filter(function(r) {
       var ids = P.colonnesTable(m, r).map(function(x) {
@@ -4673,11 +4853,11 @@ MGP.parcours = MGP.parcours || {};
         return ids.indexOf(P.norm(g)) >= 0;
       });
     });
-    return bon.length ? { ok: true } : { ok: false, detail: "Le résumé n’est pas groupé par " + c.groupes.join(", ") + "." };
+    return bon.length ? { ok: true } : { ok: false, detail: "La table récapitulative n’est pas groupée par " + c.groupes.join(", ") + "." };
   }, indices: function(c) {
-    return ["Un résumé regroupe les lignes d’une table et calcule des totaux.", "Ajoutez un widget à la page, choisissez la table « " + c.table + " » et touchez l’icône de somme (Σ) pour la grouper.", "Nouveau > Ajouter un widget à la page > Table > " + c.table + " > Σ, groupé par " + (c.groupes || []).join(", ") + "."];
+    return ["Une table récapitulative regroupe les lignes d’une table et calcule des totaux.", "Ajoutez une vue à la page, choisissez la table « " + c.table + " » et touchez l’icône de somme (Σ) pour la grouper.", "Ajouter > Ajouter une vue à la page > Table > " + c.table + " > Σ, Grouper par : " + (c.groupes || []).join(", ") + " > Ajouter à la Page."];
   } }, vue: { libelle: function(c) {
-    return "Une page montre « " + c.table + " » en " + (P.GENRES_VUE[c.genre] || c.genre);
+    return "Une page montre « " + c.table + " » dans une vue " + (P.GENRES_VUE[c.genre] || c.genre);
   }, verifier: function(c, m) {
     var t = t_(c, m);
     if (!t) {
@@ -4692,7 +4872,7 @@ MGP.parcours = MGP.parcours || {};
     return ok ? { ok: true } : { ok: false, detail: "Aucune vue « " + (P.GENRES_VUE[c.genre] || c.genre) + " » de « " + c.table + " » dans les pages." };
   }, indices: function(c) {
     var g = P.GENRES_VUE[c.genre] || c.genre;
-    return ["Une même table peut être montrée de plusieurs façons : tableau, fiche, graphique, formulaire...", "Ajoutez un widget « " + g + " » à une page, branché sur la table « " + c.table + " ».", "Nouveau > Ajouter un widget à la page > " + g + " > " + c.table + " > Ajouter à la page."];
+    return ["Une même table peut être montrée de plusieurs façons : tableau, fiche, graphique, formulaire...", "Ajoutez une vue « " + g + " » à une page, branché sur la table « " + c.table + " ».", "Ajouter > Ajouter une vue à la page > " + g + " > " + c.table + " > Ajouter à la Page."];
   } }, regle: { libelle: function(c) {
     return "Une règle d’accès protège " + (c.table ? "« " + c.table + " »" : "le document");
   }, verifier: function(c, m) {
@@ -4719,9 +4899,9 @@ MGP.parcours = MGP.parcours || {};
     });
     return l.length ? { ok: true } : { ok: false, detail: "Aucune règle de ce genre pour l’instant." };
   }, indices: function(c) {
-    return ["Les règles d’accès se règlent dans le menu « Règles d’accès », en bas à gauche (propriétaire du document seulement).", "Ajoutez des règles pour la table « " + (c.table || "voulue") + " »" + (c.contient ? ", avec une condition qui utilise " + c.contient : "") + (c.permissions ? " et les permissions " + c.permissions : "") + ".", "Règles d’accès > Ajouter des règles de table > " + (c.table || "") + " > Condition" + (c.contient ? " : " + c.contient : "") + " > Permissions" + (c.permissions ? " : " + c.permissions : "") + " > Enregistrer."];
+    return ["Les règles d’accès se règlent dans « Permissions avancées », en bas à gauche (propriétaire du document seulement).", "Ajoutez des règles pour la table « " + (c.table || "voulue") + " »" + (c.contient ? ", avec une condition qui utilise " + c.contient : "") + (c.permissions ? " et les droits " + c.permissions : "") + ".", "Permissions avancées > Ajouter des règles pour la table > " + (c.table || "") + " > Condition" + (c.contient ? " : " + c.contient : "") + " > Droits" + (c.permissions ? " : " + c.permissions : "") + " > Enregistrer."];
   } }, miseEnForme: { libelle: function(c) {
-    return "La colonne " + c.colonne + " a une mise en forme conditionnelle";
+    return "La colonne " + c.colonne + " a un style conditionnel";
   }, verifier: function(c, m) {
     var t = t_(c, m);
     if (!t) {
@@ -4731,9 +4911,9 @@ MGP.parcours = MGP.parcours || {};
     if (!col) {
       return { ok: false, detail: "Pas de colonne " + c.colonne + "." };
     }
-    return MGP.liste(col.rules).length ? { ok: true } : { ok: false, detail: "Pas encore de règle de mise en forme." };
+    return MGP.liste(col.rules).length ? { ok: true } : { ok: false, detail: "Pas encore de style conditionnel." };
   }, indices: function(c) {
-    return ["La mise en forme conditionnelle colore une cellule selon sa valeur.", "Panneau de la colonne " + c.colonne + " > Style de cellule > Ajouter une mise en forme conditionnelle.", "Panneau de la colonne " + c.colonne + " > Style de cellule > Règles > Ajouter une règle" + (c.condition ? " : " + c.condition : "") + ", puis choisissez une couleur."];
+    return ["Un style conditionnel colore une cellule selon sa valeur.", "Panneau de la colonne " + c.colonne + " > Style de cellule > Ajouter un style conditionnel.", "Panneau de la colonne " + c.colonne + " > Style de cellule > Ajouter un style conditionnel" + (c.condition ? ", condition : " + c.condition : "") + ", puis choisissez une couleur."];
   } } };
   P.sectionsSurPage = function(m, t) {
     var vues = m.vues.map(function(v) {
@@ -4773,7 +4953,7 @@ MGP.parcours = MGP.parcours || {};
     });
     return ok ? { ok: true } : { ok: false, detail: "Aucun tri enregistré" + (c.colonne ? " sur " + c.colonne : "") + " : triez, puis touchez « Enregistrer »." };
   }, indices: function(c) {
-    return ["Un tri se règle en haut de la colonne, puis s’enregistre pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + " (la petite flèche de l’en-tête) et choisissez un tri, puis « Enregistrer » dans la barre qui apparaît.", "En-tête de " + (c.colonne || "la colonne") + " > menu > Trier A-Z (ou Z-A) > bouton vert « Enregistrer » en haut du widget."];
+    return ["Un tri se règle en haut de la colonne, puis s’enregistre pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + " (la petite flèche de l’en-tête) et choisissez un tri, puis « Enregistrer » dans la barre qui apparaît.", "En-tête de " + (c.colonne || "la colonne") + " > menu > Trier > A-Z (ou Z-A) > bouton vert « Enregistrer » en haut de la vue."];
   } };
   P.CHECKS.filtre = { libelle: function(c) {
     return "La table « " + c.table + " » a un filtre enregistré" + (c.colonne ? " sur " + c.colonne : "");
@@ -4794,7 +4974,7 @@ MGP.parcours = MGP.parcours || {};
     });
     return ok ? { ok: true } : { ok: false, detail: "Aucun filtre enregistré" + (c.colonne ? " sur " + c.colonne : "") + "." };
   }, indices: function(c) {
-    return ["Un filtre cache des lignes sans les effacer ; enregistré, il reste en place pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + ", décochez les valeurs à cacher, puis touchez « Enregistrer ».", "En-tête de " + (c.colonne || "la colonne") + " > menu > Filtrer les données > décochez > Appliquer, puis « Enregistrer » en haut du widget."];
+    return ["Un filtre cache des lignes sans les effacer ; enregistré, il reste en place pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + ", décochez les valeurs à cacher, puis touchez « Enregistrer ».", "En-tête de " + (c.colonne || "la colonne") + " > menu > Filtrer les données > décochez les valeurs, puis « Enregistrer » en haut de la vue."];
   } };
   P.CHECKS.lien = { libelle: function(c) {
     return "Sur une page, « " + c.table + " » suit la ligne choisie dans « " + c.source + " »";
@@ -4812,11 +4992,11 @@ MGP.parcours = MGP.parcours || {};
       })[0];
       return l && l.tableRef === src.id && l.parentId === s.parentId;
     });
-    return ok ? { ok: true } : { ok: false, detail: "Aucun widget de « " + c.table + " » n’est relié à « " + c.source + " » sur une page." };
+    return ok ? { ok: true } : { ok: false, detail: "Aucune vue de « " + c.table + " » n’est reliée à « " + c.source + " » sur une page." };
   }, indices: function(c) {
-    return ["Deux widgets d’une même page peuvent se suivre : on choisit une ligne à gauche, la droite se met à jour.", "Ajoutez à la page de « " + c.source + " » un widget de « " + c.table + " », et réglez « Sélectionner par » sur le widget de « " + c.source + " ».", "Nouveau > Ajouter un widget à la page > Table > " + c.table + " > Sélectionner par : " + c.source + " > Ajouter à la page."];
+    return ["Deux vues d’une même page peuvent se suivre : on choisit une ligne à gauche, la droite se met à jour.", "Ajoutez à la page de « " + c.source + " » une vue de « " + c.table + " », et réglez « Sélectionner par » sur la vue de « " + c.source + " ».", "Ajouter > Ajouter une vue à la page > Table > " + c.table + " > Sélectionné par : " + c.source + " > Ajouter à la Page."];
   } };
-  P.GENRES_VUE = { record: "Table", single: "Fiche", detail: "Fiches", chart: "Graphique", form: "Formulaire", custom: "Widget personnalisé" };
+  P.GENRES_VUE = { record: "Table", single: "Fiche", detail: "Liste de fiches", chart: "Graphique", form: "Formulaire", custom: "Personnalisée" };
   P.CHECKS.formulaire = { libelle: function(c) {
     return "Un formulaire remplit la table « " + c.table + " »";
   }, verifier: function(c, m) {
@@ -4848,24 +5028,28 @@ MGP.parcours = MGP.parcours || {};
   };
   P.adopter = async function(defs) {
     await MGP.g.creerTables(MGP.g.defsSocle());
+    var siennes = [];
     for (var i = 0; i < defs.length; i++) {
       var def = defs[i];
       MGP.g.adoptees = MGP.g.adoptees || {};
       MGP.g.adoptees[def.cle] = true;
       await MGP.g.chargerMeta();
-      if (MGP.g.trouver(def)) {
-        continue;
-      }
+      var deja = MGP.g.trouver(def);
       var m = { tables: MGP.g.meta.tables, colonnes: MGP.g.meta.colonnes, sections: await MGP.g.lire("_grist_Views_section") };
       var t = P.trouverTable(m, def.id) || (def.nom ? P.trouverTable(m, def.nom) : null);
-      if (!t) {
+      if (!t || deja && deja.id !== t.id) {
+        continue;
+      }
+      siennes.push({ def, ref: t.id, nom: t.tableId });
+      if (deja) {
+        await P.nommerTable(def, t, m);
         continue;
       }
       var renommer = [];
       P.colonnesTable(m, t).forEach(function(col) {
         def.colonnes.forEach(function(c2) {
-          if (col.colId !== c2.id && P.norm(col.colId) === P.norm(c2.id) && !P.colonnesTable(m, t).some(function(x) {
-            return x.colId === c2.id;
+          if (col.colId !== c2.id && P.norm(col.colId) === P.norm(c2.id) && !P.colonnesTable(m, t).some(function(x2) {
+            return x2.colId === c2.id;
           })) {
             renommer.push(["RenameColumn", t.tableId, col.colId, c2.id]);
           }
@@ -4888,8 +5072,8 @@ MGP.parcours = MGP.parcours || {};
         if (ids.indexOf(s) >= 0) {
           continue;
         }
-        var c = def.colonnes.filter(function(x) {
-          return x.id === s;
+        var c = def.colonnes.filter(function(x2) {
+          return x2.id === s;
         })[0];
         if (!c) {
           continue;
@@ -4897,21 +5081,260 @@ MGP.parcours = MGP.parcours || {};
         await MGP.g.actions([["AddColumn", t.tableId, c.id, { type: c.formule ? "Any" : MGP.g.resoudreType(c.type), label: c.id }]]);
         await MGP.g.actions(MGP.g.actionsColonne(t.tableId, c, true));
       }
-      if (def.label && t.rawViewSectionRef) {
-        try {
-          await MGP.g.actions([["UpdateRecord", "_grist_Views_section", t.rawViewSectionRef, { title: def.label }]]);
-        } catch (e) {
-          logSecurite("libellé", e);
-        }
+      await P.nommerTable(def, t, m);
+    }
+    if (siennes.length) {
+      var x = P.premiereDeMission(siennes);
+      try {
+        await P.placerSurSaPage(x.ref, x.def);
+      } catch (e) {
+        logSecurite("page du cadeau", e);
       }
+    }
+  };
+  P.idsContrat = function(c) {
+    return (c && c.contrat && c.contrat.tables || []).map(function(t) {
+      return P.norm(t.id);
+    }).filter(Boolean);
+  };
+  P.tablePartielle = function(m, def, c) {
+    if (P.idsContrat(c).indexOf(P.norm(def.id)) < 0) {
+      return null;
+    }
+    var t = P.trouverTable(m, def.id) || (def.nom ? P.trouverTable(m, def.nom) : null);
+    if (!t) {
+      return null;
+    }
+    var ct = ((c.contrat.tables || []).filter(function(x) {
+      return P.norm(x.id) === P.norm(def.id);
+    })[0] || {}).colonnes || {};
+    var attendues = def.colonnes.map(function(x) {
+      return P.norm(x.id);
+    }).concat(Object.keys(ct).map(P.norm));
+    var siennes = P.colonnesTable(m, t).filter(function(col) {
+      return attendues.indexOf(P.norm(col.colId)) >= 0;
+    });
+    return siennes.length ? { table: t, colonnes: siennes.map(function(x) {
+      return x.colId;
+    }), contrat: Object.keys(ct) } : null;
+  };
+  P.avantInstallation = async function(defs) {
+    var c = P.cfg && P.cfg.contenu;
+    if (!c || !P.idsContrat(c).length || MGP.g.acces !== "full" || !defs || !defs.length) {
+      return;
+    }
+    try {
       await MGP.g.chargerMeta();
-      var t2 = MGP.g.meta.tables.filter(function(x) {
-        return x.id === t.id;
-      })[0];
-      if (t2) {
-        MGP.g.registre[def.cle] = t2.tableId;
-        await MGP.g.ecrireReglage("TABLE:" + def.cle, t2.tableId);
+      var m = { tables: MGP.g.meta.tables, colonnes: MGP.g.meta.colonnes, sections: await MGP.g.lire("_grist_Views_section") };
+      var a = defs.filter(function(d) {
+        return !MGP.g.trouver(d) && P.tablePartielle(m, d, c);
+      });
+      if (a.length) {
+        await P.adopter(a);
       }
+    } catch (e) {
+      logSecurite("adoption avant installation", e);
+    }
+  };
+  P.partielles = async function() {
+    var c = P.cfg && P.cfg.contenu, k = MGP.g.CADEAU;
+    if (!MGP.g.meta || !c || !P.idsContrat(c).length || MGP.g.acces !== "full" || !k || typeof k.defs !== "function") {
+      return [];
+    }
+    var ids = P.idsContrat(c);
+    if (!MGP.g.meta.tables.some(function(t) {
+      return ids.indexOf(P.norm(t.tableId)) >= 0;
+    })) {
+      return [];
+    }
+    try {
+      var m = { tables: MGP.g.meta.tables, colonnes: MGP.g.meta.colonnes, sections: await MGP.g.lire("_grist_Views_section") };
+      return k.defs().map(function(d) {
+        return MGP.g.trouver(d) ? null : P.tablePartielle(m, d, c);
+      }).filter(Boolean);
+    } catch (e) {
+      logSecurite("tables commencées", e);
+      return [];
+    }
+  };
+  P.tableDeMission = function(c) {
+    var v = c && c.mission && (c.mission.verifications || []).filter(function(x) {
+      return x.type === "table" && x.table;
+    })[0];
+    return v ? v.table : "";
+  };
+  P.premiereDeMission = function(siennes) {
+    var n = P.norm(P.tableDeMission(P.cfg && P.cfg.contenu));
+    return siennes.filter(function(x) {
+      return n && (P.norm(x.nom) === n || P.norm(x.def.id) === n);
+    })[0] || siennes[0];
+  };
+  P.nomParDefaut = function(nom, candidats) {
+    var n = P.norm(nom);
+    return !n || /^Table\d+$/.test(String(nom).trim()) || candidats.some(function(c) {
+      return c && P.norm(c) === n;
+    });
+  };
+  P.nommerTable = async function(def, t, m) {
+    var raw = (m.sections || []).filter(function(s) {
+      return s.id === t.rawViewSectionRef;
+    })[0], titre = raw ? raw.title || "" : "";
+    if (def.label && t.rawViewSectionRef && titre !== def.label && P.nomParDefaut(titre, [t.tableId, def.id, def.nom, def.label])) {
+      try {
+        await MGP.g.actions([["UpdateRecord", "_grist_Views_section", t.rawViewSectionRef, { title: def.label }]]);
+      } catch (e) {
+        logSecurite("libellé", e);
+      }
+    }
+    await MGP.g.chargerMeta();
+    var t2 = MGP.g.meta.tables.filter(function(x) {
+      return x.id === t.id;
+    })[0];
+    if (t2) {
+      MGP.g.registre[def.cle] = t2.tableId;
+      await MGP.g.ecrireReglage("TABLE:" + def.cle, t2.tableId);
+    }
+  };
+  P.pageDeTable = function(t, vues, sections) {
+    var ids = vues.map(function(v) {
+      return v.id;
+    });
+    var montrent = sections.filter(function(s) {
+      return s.tableRef === t.id && s.parentId && s.parentKey !== "custom" && ids.indexOf(s.parentId) >= 0;
+    }).map(function(s) {
+      return s.parentId;
+    }).filter(function(v, i, l) {
+      return l.indexOf(v) === i;
+    });
+    if (t.primaryViewId && montrent.indexOf(t.primaryViewId) >= 0) {
+      return t.primaryViewId;
+    }
+    return montrent.length === 1 ? montrent[0] : null;
+  };
+  P.ajouterWidgetSurPage = async function(tableRef, vue, url, titre, description) {
+    var r = await MGP.g.actions([["CreateViewSection", tableRef, vue, "custom", null, null]]);
+    var res = r && r.retValues && r.retValues[0] || {};
+    if (!res.sectionRef) {
+      return null;
+    }
+    var cv = { mode: "url", url, widgetDef: null, access: "full", pluginId: "", sectionId: "", renderAfterReady: false };
+    await MGP.g.actions([["UpdateRecord", "_grist_Views_section", res.sectionRef, { title: titre || "", options: JSON.stringify({ customView: JSON.stringify(cv) }) }]]);
+    if (description && MGP.g.actionDecrireSection) {
+      try {
+        var s = (await MGP.g.lire("_grist_Views_section")).filter(function(x) {
+          return x.id === res.sectionRef;
+        })[0];
+        var a = MGP.g.actionDecrireSection(s, titre, description);
+        if (a) {
+          await MGP.g.actions([a]);
+        }
+      } catch (e) {
+        logSecurite("description de la vue", e);
+      }
+    }
+    return res.sectionRef;
+  };
+  P.urlCeWidget = function(sections) {
+    var moi = MGP.g.normaliserUrl(location.href);
+    var s = sections.filter(function(x) {
+      return x.parentKey === "custom" && MGP.g.normaliserUrl(MGP.g.urlSection(x)) === moi;
+    })[0];
+    return s ? MGP.g.urlSection(s) : "";
+  };
+  P.cleePage = function(cle) {
+    return "page." + cle;
+  };
+  P.placerSurSaPage = async function(tableRef, def) {
+    var c = MGP.g.CADEAU;
+    if (!c || !c.cle || !c.page || !MGP.g.tech || MGP.g.acces !== "full") {
+      return null;
+    }
+    await MGP.g.chargerMeta();
+    var t = MGP.g.meta.tables.filter(function(x) {
+      return x.id === tableRef;
+    })[0];
+    if (!t) {
+      return null;
+    }
+    var vues = await MGP.g.lire("_grist_Views"), sections = await MGP.g.lire("_grist_Views_section");
+    var avant = MGP.g.reglage(P.cleePage(c.cle), null);
+    var vue = avant && avant.vue && vues.some(function(x) {
+      return x.id === avant.vue;
+    }) ? avant.vue : P.pageDeTable(t, vues, sections);
+    if (!vue) {
+      return null;
+    }
+    var ici = await MGP.g.vueCourante();
+    var moi = MGP.g.normaliserUrl(location.href);
+    var dejaLa = sections.some(function(s) {
+      return s.parentId === vue && s.parentKey === "custom" && MGP.g.normaliserUrl(MGP.g.urlSection(s)) === moi;
+    });
+    var url = dejaLa ? "" : P.urlCeWidget(sections);
+    if (!dejaLa && !url) {
+      return null;
+    }
+    if (!dejaLa) {
+      await P.ajouterWidgetSurPage(t.id, vue, url, c.page, "Votre cadeau " + c.nom + ", construit autour de votre table : il garde vos lignes et ajoute ce qui manque.");
+    }
+    var v = vues.filter(function(x) {
+      return x.id === vue;
+    })[0], raw = sections.filter(function(s) {
+      return s.id === t.rawViewSectionRef;
+    })[0];
+    var nommee = false;
+    if (v && v.name !== c.page && P.nomParDefaut(v.name, [t.tableId, raw && raw.title, def && def.id, def && def.nom, def && def.label, c.nom, c.page])) {
+      await MGP.g.actions([["UpdateRecord", "_grist_Views", vue, { name: c.page }]]);
+      nommee = true;
+    }
+    var depuis = ici && ici !== vue ? ici : avant && avant.depuis || null;
+    await MGP.g.ecrireReglage(P.cleePage(c.cle), { vue, depuis, nommee: nommee || !!(avant && avant.nommee) });
+    return { vue, depuis, nommee };
+  };
+  P.doublon = async function() {
+    var c = MGP.g.CADEAU, r = c && c.cle && MGP.g.tech ? MGP.g.reglage(P.cleePage(c.cle), null) : null;
+    if (!r || !r.depuis || r.depuis === r.vue) {
+      return null;
+    }
+    var vues = await MGP.g.lire("_grist_Views"), sections = await MGP.g.lire("_grist_Views_section");
+    var v = vues.filter(function(x) {
+      return x.id === r.depuis;
+    })[0], sa = vues.filter(function(x) {
+      return x.id === r.vue;
+    })[0];
+    if (!v || !sa) {
+      return null;
+    }
+    var moi = MGP.g.normaliserUrl(location.href);
+    var siennes = sections.filter(function(s) {
+      return s.parentId === r.depuis;
+    });
+    return { vue: r.depuis, nom: v.name || "", sa: sa.name || "", retirable: siennes.length > 0 && siennes.every(function(s) {
+      return s.parentKey === "custom" && MGP.g.normaliserUrl(MGP.g.urlSection(s)) === moi;
+    }) };
+  };
+  P.rangerSurSaPage = async function(bouton) {
+    var d = await P.doublon();
+    if (!d || !d.retirable) {
+      return false;
+    }
+    var oui = await MGP.confirmer("Ranger mon cadeau sur ma page", "Votre cadeau est déjà sur « " + d.sa + " », avec votre table. La page « " + d.nom + " » ne montre que ce widget : elle sera retirée du menu. Aucune table ni aucune ligne n’est supprimée.", "Retirer la page en double");
+    if (!oui) {
+      if (bouton) {
+        bouton.focus();
+      }
+      return false;
+    }
+    try {
+      await MGP.g.actions([["RemoveRecord", "_grist_Views", d.vue]]);
+      var c = MGP.g.CADEAU, r = MGP.g.reglage(P.cleePage(c.cle), null) || {};
+      r.depuis = null;
+      await MGP.g.ecrireReglage(P.cleePage(c.cle), r);
+      MGP.annoncer("Votre cadeau est rangé sur « " + d.sa + " » : ouvrez-la dans le menu de gauche.", "ok");
+      return true;
+    } catch (e) {
+      logSecurite("page en double", e);
+      MGP.annoncer("La page n’a pas pu être retirée : retirez-la à la main si vous le souhaitez.", "err");
+      return false;
     }
   };
   P.hash = function(s) {
@@ -5528,8 +5951,8 @@ MGP.parcours = MGP.parcours || {};
         return P.etatModule(m.id).fait;
       }).length, b = P.ligne("Bilan de niveau", n.id);
       return '<section class="carte pc-niveau" aria-labelledby="pc-n-' + echapperHTML(n.id) + '"><div class="pc-niveau-tete"><h2 id="pc-n-' + echapperHTML(n.id) + '">Niveau ' + echapperHTML(n.nom) + '</h2><span class="mini">' + faits + " module" + (faits > 1 ? "s" : "") + " sur " + mods.length + (b && b.QUIZ_MAX ? " · bilan : " + b.QUIZ_POINTS + "/" + b.QUIZ_MAX : "") + "</span></div>" + MGP.jaugeHTML(faits, mods.length || 1, "Modules du niveau " + n.nom) + '<ul class="pc-modules">' + mods.map(function(m) {
-        var e = P.etatModule(m.id), c = P.competence(m.competence), j = P.jourDe(m.id);
-        return '<li class="pc-module' + (e.fait ? " fait" : "") + '"><div class="x"><b>' + echapperHTML(m.titre) + '</b><br><span class="mini">' + echapperHTML((c ? c.nom : "") + (j ? " · case du " + (j === 1 ? "1er" : j) + " décembre" : "")) + '</span></div><span class="pc-pastilles">' + (e.pastilles.length ? e.pastilles.map(function(p) {
+        var e = P.etatModule(m.id), c = P.competence(m.competence);
+        return '<li class="pc-module' + (e.fait ? " fait" : "") + '"><div class="x"><b>' + echapperHTML(m.titre) + '</b><br><span class="mini">' + echapperHTML((c ? c.nom : "") + (m.carte ? " · Carte " + m.carte : "")) + '</span></div><span class="pc-pastilles">' + (e.pastilles.length ? e.pastilles.map(function(p) {
           return '<span class="pil ' + p[0] + '">' + echapperHTML(p[1]) + "</span>";
         }).join("") : '<span class="pil">À découvrir</span>') + "</span></li>";
       }).join("") + '</ul><div class="pc-pied"><button type="button" class="btn' + (faits ? "" : " sec") + '" data-pc-bilan-niveau="' + echapperHTML(n.id) + '">🎓 Bilan du niveau ' + echapperHTML(n.nom) + "</button></div></section>";
@@ -5601,8 +6024,63 @@ MGP.parcours = MGP.parcours || {};
       cfg.barreApp.insertAdjacentHTML("afterbegin", '<button type="button" class="btn sec" id="btn-lecon" data-pc-ouvrir="mission">🎓 Académie Grist</button>');
       cfg.barreApp.addEventListener("click", P.clicEntree);
     }
+    P.inst = null;
+    var bi = document.getElementById(cfg.boutonInstaller || "btn-installer-ex");
+    if (cfg.ancreDeballage && bi) {
+      P.inst = bi.closest(".inst") || bi.parentNode;
+      P.inst.hidden = true;
+      if (!P.inst.id) {
+        P.inst.id = "pc-inst";
+      }
+      P.inst.setAttribute("tabindex", "-1");
+      P.inst.classList.add("pc-inst");
+      Array.prototype.forEach.call(P.inst.querySelectorAll("h2"), function(h) {
+        h.hidden = true;
+      });
+    }
+    P.installOuvert = false;
     P.rendreEntree();
     return { ouvrir: P.ouvrir, fermer: P.fermer, rendreEntree: P.rendreEntree, apresInstallation: P.apresInstallation };
+  };
+  P.etiquetteCarte = function(c) {
+    return [c && c.carte ? "Carte " + c.carte : "", c && c.niveauNom ? "Niveau " + c.niveauNom : ""].filter(Boolean).join(" · ");
+  };
+  P.fete = function() {
+    try {
+      return !!(MGP.g.tech && MGP.g.reglage("ACADEMIE:FETE", false) === true);
+    } catch (e) {
+      return false;
+    }
+  };
+  P.habiller = function(ecran, montre) {
+    var on = !!(ecran && montre && P.fete());
+    document.body.classList.toggle("noel-fond", on);
+    if (!ecran) {
+      return;
+    }
+    ecran.classList.toggle("noel", on);
+    if (on) {
+      if (MGP.noel) {
+        MGP.noel.decorer(ecran);
+      }
+    } else {
+      Array.prototype.forEach.call(ecran.querySelectorAll(":scope > .guirlande, :scope > .flocons, :scope > .sapin"), function(x) {
+        x.remove();
+      });
+    }
+  };
+  P.etatMission = function(module) {
+    var l = P.ligne("Module", module);
+    if (l && (l.MISSION === "Réussie" || l.MISSION === "Passée")) {
+      return l.MISSION;
+    }
+    var r = null;
+    try {
+      r = MGP.g.tech ? MGP.g.reglage(P.cleReglage(module), null) : null;
+    } catch (e) {
+      r = null;
+    }
+    return r && (r.mission === "Réussie" || r.mission === "Passée") ? r.mission : "";
   };
   P.situation = function(c) {
     var comp = P.competence(c && c.competence);
@@ -5622,29 +6100,107 @@ MGP.parcours = MGP.parcours || {};
       logSecurite("progression", e);
     }
     var l = P.ligne("Module", cfg.module), nq = (cfg.contenu.questions || []).length, mi = cfg.contenu.mission, du = cfg.contenu.durees || {};
+    var installe = !!(cfg.installe && cfg.installe()), mission = P.etatMission(cfg.module);
+    var mode = mi && mission === "Réussie" && !installe && cfg.completer ? "completer" : !mi || mission || installe ? "direct" : "choix";
     var etat = [];
-    if (l && l.MISSION === "Réussie") {
+    if (l && l.MISSION === "Réussie" && mode !== "completer") {
       etat.push("✅ Mission réussie (" + (l.MISSION_POINTS || 0) + " points)");
     }
     if (l && l.QUIZ_MAX) {
       etat.push("🧠 Quiz : " + l.QUIZ_POINTS + " sur " + l.QUIZ_MAX);
     }
-    a.innerHTML = '<section class="carte pc-entree" aria-labelledby="pc-entree-t"><span class="pil t-lavande">🎓 ' + echapperHTML(P.situation(cfg.contenu)) + '</span><h2 id="pc-entree-t">Deux façons d’ouvrir votre cadeau</h2>' + (cfg.contenu.objectif ? '<p class="mini" style="margin-top:4px">' + rich(cfg.contenu.objectif) + "</p>" : "") + '<div class="pc-voies">' + (mi ? '<button type="button" class="pc-voie" data-pc-ouvrir="mission"><span class="e" aria-hidden="true">🛠️</span><b>Je le construis</b><span class="mini">' + echapperHTML("La mission : " + P.duree(du.mission) + " dans votre document, avec des indices si besoin. Le widget complète ensuite votre cadeau autour de vos tables.") + "</span></button>" : "") + '<button type="button" class="pc-voie" data-pc-installer><span class="e" aria-hidden="true">⚡</span><b>Installe pour moi</b><span class="mini">Tout est créé en un geste. La leçon et le quiz restent disponibles.</span></button></div><div class="pc-liens">' + (nq ? '<button type="button" class="btn sec" data-pc-ouvrir="quiz">🧠 Quiz du module · ' + echapperHTML(P.duree(du.quiz)) + "</button>" : "") + '<button type="button" class="btn lien" data-pc-ouvrir="capot">🔧 La leçon · ' + echapperHTML(P.duree(du.lecon)) + "</button></div>" + (etat.length ? '<p class="mini pc-etat-l" role="status">' + echapperHTML(etat.join(" · ")) + "</p>" : "") + "</section>";
+    var pil = document.getElementById("deb-pil"), comp = P.competence(cfg.contenu.competence);
+    if (pil) {
+      pil.textContent = "🎓 " + P.etiquetteCarte(cfg.contenu);
+      pil.hidden = false;
+    }
+    var etiquette = pil ? comp ? "🔧 " + comp.nom : "" : "🎓 " + P.situation(cfg.contenu);
+    var full = MGP.g.acces === "full", corps;
+    var jeton = P.jetonEntree = (P.jetonEntree || 0) + 1;
+    var part = mode === "choix" ? await P.partielles() : [];
+    if (jeton !== P.jetonEntree) {
+      return;
+    }
+    var notePart = part.length ? '<p class="pc-partielle" role="status">' + echapperHTML("📋 Votre table « " + part.map(function(x) {
+      return x.table.tableId;
+    }).join(" », « ") + " » est déjà commencée (" + part.map(function(x) {
+      return x.colonnes.join(", ");
+    }).join(" ; ") + "). « Je le construis » la termine avec la mission ; « Installe pour moi » la complète autour : vos lignes et vos colonnes sont gardées, rien n’est en double.") + "</p>" : "";
+    if (mode === "completer") {
+      corps = '<h2 id="pc-entree-t">✅ Mission réussie : votre table est prête.</h2><p style="margin-top:6px">' + echapperHTML("Le widget garde votre table et vos lignes, ajoute les champs qui manquent et termine le cadeau. Rien de ce que vous avez construit n’est effacé.") + "</p>" + (full ? "" : '<p class="mini" style="margin-top:6px;color:var(--flamant-f)">Pour compléter le cadeau, ce widget a besoin de l’accès complet au document (panneau de droite, « Accès complet au document »).</p>') + '<div class="pc-pied"><button type="button" class="btn" data-pc-completer' + (full ? "" : " disabled") + ">🎁 Compléter mon cadeau autour de ma table</button></div>";
+    } else if (mode === "direct") {
+      corps = '<h2 id="pc-entree-t">⚡ Installe pour moi</h2>' + (cfg.contenu.objectif ? '<p class="mini" style="margin-top:4px">' + rich(cfg.contenu.objectif) + "</p>" : "") + '<div class="pc-installe" id="pc-installe"></div>';
+    } else {
+      corps = '<h2 id="pc-entree-t">Deux façons d’ouvrir votre cadeau</h2>' + (cfg.contenu.objectif ? '<p class="mini" style="margin-top:4px">' + rich(cfg.contenu.objectif) + "</p>" : "") + notePart + '<div class="pc-voies"><button type="button" class="pc-voie" data-pc-ouvrir="mission"><span class="e" aria-hidden="true">🛠️</span><b>Je le construis</b><span class="mini">' + echapperHTML("La mission : " + P.duree(du.mission) + " dans votre document, avec des indices si besoin. Le widget complète ensuite votre cadeau autour de vos tables.") + '</span></button><button type="button" class="pc-voie" data-pc-installer aria-expanded="' + (P.installOuvert ? "true" : "false") + '"' + (P.inst ? ' aria-controls="pc-installe"' : "") + '><span class="e" aria-hidden="true">⚡</span><b>Installe pour moi</b><span class="mini">Tout est créé en un geste, vide ou avec des exemples. La leçon et le quiz restent disponibles.</span></button></div><div class="pc-installe" id="pc-installe"' + (P.installOuvert ? "" : " hidden") + "></div>";
+    }
+    a.innerHTML = '<section class="carte pc-entree" aria-labelledby="pc-entree-t">' + (etiquette ? '<span class="pil t-lavande">' + echapperHTML(etiquette) + "</span>" : "") + corps + '<div class="pc-liens">' + (nq ? '<button type="button" class="btn sec" data-pc-ouvrir="quiz">🧠 Quiz du module · ' + echapperHTML(P.duree(du.quiz)) + "</button>" : "") + '<button type="button" class="btn lien" data-pc-ouvrir="capot">🔧 La leçon · ' + echapperHTML(P.duree(du.lecon)) + "</button></div>" + (etat.length ? '<p class="mini pc-etat-l" role="status">' + echapperHTML(etat.join(" · ")) + "</p>" : "") + (mode === "completer" ? '<div class="pc-installe" id="pc-installe" hidden></div>' : "") + "</section>";
+    var zone = document.getElementById("pc-installe");
+    if (P.inst && zone) {
+      zone.appendChild(P.inst);
+      P.inst.hidden = false;
+    }
   };
   P.clicEntree = function(ev) {
-    var b = ev.target.closest("[data-pc-ouvrir], [data-pc-installer]");
+    var b = ev.target.closest("[data-pc-ouvrir], [data-pc-installer], [data-pc-completer]");
     if (!b) {
       return;
     }
+    if (b.hasAttribute("data-pc-completer")) {
+      P.completerCadeau(b);
+      return;
+    }
     if (b.hasAttribute("data-pc-installer")) {
-      var cible = document.getElementById(P.cfg.boutonInstaller || "btn-installer-ex");
-      if (cible) {
-        cible.scrollIntoView({ behavior: "smooth", block: "center" });
-        cible.focus({ preventScroll: true });
-      }
+      P.basculerInstall(b);
       return;
     }
     P.ouvrir(b.dataset.pcOuvrir);
+  };
+  P.basculerInstall = function(tuile) {
+    var zone = document.getElementById("pc-installe");
+    if (!zone) {
+      return;
+    }
+    P.installOuvert = tuile.getAttribute("aria-expanded") !== "true";
+    tuile.setAttribute("aria-expanded", P.installOuvert ? "true" : "false");
+    zone.hidden = !P.installOuvert;
+    if (!P.installOuvert) {
+      return;
+    }
+    var cible = Array.prototype.filter.call(zone.querySelectorAll("button"), function(x) {
+      return !x.disabled;
+    })[0] || P.inst || zone;
+    cible.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    cible.focus({ preventScroll: true });
+  };
+  P.completerCadeau = async function(bouton) {
+    var cfg = P.cfg, lib = bouton ? bouton.textContent : "";
+    if (!cfg || !cfg.completer) {
+      return;
+    }
+    if (MGP.g.acces !== "full") {
+      MGP.annoncer("Le widget a besoin de l’accès complet au document pour compléter le cadeau.", "err");
+      return;
+    }
+    if (bouton) {
+      bouton.disabled = true;
+      bouton.textContent = "Le cadeau se complète...";
+    }
+    try {
+      sessionStorage.setItem("mgp-parcours-fete", cfg.module);
+    } catch (e) {
+      logSecurite("sessionStorage", e);
+    }
+    P.fermer();
+    try {
+      await cfg.completer();
+    } catch (e) {
+      logSecurite("compléter le cadeau", e);
+      MGP.annoncer("Le cadeau n’a pas pu se compléter : " + (e && e.message ? e.message : e), "err");
+      if (bouton && bouton.isConnected) {
+        bouton.disabled = false;
+        bouton.textContent = lib;
+      }
+    }
   };
   P.avant = null;
   P.ouvrir = function(vue) {
@@ -5888,19 +6444,33 @@ MGP.parcours = MGP.parcours || {};
         d.setAttribute("aria-labelledby", "pc-fete-t");
         document.body.appendChild(d);
       }
-      d.innerHTML = '<div class="poignee" aria-hidden="true"></div><div class="corps pc-fete"><p class="gros" aria-hidden="true">🎉</p><h2 id="pc-fete-t">Bravo, vous avez construit votre cadeau</h2><p>' + echapperHTML("Mission réussie (" + (l && l.MISSION_POINTS || 0) + " points). Le widget a ajouté les champs et les exemples qui manquaient autour de votre table.") + '</p><div class="pied"><button type="button" class="btn sec" data-pc-fete-quiz>🧠 Quiz du module</button><button type="button" class="btn" data-fermer>Voir mon cadeau</button></div></div>';
+      var dbl = null;
+      try {
+        dbl = await P.doublon();
+      } catch (e) {
+        logSecurite("page en double", e);
+      }
+      var txtDbl = dbl ? dbl.retirable ? "Votre cadeau est maintenant sur votre page « " + dbl.sa + " », avec votre table. Cette page-ci, « " + dbl.nom + " », fait doublon : rangez votre cadeau sur votre page pour n’en garder qu’une." : "Votre cadeau est maintenant sur votre page « " + dbl.sa + " », avec votre table. La page « " + dbl.nom + " » montre aussi d’autres vues : elle reste, retirez ce widget à la main si vous le souhaitez." : "";
+      d.innerHTML = '<div class="poignee" aria-hidden="true"></div><div class="corps pc-fete"><p class="gros" aria-hidden="true">🎉</p><h2 id="pc-fete-t">Bravo, vous avez construit votre cadeau</h2><p>' + echapperHTML("Mission réussie (" + (l && l.MISSION_POINTS || 0) + " points). Le widget a ajouté les champs et les exemples qui manquaient autour de votre table.") + "</p>" + (txtDbl ? '<p class="pc-doublon">' + echapperHTML(txtDbl) + "</p>" : "") + '<div class="pied"><button type="button" class="btn sec" data-pc-fete-quiz>🧠 Quiz du module</button>' + (dbl && dbl.retirable ? '<button type="button" class="btn sec" data-pc-ranger>🧹 Ranger mon cadeau sur ma page</button>' : "") + '<button type="button" class="btn" data-fermer>Voir mon cadeau</button></div></div>';
       MGP.brancherDialogues();
       d.querySelector("[data-pc-fete-quiz]").addEventListener("click", function() {
         MGP.fermer(d);
         P.ouvrir("quiz");
       });
+      var br = d.querySelector("[data-pc-ranger]");
+      if (br) {
+        br.addEventListener("click", async function() {
+          MGP.fermer(d);
+          await P.rangerSurSaPage();
+        });
+      }
       MGP.ouvrir(d, "[data-fermer]");
       return;
     }
     await P.noterInstallation(cfg.contenu);
   };
 })(MGP.parcours);
-MGP.parcours.CONTENU = { "carte": 10, "id": "demenagement", "titre": "Lier des widgets entre eux", "competence": "lies", "surprise": { "genre": "widget", "nom": "Je déménage", "widget": "demenagement", "texte": "Les cartons pièce par pièce, le compte à rebours et la liste des démarches pour un déménagement sans stress." }, "widget": "demenagement", "niveau": "pratique", "niveauNom": "Pratique", "contrat": { "note": "Contrat pour le widget Je déménage (src/widgets/demenagement, à construire) : la mission construit Pieces_demenagement et Cartons et une page qui les relie ; le widget les adopte (MGP.parcours.adopter) puis les complète. Signatures conseillées : Pieces_demenagement PIECE ; Cartons CARTON, PIECE, CONTENU. La table des pièces s'appelle Pieces_demenagement : le widget Tâches de la maison a déjà une table Pieces.", "tables": [{ "id": "Pieces_demenagement", "colonnes": { "PIECE": "Text" } }, { "id": "Cartons", "colonnes": { "CARTON": "Text", "PIECE": "Ref:Pieces_demenagement", "CONTENU": "Text" } }], "vues": [{ "table": "Cartons", "lien": "Pieces_demenagement" }] }, "objectif": "Relier deux widgets d'une page : on choisit une pièce, ses cartons s'affichent.", "durees": { "lecon": 10, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "Sélectionner par", "paragraphes": ["Sur une même page, un widget peut suivre la ligne choisie dans un autre : c'est le réglage **Sélectionner par** du widget. On touche « Cuisine » à gauche, la droite ne montre que les cartons de la cuisine.", "Il faut une référence entre les deux tables : ici, chaque carton pointe vers sa pièce."] }, { "titre": "Fiche et tableau", "paragraphes": ["Le même réglage marche avec une fiche : une liste à gauche, la fiche détaillée de la ligne choisie à droite. C'est le montage le plus confortable pour consulter une table qui a beaucoup de colonnes."] }, { "titre": "Ajouter une ligne dans le widget relié", "paragraphes": ["Une ligne ajoutée dans le widget des cartons est rattachée automatiquement à la pièce sélectionnée. Plus besoin de choisir la pièce à chaque carton."] }], "mission": { "titre": "Les cartons, pièce par pièce", "intro": "Le cœur du widget Je déménage : les pièces, les cartons, et une page qui les relie.", "etapes": ["Créez une table **Pieces_demenagement** avec PIECE (Texte) : Cuisine, Salon, Chambre.", "Créez une table **Cartons** avec CARTON (Texte), CONTENU (Texte) et PIECE (Référence vers Pieces_demenagement).", "Sur la page de Pieces_demenagement, ajoutez un widget de Cartons et réglez **Sélectionner par** sur le widget Pieces_demenagement.", "Ajoutez deux cartons dans la cuisine depuis ce widget."], "verifications": [{ "type": "table", "table": "Pieces_demenagement" }, { "type": "table", "table": "Cartons" }, { "type": "reference", "table": "Cartons", "colonne": "PIECE", "cible": "Pieces_demenagement" }, { "type": "lien", "table": "Cartons", "source": "Pieces_demenagement" }, { "type": "lignes", "table": "Cartons", "min": 2 }] }, "questions": [{ "type": "qcm", "competence": "lies", "question": "Que faut-il pour qu'un widget Cartons suive la pièce choisie ?", "choix": ["Une référence de Cartons vers Pieces_demenagement, et le réglage « Sélectionner par »", "Deux tables avec le même nom de colonne", "Un filtre enregistré"], "bonne": 0, "explication": "Le lien entre widgets s'appuie sur la référence entre les tables.", "aide": "https://support.getgrist.com/linking-widgets/" }, { "type": "qcm", "competence": "lies", "question": "Vous ajoutez un carton dans le widget relié, la Cuisine étant sélectionnée. Sa colonne PIECE ?", "choix": ["Reste vide", "Vaut Cuisine automatiquement", "Vaut la première pièce de la liste"], "bonne": 1, "explication": "Le widget relié rattache la nouvelle ligne à la ligne sélectionnée.", "aide": "https://support.getgrist.com/linking-widgets/" }, { "type": "ordre", "competence": "lies", "question": "Remettez dans l'ordre pour relier deux widgets.", "etapes": ["Ouvrir la page de Pieces_demenagement", "Ajouter un widget à la page", "Choisir la table Cartons", "Régler « Sélectionner par » sur Pieces_demenagement", "Ajouter à la page"], "explication": "Le réglage se fait au moment d'ajouter le widget, ou plus tard dans son panneau, onglet Données.", "aide": "https://support.getgrist.com/linking-widgets/" }, { "type": "multiple", "competence": "lies", "question": "Quels montages fonctionnent avec « Sélectionner par » ?", "choix": ["Un tableau qui pilote un autre tableau", "Un tableau qui pilote une fiche", "Une fiche toute seule sur sa page", "Une liste de fiches qui pilote un graphique"], "bonnes": [0, 1, 3], "explication": "Il faut au moins deux widgets sur la page : l'un choisit, l'autre suit.", "aide": "https://support.getgrist.com/linking-widgets/" }, { "type": "paires", "competence": "lies", "question": "Reliez chaque montage à son usage.", "paires": [["Liste à gauche, fiche à droite", "Consulter une ligne en détail"], ["Pièces à gauche, cartons à droite", "Voir les éléments d’un groupe"], ["Tableau et graphique reliés", "Voir la courbe de la ligne choisie"]], "explication": "Le même réglage sert à des usages très différents.", "aide": "https://support.getgrist.com/linking-widgets/" }] };
+MGP.parcours.CONTENU = { "carte": 10, "id": "demenagement", "titre": "Lier des vues entre elles", "competence": "lies", "surprise": { "genre": "widget", "nom": "Je déménage", "widget": "demenagement", "texte": "Les cartons pièce par pièce, le compte à rebours et la liste des démarches pour un déménagement sans stress." }, "widget": "demenagement", "niveau": "pratique", "niveauNom": "Pratique", "contrat": { "note": "Tables du widget Je déménage (src/widgets/demenagement) : la mission construit Pieces_demenagement et Cartons et une page qui les relie ; le widget les adopte (MGP.parcours.adopter) puis les complète. Signatures : Pieces_demenagement PIECE ; Cartons CARTON, PIECE, CONTENU. La table des pièces s'appelle Pieces_demenagement : le widget Tâches de la maison a déjà une table Pieces.", "tables": [{ "id": "Pieces_demenagement", "colonnes": { "PIECE": "Text" } }, { "id": "Cartons", "colonnes": { "CARTON": "Text", "PIECE": "Ref:Pieces_demenagement", "CONTENU": "Text" } }], "vues": [{ "table": "Cartons", "lien": "Pieces_demenagement" }] }, "objectif": "Relier deux vues d'une page : on choisit une pièce, ses cartons s'affichent.", "durees": { "lecon": 10, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "Sélectionner par", "paragraphes": ["Sur une même page, une vue peut suivre la ligne choisie dans une autre : c'est le réglage **Sélectionner par** de la vue (panneau de droite, onglet **Données source**). On touche « Cuisine » à gauche, la droite ne montre que les cartons de la cuisine.", "Il faut une référence entre les deux tables : ici, chaque carton pointe vers sa pièce."] }, { "titre": "Fiche et tableau", "paragraphes": ["Le même réglage marche avec une fiche : une liste à gauche, la fiche détaillée de la ligne choisie à droite. C'est le montage le plus confortable pour consulter une table qui a beaucoup de colonnes."] }, { "titre": "Ajouter une ligne dans la vue reliée", "paragraphes": ["Une ligne ajoutée dans la vue des cartons est rattachée automatiquement à la pièce sélectionnée. Plus besoin de choisir la pièce à chaque carton."] }], "mission": { "titre": "Les cartons, pièce par pièce", "intro": "Le cœur du widget Je déménage : les pièces, les cartons, et une page qui les relie.", "etapes": ["Créez une table **Pieces_demenagement** avec PIECE (Texte) : Cuisine, Salon, Chambre.", "Créez une table **Cartons** avec CARTON (Texte), CONTENU (Texte) et PIECE (Référence vers Pieces_demenagement).", "Sur la page de Pieces_demenagement, ajoutez une vue de Cartons (**Ajouter > Ajouter une vue à la page**) et réglez **Sélectionner par** sur la vue Pieces_demenagement.", "Ajoutez deux cartons dans la cuisine depuis cette vue."], "verifications": [{ "type": "table", "table": "Pieces_demenagement" }, { "type": "table", "table": "Cartons" }, { "type": "reference", "table": "Cartons", "colonne": "PIECE", "cible": "Pieces_demenagement" }, { "type": "lien", "table": "Cartons", "source": "Pieces_demenagement" }, { "type": "lignes", "table": "Cartons", "min": 2 }] }, "questions": [{ "type": "qcm", "competence": "lies", "question": "Que faut-il pour qu'une vue Cartons suive la pièce choisie ?", "choix": ["Une référence de Cartons vers Pieces_demenagement, et le réglage « Sélectionner par »", "Deux tables avec le même nom de colonne", "Un filtre enregistré"], "bonne": 0, "explication": "Le lien entre vues s'appuie sur la référence entre les tables.", "aide": "https://support.getgrist.com/linking-widgets/" }, { "type": "qcm", "competence": "lies", "question": "Vous ajoutez un carton dans la vue reliée, la Cuisine étant sélectionnée. Sa colonne PIECE ?", "choix": ["Reste vide", "Vaut Cuisine automatiquement", "Vaut la première pièce de la liste"], "bonne": 1, "explication": "La vue reliée rattache la nouvelle ligne à la ligne sélectionnée.", "aide": "https://support.getgrist.com/linking-widgets/" }, { "type": "ordre", "competence": "lies", "question": "Remettez dans l'ordre pour relier deux vues.", "etapes": ["Ouvrir la page de Pieces_demenagement", "Ajouter une vue à la page", "Choisir la table Cartons", "Régler « Sélectionné par » sur Pieces_demenagement", "Ajouter à la Page"], "explication": "Le réglage se fait au moment d'ajouter la vue (« Sélectionné par »), ou plus tard dans le panneau de droite, onglet Données source (« Sélectionner par »).", "aide": "https://support.getgrist.com/linking-widgets/" }, { "type": "multiple", "competence": "lies", "question": "Quels montages fonctionnent avec « Sélectionner par » ?", "choix": ["Un tableau qui pilote un autre tableau", "Un tableau qui pilote une fiche", "Une fiche toute seule sur sa page", "Une liste de fiches qui pilote un graphique"], "bonnes": [0, 1, 3], "explication": "Il faut au moins deux vues sur la page : l'un choisit, l'autre suit.", "aide": "https://support.getgrist.com/linking-widgets/" }, { "type": "paires", "competence": "lies", "question": "Reliez chaque montage à son usage.", "paires": [["Liste à gauche, fiche à droite", "Consulter une ligne en détail"], ["Pièces à gauche, cartons à droite", "Voir les éléments d’un groupe"], ["Tableau et graphique reliés", "Voir la courbe de la ligne choisie"]], "explication": "Le même réglage sert à des usages très différents.", "aide": "https://support.getgrist.com/linking-widgets/" }] };
 var QR = { EXP: [], LOG: [] };
 (function() {
   var x = 1, i;
@@ -6212,9 +6782,9 @@ DEM.EURO = { numMode: "currency", decimals: 2, maxDecimals: 2 };
 DEM.MODELE_DEMARCHES = [["J-60", "Donner son préavis au propriétaire (3 mois en location vide, 1 mois en meublé ou en zone tendue)"], ["J-60", "Demander au moins trois devis de déménageurs"], ["J-60", "Réserver le déménageur ou le véhicule"], ["J-60", "Inscrire les enfants dans leur nouvelle école ou crèche"], ["J-60", "Trier, donner ou vendre ce qui ne part pas"], ["J-30", "Résilier ou transférer la box internet"], ["J-30", "Transférer l’électricité et le gaz (avec le relevé des compteurs)"], ["J-30", "Assurer le nouveau logement (attestation demandée à l’état des lieux)"], ["J-30", "Faire suivre le courrier (réexpédition La Poste)"], ["J-30", "Demander l’autorisation de stationnement à la mairie"], ["J-30", "Commencer les cartons de ce qui sert peu"], ["J-7", "Déclarer le changement d’adresse en ligne (un service public prévient plusieurs organismes en une fois)"], ["J-7", "Confirmer l’heure avec le déménageur"], ["J-7", "Fixer la date de l’état des lieux de sortie"], ["J-7", "Démonter les meubles"], ["J-1", "Préparer les cartons « à ouvrir en premier » et un sac pour la première nuit"], ["J-1", "Dégivrer et vider le congélateur"], ["J-1", "Rassembler les clés et charger les téléphones"], ["Jour J", "Relever les compteurs d’eau, d’électricité et de gaz"], ["Jour J", "État des lieux de sortie, avec des photos"], ["Jour J", "État des lieux d’entrée, avec des photos"], ["Jour J", "Vérifier les cartons livrés (inventaire)"], ["Après", "Changer l’adresse de la carte grise (dans le mois qui suit)"], ["Après", "Vérifier que la CAF, les impôts et l’Assurance Maladie ont la nouvelle adresse"], ["Après", "S’inscrire sur les listes électorales de la nouvelle commune"], ["Après", "Récupérer le dépôt de garantie (1 mois si l’état des lieux est conforme, 2 mois sinon)"], ["Après", "Mettre son nom sur la boîte aux lettres"]];
 DEM.MODELE_ORGANISMES = [["La Poste (réexpédition du courrier)", "Administration", ""], ["Service en ligne de changement d’adresse", "Administration", "prévient plusieurs organismes en une fois"], ["Impôts", "Administration", ""], ["CAF", "Administration", ""], ["Carte grise", "Administration", "dans le mois qui suit"], ["Listes électorales", "Administration", ""], ["Banque", "Banque et assurance", ""], ["Assurance habitation", "Banque et assurance", "attestation pour l’état des lieux"], ["Assurance auto", "Banque et assurance", ""], ["Électricité", "Énergie et box", "relevé du compteur"], ["Gaz", "Énergie et box", "relevé du compteur"], ["Eau", "Énergie et box", ""], ["Box internet et téléphone", "Énergie et box", "résilier ou transférer"], ["Employeur", "Travail et école", ""], ["École ou crèche", "Travail et école", ""], ["Assurance Maladie", "Santé", ""], ["Mutuelle", "Santé", ""], ["Médecin traitant", "Santé", ""], ["Abonnements (journaux, magazines)", "Autre", ""]];
 DEM.FORMULES = { JOURS_RESTANTS: "DAYS($JOUR_J, TODAY()) if $JOUR_J else None", PREVU_TOTAL: "ROUND(SUM(b.PREVU or 0 for b in {BUDGET_DEMENAGEMENT}.all), 2)", PAYE_TOTAL: "ROUND(SUM(b.PAYE or 0 for b in {BUDGET_DEMENAGEMENT}.all), 2)", NB_CARTONS: "len({CARTONS}.lookupRecords(PIECE=$id))", NB_PRETS: 'len([c for c in {CARTONS}.lookupRecords(PIECE=$id) if c.ETAT != "À faire"])', NB_DEBALLES: 'len({CARTONS}.lookupRecords(PIECE=$id, ETAT="Déballé"))', ETIQUETTE: '"N° " + str($NUMERO or "?") + " · " + ($PIECE.PIECE or "Sans pièce")', NB_OBJETS: 'len([l for l in ($CONTENU or "").splitlines() if l.strip()])', DECALAGE: '{"J-60": -60, "J-30": -30, "J-7": -7, "J-1": -1, "Jour J": 0, "Après": 7}.get($PERIODE, 0)', ECHEANCE: "DATEADD({DEMENAGEMENT}.lookupOne().JOUR_J, days=$DECALAGE) if {DEMENAGEMENT}.lookupOne().JOUR_J else None", STATUT: '"Fait" if $FAIT else "" if not $ECHEANCE else "En retard" if $ECHEANCE < TODAY() else "Cette semaine" if DAYS($ECHEANCE, TODAY()) <= 7 else "À venir"', PRIX_M3: "ROUND($MONTANT / $VOLUME_M3, 2) if $MONTANT and $VOLUME_M3 else None", ECART_MOINS_CHER: "ROUND($MONTANT - min(d.MONTANT for d in {DEVIS_DEMENAGEMENT}.all if d.MONTANT), 2) if $MONTANT else None", ECART: "ROUND(($PAYE or 0) - ($PREVU or 0), 2) if $PAYE else None" };
-DEM.DEFS = { DEMENAGEMENT: { cle: "DEMENAGEMENT", id: "Demenagement", label: "🚚 Déménagement", nom: "Déménagement", signature: ["JOUR_J", "NOUVELLE_ADRESSE"], colonnes: [{ id: "JOUR_J", type: "Date" }, { id: "ANCIENNE_ADRESSE", type: "Text" }, { id: "NOUVELLE_ADRESSE", type: "Text" }, { id: "BUDGET", type: "Numeric", options: DEM.EURO }, { id: "GARDER_INVENTAIRE", type: "Bool" }, { id: "NOTE", type: "Text" }, { id: "JOURS_RESTANTS", type: "Int", formule: DEM.FORMULES.JOURS_RESTANTS }, { id: "PREVU_TOTAL", type: "Numeric", options: DEM.EURO, formule: DEM.FORMULES.PREVU_TOTAL }, { id: "PAYE_TOTAL", type: "Numeric", options: DEM.EURO, formule: DEM.FORMULES.PAYE_TOTAL }] }, PIECES_DEMENAGEMENT: { cle: "PIECES_DEMENAGEMENT", id: "Pieces_demenagement", label: "🏠 Pièces déménagement", nom: "Pièces déménagement", signature: ["PIECE", "NB_CARTONS"], affichage: "PIECE", colonnes: [{ id: "PIECE", type: "Text" }, { id: "EMOJI", type: "Text" }, { id: "COULEUR", type: "Choice", choix: MGP.COULEURS.map(function(c) {
+DEM.DEFS = { DEMENAGEMENT: { cle: "DEMENAGEMENT", id: "Demenagement", label: "🚚 Déménagement", nom: "Déménagement", signature: ["JOUR_J", "NOUVELLE_ADRESSE"], description: "Votre déménagement : une seule ligne, avec le jour J, les deux adresses et le budget total.", colonnes: [{ id: "JOUR_J", type: "Date", description: "Date du déménagement : les échéances des démarches en dépendent." }, { id: "ANCIENNE_ADRESSE", type: "Text", description: "Adresse que vous quittez." }, { id: "NOUVELLE_ADRESSE", type: "Text", description: "Adresse où vous arrivez." }, { id: "BUDGET", type: "Numeric", options: DEM.EURO, description: "Budget total que vous vous fixez, en euros." }, { id: "GARDER_INVENTAIRE", type: "Bool", description: "Coché pour garder l’inventaire des cartons après le déménagement." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "JOURS_RESTANTS", type: "Int", formule: DEM.FORMULES.JOURS_RESTANTS, description: "Formule : nombre de jours d’ici le jour J (négatif une fois passé)." }, { id: "PREVU_TOTAL", type: "Numeric", options: DEM.EURO, formule: DEM.FORMULES.PREVU_TOTAL, description: "Formule : somme des montants prévus de la table Budget du déménagement." }, { id: "PAYE_TOTAL", type: "Numeric", options: DEM.EURO, formule: DEM.FORMULES.PAYE_TOTAL, description: "Formule : somme des montants payés de la table Budget du déménagement." }] }, PIECES_DEMENAGEMENT: { cle: "PIECES_DEMENAGEMENT", id: "Pieces_demenagement", label: "🏠 Pièces déménagement", nom: "Pièces déménagement", signature: ["PIECE", "NB_CARTONS"], affichage: "PIECE", description: "Les pièces du logement : une ligne par pièce, avec ses photos d’état des lieux et l’avancement de ses cartons.", colonnes: [{ id: "PIECE", type: "Text", description: "Nom de la pièce (Cuisine, Chambre de Léa...)." }, { id: "EMOJI", type: "Text", description: "Un emoji pour la pièce." }, { id: "COULEUR", type: "Choice", choix: MGP.COULEURS.map(function(c) {
   return [c, c];
-}) }, { id: "ETAGE", type: "Text" }, { id: "ORDRE", type: "Int" }, { id: "NOTE", type: "Text" }, { id: "PHOTOS_SORTIE", type: "RefList:@DOCUMENTS" }, { id: "PHOTOS_ENTREE", type: "RefList:@DOCUMENTS" }, { id: "NB_CARTONS", type: "Int", formule: DEM.FORMULES.NB_CARTONS }, { id: "NB_PRETS", type: "Int", formule: DEM.FORMULES.NB_PRETS }, { id: "NB_DEBALLES", type: "Int", formule: DEM.FORMULES.NB_DEBALLES }] }, CARTONS: { cle: "CARTONS", id: "Cartons", label: "📦 Cartons", nom: "Cartons", signature: ["CARTON", "PIECE", "CONTENU"], affichage: "CARTON", colonnes: [{ id: "CARTON", type: "Text" }, { id: "NUMERO", type: "Int" }, { id: "PIECE", type: "Ref:@PIECES_DEMENAGEMENT" }, { id: "CONTENU", type: "Text" }, { id: "ETAT", type: "Choice", choix: DEM.ETATS }, { id: "FRAGILE", type: "Bool" }, { id: "PRIORITAIRE", type: "Bool" }, { id: "POIDS", type: "Choice", choix: DEM.POIDS }, { id: "NOTE", type: "Text" }, { id: "ETIQUETTE", type: "Text", formule: DEM.FORMULES.ETIQUETTE }, { id: "NB_OBJETS", type: "Int", formule: DEM.FORMULES.NB_OBJETS }] }, DEMARCHES_DEMENAGEMENT: { cle: "DEMARCHES_DEMENAGEMENT", id: "Demarches_du_demenagement", label: "✅ Démarches du déménagement", nom: "Démarches du déménagement", signature: ["TACHE", "PERIODE", "FAIT"], colonnes: [{ id: "TACHE", type: "Text" }, { id: "PERIODE", type: "Choice", choix: DEM.PERIODES }, { id: "FAIT", type: "Bool" }, { id: "FAIT_LE", type: "Date" }, { id: "ORDRE", type: "Int" }, { id: "NOTE", type: "Text" }, { id: "DECALAGE", type: "Int", formule: DEM.FORMULES.DECALAGE }, { id: "ECHEANCE", type: "Date", formule: DEM.FORMULES.ECHEANCE }, { id: "STATUT", type: "Choice", choix: DEM.STATUTS, formule: DEM.FORMULES.STATUT }] }, ORGANISMES_ADRESSE: { cle: "ORGANISMES_ADRESSE", id: "Organismes_a_prevenir", label: "📮 Organismes à prévenir", nom: "Organismes à prévenir", signature: ["ORGANISME", "PREVENU"], colonnes: [{ id: "ORGANISME", type: "Text" }, { id: "GENRE", type: "Choice", choix: DEM.GENRES }, { id: "PREVENU", type: "Bool" }, { id: "PREVENU_LE", type: "Date" }, { id: "DELAI", type: "Text" }, { id: "LIEN", type: "Text", options: { widget: "HyperLink" } }, { id: "NOTE", type: "Text" }] }, DEVIS_DEMENAGEMENT: { cle: "DEVIS_DEMENAGEMENT", id: "Devis_des_demenageurs", label: "🧾 Devis des déménageurs", nom: "Devis des déménageurs", signature: ["DEMENAGEUR", "VOLUME_M3", "MONTANT"], colonnes: [{ id: "DEMENAGEUR", type: "Text" }, { id: "FORMULE", type: "Choice", choix: DEM.FORMULES_DEVIS }, { id: "VOLUME_M3", type: "Numeric", options: { decimals: 0, maxDecimals: 1 } }, { id: "MONTANT", type: "Numeric", options: DEM.EURO }, { id: "DATE_DEVIS", type: "Date" }, { id: "VALABLE_JUSQU_AU", type: "Date" }, { id: "COMPRIS", type: "Text" }, { id: "CHOISI", type: "Bool" }, { id: "DOCUMENTS", type: "RefList:@DOCUMENTS" }, { id: "NOTE", type: "Text" }, { id: "PRIX_M3", type: "Numeric", options: DEM.EURO, formule: DEM.FORMULES.PRIX_M3 }, { id: "ECART_MOINS_CHER", type: "Numeric", options: DEM.EURO, formule: DEM.FORMULES.ECART_MOINS_CHER }] }, BUDGET_DEMENAGEMENT: { cle: "BUDGET_DEMENAGEMENT", id: "Budget_du_demenagement", label: "💶 Budget du déménagement", nom: "Budget du déménagement", signature: ["POSTE", "PREVU", "PAYE"], colonnes: [{ id: "POSTE", type: "Text" }, { id: "CATEGORIE", type: "Choice", choix: DEM.CATEGORIES }, { id: "PREVU", type: "Numeric", options: DEM.EURO }, { id: "PAYE", type: "Numeric", options: DEM.EURO }, { id: "DATE", type: "Date" }, { id: "DEVIS", type: "Ref:@DEVIS_DEMENAGEMENT" }, { id: "NOTE", type: "Text" }, { id: "ECART", type: "Numeric", options: DEM.EURO, formule: DEM.FORMULES.ECART }] } };
+}), description: "Couleur de la pièce sur les étiquettes des cartons (Choix unique)." }, { id: "ETAGE", type: "Text", description: "Étage de la pièce dans le nouveau logement." }, { id: "ORDRE", type: "Int", description: "Ordre d’affichage des pièces." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "PHOTOS_SORTIE", type: "RefList:@DOCUMENTS", description: "Photos de l’état des lieux de sortie (Référence multiple vers Documents)." }, { id: "PHOTOS_ENTREE", type: "RefList:@DOCUMENTS", description: "Photos de l’état des lieux d’entrée (Référence multiple vers Documents)." }, { id: "NB_CARTONS", type: "Int", formule: DEM.FORMULES.NB_CARTONS, description: "Formule : nombre de cartons de la pièce." }, { id: "NB_PRETS", type: "Int", formule: DEM.FORMULES.NB_PRETS, description: "Formule : nombre de cartons de la pièce qui ne sont plus À faire." }, { id: "NB_DEBALLES", type: "Int", formule: DEM.FORMULES.NB_DEBALLES, description: "Formule : nombre de cartons de la pièce déjà déballés." }] }, CARTONS: { cle: "CARTONS", id: "Cartons", label: "📦 Cartons", nom: "Cartons", signature: ["CARTON", "PIECE", "CONTENU"], affichage: "CARTON", description: "Vos cartons : une ligne par carton, avec sa pièce, son contenu et son état, pour imprimer les étiquettes.", colonnes: [{ id: "CARTON", type: "Text", description: "Nom court du carton." }, { id: "NUMERO", type: "Int", description: "Numéro écrit sur le carton." }, { id: "PIECE", type: "Ref:@PIECES_DEMENAGEMENT", description: "Pièce de destination (Référence vers Pièces déménagement)." }, { id: "CONTENU", type: "Text", description: "Ce qu’il contient, un objet par ligne." }, { id: "ETAT", type: "Choice", choix: DEM.ETATS, description: "Où en est le carton, en Choix unique : À faire, Prêt, Livré ou Déballé." }, { id: "FRAGILE", type: "Bool", description: "Coché si le carton est fragile." }, { id: "PRIORITAIRE", type: "Bool", description: "Coché s’il faut l’ouvrir en premier." }, { id: "POIDS", type: "Choice", choix: DEM.POIDS, description: "Poids ressenti, en Choix unique : Léger, Moyen ou Lourd." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "ETIQUETTE", type: "Text", formule: DEM.FORMULES.ETIQUETTE, description: "Formule : texte de l’étiquette, avec le numéro et la pièce du carton." }, { id: "NB_OBJETS", type: "Int", formule: DEM.FORMULES.NB_OBJETS, description: "Formule : nombre de lignes non vides de CONTENU." }] }, DEMARCHES_DEMENAGEMENT: { cle: "DEMARCHES_DEMENAGEMENT", id: "Demarches_du_demenagement", label: "✅ Démarches du déménagement", nom: "Démarches du déménagement", signature: ["TACHE", "PERIODE", "FAIT"], description: "Les démarches du déménagement : une ligne par tâche, avec une échéance calculée à partir du jour J.", colonnes: [{ id: "TACHE", type: "Text", description: "La démarche à faire." }, { id: "PERIODE", type: "Choice", choix: DEM.PERIODES, description: "Quand la faire par rapport au jour J, en Choix unique : J-60, J-30, J-7, J-1, Jour J ou Après." }, { id: "FAIT", type: "Bool", description: "Coché quand c’est fait." }, { id: "FAIT_LE", type: "Date", description: "Date à laquelle c’est fait." }, { id: "ORDRE", type: "Int", description: "Ordre d’affichage dans la période." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "DECALAGE", type: "Int", formule: DEM.FORMULES.DECALAGE, description: "Formule : nombre de jours entre le jour J et l’échéance, déduit de PERIODE (J-30 donne -30)." }, { id: "ECHEANCE", type: "Date", formule: DEM.FORMULES.ECHEANCE, description: "Formule : jour J plus DECALAGE, avec DATEADD ; vide tant que le jour J n’est pas fixé." }, { id: "STATUT", type: "Choice", choix: DEM.STATUTS, formule: DEM.FORMULES.STATUT, description: "Formule : En retard, Cette semaine, À venir ou Fait (Choix unique), selon l’échéance et la case FAIT." }] }, ORGANISMES_ADRESSE: { cle: "ORGANISMES_ADRESSE", id: "Organismes_a_prevenir", label: "📮 Organismes à prévenir", nom: "Organismes à prévenir", signature: ["ORGANISME", "PREVENU"], description: "Les organismes à prévenir de votre nouvelle adresse : une ligne par organisme.", colonnes: [{ id: "ORGANISME", type: "Text", description: "Nom de l’organisme (CAF, banque, employeur...)." }, { id: "GENRE", type: "Choice", choix: DEM.GENRES, description: "Famille d’organisme, en Choix unique (Administration, Banque et assurance...)." }, { id: "PREVENU", type: "Bool", description: "Coché quand il est prévenu." }, { id: "PREVENU_LE", type: "Date", description: "Date à laquelle vous l’avez prévenu." }, { id: "DELAI", type: "Text", description: "Délai conseillé pour le prévenir, en texte libre." }, { id: "LIEN", type: "Text", options: { widget: "HyperLink" }, description: "Adresse web pour faire la démarche." }, { id: "NOTE", type: "Text", description: "Note libre." }] }, DEVIS_DEMENAGEMENT: { cle: "DEVIS_DEMENAGEMENT", id: "Devis_des_demenageurs", label: "🧾 Devis des déménageurs", nom: "Devis des déménageurs", signature: ["DEMENAGEUR", "VOLUME_M3", "MONTANT"], description: "Les devis des déménageurs : une ligne par devis, avec le prix au mètre cube et l’écart avec le moins cher.", colonnes: [{ id: "DEMENAGEUR", type: "Text", description: "Nom du déménageur (ou du loueur d’utilitaire)." }, { id: "FORMULE", type: "Choice", choix: DEM.FORMULES_DEVIS, description: "Formule proposée, en Choix unique : Économique, Standard, Confort ou Je loue un utilitaire." }, { id: "VOLUME_M3", type: "Numeric", options: { decimals: 0, maxDecimals: 1 }, description: "Volume estimé, en mètres cubes." }, { id: "MONTANT", type: "Numeric", options: DEM.EURO, description: "Prix du devis, en euros." }, { id: "DATE_DEVIS", type: "Date", description: "Date du devis." }, { id: "VALABLE_JUSQU_AU", type: "Date", description: "Date de fin de validité du devis." }, { id: "COMPRIS", type: "Text", description: "Ce qui est compris dans le prix." }, { id: "CHOISI", type: "Bool", description: "Coché pour le devis retenu." }, { id: "DOCUMENTS", type: "RefList:@DOCUMENTS", description: "Le devis signé, les conditions... (Référence multiple vers Documents)." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "PRIX_M3", type: "Numeric", options: DEM.EURO, formule: DEM.FORMULES.PRIX_M3, description: "Formule : MONTANT divisé par VOLUME_M3, le prix au mètre cube." }, { id: "ECART_MOINS_CHER", type: "Numeric", options: DEM.EURO, formule: DEM.FORMULES.ECART_MOINS_CHER, description: "Formule : écart entre ce devis et le devis le moins cher, en euros." }] }, BUDGET_DEMENAGEMENT: { cle: "BUDGET_DEMENAGEMENT", id: "Budget_du_demenagement", label: "💶 Budget du déménagement", nom: "Budget du déménagement", signature: ["POSTE", "PREVU", "PAYE"], description: "Le budget du déménagement : une ligne par poste de dépense, prévu et payé.", colonnes: [{ id: "POSTE", type: "Text", description: "Poste de dépense." }, { id: "CATEGORIE", type: "Choice", choix: DEM.CATEGORIES, description: "Famille de dépense, en Choix unique (Déménageur, Véhicule, Double loyer...)." }, { id: "PREVU", type: "Numeric", options: DEM.EURO, description: "Montant prévu, en euros." }, { id: "PAYE", type: "Numeric", options: DEM.EURO, description: "Montant payé, en euros." }, { id: "DATE", type: "Date", description: "Date du paiement." }, { id: "DEVIS", type: "Ref:@DEVIS_DEMENAGEMENT", description: "Devis correspondant (Référence vers Devis des déménageurs), facultatif." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "ECART", type: "Numeric", options: DEM.EURO, formule: DEM.FORMULES.ECART, description: "Formule : PAYE moins PREVU (positif si vous avez payé plus que prévu), vide tant que rien n’est payé." }] } };
 DEM.ORDRE = ["DEMENAGEMENT", "PIECES_DEMENAGEMENT", "CARTONS", "DEMARCHES_DEMENAGEMENT", "ORGANISMES_ADRESSE", "DEVIS_DEMENAGEMENT", "BUDGET_DEMENAGEMENT"];
 DEM.defsWidget = function() {
   return DEM.ORDRE.map(function(c) {
@@ -7024,7 +7594,7 @@ DEM.creerPageReliee = async function() {
     var colPiece = MGP.g.colonnesDe(tc.id).filter(function(c) {
       return c.colId === "PIECE";
     })[0];
-    await MGP.g.actions([["UpdateRecord", "_grist_Views", r1.viewRef, { name: "🔗 Pièces et cartons" }], ["UpdateRecord", "_grist_Views_section", r1.sectionRef, { title: "🚪 Pièces" }], ["UpdateRecord", "_grist_Views_section", r2.sectionRef, { title: "📦 Cartons de la pièce choisie", linkSrcSectionRef: r1.sectionRef, linkSrcColRef: 0, linkTargetColRef: colPiece ? colPiece.id : 0 }]]);
+    await MGP.g.actions([["UpdateRecord", "_grist_Views", r1.viewRef, { name: "🔗 Pièces et cartons" }], ["UpdateRecord", "_grist_Views_section", r1.sectionRef, { title: "🚪 Pièces", description: "Les pièces du logement : choisissez une ligne pour voir ses cartons dans la vue d’à côté." }], ["UpdateRecord", "_grist_Views_section", r2.sectionRef, { title: "📦 Cartons de la pièce choisie", description: "Les cartons de la pièce sélectionnée à gauche (« Sélectionner par » sur la colonne PIECE).", linkSrcSectionRef: r1.sectionRef, linkSrcColRef: 0, linkTargetColRef: colPiece ? colPiece.id : 0 }]]);
     await MGP.g.ecrireReglage("PAGE_RELIEE:" + DEM.WIDGET, { vue: r1.viewRef });
     MGP.annoncer("Page « 🔗 Pièces et cartons » créée : choisissez une pièce à gauche, ses cartons suivent.", "ok");
   } catch (e) {
@@ -7095,7 +7665,7 @@ DEM.rendreCapot = async function() {
 DEM.exemple = function(ctx, cle, f) {
   return (ctx.donnees[cle] || []).filter(f)[0] || null;
 };
-DEM.DICO = { tables: { CARTONS: { emoji: "📦", nom: "Cartons", couleur: "Pêche", role: "Un carton par ligne. PIECE est une Référence vers Pièces : c’est elle qui permet de relier deux widgets d’une page." }, PIECES_DEMENAGEMENT: { emoji: "🚪", nom: "Pièces du déménagement", couleur: "Écume", role: "Les pièces du nouveau logement, avec la couleur de leurs étiquettes et les photos de l’état des lieux." }, DEMARCHES_DEMENAGEMENT: { emoji: "✅", nom: "Démarches du déménagement", couleur: "Menthe", role: "La liste des choses à faire, rangées par période autour du jour J." }, DEMENAGEMENT: { emoji: "🚚", nom: "Déménagement", couleur: "Flamant", role: "Une seule ligne : le jour J, les adresses, l’enveloppe." }, DEVIS_DEMENAGEMENT: { emoji: "🧾", nom: "Devis des déménageurs", couleur: "Citron", role: "Les devis à comparer ; celui qui est choisi entre dans le budget." }, BUDGET_DEMENAGEMENT: { emoji: "💶", nom: "Budget du déménagement", couleur: "Lavande", role: "Ce qui est prévu et ce qui est payé." }, ORGANISMES_ADRESSE: { emoji: "📮", nom: "Organismes à prévenir", couleur: "Pêche", role: "Le changement d’adresse, organisme par organisme." } }, champs: { CARTONS: { CARTON: "le nom du carton.", NUMERO: "son numéro, écrit sur l’étiquette.", PIECE: "une **Référence** vers Pièces : la pièce d’arrivée.", CONTENU: "une chose par ligne : la recherche les parcourt.", ETAT: "un **Choix** : À faire, Prêt, Livré, Déballé.", FRAGILE: "case à cocher.", PRIORITAIRE: "à ouvrir en premier.", POIDS: "un **Choix**.", NOTE: "une note.", ETIQUETTE: "calculé : numéro et pièce, comme sur l’étiquette.", NB_OBJETS: "calculé : le nombre de lignes du contenu." }, PIECES_DEMENAGEMENT: { PIECE: "le nom de la pièce.", EMOJI: "l’emoji.", COULEUR: "la couleur des étiquettes.", ETAGE: "l’étage.", ORDRE: "l’ordre d’affichage.", NOTE: "une note.", PHOTOS_SORTIE: "une **Liste de références** vers Documents.", PHOTOS_ENTREE: "une **Liste de références** vers Documents.", NB_CARTONS: "calculé : les cartons de la pièce.", NB_PRETS: "calculé : ceux qui ne sont plus « À faire ».", NB_DEBALLES: "calculé : ceux qui sont déballés." }, DEMARCHES_DEMENAGEMENT: { TACHE: "la démarche.", PERIODE: "un **Choix** : J-60, J-30, J-7, J-1, Jour J, Après.", FAIT: "case à cocher.", FAIT_LE: "le jour où elle a été faite.", ORDRE: "l’ordre.", NOTE: "une note.", DECALAGE: "calculé : le nombre de jours avant ou après le jour J.", ECHEANCE: "calculé : la date limite.", STATUT: "calculé : En retard, Cette semaine, À venir ou Fait." }, DEMENAGEMENT: { JOUR_J: "le jour du déménagement.", ANCIENNE_ADRESSE: "l’adresse quittée.", NOUVELLE_ADRESSE: "la nouvelle adresse.", BUDGET: "l’enveloppe.", GARDER_INVENTAIRE: "garder pièces et cartons comme inventaire.", NOTE: "une note.", JOURS_RESTANTS: "calculé : les jours avant le jour J.", PREVU_TOTAL: "calculé : le total prévu du budget.", PAYE_TOTAL: "calculé : le total payé." }, DEVIS_DEMENAGEMENT: { DEMENAGEUR: "le déménageur ou le loueur.", FORMULE: "un **Choix**.", VOLUME_M3: "le volume.", MONTANT: "le montant TTC.", DATE_DEVIS: "la date du devis.", VALABLE_JUSQU_AU: "sa validité.", COMPRIS: "ce qui est compris.", CHOISI: "case à cocher.", DOCUMENTS: "une **Liste de références** vers Documents.", NOTE: "une note.", PRIX_M3: "calculé : le prix du m³.", ECART_MOINS_CHER: "calculé : l’écart avec le moins cher." }, BUDGET_DEMENAGEMENT: { POSTE: "la dépense.", CATEGORIE: "un **Choix**.", PREVU: "le montant prévu.", PAYE: "le montant payé.", DATE: "le jour du paiement.", DEVIS: "une **Référence** vers le devis choisi.", NOTE: "une note.", ECART: "calculé : payé moins prévu." }, ORGANISMES_ADRESSE: { ORGANISME: "l’organisme.", GENRE: "un **Choix**.", PREVENU: "case à cocher.", PREVENU_LE: "le jour où il a été prévenu.", DELAI: "un délai ou un conseil.", LIEN: "un lien.", NOTE: "une note." } }, formules: [{ cle: "PIECES_DEMENAGEMENT", col: "NB_CARTONS", defaut: DEM.FORMULES.NB_CARTONS, intro: "Le lien entre widgets s’appuie sur la même chose que cette formule : la Référence PIECE de chaque carton. On compte les cartons qui pointent vers cette pièce.", jetons: [["Cartons.lookupRecords(PIECE=$id)", "les cartons dont la pièce est celle-ci."], ["len(...)", "combien."]], exemple: function(ctx) {
+DEM.DICO = { tables: { CARTONS: { emoji: "📦", nom: "Cartons", couleur: "Pêche", role: "Un carton par ligne. PIECE est une Référence vers Pièces : c’est elle qui permet de relier deux vues d’une page." }, PIECES_DEMENAGEMENT: { emoji: "🚪", nom: "Pièces du déménagement", couleur: "Écume", role: "Les pièces du nouveau logement, avec la couleur de leurs étiquettes et les photos de l’état des lieux." }, DEMARCHES_DEMENAGEMENT: { emoji: "✅", nom: "Démarches du déménagement", couleur: "Menthe", role: "La liste des choses à faire, rangées par période autour du jour J." }, DEMENAGEMENT: { emoji: "🚚", nom: "Déménagement", couleur: "Flamant", role: "Une seule ligne : le jour J, les adresses, l’enveloppe." }, DEVIS_DEMENAGEMENT: { emoji: "🧾", nom: "Devis des déménageurs", couleur: "Citron", role: "Les devis à comparer ; celui qui est choisi entre dans le budget." }, BUDGET_DEMENAGEMENT: { emoji: "💶", nom: "Budget du déménagement", couleur: "Lavande", role: "Ce qui est prévu et ce qui est payé." }, ORGANISMES_ADRESSE: { emoji: "📮", nom: "Organismes à prévenir", couleur: "Pêche", role: "Le changement d’adresse, organisme par organisme." } }, champs: { CARTONS: { CARTON: "le nom du carton.", NUMERO: "son numéro, écrit sur l’étiquette.", PIECE: "une **Référence** vers Pièces : la pièce d’arrivée.", CONTENU: "une chose par ligne : la recherche les parcourt.", ETAT: "un **Choix unique** : À faire, Prêt, Livré, Déballé.", FRAGILE: "case à cocher.", PRIORITAIRE: "à ouvrir en premier.", POIDS: "un **Choix unique**.", NOTE: "une note.", ETIQUETTE: "calculé : numéro et pièce, comme sur l’étiquette.", NB_OBJETS: "calculé : le nombre de lignes du contenu." }, PIECES_DEMENAGEMENT: { PIECE: "le nom de la pièce.", EMOJI: "l’emoji.", COULEUR: "la couleur des étiquettes.", ETAGE: "l’étage.", ORDRE: "l’ordre d’affichage.", NOTE: "une note.", PHOTOS_SORTIE: "une **Référence multiple** vers Documents.", PHOTOS_ENTREE: "une **Référence multiple** vers Documents.", NB_CARTONS: "calculé : les cartons de la pièce.", NB_PRETS: "calculé : ceux qui ne sont plus « À faire ».", NB_DEBALLES: "calculé : ceux qui sont déballés." }, DEMARCHES_DEMENAGEMENT: { TACHE: "la démarche.", PERIODE: "un **Choix unique** : J-60, J-30, J-7, J-1, Jour J, Après.", FAIT: "case à cocher.", FAIT_LE: "le jour où elle a été faite.", ORDRE: "l’ordre.", NOTE: "une note.", DECALAGE: "calculé : le nombre de jours avant ou après le jour J.", ECHEANCE: "calculé : la date limite.", STATUT: "calculé : En retard, Cette semaine, À venir ou Fait." }, DEMENAGEMENT: { JOUR_J: "le jour du déménagement.", ANCIENNE_ADRESSE: "l’adresse quittée.", NOUVELLE_ADRESSE: "la nouvelle adresse.", BUDGET: "l’enveloppe.", GARDER_INVENTAIRE: "garder pièces et cartons comme inventaire.", NOTE: "une note.", JOURS_RESTANTS: "calculé : les jours avant le jour J.", PREVU_TOTAL: "calculé : le total prévu du budget.", PAYE_TOTAL: "calculé : le total payé." }, DEVIS_DEMENAGEMENT: { DEMENAGEUR: "le déménageur ou le loueur.", FORMULE: "un **Choix unique**.", VOLUME_M3: "le volume.", MONTANT: "le montant TTC.", DATE_DEVIS: "la date du devis.", VALABLE_JUSQU_AU: "sa validité.", COMPRIS: "ce qui est compris.", CHOISI: "case à cocher.", DOCUMENTS: "une **Référence multiple** vers Documents.", NOTE: "une note.", PRIX_M3: "calculé : le prix du m³.", ECART_MOINS_CHER: "calculé : l’écart avec le moins cher." }, BUDGET_DEMENAGEMENT: { POSTE: "la dépense.", CATEGORIE: "un **Choix unique**.", PREVU: "le montant prévu.", PAYE: "le montant payé.", DATE: "le jour du paiement.", DEVIS: "une **Référence** vers le devis choisi.", NOTE: "une note.", ECART: "calculé : payé moins prévu." }, ORGANISMES_ADRESSE: { ORGANISME: "l’organisme.", GENRE: "un **Choix unique**.", PREVENU: "un **Booléen** (case à cocher).", PREVENU_LE: "le jour où il a été prévenu.", DELAI: "un délai ou un conseil.", LIEN: "un lien.", NOTE: "une note." } }, formules: [{ cle: "PIECES_DEMENAGEMENT", col: "NB_CARTONS", defaut: DEM.FORMULES.NB_CARTONS, intro: "Le lien entre widgets s’appuie sur la même chose que cette formule : la Référence PIECE de chaque carton. On compte les cartons qui pointent vers cette pièce.", jetons: [["Cartons.lookupRecords(PIECE=$id)", "les cartons dont la pièce est celle-ci."], ["len(...)", "combien."]], exemple: function(ctx) {
   var p = DEM.exemple(ctx, "PIECES_DEMENAGEMENT", function(x) {
     return x.NB_CARTONS > 1;
   });
@@ -7115,15 +7685,12 @@ DEM.DICO = { tables: { CARTONS: { emoji: "📦", nom: "Cartons", couleur: "Pêch
     return x.ECART_MOINS_CHER > 0;
   });
   return d ? (d.DEMENAGEUR || "") + " : **" + DEM.euros(d.ECART_MOINS_CHER) + "** de plus" : "";
-} }], extras: [{ titre: "Relier deux widgets d’une page", paragraphes: ["Le bouton « 🔗 Créer la page reliée » ajoute une page Grist avec les pièces à gauche et les cartons à droite, réglés sur « Sélectionner par » : choisissez une pièce, ses cartons suivent, et un carton ajouté à droite prend la pièce choisie."] }, { titre: "Pourquoi une table de pièces à part ?", paragraphes: ["Le widget Tâches de la maison a déjà sa table Pieces. Celle du déménagement s’appelle Pieces_demenagement et a sa propre clé : les deux widgets ne se marchent pas dessus, et la table de Tâches n’est jamais modifiée."] }, { titre: "Les QR codes", paragraphes: ["Ils sont calculés dans la page, sans service extérieur. Chacun contient le lien vers la ligne du carton dans les données du document : seules les personnes qui ont accès au document peuvent l’ouvrir."] }] };
+} }], extras: [{ titre: "Relier deux vues d’une page", paragraphes: ["Le bouton « 🔗 Créer la page reliée » ajoute une page Grist avec les pièces à gauche et les cartons à droite, réglés sur « Sélectionner par » : choisissez une pièce, ses cartons suivent, et un carton ajouté à droite prend la pièce choisie."] }, { titre: "Pourquoi une table de pièces à part ?", paragraphes: ["Le widget Tâches de la maison a déjà sa table Pieces. Celle du déménagement s’appelle Pieces_demenagement et a sa propre clé : les deux widgets ne se marchent pas dessus, et la table de Tâches n’est jamais modifiée."] }, { titre: "Les QR codes", paragraphes: ["Ils sont calculés dans la page, sans service extérieur. Chacun contient le lien vers la ligne du carton dans les données du document : seules les personnes qui ont accès au document peuvent l’ouvrir."] }] };
 DEM.montrer = function(ecran) {
   if (ecran === "app") {
     setTimeout(MGP.g.afficherIndicePage, 0);
   }
-  document.body.classList.toggle("noel-fond", ecran === "deballage");
-  if (ecran === "deballage") {
-    MGP.noel.decorer(document.getElementById("ecran-deballage"));
-  }
+  MGP.parcours.habiller(document.getElementById("ecran-deballage"), ecran === "deballage");
   document.getElementById("ecran-deballage").hidden = ecran !== "deballage";
   document.getElementById("ecran-app").hidden = ecran !== "app";
   if (ecran !== "app") {
@@ -7140,10 +7707,6 @@ DEM.preparerDeballage = function() {
   document.getElementById("inst-acces").textContent = full ? "" : "Pour installer, ce widget a besoin de l’accès complet au document (panneau de droite, « Accès complet au document »).";
   document.getElementById("btn-installer-vide").disabled = !full;
   document.getElementById("btn-installer-ex").disabled = !full;
-  var c = MGP.parcours.CONTENU;
-  if (c && c.niveauNom) {
-    document.getElementById("deb-pil").textContent = "🎁 Votre cadeau · Niveau " + c.niveauNom;
-  }
   DEM.montrer("deballage");
   if (DEM.academie) {
     MGP.parcours.rendreEntree();
@@ -7420,7 +7983,7 @@ DEM.reprendre = async function() {
 };
 window.DEM = DEM;
 window.QR = QR;
-MGP.g.CADEAU = { cle: "demenagement", section: "maison", nom: DEM.NOM, page: DEM.NOM_PAGE };
+MGP.g.CADEAU = { cle: "demenagement", section: "maison", nom: DEM.NOM, page: DEM.NOM_PAGE, description: "Préparez votre déménagement : démarches datées depuis le jour J, cartons étiquetés par pièce, devis et budget.", defs: DEM.defsWidget };
 MGP.g.reprendre = DEM.reprendre;
 DEM.demarrer();</script>
 </body>

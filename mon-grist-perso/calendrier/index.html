@@ -1056,6 +1056,41 @@ code {
 .pc-voie b {
   font-size: 16px;
 }
+.pc-voie[aria-expanded=true] {
+  box-shadow: inset 0 0 0 2px var(--ecume-f);
+  background: var(--blanc);
+}
+.pc-installe {
+  margin-top: 12px;
+}
+.pc-installe .pc-inst {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+.pc-installe .pc-inst:focus-visible {
+  outline: 3px solid var(--ecume-f);
+  outline-offset: 3px;
+}
+.pc-installe .pc-inst .act {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+.pc-doublon {
+  margin-top: 8px;
+}
+.pc-partielle {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-s);
+  background: var(--citron);
+  color: var(--encre);
+}
 .pc-liens {
   display: flex;
   flex-wrap: wrap;
@@ -1535,7 +1570,7 @@ a.pc-aide {
 <div id="annonces" class="sr" aria-live="polite"></div>
 <main class="page"><section class="carte renvoi">
   <h1>🎓 Le calendrier est devenu l’Académie Grist</h1>
-  <p>Toutes les cartes vous attendent dans l’académie, à votre rythme : remplacez l’adresse de ce widget (panneau de droite, « Widget personnalisé ») par celle-ci.</p>
+  <p>Toutes les cartes vous attendent dans l’académie, à votre rythme : remplacez l’adresse de ce widget (panneau de droite, onglet « Vue », son « URL personnalisée ») par celle-ci.</p>
   <div class="adr"><code id="adresse"></code><button type="button" class="btn sec" id="copier">Copier l’adresse</button></div>
 </section></main>
 <div id="toasts" class="toasts"></div>

@@ -1057,6 +1057,41 @@ code {
 .pc-voie b {
   font-size: 16px;
 }
+.pc-voie[aria-expanded=true] {
+  box-shadow: inset 0 0 0 2px var(--ecume-f);
+  background: var(--blanc);
+}
+.pc-installe {
+  margin-top: 12px;
+}
+.pc-installe .pc-inst {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+.pc-installe .pc-inst:focus-visible {
+  outline: 3px solid var(--ecume-f);
+  outline-offset: 3px;
+}
+.pc-installe .pc-inst .act {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+.pc-doublon {
+  margin-top: 8px;
+}
+.pc-partielle {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-s);
+  background: var(--citron);
+  color: var(--encre);
+}
 .pc-liens {
   display: flex;
   flex-wrap: wrap;
@@ -2111,8 +2146,8 @@ details.plus summary {
 <body>
 <div id="loader" class="loader actif" role="status"><div><div class="rond"></div><span class="txt">Chargement...</span></div></div>
 <div id="annonces" class="sr" aria-live="polite"></div>
-<main class="page noel" id="ecran-deballage" hidden>
-  <span class="pil t-flamant">🎁 Cadeau du 21 décembre</span>
+<main class="page" id="ecran-deballage" hidden>
+  <span class="pil t-lavande" id="deb-pil" hidden></span>
   <div class="deb" style="margin-top:8px">
     <div>
       <h1>🧹 Tâches de la maison</h1>
@@ -2776,10 +2811,10 @@ MGP.g.demarrer = function(accesRequis) {
   });
 };
 MGP.CHAMPS_SUIVI = ["CREE_LE", "CREE_PAR", "MODIFIE_LE", "MODIFIE_PAR"];
-MGP.SOCLE = { TECH: { cle: "TECH", id: "BIBLIOTHEQUE_MON_GRIST_PERSO_", label: "⚙️ BIBLIOTHÈQUE MON GRIST PERSO ⚡", motif: "BIBLIOTHEQUE_MON_GRIST_PERSO", signature: ["CLE", "VALEUR"], colonnes: [{ id: "CLE", type: "Text" }, { id: "VALEUR", type: "Text" }] }, PERSONNES: { cle: "PERSONNES", id: "Personnes", label: "👥 Personnes", nom: "Personnes", signature: ["PRENOM", "FOYER", "TYPE"], colonnes: [{ id: "PRENOM", type: "Text" }, { id: "TYPE", type: "Choice", choix: [["Adulte", "Pêche"], ["Enfant", "Lavande"], ["Proche", "Écume"], ["Ami", "Menthe"]] }, { id: "FOYER", type: "Bool" }, { id: "NAISSANCE", type: "Date" }, { id: "EMOJI", type: "Text" }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]] }, { id: "NOTES", type: "Text" }], affichage: "PRENOM" }, CATEGORIES: { cle: "CATEGORIES", id: "Categories", label: "🏷️ Catégories", nom: "Catégories", signature: ["NOM", "EMOJI", "COULEUR"], colonnes: [{ id: "NOM", type: "Text" }, { id: "EMOJI", type: "Text" }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]] }], affichage: "NOM", graines: [["Alimentation", "🛒", "Menthe"], ["Maison", "🏠", "Pêche"], ["Transport", "🚗", "Écume"], ["Loisirs", "🎭", "Lavande"], ["Cadeaux", "🎁", "Flamant"], ["Abonnements", "📱", "Citron"], ["Santé", "🩺", "Écume"], ["Épargne", "🌱", "Menthe"]] }, DOCUMENTS: { cle: "DOCUMENTS", id: "Documents", label: "📎 Documents", nom: "Documents", signature: ["FICHIER", "TITRE"], colonnes: [{ id: "TITRE", type: "Text" }, { id: "FICHIER", type: "Attachments" }, { id: "TYPE", type: "Choice", choix: [["Facture", "Citron"], ["Garantie", "Menthe"], ["Contrat", "Lavande"], ["Photo", "Flamant"], ["Autre", "Écume"]] }, { id: "PERSONNE", type: "Ref:@PERSONNES" }, { id: "CATEGORIE", type: "Ref:@CATEGORIES" }, { id: "DATE_DOC", type: "Date" }, { id: "NOTES", type: "Text" }], affichage: "TITRE" } };
+MGP.SOCLE = { TECH: { cle: "TECH", id: "BIBLIOTHEQUE_MON_GRIST_PERSO_", label: "⚙️ BIBLIOTHÈQUE MON GRIST PERSO ⚡", motif: "BIBLIOTHEQUE_MON_GRIST_PERSO", description: "Table technique des widgets Mon Grist perso : réglages, tables installées, cadeaux ouverts et progression. Une ligne par réglage, à ne pas modifier à la main.", signature: ["CLE", "VALEUR"], colonnes: [{ id: "CLE", type: "Text", description: "Nom du réglage (par exemple TABLE:CADEAUX, INSTALL:conges ou cadeau.jour-01). Une seule ligne par nom." }, { id: "VALEUR", type: "Text", description: "Valeur du réglage, en texte ou en JSON : l’id réel d’une table, l’état d’une installation, une date..." }] }, PERSONNES: { cle: "PERSONNES", id: "Personnes", label: "👥 Personnes", nom: "Personnes", description: "Les personnes du foyer et les proches, partagées par tous les widgets (cadeaux, congés, santé...). Une ligne par personne.", signature: ["PRENOM", "FOYER", "TYPE"], colonnes: [{ id: "PRENOM", type: "Text", description: "Prénom ou surnom de la personne, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "TYPE", type: "Choice", choix: [["Adulte", "Pêche"], ["Enfant", "Lavande"], ["Proche", "Écume"], ["Ami", "Menthe"]], description: "Lien avec vous, en Choix unique : Adulte, Enfant, Proche ou Ami." }, { id: "FOYER", type: "Bool", description: "Coché si la personne vit sous votre toit (Booléen)." }, { id: "NAISSANCE", type: "Date", description: "Date de naissance, facultative : elle sert aux anniversaires et aux âges." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la personne dans les widgets." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la personne dans les widgets (Choix unique)." }, { id: "NOTES", type: "Text", description: "Notes libres : tailles, goûts, idées..." }], affichage: "PRENOM" }, CATEGORIES: { cle: "CATEGORIES", id: "Categories", label: "🏷️ Catégories", nom: "Catégories", description: "Catégories de dépenses et de documents, partagées par tous les widgets (Alimentation, Maison, Transport...). Une ligne par catégorie.", signature: ["NOM", "EMOJI", "COULEUR"], colonnes: [{ id: "NOM", type: "Text", description: "Nom de la catégorie, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la catégorie." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la catégorie dans les widgets (Choix unique)." }], affichage: "NOM", graines: [["Alimentation", "🛒", "Menthe"], ["Maison", "🏠", "Pêche"], ["Transport", "🚗", "Écume"], ["Loisirs", "🎭", "Lavande"], ["Cadeaux", "🎁", "Flamant"], ["Abonnements", "📱", "Citron"], ["Santé", "🩺", "Écume"], ["Épargne", "🌱", "Menthe"]] }, DOCUMENTS: { cle: "DOCUMENTS", id: "Documents", label: "📎 Documents", nom: "Documents", description: "Fichiers rangés par les widgets : factures, garanties, contrats, photos. Une ligne par document, reliée aux autres tables par des colonnes de type Référence.", signature: ["FICHIER", "TITRE"], colonnes: [{ id: "TITRE", type: "Text", description: "Nom du document, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "FICHIER", type: "Attachments", description: "Le fichier lui-même (Pièce jointe) : il compte dans la taille du document Grist." }, { id: "TYPE", type: "Choice", choix: [["Facture", "Citron"], ["Garantie", "Menthe"], ["Contrat", "Lavande"], ["Photo", "Flamant"], ["Autre", "Écume"]], description: "Nature du document, en Choix unique : Facture, Garantie, Contrat, Photo... Certains widgets ajoutent leurs choix." }, { id: "PERSONNE", type: "Ref:@PERSONNES", description: "Personne concernée (Référence vers Personnes), facultative." }, { id: "CATEGORIE", type: "Ref:@CATEGORIES", description: "Catégorie du document (Référence vers Catégories), facultative." }, { id: "DATE_DOC", type: "Date", description: "Date du document (date de la facture, du contrat...)." }, { id: "NOTES", type: "Text", description: "Notes libres sur le document." }], affichage: "TITRE" } };
 MGP.ORDRE_SOCLE = ["TECH", "PERSONNES", "CATEGORIES", "DOCUMENTS"];
 MGP.colonnesSuivi = function() {
-  return [{ id: "CREE_LE", type: "DateTime:Europe/Paris", declencheur: "NOW()", quand: 0 }, { id: "CREE_PAR", type: "Text", declencheur: "user.Name", quand: 0 }, { id: "MODIFIE_LE", type: "DateTime:Europe/Paris", declencheur: "NOW()", quand: 2 }, { id: "MODIFIE_PAR", type: "Text", declencheur: "user.Name", quand: 2 }];
+  return [{ id: "CREE_LE", type: "DateTime:Europe/Paris", declencheur: "NOW()", quand: 0, description: "Date et heure de création de la ligne, posées une fois par une formule d’initialisation (NOW())." }, { id: "CREE_PAR", type: "Text", declencheur: "user.Name", quand: 0, description: "Nom de la personne qui a créé la ligne, posé une fois par une formule d’initialisation (user.Name)." }, { id: "MODIFIE_LE", type: "DateTime:Europe/Paris", declencheur: "NOW()", quand: 2, description: "Date et heure de la dernière modification de la ligne : formule d’initialisation (NOW()) recalculée à chaque changement." }, { id: "MODIFIE_PAR", type: "Text", declencheur: "user.Name", quand: 2, description: "Nom de la dernière personne qui a modifié la ligne : formule d’initialisation (user.Name) recalculée à chaque changement." }];
 };
 MGP.g.trouver = function(def) {
   var tables = MGP.g.meta.tables.filter(MGP.g.estTableUtilisateur);
@@ -2931,6 +2966,70 @@ MGP.g.actionsAffichageRef = function(tableId, c, defs) {
   }
   return [["ModifyColumn", tableId, c.id, { visibleCol: vis.id }], ["SetDisplayFormula", tableId, null, col.id, "$" + c.id + "." + cible.affichage]];
 };
+MGP.g.estVide = function(v) {
+  return v === null || v === void 0 || String(v).trim() === "";
+};
+MGP.g.actionsDescriptions = async function(defs) {
+  var a = [];
+  if (!MGP.g.meta) {
+    await MGP.g.chargerMeta();
+  }
+  var sections = [];
+  try {
+    sections = await MGP.g.lire("_grist_Views_section");
+  } catch (e) {
+    logSecurite("sections illisibles", e);
+  }
+  defs.forEach(function(d) {
+    var tid = MGP.g.registre[d.cle] || (MGP.g.trouver(d) || {}).tableId;
+    var t = tid ? MGP.g.tableParId(tid) : null;
+    if (!t) {
+      return;
+    }
+    var brute = sections.filter(function(s) {
+      return s.id === t.rawViewSectionRef;
+    })[0];
+    if (d.description && brute && "description" in brute && MGP.g.estVide(brute.description)) {
+      a.push(["UpdateRecord", "_grist_Views_section", brute.id, { description: d.description }]);
+    }
+    var cols = MGP.g.colonnesDe(t.id);
+    d.colonnes.concat(MGP.colonnesSuivi()).forEach(function(c) {
+      var col = cols.filter(function(x) {
+        return x.colId === c.id;
+      })[0];
+      if (c.description && col && "description" in col && MGP.g.estVide(col.description)) {
+        a.push(["ModifyColumn", t.tableId, c.id, { description: c.description }]);
+      }
+    });
+  });
+  return a;
+};
+MGP.g.completerDescriptions = async function(defs) {
+  try {
+    var a = await MGP.g.actionsDescriptions(defs);
+    if (a.length) {
+      await MGP.g.actions(a);
+    }
+    return a.length;
+  } catch (e) {
+    logSecurite("descriptions", e);
+    return 0;
+  }
+};
+MGP.g.DESCRIPTION_ATTENTE = "Page préparée par l’Académie : le widget cadeau s’y installe, puis lui donne son nom et sa description.";
+MGP.g.actionDecrireSection = function(s, titre, description) {
+  if (!s) {
+    return null;
+  }
+  var attente = s.description === MGP.g.DESCRIPTION_ATTENTE, maj = {};
+  if (titre && (MGP.g.estVide(s.title) || attente) && s.title !== titre) {
+    maj.title = titre;
+  }
+  if (description && "description" in s && (MGP.g.estVide(s.description) || attente) && s.description !== description) {
+    maj.description = description;
+  }
+  return Object.keys(maj).length ? ["UpdateRecord", "_grist_Views_section", s.id, maj] : null;
+};
 MGP.g.table1Vierge = async function() {
   try {
     var t = MGP.g.tableParId("Table1");
@@ -2971,6 +3070,24 @@ MGP.g.reprendreTable1 = async function(def) {
   });
   a.push(["RenameTable", "Table1", def.id]);
   await MGP.g.actions(a);
+  try {
+    var sections = await MGP.g.lire("_grist_Views_section");
+    var aRetirer = sections.filter(function(s) {
+      if (s.tableRef !== t.id || !s.parentId || s.parentKey === "custom") {
+        return false;
+      }
+      return sections.some(function(o) {
+        return o.id !== s.id && o.parentId === s.parentId;
+      });
+    }).map(function(s) {
+      return ["RemoveRecord", "_grist_Views_section", s.id];
+    });
+    if (aRetirer.length) {
+      await MGP.g.actions(aRetirer);
+    }
+  } catch (e) {
+    logSecurite("table1", e);
+  }
   await MGP.g.chargerMeta();
   var n = MGP.g.meta.tables.filter(function(x) {
     return x.id === t.id;
@@ -3111,6 +3228,7 @@ MGP.g.creerTables = async function(defs) {
       logSecurite("colonne d’affichage", e);
     }
   }
+  await MGP.g.completerDescriptions(defs);
   var graines = [];
   defs.forEach(function(d2) {
     if (crees.indexOf(d2.cle) >= 0 && d2.graines && d2.graines.length) {
@@ -3174,6 +3292,10 @@ MGP.g.estDiscret = function() {
   return /\/lib\/x\/[\w-]+\/?(?:index\.html)?$/.test(location.pathname);
 };
 MGP.g.vueCourante = async function() {
+  var s = await MGP.g.sectionCourante();
+  return s ? s.parentId : null;
+};
+MGP.g.sectionCourante = async function() {
   var moi = MGP.g.normaliserUrl(location.href);
   var mj = /\/(jour-\d{2})(?:\/|$)/.exec(location.pathname + "/");
   if (!mj && MGP.g.estDiscret() && MGP.g.CADEAU && MGP.g.CADEAU.jour) {
@@ -3183,7 +3305,7 @@ MGP.g.vueCourante = async function() {
   var vues = (await MGP.g.lire("_grist_Views")).map(function(v) {
     return v.id;
   });
-  var exactes = [], parJour = [];
+  var exactes = [], parJour = [], secE = {}, secJ = {};
   sections.forEach(function(s) {
     if (s.parentKey !== "custom" || !s.parentId || vues.indexOf(s.parentId) < 0) {
       return;
@@ -3196,19 +3318,29 @@ MGP.g.vueCourante = async function() {
     if (n === moi) {
       if (exactes.indexOf(s.parentId) < 0) {
         exactes.push(s.parentId);
+        secE[s.parentId] = s;
       }
     } else if (mj && (n + "/").indexOf("/" + mj[1] + "/") >= 0 && parJour.indexOf(s.parentId) < 0) {
       parJour.push(s.parentId);
+      secJ[s.parentId] = s;
     }
   });
+  var choisie = MGP.g.pageChoisie();
+  if (choisie && exactes.indexOf(choisie.vue) >= 0) {
+    return secE[choisie.vue];
+  }
   if (exactes.length === 1) {
-    return exactes[0];
+    return secE[exactes[0]];
   }
   if (exactes.length > 1) {
     logSecurite("plusieurs pages contiennent ce widget : pas de renommage");
     return null;
   }
-  return parJour.length === 1 ? parJour[0] : null;
+  return parJour.length === 1 ? secJ[parJour[0]] : null;
+};
+MGP.g.pageChoisie = function() {
+  var c = MGP.g.CADEAU, r = c && c.cle && MGP.g.tech ? MGP.g.reglage("page." + c.cle, null) : null;
+  return r && typeof r === "object" && r.vue ? r : null;
 };
 MGP.g.renommerPage = async function(nom) {
   try {
@@ -3216,6 +3348,10 @@ MGP.g.renommerPage = async function(nom) {
     if (!v) {
       logSecurite("page courante introuvable : pas de renommage");
       return false;
+    }
+    var choisie = MGP.g.pageChoisie();
+    if (choisie && choisie.vue === v) {
+      return true;
     }
     await MGP.g.actions([["UpdateRecord", "_grist_Views", v, { name: nom }]]);
     return true;
@@ -3261,6 +3397,9 @@ MGP.g.etatInstall = function(widget) {
   return v;
 };
 MGP.g.installerTables = async function(widget, defsWidget, exemples) {
+  if (MGP.parcours && MGP.parcours.avantInstallation) {
+    await MGP.parcours.avantInstallation(defsWidget);
+  }
   var res = await MGP.g.creerTables(MGP.g.defsSocle().concat(defsWidget));
   var marque = { etat: "tables", exemples: !!exemples };
   var ok = false;
@@ -3321,6 +3460,10 @@ MGP.g.finSousArbre = function(pages, i) {
     j++;
   }
   return j;
+};
+MGP.g.descriptionSection = function(cle) {
+  var sec = MGP.SECTIONS[cle];
+  return sec ? "Récapitulatif de la section « " + sec.page + " » (widget public resume) : un résumé de chaque widget rangé dessous, lu en direct dans vos tables." : "";
 };
 MGP.g.assurerSection = async function(cle) {
   var sec = MGP.SECTIONS[cle];
@@ -3384,7 +3527,7 @@ MGP.g.assurerSection = async function(cle) {
       apres = i;
     }
   });
-  var a = [["UpdateRecord", "_grist_Views", res.viewRef, { name: sec.page }], ["UpdateRecord", "_grist_Views_section", res.sectionRef, { title: "", options: JSON.stringify({ customView: JSON.stringify(cv) }) }]];
+  var a = [["UpdateRecord", "_grist_Views", res.viewRef, { name: sec.page }], ["UpdateRecord", "_grist_Views_section", res.sectionRef, { title: sec.page, description: MGP.g.descriptionSection(cle), options: JSON.stringify({ customView: JSON.stringify(cv) }) }]];
   if (moi && (avant !== null || apres !== null)) {
     var pos = avant !== null ? MGP.g.positionEntre(autres[avant], autres[avant + 1] || null) : MGP.g.positionEntre(autres[apres - 1] || null, autres[apres]);
     a.push(["UpdateRecord", "_grist_Pages", moi.id, { pagePos: pos, indentation: 0 }]);
@@ -3412,13 +3555,13 @@ MGP.g.pageAcademie = async function(sauf) {
     return v.id;
   });
 };
-MGP.g.placerEnTete = async function() {
+MGP.g.placerEnTete = async function(vueForcee) {
   var c = MGP.g.CADEAU;
   if (MGP.g.reglage("place." + c.cle, null)) {
     return false;
   }
   try {
-    var vue = await MGP.g.vueCourante();
+    var vue = vueForcee || await MGP.g.vueCourante();
     if (!vue) {
       MGP.g.indices.push("Vous pouvez glisser cette page en haut du menu, juste après l’Académie.");
       return false;
@@ -3459,10 +3602,10 @@ MGP.g.placerEnTete = async function() {
     return false;
   }
 };
-MGP.g.rangerDansSection = async function() {
+MGP.g.rangerDansSection = async function(vueForcee) {
   var c = MGP.g.CADEAU;
   if (c && c.enTete && !c.section && c.cle && MGP.g.tech && MGP.g.acces === "full") {
-    return MGP.g.placerEnTete();
+    return MGP.g.placerEnTete(vueForcee);
   }
   if (!c || !c.section || !c.cle || !MGP.g.tech || MGP.g.acces !== "full") {
     return false;
@@ -3472,7 +3615,7 @@ MGP.g.rangerDansSection = async function() {
   }
   var sec = MGP.SECTIONS[c.section];
   try {
-    var vue = await MGP.g.vueCourante();
+    var vue = vueForcee || await MGP.g.vueCourante();
     if (!vue) {
       MGP.g.indices.push("Vous pouvez glisser cette page sous « " + sec.page + " ».");
       return false;
@@ -3533,11 +3676,47 @@ MGP.g.rangerDansSection = async function() {
     return false;
   }
 };
+MGP.g.decrit = false;
+MGP.g.decrireWidget = async function() {
+  var c = MGP.g.CADEAU;
+  if (!c || MGP.g.decrit || !MGP.g.tech || MGP.g.acces !== "full") {
+    return false;
+  }
+  MGP.g.decrit = true;
+  try {
+    var a = [];
+    var s = await MGP.g.sectionCourante();
+    if (s && c.page && s.title === c.nom) {
+      s = Object.assign({}, s, { title: "" });
+    }
+    var x = MGP.g.actionDecrireSection(s, c.page || c.nom, c.description || "Widget « " + (c.nom || c.page) + " » de Mon Grist perso.");
+    if (x) {
+      a.push(x);
+    }
+    if (a.length) {
+      await MGP.g.actions(a);
+    }
+    await MGP.g.chargerMeta();
+    var defs = MGP.g.defsSocle();
+    if (MGP.parcours && MGP.parcours.DEF && MGP.g.trouver(MGP.parcours.DEF)) {
+      defs.push(MGP.parcours.DEF);
+    }
+    if (typeof c.defs === "function") {
+      defs = defs.concat(c.defs());
+    }
+    await MGP.g.completerDescriptions(defs);
+    return true;
+  } catch (e) {
+    logSecurite("description de la vue", e);
+    return false;
+  }
+};
 MGP.g.marquerCadeau = async function() {
   var c = MGP.g.CADEAU;
   if (!c || !MGP.g.tech || MGP.g.acces !== "full") {
     return false;
   }
+  await MGP.g.decrireWidget();
   try {
     var cle = MGP.g.cleCadeau(c), avant = MGP.g.reglage(cle, null);
     if (!avant || typeof avant !== "object") {
@@ -3559,6 +3738,7 @@ MGP.g.terminerInstall = async function(widget, nomPage, fnExemples, exemples) {
   if (exemples && fnExemples) {
     await fnExemples();
   }
+  MGP.g.decrit = false;
   var renommee = await MGP.g.renommerPage(nomPage);
   await MGP.g.marquerCadeau();
   await MGP.g.rangerDansSection();
@@ -3660,7 +3840,7 @@ MGP.exporterCSV = function(nomFichier, colonnes, lignes) {
   return txt;
 };
 MGP.capot = {};
-MGP.capot.TYPES = { Text: "Texte", Numeric: "Numérique", Int: "Numérique", Date: "Date", DateTime: "Date et heure", Choice: "Choix", ChoiceList: "Choix multiple", Ref: "Référence", RefList: "Liste de références", Attachments: "Pièce jointe", Bool: "Booléen", Any: "Formule" };
+MGP.capot.TYPES = { Text: "Texte", Numeric: "Numérique", Int: "Entier", Date: "Date", DateTime: "Date et Heure", Choice: "Choix unique", ChoiceList: "Choix multiple", Ref: "Référence", RefList: "Référence multiple", Attachments: "Pièce jointe", Bool: "Booléen", Any: "Formule" };
 MGP.capot.ROLES_SUIVI = { CREE_LE: "date et heure de création de la ligne, remplies toutes seules", CREE_PAR: "qui a créé la ligne, rempli tout seul", MODIFIE_LE: "date et heure de la dernière modification, mises à jour toutes seules", MODIFIE_PAR: "qui a modifié la ligne en dernier, rempli tout seul" };
 MGP.capot.typeFr = function(col) {
   var base = String(col.type || "Any").split(":")[0];
@@ -3872,7 +4052,7 @@ MGP.capot.rendre = function(conteneur, cfg) {
     conteneur.querySelector("#capot-role").textContent = t.role;
     conteneur.querySelector("#capot-fiches").innerHTML = MGP.capot.fiches(t, cfg, etat.champ);
   }
-  conteneur.innerHTML = '<div class="capot-grille"><section class="carte"><h2>Les tables et leurs liens <span class="mini" style="font-weight:600">· lu en direct dans votre document</span></h2><p class="mini" style="margin:6px 0 10px">Une flèche = une colonne <b>Référence</b> : elle pointe vers une ligne d’une autre table. En pointillés : une <b>liste de références</b>. Touchez un champ pour voir sa fiche.</p><div class="vue-bureau">' + MGP.capot.schemaSVG(tables) + '</div><div class="vue-mobile">' + MGP.capot.schemaMobile(tables) + "</div></section><div>" + MGP.capot.formules(cfg, tables) + MGP.capot.extras(cfg) + '</div></div><section class="carte" style="margin-top:16px" id="capot-champs"><h2>Les champs, un par un</h2><div class="choix" id="capot-choix-table" role="group" aria-label="Choisir la table" style="margin:10px 0"></div><p class="mini" id="capot-role" style="margin-bottom:12px"></p><div id="capot-fiches"></div></section>';
+  conteneur.innerHTML = '<div class="capot-grille"><section class="carte"><h2>Les tables et leurs liens <span class="mini" style="font-weight:600">· lu en direct dans votre document</span></h2><p class="mini" style="margin:6px 0 10px">Une flèche = une colonne <b>Référence</b> : elle pointe vers une ligne d’une autre table. En pointillés : une <b>Référence multiple</b>. Touchez un champ pour voir sa fiche.</p><div class="vue-bureau">' + MGP.capot.schemaSVG(tables) + '</div><div class="vue-mobile">' + MGP.capot.schemaMobile(tables) + "</div></section><div>" + MGP.capot.formules(cfg, tables) + MGP.capot.extras(cfg) + '</div></div><section class="carte" style="margin-top:16px" id="capot-champs"><h2>Les champs, un par un</h2><div class="choix" id="capot-choix-table" role="group" aria-label="Choisir la table" style="margin:10px 0"></div><p class="mini" id="capot-role" style="margin-bottom:12px"></p><div id="capot-fiches"></div></section>';
   rendreFiches();
   function montrerChamp(cle, col) {
     etat.table = cle;
@@ -4139,10 +4319,10 @@ MGP.parcours = MGP.parcours || {};
   P.cfg = null;
   P.lignes = [];
   P.table = null;
-  P.COMPETENCES = [["priseenmain", "Prendre en main : document, pages, widgets de page", "https://support.getgrist.com/page-widgets/"], ["tables", "Les types de champs", "https://support.getgrist.com/col-types/"], ["trier", "Trier, filtrer, chercher", "https://support.getgrist.com/search-sort-filter/"], ["choix", "Choix et listes de choix", "https://support.getgrist.com/col-types/"], ["formules", "Premières formules", "https://support.getgrist.com/formulas/"], ["dates", "Les dates", "https://support.getgrist.com/dates/"], ["references", "Références entre tables", "https://support.getgrist.com/col-refs/"], ["listes", "Listes de références", "https://support.getgrist.com/col-refs/"], ["piecesjointes", "Pièces jointes", "https://support.getgrist.com/col-types/"], ["lies", "Lier des widgets entre eux", "https://support.getgrist.com/linking-widgets/"], ["fiches", "Vue fiche et liste de fiches", "https://support.getgrist.com/widget-card/"], ["miseenforme", "Mise en forme conditionnelle", "https://support.getgrist.com/conditional-formatting/"], ["graphiques", "Graphiques", "https://support.getgrist.com/widget-chart/"], ["import", "Import et export", "https://support.getgrist.com/imports/"], ["conditions", "Conditions dans les formules", "https://support.getgrist.com/formulas/"], ["lookups", "lookupRecords, lookupOne et totaux", "https://support.getgrist.com/references-lookups/"], ["resumes", "Tables de résumé", "https://support.getgrist.com/summary-tables/"], ["liaison", "Table de liaison", "https://support.getgrist.com/col-refs/"], ["declencheurs", "Formules déclencheurs", "https://support.getgrist.com/formulas/"], ["precedent", "PREVIOUS et cumuls", "https://support.getgrist.com/functions/"], ["formulaires", "Formulaires", "https://support.getgrist.com/widget-form/"], ["partage", "Partage, rôles et invités", "https://support.getgrist.com/sharing/"], ["acces", "Règles d’accès", "https://support.getgrist.com/access-rules/"], ["historique", "Historique, copies et modèles", "https://support.getgrist.com/automatic-backups/"], ["widgets", "Widgets personnalisés", "https://support.getgrist.com/widget-custom/"], ["conception", "Bien concevoir son document, limites du forfait gratuit", "https://support.getgrist.com/limits/"]];
+  P.COMPETENCES = [["priseenmain", "Prendre en main : document, pages, vues", "https://support.getgrist.com/page-widgets/", "Prendre en main : document, pages, widgets de page"], ["tables", "Les types de colonnes", "https://support.getgrist.com/col-types/", "Les types de champs"], ["trier", "Trier, filtrer, chercher", "https://support.getgrist.com/search-sort-filter/"], ["choix", "Choix unique et Choix multiple", "https://support.getgrist.com/col-types/", "Choix et listes de choix"], ["formules", "Premières formules", "https://support.getgrist.com/formulas/"], ["dates", "Les dates", "https://support.getgrist.com/dates/"], ["references", "Références entre tables", "https://support.getgrist.com/col-refs/"], ["listes", "Références multiples", "https://support.getgrist.com/col-refs/", "Listes de références"], ["piecesjointes", "Pièces jointes", "https://support.getgrist.com/col-types/"], ["lies", "Lier des vues entre elles", "https://support.getgrist.com/linking-widgets/", "Lier des widgets entre eux"], ["fiches", "Vue fiche et liste de fiches", "https://support.getgrist.com/widget-card/"], ["miseenforme", "Styles conditionnels", "https://support.getgrist.com/conditional-formatting/", "Mise en forme conditionnelle"], ["graphiques", "Graphiques", "https://support.getgrist.com/widget-chart/"], ["import", "Import et export", "https://support.getgrist.com/imports/"], ["conditions", "Conditions dans les formules", "https://support.getgrist.com/formulas/"], ["lookups", "lookupRecords, lookupOne et totaux", "https://support.getgrist.com/references-lookups/"], ["resumes", "Tables récapitulatives", "https://support.getgrist.com/summary-tables/", "Tables de résumé"], ["liaison", "Table de liaison", "https://support.getgrist.com/col-refs/"], ["declencheurs", "Formules d’initialisation", "https://support.getgrist.com/formulas/", "Formules déclencheurs"], ["precedent", "PREVIOUS et cumuls", "https://support.getgrist.com/functions/"], ["formulaires", "Formulaires", "https://support.getgrist.com/widget-form/"], ["partage", "Partage, rôles et invités", "https://support.getgrist.com/sharing/"], ["acces", "Règles d’accès", "https://support.getgrist.com/access-rules/"], ["historique", "Historique, copies et modèles", "https://support.getgrist.com/automatic-backups/"], ["widgets", "Vues personnalisées", "https://support.getgrist.com/widget-custom/", "Widgets personnalisés"], ["conception", "Bien concevoir son document, limites du forfait gratuit", "https://support.getgrist.com/limits/"]];
   P.competence = function(cle) {
     var c = P.COMPETENCES.filter(function(x) {
-      return x[0] === cle || x[1] === cle;
+      return x[0] === cle || x[1] === cle || x[3] === cle;
     })[0];
     return c ? { cle: c[0], nom: c[1], aide: c[2] } : null;
   };
@@ -4275,9 +4455,9 @@ MGP.parcours = MGP.parcours || {};
     } });
   };
   P.GENRES = ["Module", "Compétence", "Placement", "Bilan de niveau", "Bilan final"];
-  P.DEF = { cle: "PARCOURS", id: "PARCOURS_MON_GRIST_PERSO_", label: "🎓 PARCOURS MON GRIST PERSO ✨", motif: "PARCOURS_MON_GRIST_PERSO", signature: ["MODULE", "COMPETENCE", "MISSION"], colonnes: [{ id: "GENRE", type: "Choice", choix: [["Module", "Écume"], ["Compétence", "Menthe"], ["Placement", "Citron"], ["Bilan de niveau", "Lavande"], ["Bilan final", "Flamant"]] }, { id: "MODULE", type: "Text" }, { id: "NIVEAU", type: "Text" }, { id: "COMPETENCE", type: "Choice", choix: P.COMPETENCES.map(function(c, i) {
+  P.DEF = { cle: "PARCOURS", id: "PARCOURS_MON_GRIST_PERSO_", label: "🎓 PARCOURS MON GRIST PERSO ✨", motif: "PARCOURS_MON_GRIST_PERSO", description: "Progression dans l’Académie Grist : une ligne par module, compétence ou bilan, avec missions, quiz et niveaux atteints. Écrite par l’Académie.", signature: ["MODULE", "COMPETENCE", "MISSION"], colonnes: [{ id: "GENRE", type: "Choice", choix: [["Module", "Écume"], ["Compétence", "Menthe"], ["Placement", "Citron"], ["Bilan de niveau", "Lavande"], ["Bilan final", "Flamant"]], description: "Genre de ligne, en Choix unique : Module (une leçon), Compétence, Placement (test de niveau), Bilan de niveau ou Bilan final." }, { id: "MODULE", type: "Text", description: "Identifiant du module, de la compétence ou du bilan suivi par la ligne." }, { id: "NIVEAU", type: "Text", description: "Niveau du module (Découverte, Pratique ou Maîtrise)." }, { id: "COMPETENCE", type: "Choice", choix: P.COMPETENCES.map(function(c, i) {
     return [c[1], MGP.COULEURS[i % MGP.COULEURS.length]];
-  }) }, { id: "MISSION", type: "Choice", choix: [["Non commencée", "Citron"], ["Réussie", "Menthe"], ["Passée", "Écume"]] }, { id: "MISSION_POINTS", type: "Int" }, { id: "INDICES", type: "Int" }, { id: "ESSAIS_MISSION", type: "Int" }, { id: "MISSION_LE", type: "DateTime:Europe/Paris" }, { id: "QUIZ_POINTS", type: "Int" }, { id: "QUIZ_MAX", type: "Int" }, { id: "QUIZ_SCORE", type: "Int" }, { id: "ESSAIS_QUIZ", type: "Int" }, { id: "QUIZ_LE", type: "DateTime:Europe/Paris" }, { id: "QUIZ_REPONSES", type: "Text" }, { id: "SCORE", type: "Int" }, { id: "ACQUIS", type: "Choice", choix: [["Découverte", "Pêche"], ["Pratique", "Citron"], ["Maîtrise", "Menthe"]] }, { id: "DETAIL", type: "Text" }, { id: "NIVEAUX", type: "Text" }, { id: "NOM", type: "Text" }] };
+  }), description: "Compétence Grist travaillée, en Choix unique." }, { id: "MISSION", type: "Choice", choix: [["Non commencée", "Citron"], ["Réussie", "Menthe"], ["Passée", "Écume"]], description: "État de la mission du module, en Choix unique : Non commencée, Réussie ou Passée." }, { id: "MISSION_POINTS", type: "Int", description: "Points gagnés à la mission." }, { id: "INDICES", type: "Int", description: "Nombre d’indices demandés pendant la mission." }, { id: "ESSAIS_MISSION", type: "Int", description: "Nombre de vérifications de la mission." }, { id: "MISSION_LE", type: "DateTime:Europe/Paris", description: "Date et heure de la mission réussie ou passée." }, { id: "QUIZ_POINTS", type: "Int", description: "Points obtenus au dernier quiz." }, { id: "QUIZ_MAX", type: "Int", description: "Points possibles au quiz." }, { id: "QUIZ_SCORE", type: "Int", description: "Meilleur score au quiz." }, { id: "ESSAIS_QUIZ", type: "Int", description: "Nombre de fois où le quiz a été fait." }, { id: "QUIZ_LE", type: "DateTime:Europe/Paris", description: "Date et heure du dernier quiz." }, { id: "QUIZ_REPONSES", type: "Text", description: "Réponses du dernier quiz, en JSON (question et bonne ou mauvaise réponse)." }, { id: "SCORE", type: "Int", description: "Score de la compétence, sur 100." }, { id: "ACQUIS", type: "Choice", choix: [["Découverte", "Pêche"], ["Pratique", "Citron"], ["Maîtrise", "Menthe"]], description: "Niveau atteint sur la compétence, en Choix unique : Découverte, Pratique ou Maîtrise." }, { id: "DETAIL", type: "Text", description: "Détail du résultat, en JSON, écrit par l’Académie." }, { id: "NIVEAUX", type: "Text", description: "Niveaux obtenus à un bilan, en texte." }, { id: "NOM", type: "Text", description: "Nom à imprimer sur le badge du bilan final." }] };
   P.maintenantSec = function() {
     return Math.floor(MGP.maintenant() / 1e3);
   };
@@ -4448,7 +4628,7 @@ MGP.parcours = MGP.parcours || {};
   P.norm = function(s) {
     return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
   };
-  P.TYPES_COL = { Text: "Texte", Numeric: "Numérique", Int: "Entier", Bool: "Case à cocher", Date: "Date", DateTime: "Date et heure", Choice: "Choix", ChoiceList: "Choix multiple", Ref: "Référence", RefList: "Liste de références", Attachments: "Pièce jointe", Any: "Formule" };
+  P.TYPES_COL = { Text: "Texte", Numeric: "Numérique", Int: "Entier", Bool: "Booléen", Date: "Date", DateTime: "Date et Heure", Choice: "Choix unique", ChoiceList: "Choix multiple", Ref: "Référence", RefList: "Référence multiple", Attachments: "Pièce jointe", Any: "Formule" };
   P.nomType = function(t) {
     var b = String(t || "").split(":")[0];
     return P.TYPES_COL[b] || b;
@@ -4537,7 +4717,7 @@ MGP.parcours = MGP.parcours || {};
   }, verifier: function(c, m) {
     return t_(c, m) ? { ok: true } : absente(c);
   }, indices: function(c) {
-    return ["Une table, c’est une feuille de votre document : regardez la liste des pages et des tables à gauche.", "Ajoutez une table vide (bouton « Nouveau », puis « Ajouter une table vide »), puis renommez-la.", "Nouveau > Ajouter une table vide, puis double-cliquez sur son nom (Table1) et tapez « " + c.table + " »."];
+    return ["Une table, c’est une feuille de votre document : regardez la liste des pages et des tables à gauche.", "Ajoutez une table vide (bouton « Ajouter », puis « Ajouter une table vide »), puis renommez-la.", "Ajouter > Ajouter une table vide, puis double-cliquez sur son nom (Table1) et tapez « " + c.table + " »."];
   } }, colonne: { libelle: function(c) {
     var ty = [].concat(c.typeCol || []);
     return "La colonne " + c.colonne + " de « " + c.table + " »" + (ty.length ? " est de type " + P.nomType(ty[0]) : " existe");
@@ -4557,7 +4737,7 @@ MGP.parcours = MGP.parcours || {};
     return { ok: true };
   }, indices: function(c) {
     var ty = P.nomType([].concat(c.typeCol || ["Text"])[0]);
-    return ["Le nom et le type d’une colonne se règlent dans son panneau, à droite.", "Cliquez sur l’en-tête de la colonne, nommez-la " + c.colonne + " (en majuscules), puis choisissez le type « " + ty + " » dans le panneau de la colonne.", "Table « " + c.table + " » : clic droit sur l’en-tête > Options de la colonne. Libellé : " + c.colonne + ". Type de colonne : " + ty + "."];
+    return ["Le nom et le type d’une colonne se règlent dans son panneau, à droite.", "Cliquez sur l’en-tête de la colonne, nommez-la " + c.colonne + " (en majuscules), puis choisissez le type « " + ty + " » dans le panneau de la colonne.", "Table « " + c.table + " » : clic droit sur l’en-tête > Options de la colonne. Label et ID de la colonne : " + c.colonne + ". Type de colonne : " + ty + "."];
   } }, choix: { libelle: function(c) {
     return "La colonne " + c.colonne + " propose les choix " + c.choix.join(", ");
   }, verifier: function(c, m) {
@@ -4570,7 +4750,7 @@ MGP.parcours = MGP.parcours || {};
       return { ok: false, detail: "Pas de colonne " + c.colonne + "." };
     }
     if (!/^Choice/.test(String(col.type))) {
-      return { ok: false, detail: "La colonne " + c.colonne + " est de type " + P.nomType(col.type) + ", pas Choix." };
+      return { ok: false, detail: "La colonne " + c.colonne + " est de type " + P.nomType(col.type) + ", pas Choix unique ni Choix multiple." };
     }
     var l = (P.optionsCol(col).choices || []).map(P.norm);
     var manque = c.choix.filter(function(x) {
@@ -4584,7 +4764,7 @@ MGP.parcours = MGP.parcours || {};
     }
     return { ok: true };
   }, indices: function(c) {
-    return ["Une colonne Choix propose une liste de valeurs fixes : elles se tapent dans le panneau de la colonne.", "Passez la colonne " + c.colonne + " en type « Choix », puis ajoutez les valeurs une par une dans la zone « Choix ».", "Panneau de la colonne " + c.colonne + " > Type : Choix > Modifier les choix : " + c.choix.join(", ") + ", puis Enregistrer."];
+    return ["Une colonne Choix unique propose une liste de valeurs fixes : elles se tapent dans le panneau de la colonne.", "Passez la colonne " + c.colonne + " en type « Choix unique », puis ajoutez les valeurs une par une dans la rubrique « Choix ».", "Panneau de la colonne " + c.colonne + " > Type de colonne : Choix unique > Choix > Modifier : " + c.choix.join(", ") + ", puis Sauvegarder."];
   } }, formule: { libelle: function(c) {
     return "La colonne " + c.colonne + " est une formule" + (c.valeur !== void 0 ? " qui donne " + c.valeur : "");
   }, verifier: async function(c, m) {
@@ -4625,7 +4805,7 @@ MGP.parcours = MGP.parcours || {};
   }, indices: function(c) {
     return ["Une formule commence par = dans la cellule, ou se tape dans le panneau de la colonne.", "Videz la colonne " + c.colonne + ", tapez = puis la formule" + (c.contient ? " (elle doit utiliser " + c.contient + ")" : "") + ". Une formule s’applique à toute la colonne.", c.solution ? "La formule : " + c.solution : "Colonne " + c.colonne + " > tapez = puis la formule demandée dans l’énoncé, et Entrée."];
   } }, reference: { libelle: function(c) {
-    return "La colonne " + c.colonne + " est une " + (c.liste ? "liste de références" : "référence") + " vers « " + c.cible + " »";
+    return "La colonne " + c.colonne + " est une " + (c.liste ? "Référence multiple" : "référence") + " vers « " + c.cible + " »";
   }, verifier: function(c, m) {
     var t = t_(c, m);
     if (!t) {
@@ -4644,7 +4824,7 @@ MGP.parcours = MGP.parcours || {};
     }
     return { ok: true };
   }, indices: function(c) {
-    return ["Une référence relie une ligne à une ligne d’une autre table : c’est un type de colonne.", "Choisissez le type « " + (c.liste ? "Liste de références" : "Référence") + " » pour " + c.colonne + ", puis la table « " + c.cible + " » dans « Données de la table ».", "Panneau de la colonne " + c.colonne + " > Type : " + (c.liste ? "Liste de références" : "Référence") + " > Données de la table : " + c.cible + "."];
+    return ["Une référence relie une ligne à une ligne d’une autre table : c’est un type de colonne.", "Choisissez le type « " + (c.liste ? "Référence multiple" : "Référence") + " » pour " + c.colonne + ", puis la table « " + c.cible + " » dans « Données de la table ».", "Panneau de la colonne " + c.colonne + " > Type de colonne : " + (c.liste ? "Référence multiple" : "Référence") + " > Données de la table : " + c.cible + "."];
   } }, lignes: { libelle: function(c) {
     return "La table « " + c.table + " » contient au moins " + c.min + " ligne" + (c.min > 1 ? "s" : "");
   }, verifier: async function(c, m) {
@@ -4657,7 +4837,7 @@ MGP.parcours = MGP.parcours || {};
   }, indices: function(c) {
     return ["Remplissez quelques lignes, comme dans un tableur.", "Tapez dans la dernière ligne vide de « " + c.table + " » : une nouvelle ligne se crée.", "Ajoutez " + c.min + " lignes dans « " + c.table + " »."];
   } }, declencheur: { libelle: function(c) {
-    return "La colonne " + c.colonne + " est une formule déclencheur";
+    return "La colonne " + c.colonne + " est une formule d’initialisation";
   }, verifier: function(c, m) {
     var t = t_(c, m);
     if (!t) {
@@ -4668,16 +4848,16 @@ MGP.parcours = MGP.parcours || {};
       return { ok: false, detail: "Pas de colonne " + c.colonne + "." };
     }
     if (col.isFormula || !col.formula) {
-      return { ok: false, detail: col.isFormula ? "C’est une formule ordinaire : elle se recalcule tout le temps." : "Pas de formule déclencheur sur cette colonne." };
+      return { ok: false, detail: col.isFormula ? "C’est une formule ordinaire : elle se recalcule tout le temps." : "Pas de formule d’initialisation sur cette colonne." };
     }
     if (c.formule && String(col.formula).replace(/\s/g, "") !== String(c.formule).replace(/\s/g, "")) {
       return { ok: false, detail: "La formule est " + col.formula + "." };
     }
     return { ok: true };
   }, indices: function(c) {
-    return ["Une formule déclencheur calcule une valeur une fois, puis la garde.", "Dans le panneau de la colonne " + c.colonne + ", choisissez « Définir une formule déclencheur » plutôt qu’une formule ordinaire.", "Panneau de la colonne " + c.colonne + " > Comportement > Définir une formule déclencheur" + (c.formule ? " : " + c.formule : "") + ", appliquée aux nouvelles lignes."];
+    return ["Une formule d’initialisation calcule une valeur une fois, puis la garde.", "Dans le panneau de la colonne " + c.colonne + ", choisissez « Définir une formule d’initialisation » plutôt qu’une formule ordinaire.", "Panneau de la colonne " + c.colonne + " > Nature de colonne > Définir une formule d’initialisation" + (c.formule ? " : " + c.formule : "") + ", avec « Appliquer sur les nouvelles lignes uniquement »."];
   } }, resume: { libelle: function(c) {
-    return "Un résumé de « " + c.table + " »" + (c.groupes && c.groupes.length ? " groupé par " + c.groupes.join(", ") : "") + " existe";
+    return "Une table récapitulative de « " + c.table + " »" + (c.groupes && c.groupes.length ? " groupée par " + c.groupes.join(", ") : "") + " existe";
   }, verifier: function(c, m) {
     var t = t_(c, m);
     if (!t) {
@@ -4687,7 +4867,7 @@ MGP.parcours = MGP.parcours || {};
       return x.summarySourceTable === t.id;
     });
     if (!res.length) {
-      return { ok: false, detail: "Aucune table de résumé de « " + c.table + " »." };
+      return { ok: false, detail: "Aucune table récapitulative de « " + c.table + " »." };
     }
     var bon = res.filter(function(r) {
       var ids = P.colonnesTable(m, r).map(function(x) {
@@ -4697,11 +4877,11 @@ MGP.parcours = MGP.parcours || {};
         return ids.indexOf(P.norm(g)) >= 0;
       });
     });
-    return bon.length ? { ok: true } : { ok: false, detail: "Le résumé n’est pas groupé par " + c.groupes.join(", ") + "." };
+    return bon.length ? { ok: true } : { ok: false, detail: "La table récapitulative n’est pas groupée par " + c.groupes.join(", ") + "." };
   }, indices: function(c) {
-    return ["Un résumé regroupe les lignes d’une table et calcule des totaux.", "Ajoutez un widget à la page, choisissez la table « " + c.table + " » et touchez l’icône de somme (Σ) pour la grouper.", "Nouveau > Ajouter un widget à la page > Table > " + c.table + " > Σ, groupé par " + (c.groupes || []).join(", ") + "."];
+    return ["Une table récapitulative regroupe les lignes d’une table et calcule des totaux.", "Ajoutez une vue à la page, choisissez la table « " + c.table + " » et touchez l’icône de somme (Σ) pour la grouper.", "Ajouter > Ajouter une vue à la page > Table > " + c.table + " > Σ, Grouper par : " + (c.groupes || []).join(", ") + " > Ajouter à la Page."];
   } }, vue: { libelle: function(c) {
-    return "Une page montre « " + c.table + " » en " + (P.GENRES_VUE[c.genre] || c.genre);
+    return "Une page montre « " + c.table + " » dans une vue " + (P.GENRES_VUE[c.genre] || c.genre);
   }, verifier: function(c, m) {
     var t = t_(c, m);
     if (!t) {
@@ -4716,7 +4896,7 @@ MGP.parcours = MGP.parcours || {};
     return ok ? { ok: true } : { ok: false, detail: "Aucune vue « " + (P.GENRES_VUE[c.genre] || c.genre) + " » de « " + c.table + " » dans les pages." };
   }, indices: function(c) {
     var g = P.GENRES_VUE[c.genre] || c.genre;
-    return ["Une même table peut être montrée de plusieurs façons : tableau, fiche, graphique, formulaire...", "Ajoutez un widget « " + g + " » à une page, branché sur la table « " + c.table + " ».", "Nouveau > Ajouter un widget à la page > " + g + " > " + c.table + " > Ajouter à la page."];
+    return ["Une même table peut être montrée de plusieurs façons : tableau, fiche, graphique, formulaire...", "Ajoutez une vue « " + g + " » à une page, branché sur la table « " + c.table + " ».", "Ajouter > Ajouter une vue à la page > " + g + " > " + c.table + " > Ajouter à la Page."];
   } }, regle: { libelle: function(c) {
     return "Une règle d’accès protège " + (c.table ? "« " + c.table + " »" : "le document");
   }, verifier: function(c, m) {
@@ -4743,9 +4923,9 @@ MGP.parcours = MGP.parcours || {};
     });
     return l.length ? { ok: true } : { ok: false, detail: "Aucune règle de ce genre pour l’instant." };
   }, indices: function(c) {
-    return ["Les règles d’accès se règlent dans le menu « Règles d’accès », en bas à gauche (propriétaire du document seulement).", "Ajoutez des règles pour la table « " + (c.table || "voulue") + " »" + (c.contient ? ", avec une condition qui utilise " + c.contient : "") + (c.permissions ? " et les permissions " + c.permissions : "") + ".", "Règles d’accès > Ajouter des règles de table > " + (c.table || "") + " > Condition" + (c.contient ? " : " + c.contient : "") + " > Permissions" + (c.permissions ? " : " + c.permissions : "") + " > Enregistrer."];
+    return ["Les règles d’accès se règlent dans « Permissions avancées », en bas à gauche (propriétaire du document seulement).", "Ajoutez des règles pour la table « " + (c.table || "voulue") + " »" + (c.contient ? ", avec une condition qui utilise " + c.contient : "") + (c.permissions ? " et les droits " + c.permissions : "") + ".", "Permissions avancées > Ajouter des règles pour la table > " + (c.table || "") + " > Condition" + (c.contient ? " : " + c.contient : "") + " > Droits" + (c.permissions ? " : " + c.permissions : "") + " > Enregistrer."];
   } }, miseEnForme: { libelle: function(c) {
-    return "La colonne " + c.colonne + " a une mise en forme conditionnelle";
+    return "La colonne " + c.colonne + " a un style conditionnel";
   }, verifier: function(c, m) {
     var t = t_(c, m);
     if (!t) {
@@ -4755,9 +4935,9 @@ MGP.parcours = MGP.parcours || {};
     if (!col) {
       return { ok: false, detail: "Pas de colonne " + c.colonne + "." };
     }
-    return MGP.liste(col.rules).length ? { ok: true } : { ok: false, detail: "Pas encore de règle de mise en forme." };
+    return MGP.liste(col.rules).length ? { ok: true } : { ok: false, detail: "Pas encore de style conditionnel." };
   }, indices: function(c) {
-    return ["La mise en forme conditionnelle colore une cellule selon sa valeur.", "Panneau de la colonne " + c.colonne + " > Style de cellule > Ajouter une mise en forme conditionnelle.", "Panneau de la colonne " + c.colonne + " > Style de cellule > Règles > Ajouter une règle" + (c.condition ? " : " + c.condition : "") + ", puis choisissez une couleur."];
+    return ["Un style conditionnel colore une cellule selon sa valeur.", "Panneau de la colonne " + c.colonne + " > Style de cellule > Ajouter un style conditionnel.", "Panneau de la colonne " + c.colonne + " > Style de cellule > Ajouter un style conditionnel" + (c.condition ? ", condition : " + c.condition : "") + ", puis choisissez une couleur."];
   } } };
   P.sectionsSurPage = function(m, t) {
     var vues = m.vues.map(function(v) {
@@ -4797,7 +4977,7 @@ MGP.parcours = MGP.parcours || {};
     });
     return ok ? { ok: true } : { ok: false, detail: "Aucun tri enregistré" + (c.colonne ? " sur " + c.colonne : "") + " : triez, puis touchez « Enregistrer »." };
   }, indices: function(c) {
-    return ["Un tri se règle en haut de la colonne, puis s’enregistre pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + " (la petite flèche de l’en-tête) et choisissez un tri, puis « Enregistrer » dans la barre qui apparaît.", "En-tête de " + (c.colonne || "la colonne") + " > menu > Trier A-Z (ou Z-A) > bouton vert « Enregistrer » en haut du widget."];
+    return ["Un tri se règle en haut de la colonne, puis s’enregistre pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + " (la petite flèche de l’en-tête) et choisissez un tri, puis « Enregistrer » dans la barre qui apparaît.", "En-tête de " + (c.colonne || "la colonne") + " > menu > Trier > A-Z (ou Z-A) > bouton vert « Enregistrer » en haut de la vue."];
   } };
   P.CHECKS.filtre = { libelle: function(c) {
     return "La table « " + c.table + " » a un filtre enregistré" + (c.colonne ? " sur " + c.colonne : "");
@@ -4818,7 +4998,7 @@ MGP.parcours = MGP.parcours || {};
     });
     return ok ? { ok: true } : { ok: false, detail: "Aucun filtre enregistré" + (c.colonne ? " sur " + c.colonne : "") + "." };
   }, indices: function(c) {
-    return ["Un filtre cache des lignes sans les effacer ; enregistré, il reste en place pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + ", décochez les valeurs à cacher, puis touchez « Enregistrer ».", "En-tête de " + (c.colonne || "la colonne") + " > menu > Filtrer les données > décochez > Appliquer, puis « Enregistrer » en haut du widget."];
+    return ["Un filtre cache des lignes sans les effacer ; enregistré, il reste en place pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + ", décochez les valeurs à cacher, puis touchez « Enregistrer ».", "En-tête de " + (c.colonne || "la colonne") + " > menu > Filtrer les données > décochez les valeurs, puis « Enregistrer » en haut de la vue."];
   } };
   P.CHECKS.lien = { libelle: function(c) {
     return "Sur une page, « " + c.table + " » suit la ligne choisie dans « " + c.source + " »";
@@ -4836,11 +5016,11 @@ MGP.parcours = MGP.parcours || {};
       })[0];
       return l && l.tableRef === src.id && l.parentId === s.parentId;
     });
-    return ok ? { ok: true } : { ok: false, detail: "Aucun widget de « " + c.table + " » n’est relié à « " + c.source + " » sur une page." };
+    return ok ? { ok: true } : { ok: false, detail: "Aucune vue de « " + c.table + " » n’est reliée à « " + c.source + " » sur une page." };
   }, indices: function(c) {
-    return ["Deux widgets d’une même page peuvent se suivre : on choisit une ligne à gauche, la droite se met à jour.", "Ajoutez à la page de « " + c.source + " » un widget de « " + c.table + " », et réglez « Sélectionner par » sur le widget de « " + c.source + " ».", "Nouveau > Ajouter un widget à la page > Table > " + c.table + " > Sélectionner par : " + c.source + " > Ajouter à la page."];
+    return ["Deux vues d’une même page peuvent se suivre : on choisit une ligne à gauche, la droite se met à jour.", "Ajoutez à la page de « " + c.source + " » une vue de « " + c.table + " », et réglez « Sélectionner par » sur la vue de « " + c.source + " ».", "Ajouter > Ajouter une vue à la page > Table > " + c.table + " > Sélectionné par : " + c.source + " > Ajouter à la Page."];
   } };
-  P.GENRES_VUE = { record: "Table", single: "Fiche", detail: "Fiches", chart: "Graphique", form: "Formulaire", custom: "Widget personnalisé" };
+  P.GENRES_VUE = { record: "Table", single: "Fiche", detail: "Liste de fiches", chart: "Graphique", form: "Formulaire", custom: "Personnalisée" };
   P.CHECKS.formulaire = { libelle: function(c) {
     return "Un formulaire remplit la table « " + c.table + " »";
   }, verifier: function(c, m) {
@@ -4872,24 +5052,28 @@ MGP.parcours = MGP.parcours || {};
   };
   P.adopter = async function(defs) {
     await MGP.g.creerTables(MGP.g.defsSocle());
+    var siennes = [];
     for (var i = 0; i < defs.length; i++) {
       var def = defs[i];
       MGP.g.adoptees = MGP.g.adoptees || {};
       MGP.g.adoptees[def.cle] = true;
       await MGP.g.chargerMeta();
-      if (MGP.g.trouver(def)) {
-        continue;
-      }
+      var deja = MGP.g.trouver(def);
       var m = { tables: MGP.g.meta.tables, colonnes: MGP.g.meta.colonnes, sections: await MGP.g.lire("_grist_Views_section") };
       var t = P.trouverTable(m, def.id) || (def.nom ? P.trouverTable(m, def.nom) : null);
-      if (!t) {
+      if (!t || deja && deja.id !== t.id) {
+        continue;
+      }
+      siennes.push({ def, ref: t.id, nom: t.tableId });
+      if (deja) {
+        await P.nommerTable(def, t, m);
         continue;
       }
       var renommer = [];
       P.colonnesTable(m, t).forEach(function(col) {
         def.colonnes.forEach(function(c2) {
-          if (col.colId !== c2.id && P.norm(col.colId) === P.norm(c2.id) && !P.colonnesTable(m, t).some(function(x) {
-            return x.colId === c2.id;
+          if (col.colId !== c2.id && P.norm(col.colId) === P.norm(c2.id) && !P.colonnesTable(m, t).some(function(x2) {
+            return x2.colId === c2.id;
           })) {
             renommer.push(["RenameColumn", t.tableId, col.colId, c2.id]);
           }
@@ -4912,8 +5096,8 @@ MGP.parcours = MGP.parcours || {};
         if (ids.indexOf(s) >= 0) {
           continue;
         }
-        var c = def.colonnes.filter(function(x) {
-          return x.id === s;
+        var c = def.colonnes.filter(function(x2) {
+          return x2.id === s;
         })[0];
         if (!c) {
           continue;
@@ -4921,21 +5105,260 @@ MGP.parcours = MGP.parcours || {};
         await MGP.g.actions([["AddColumn", t.tableId, c.id, { type: c.formule ? "Any" : MGP.g.resoudreType(c.type), label: c.id }]]);
         await MGP.g.actions(MGP.g.actionsColonne(t.tableId, c, true));
       }
-      if (def.label && t.rawViewSectionRef) {
-        try {
-          await MGP.g.actions([["UpdateRecord", "_grist_Views_section", t.rawViewSectionRef, { title: def.label }]]);
-        } catch (e) {
-          logSecurite("libellé", e);
-        }
+      await P.nommerTable(def, t, m);
+    }
+    if (siennes.length) {
+      var x = P.premiereDeMission(siennes);
+      try {
+        await P.placerSurSaPage(x.ref, x.def);
+      } catch (e) {
+        logSecurite("page du cadeau", e);
       }
+    }
+  };
+  P.idsContrat = function(c) {
+    return (c && c.contrat && c.contrat.tables || []).map(function(t) {
+      return P.norm(t.id);
+    }).filter(Boolean);
+  };
+  P.tablePartielle = function(m, def, c) {
+    if (P.idsContrat(c).indexOf(P.norm(def.id)) < 0) {
+      return null;
+    }
+    var t = P.trouverTable(m, def.id) || (def.nom ? P.trouverTable(m, def.nom) : null);
+    if (!t) {
+      return null;
+    }
+    var ct = ((c.contrat.tables || []).filter(function(x) {
+      return P.norm(x.id) === P.norm(def.id);
+    })[0] || {}).colonnes || {};
+    var attendues = def.colonnes.map(function(x) {
+      return P.norm(x.id);
+    }).concat(Object.keys(ct).map(P.norm));
+    var siennes = P.colonnesTable(m, t).filter(function(col) {
+      return attendues.indexOf(P.norm(col.colId)) >= 0;
+    });
+    return siennes.length ? { table: t, colonnes: siennes.map(function(x) {
+      return x.colId;
+    }), contrat: Object.keys(ct) } : null;
+  };
+  P.avantInstallation = async function(defs) {
+    var c = P.cfg && P.cfg.contenu;
+    if (!c || !P.idsContrat(c).length || MGP.g.acces !== "full" || !defs || !defs.length) {
+      return;
+    }
+    try {
       await MGP.g.chargerMeta();
-      var t2 = MGP.g.meta.tables.filter(function(x) {
-        return x.id === t.id;
-      })[0];
-      if (t2) {
-        MGP.g.registre[def.cle] = t2.tableId;
-        await MGP.g.ecrireReglage("TABLE:" + def.cle, t2.tableId);
+      var m = { tables: MGP.g.meta.tables, colonnes: MGP.g.meta.colonnes, sections: await MGP.g.lire("_grist_Views_section") };
+      var a = defs.filter(function(d) {
+        return !MGP.g.trouver(d) && P.tablePartielle(m, d, c);
+      });
+      if (a.length) {
+        await P.adopter(a);
       }
+    } catch (e) {
+      logSecurite("adoption avant installation", e);
+    }
+  };
+  P.partielles = async function() {
+    var c = P.cfg && P.cfg.contenu, k = MGP.g.CADEAU;
+    if (!MGP.g.meta || !c || !P.idsContrat(c).length || MGP.g.acces !== "full" || !k || typeof k.defs !== "function") {
+      return [];
+    }
+    var ids = P.idsContrat(c);
+    if (!MGP.g.meta.tables.some(function(t) {
+      return ids.indexOf(P.norm(t.tableId)) >= 0;
+    })) {
+      return [];
+    }
+    try {
+      var m = { tables: MGP.g.meta.tables, colonnes: MGP.g.meta.colonnes, sections: await MGP.g.lire("_grist_Views_section") };
+      return k.defs().map(function(d) {
+        return MGP.g.trouver(d) ? null : P.tablePartielle(m, d, c);
+      }).filter(Boolean);
+    } catch (e) {
+      logSecurite("tables commencées", e);
+      return [];
+    }
+  };
+  P.tableDeMission = function(c) {
+    var v = c && c.mission && (c.mission.verifications || []).filter(function(x) {
+      return x.type === "table" && x.table;
+    })[0];
+    return v ? v.table : "";
+  };
+  P.premiereDeMission = function(siennes) {
+    var n = P.norm(P.tableDeMission(P.cfg && P.cfg.contenu));
+    return siennes.filter(function(x) {
+      return n && (P.norm(x.nom) === n || P.norm(x.def.id) === n);
+    })[0] || siennes[0];
+  };
+  P.nomParDefaut = function(nom, candidats) {
+    var n = P.norm(nom);
+    return !n || /^Table\d+$/.test(String(nom).trim()) || candidats.some(function(c) {
+      return c && P.norm(c) === n;
+    });
+  };
+  P.nommerTable = async function(def, t, m) {
+    var raw = (m.sections || []).filter(function(s) {
+      return s.id === t.rawViewSectionRef;
+    })[0], titre = raw ? raw.title || "" : "";
+    if (def.label && t.rawViewSectionRef && titre !== def.label && P.nomParDefaut(titre, [t.tableId, def.id, def.nom, def.label])) {
+      try {
+        await MGP.g.actions([["UpdateRecord", "_grist_Views_section", t.rawViewSectionRef, { title: def.label }]]);
+      } catch (e) {
+        logSecurite("libellé", e);
+      }
+    }
+    await MGP.g.chargerMeta();
+    var t2 = MGP.g.meta.tables.filter(function(x) {
+      return x.id === t.id;
+    })[0];
+    if (t2) {
+      MGP.g.registre[def.cle] = t2.tableId;
+      await MGP.g.ecrireReglage("TABLE:" + def.cle, t2.tableId);
+    }
+  };
+  P.pageDeTable = function(t, vues, sections) {
+    var ids = vues.map(function(v) {
+      return v.id;
+    });
+    var montrent = sections.filter(function(s) {
+      return s.tableRef === t.id && s.parentId && s.parentKey !== "custom" && ids.indexOf(s.parentId) >= 0;
+    }).map(function(s) {
+      return s.parentId;
+    }).filter(function(v, i, l) {
+      return l.indexOf(v) === i;
+    });
+    if (t.primaryViewId && montrent.indexOf(t.primaryViewId) >= 0) {
+      return t.primaryViewId;
+    }
+    return montrent.length === 1 ? montrent[0] : null;
+  };
+  P.ajouterWidgetSurPage = async function(tableRef, vue, url, titre, description) {
+    var r = await MGP.g.actions([["CreateViewSection", tableRef, vue, "custom", null, null]]);
+    var res = r && r.retValues && r.retValues[0] || {};
+    if (!res.sectionRef) {
+      return null;
+    }
+    var cv = { mode: "url", url, widgetDef: null, access: "full", pluginId: "", sectionId: "", renderAfterReady: false };
+    await MGP.g.actions([["UpdateRecord", "_grist_Views_section", res.sectionRef, { title: titre || "", options: JSON.stringify({ customView: JSON.stringify(cv) }) }]]);
+    if (description && MGP.g.actionDecrireSection) {
+      try {
+        var s = (await MGP.g.lire("_grist_Views_section")).filter(function(x) {
+          return x.id === res.sectionRef;
+        })[0];
+        var a = MGP.g.actionDecrireSection(s, titre, description);
+        if (a) {
+          await MGP.g.actions([a]);
+        }
+      } catch (e) {
+        logSecurite("description de la vue", e);
+      }
+    }
+    return res.sectionRef;
+  };
+  P.urlCeWidget = function(sections) {
+    var moi = MGP.g.normaliserUrl(location.href);
+    var s = sections.filter(function(x) {
+      return x.parentKey === "custom" && MGP.g.normaliserUrl(MGP.g.urlSection(x)) === moi;
+    })[0];
+    return s ? MGP.g.urlSection(s) : "";
+  };
+  P.cleePage = function(cle) {
+    return "page." + cle;
+  };
+  P.placerSurSaPage = async function(tableRef, def) {
+    var c = MGP.g.CADEAU;
+    if (!c || !c.cle || !c.page || !MGP.g.tech || MGP.g.acces !== "full") {
+      return null;
+    }
+    await MGP.g.chargerMeta();
+    var t = MGP.g.meta.tables.filter(function(x) {
+      return x.id === tableRef;
+    })[0];
+    if (!t) {
+      return null;
+    }
+    var vues = await MGP.g.lire("_grist_Views"), sections = await MGP.g.lire("_grist_Views_section");
+    var avant = MGP.g.reglage(P.cleePage(c.cle), null);
+    var vue = avant && avant.vue && vues.some(function(x) {
+      return x.id === avant.vue;
+    }) ? avant.vue : P.pageDeTable(t, vues, sections);
+    if (!vue) {
+      return null;
+    }
+    var ici = await MGP.g.vueCourante();
+    var moi = MGP.g.normaliserUrl(location.href);
+    var dejaLa = sections.some(function(s) {
+      return s.parentId === vue && s.parentKey === "custom" && MGP.g.normaliserUrl(MGP.g.urlSection(s)) === moi;
+    });
+    var url = dejaLa ? "" : P.urlCeWidget(sections);
+    if (!dejaLa && !url) {
+      return null;
+    }
+    if (!dejaLa) {
+      await P.ajouterWidgetSurPage(t.id, vue, url, c.page, "Votre cadeau " + c.nom + ", construit autour de votre table : il garde vos lignes et ajoute ce qui manque.");
+    }
+    var v = vues.filter(function(x) {
+      return x.id === vue;
+    })[0], raw = sections.filter(function(s) {
+      return s.id === t.rawViewSectionRef;
+    })[0];
+    var nommee = false;
+    if (v && v.name !== c.page && P.nomParDefaut(v.name, [t.tableId, raw && raw.title, def && def.id, def && def.nom, def && def.label, c.nom, c.page])) {
+      await MGP.g.actions([["UpdateRecord", "_grist_Views", vue, { name: c.page }]]);
+      nommee = true;
+    }
+    var depuis = ici && ici !== vue ? ici : avant && avant.depuis || null;
+    await MGP.g.ecrireReglage(P.cleePage(c.cle), { vue, depuis, nommee: nommee || !!(avant && avant.nommee) });
+    return { vue, depuis, nommee };
+  };
+  P.doublon = async function() {
+    var c = MGP.g.CADEAU, r = c && c.cle && MGP.g.tech ? MGP.g.reglage(P.cleePage(c.cle), null) : null;
+    if (!r || !r.depuis || r.depuis === r.vue) {
+      return null;
+    }
+    var vues = await MGP.g.lire("_grist_Views"), sections = await MGP.g.lire("_grist_Views_section");
+    var v = vues.filter(function(x) {
+      return x.id === r.depuis;
+    })[0], sa = vues.filter(function(x) {
+      return x.id === r.vue;
+    })[0];
+    if (!v || !sa) {
+      return null;
+    }
+    var moi = MGP.g.normaliserUrl(location.href);
+    var siennes = sections.filter(function(s) {
+      return s.parentId === r.depuis;
+    });
+    return { vue: r.depuis, nom: v.name || "", sa: sa.name || "", retirable: siennes.length > 0 && siennes.every(function(s) {
+      return s.parentKey === "custom" && MGP.g.normaliserUrl(MGP.g.urlSection(s)) === moi;
+    }) };
+  };
+  P.rangerSurSaPage = async function(bouton) {
+    var d = await P.doublon();
+    if (!d || !d.retirable) {
+      return false;
+    }
+    var oui = await MGP.confirmer("Ranger mon cadeau sur ma page", "Votre cadeau est déjà sur « " + d.sa + " », avec votre table. La page « " + d.nom + " » ne montre que ce widget : elle sera retirée du menu. Aucune table ni aucune ligne n’est supprimée.", "Retirer la page en double");
+    if (!oui) {
+      if (bouton) {
+        bouton.focus();
+      }
+      return false;
+    }
+    try {
+      await MGP.g.actions([["RemoveRecord", "_grist_Views", d.vue]]);
+      var c = MGP.g.CADEAU, r = MGP.g.reglage(P.cleePage(c.cle), null) || {};
+      r.depuis = null;
+      await MGP.g.ecrireReglage(P.cleePage(c.cle), r);
+      MGP.annoncer("Votre cadeau est rangé sur « " + d.sa + " » : ouvrez-la dans le menu de gauche.", "ok");
+      return true;
+    } catch (e) {
+      logSecurite("page en double", e);
+      MGP.annoncer("La page n’a pas pu être retirée : retirez-la à la main si vous le souhaitez.", "err");
+      return false;
     }
   };
   P.hash = function(s) {
@@ -5552,8 +5975,8 @@ MGP.parcours = MGP.parcours || {};
         return P.etatModule(m.id).fait;
       }).length, b = P.ligne("Bilan de niveau", n.id);
       return '<section class="carte pc-niveau" aria-labelledby="pc-n-' + echapperHTML(n.id) + '"><div class="pc-niveau-tete"><h2 id="pc-n-' + echapperHTML(n.id) + '">Niveau ' + echapperHTML(n.nom) + '</h2><span class="mini">' + faits + " module" + (faits > 1 ? "s" : "") + " sur " + mods.length + (b && b.QUIZ_MAX ? " · bilan : " + b.QUIZ_POINTS + "/" + b.QUIZ_MAX : "") + "</span></div>" + MGP.jaugeHTML(faits, mods.length || 1, "Modules du niveau " + n.nom) + '<ul class="pc-modules">' + mods.map(function(m) {
-        var e = P.etatModule(m.id), c = P.competence(m.competence), j = P.jourDe(m.id);
-        return '<li class="pc-module' + (e.fait ? " fait" : "") + '"><div class="x"><b>' + echapperHTML(m.titre) + '</b><br><span class="mini">' + echapperHTML((c ? c.nom : "") + (j ? " · case du " + (j === 1 ? "1er" : j) + " décembre" : "")) + '</span></div><span class="pc-pastilles">' + (e.pastilles.length ? e.pastilles.map(function(p) {
+        var e = P.etatModule(m.id), c = P.competence(m.competence);
+        return '<li class="pc-module' + (e.fait ? " fait" : "") + '"><div class="x"><b>' + echapperHTML(m.titre) + '</b><br><span class="mini">' + echapperHTML((c ? c.nom : "") + (m.carte ? " · Carte " + m.carte : "")) + '</span></div><span class="pc-pastilles">' + (e.pastilles.length ? e.pastilles.map(function(p) {
           return '<span class="pil ' + p[0] + '">' + echapperHTML(p[1]) + "</span>";
         }).join("") : '<span class="pil">À découvrir</span>') + "</span></li>";
       }).join("") + '</ul><div class="pc-pied"><button type="button" class="btn' + (faits ? "" : " sec") + '" data-pc-bilan-niveau="' + echapperHTML(n.id) + '">🎓 Bilan du niveau ' + echapperHTML(n.nom) + "</button></div></section>";
@@ -5625,8 +6048,63 @@ MGP.parcours = MGP.parcours || {};
       cfg.barreApp.insertAdjacentHTML("afterbegin", '<button type="button" class="btn sec" id="btn-lecon" data-pc-ouvrir="mission">🎓 Académie Grist</button>');
       cfg.barreApp.addEventListener("click", P.clicEntree);
     }
+    P.inst = null;
+    var bi = document.getElementById(cfg.boutonInstaller || "btn-installer-ex");
+    if (cfg.ancreDeballage && bi) {
+      P.inst = bi.closest(".inst") || bi.parentNode;
+      P.inst.hidden = true;
+      if (!P.inst.id) {
+        P.inst.id = "pc-inst";
+      }
+      P.inst.setAttribute("tabindex", "-1");
+      P.inst.classList.add("pc-inst");
+      Array.prototype.forEach.call(P.inst.querySelectorAll("h2"), function(h) {
+        h.hidden = true;
+      });
+    }
+    P.installOuvert = false;
     P.rendreEntree();
     return { ouvrir: P.ouvrir, fermer: P.fermer, rendreEntree: P.rendreEntree, apresInstallation: P.apresInstallation };
+  };
+  P.etiquetteCarte = function(c) {
+    return [c && c.carte ? "Carte " + c.carte : "", c && c.niveauNom ? "Niveau " + c.niveauNom : ""].filter(Boolean).join(" · ");
+  };
+  P.fete = function() {
+    try {
+      return !!(MGP.g.tech && MGP.g.reglage("ACADEMIE:FETE", false) === true);
+    } catch (e) {
+      return false;
+    }
+  };
+  P.habiller = function(ecran, montre) {
+    var on = !!(ecran && montre && P.fete());
+    document.body.classList.toggle("noel-fond", on);
+    if (!ecran) {
+      return;
+    }
+    ecran.classList.toggle("noel", on);
+    if (on) {
+      if (MGP.noel) {
+        MGP.noel.decorer(ecran);
+      }
+    } else {
+      Array.prototype.forEach.call(ecran.querySelectorAll(":scope > .guirlande, :scope > .flocons, :scope > .sapin"), function(x) {
+        x.remove();
+      });
+    }
+  };
+  P.etatMission = function(module) {
+    var l = P.ligne("Module", module);
+    if (l && (l.MISSION === "Réussie" || l.MISSION === "Passée")) {
+      return l.MISSION;
+    }
+    var r = null;
+    try {
+      r = MGP.g.tech ? MGP.g.reglage(P.cleReglage(module), null) : null;
+    } catch (e) {
+      r = null;
+    }
+    return r && (r.mission === "Réussie" || r.mission === "Passée") ? r.mission : "";
   };
   P.situation = function(c) {
     var comp = P.competence(c && c.competence);
@@ -5646,29 +6124,107 @@ MGP.parcours = MGP.parcours || {};
       logSecurite("progression", e);
     }
     var l = P.ligne("Module", cfg.module), nq = (cfg.contenu.questions || []).length, mi = cfg.contenu.mission, du = cfg.contenu.durees || {};
+    var installe = !!(cfg.installe && cfg.installe()), mission = P.etatMission(cfg.module);
+    var mode = mi && mission === "Réussie" && !installe && cfg.completer ? "completer" : !mi || mission || installe ? "direct" : "choix";
     var etat = [];
-    if (l && l.MISSION === "Réussie") {
+    if (l && l.MISSION === "Réussie" && mode !== "completer") {
       etat.push("✅ Mission réussie (" + (l.MISSION_POINTS || 0) + " points)");
     }
     if (l && l.QUIZ_MAX) {
       etat.push("🧠 Quiz : " + l.QUIZ_POINTS + " sur " + l.QUIZ_MAX);
     }
-    a.innerHTML = '<section class="carte pc-entree" aria-labelledby="pc-entree-t"><span class="pil t-lavande">🎓 ' + echapperHTML(P.situation(cfg.contenu)) + '</span><h2 id="pc-entree-t">Deux façons d’ouvrir votre cadeau</h2>' + (cfg.contenu.objectif ? '<p class="mini" style="margin-top:4px">' + rich(cfg.contenu.objectif) + "</p>" : "") + '<div class="pc-voies">' + (mi ? '<button type="button" class="pc-voie" data-pc-ouvrir="mission"><span class="e" aria-hidden="true">🛠️</span><b>Je le construis</b><span class="mini">' + echapperHTML("La mission : " + P.duree(du.mission) + " dans votre document, avec des indices si besoin. Le widget complète ensuite votre cadeau autour de vos tables.") + "</span></button>" : "") + '<button type="button" class="pc-voie" data-pc-installer><span class="e" aria-hidden="true">⚡</span><b>Installe pour moi</b><span class="mini">Tout est créé en un geste. La leçon et le quiz restent disponibles.</span></button></div><div class="pc-liens">' + (nq ? '<button type="button" class="btn sec" data-pc-ouvrir="quiz">🧠 Quiz du module · ' + echapperHTML(P.duree(du.quiz)) + "</button>" : "") + '<button type="button" class="btn lien" data-pc-ouvrir="capot">🔧 La leçon · ' + echapperHTML(P.duree(du.lecon)) + "</button></div>" + (etat.length ? '<p class="mini pc-etat-l" role="status">' + echapperHTML(etat.join(" · ")) + "</p>" : "") + "</section>";
+    var pil = document.getElementById("deb-pil"), comp = P.competence(cfg.contenu.competence);
+    if (pil) {
+      pil.textContent = "🎓 " + P.etiquetteCarte(cfg.contenu);
+      pil.hidden = false;
+    }
+    var etiquette = pil ? comp ? "🔧 " + comp.nom : "" : "🎓 " + P.situation(cfg.contenu);
+    var full = MGP.g.acces === "full", corps;
+    var jeton = P.jetonEntree = (P.jetonEntree || 0) + 1;
+    var part = mode === "choix" ? await P.partielles() : [];
+    if (jeton !== P.jetonEntree) {
+      return;
+    }
+    var notePart = part.length ? '<p class="pc-partielle" role="status">' + echapperHTML("📋 Votre table « " + part.map(function(x) {
+      return x.table.tableId;
+    }).join(" », « ") + " » est déjà commencée (" + part.map(function(x) {
+      return x.colonnes.join(", ");
+    }).join(" ; ") + "). « Je le construis » la termine avec la mission ; « Installe pour moi » la complète autour : vos lignes et vos colonnes sont gardées, rien n’est en double.") + "</p>" : "";
+    if (mode === "completer") {
+      corps = '<h2 id="pc-entree-t">✅ Mission réussie : votre table est prête.</h2><p style="margin-top:6px">' + echapperHTML("Le widget garde votre table et vos lignes, ajoute les champs qui manquent et termine le cadeau. Rien de ce que vous avez construit n’est effacé.") + "</p>" + (full ? "" : '<p class="mini" style="margin-top:6px;color:var(--flamant-f)">Pour compléter le cadeau, ce widget a besoin de l’accès complet au document (panneau de droite, « Accès complet au document »).</p>') + '<div class="pc-pied"><button type="button" class="btn" data-pc-completer' + (full ? "" : " disabled") + ">🎁 Compléter mon cadeau autour de ma table</button></div>";
+    } else if (mode === "direct") {
+      corps = '<h2 id="pc-entree-t">⚡ Installe pour moi</h2>' + (cfg.contenu.objectif ? '<p class="mini" style="margin-top:4px">' + rich(cfg.contenu.objectif) + "</p>" : "") + '<div class="pc-installe" id="pc-installe"></div>';
+    } else {
+      corps = '<h2 id="pc-entree-t">Deux façons d’ouvrir votre cadeau</h2>' + (cfg.contenu.objectif ? '<p class="mini" style="margin-top:4px">' + rich(cfg.contenu.objectif) + "</p>" : "") + notePart + '<div class="pc-voies"><button type="button" class="pc-voie" data-pc-ouvrir="mission"><span class="e" aria-hidden="true">🛠️</span><b>Je le construis</b><span class="mini">' + echapperHTML("La mission : " + P.duree(du.mission) + " dans votre document, avec des indices si besoin. Le widget complète ensuite votre cadeau autour de vos tables.") + '</span></button><button type="button" class="pc-voie" data-pc-installer aria-expanded="' + (P.installOuvert ? "true" : "false") + '"' + (P.inst ? ' aria-controls="pc-installe"' : "") + '><span class="e" aria-hidden="true">⚡</span><b>Installe pour moi</b><span class="mini">Tout est créé en un geste, vide ou avec des exemples. La leçon et le quiz restent disponibles.</span></button></div><div class="pc-installe" id="pc-installe"' + (P.installOuvert ? "" : " hidden") + "></div>";
+    }
+    a.innerHTML = '<section class="carte pc-entree" aria-labelledby="pc-entree-t">' + (etiquette ? '<span class="pil t-lavande">' + echapperHTML(etiquette) + "</span>" : "") + corps + '<div class="pc-liens">' + (nq ? '<button type="button" class="btn sec" data-pc-ouvrir="quiz">🧠 Quiz du module · ' + echapperHTML(P.duree(du.quiz)) + "</button>" : "") + '<button type="button" class="btn lien" data-pc-ouvrir="capot">🔧 La leçon · ' + echapperHTML(P.duree(du.lecon)) + "</button></div>" + (etat.length ? '<p class="mini pc-etat-l" role="status">' + echapperHTML(etat.join(" · ")) + "</p>" : "") + (mode === "completer" ? '<div class="pc-installe" id="pc-installe" hidden></div>' : "") + "</section>";
+    var zone = document.getElementById("pc-installe");
+    if (P.inst && zone) {
+      zone.appendChild(P.inst);
+      P.inst.hidden = false;
+    }
   };
   P.clicEntree = function(ev) {
-    var b = ev.target.closest("[data-pc-ouvrir], [data-pc-installer]");
+    var b = ev.target.closest("[data-pc-ouvrir], [data-pc-installer], [data-pc-completer]");
     if (!b) {
       return;
     }
+    if (b.hasAttribute("data-pc-completer")) {
+      P.completerCadeau(b);
+      return;
+    }
     if (b.hasAttribute("data-pc-installer")) {
-      var cible = document.getElementById(P.cfg.boutonInstaller || "btn-installer-ex");
-      if (cible) {
-        cible.scrollIntoView({ behavior: "smooth", block: "center" });
-        cible.focus({ preventScroll: true });
-      }
+      P.basculerInstall(b);
       return;
     }
     P.ouvrir(b.dataset.pcOuvrir);
+  };
+  P.basculerInstall = function(tuile) {
+    var zone = document.getElementById("pc-installe");
+    if (!zone) {
+      return;
+    }
+    P.installOuvert = tuile.getAttribute("aria-expanded") !== "true";
+    tuile.setAttribute("aria-expanded", P.installOuvert ? "true" : "false");
+    zone.hidden = !P.installOuvert;
+    if (!P.installOuvert) {
+      return;
+    }
+    var cible = Array.prototype.filter.call(zone.querySelectorAll("button"), function(x) {
+      return !x.disabled;
+    })[0] || P.inst || zone;
+    cible.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    cible.focus({ preventScroll: true });
+  };
+  P.completerCadeau = async function(bouton) {
+    var cfg = P.cfg, lib = bouton ? bouton.textContent : "";
+    if (!cfg || !cfg.completer) {
+      return;
+    }
+    if (MGP.g.acces !== "full") {
+      MGP.annoncer("Le widget a besoin de l’accès complet au document pour compléter le cadeau.", "err");
+      return;
+    }
+    if (bouton) {
+      bouton.disabled = true;
+      bouton.textContent = "Le cadeau se complète...";
+    }
+    try {
+      sessionStorage.setItem("mgp-parcours-fete", cfg.module);
+    } catch (e) {
+      logSecurite("sessionStorage", e);
+    }
+    P.fermer();
+    try {
+      await cfg.completer();
+    } catch (e) {
+      logSecurite("compléter le cadeau", e);
+      MGP.annoncer("Le cadeau n’a pas pu se compléter : " + (e && e.message ? e.message : e), "err");
+      if (bouton && bouton.isConnected) {
+        bouton.disabled = false;
+        bouton.textContent = lib;
+      }
+    }
   };
   P.avant = null;
   P.ouvrir = function(vue) {
@@ -5912,19 +6468,33 @@ MGP.parcours = MGP.parcours || {};
         d.setAttribute("aria-labelledby", "pc-fete-t");
         document.body.appendChild(d);
       }
-      d.innerHTML = '<div class="poignee" aria-hidden="true"></div><div class="corps pc-fete"><p class="gros" aria-hidden="true">🎉</p><h2 id="pc-fete-t">Bravo, vous avez construit votre cadeau</h2><p>' + echapperHTML("Mission réussie (" + (l && l.MISSION_POINTS || 0) + " points). Le widget a ajouté les champs et les exemples qui manquaient autour de votre table.") + '</p><div class="pied"><button type="button" class="btn sec" data-pc-fete-quiz>🧠 Quiz du module</button><button type="button" class="btn" data-fermer>Voir mon cadeau</button></div></div>';
+      var dbl = null;
+      try {
+        dbl = await P.doublon();
+      } catch (e) {
+        logSecurite("page en double", e);
+      }
+      var txtDbl = dbl ? dbl.retirable ? "Votre cadeau est maintenant sur votre page « " + dbl.sa + " », avec votre table. Cette page-ci, « " + dbl.nom + " », fait doublon : rangez votre cadeau sur votre page pour n’en garder qu’une." : "Votre cadeau est maintenant sur votre page « " + dbl.sa + " », avec votre table. La page « " + dbl.nom + " » montre aussi d’autres vues : elle reste, retirez ce widget à la main si vous le souhaitez." : "";
+      d.innerHTML = '<div class="poignee" aria-hidden="true"></div><div class="corps pc-fete"><p class="gros" aria-hidden="true">🎉</p><h2 id="pc-fete-t">Bravo, vous avez construit votre cadeau</h2><p>' + echapperHTML("Mission réussie (" + (l && l.MISSION_POINTS || 0) + " points). Le widget a ajouté les champs et les exemples qui manquaient autour de votre table.") + "</p>" + (txtDbl ? '<p class="pc-doublon">' + echapperHTML(txtDbl) + "</p>" : "") + '<div class="pied"><button type="button" class="btn sec" data-pc-fete-quiz>🧠 Quiz du module</button>' + (dbl && dbl.retirable ? '<button type="button" class="btn sec" data-pc-ranger>🧹 Ranger mon cadeau sur ma page</button>' : "") + '<button type="button" class="btn" data-fermer>Voir mon cadeau</button></div></div>';
       MGP.brancherDialogues();
       d.querySelector("[data-pc-fete-quiz]").addEventListener("click", function() {
         MGP.fermer(d);
         P.ouvrir("quiz");
       });
+      var br = d.querySelector("[data-pc-ranger]");
+      if (br) {
+        br.addEventListener("click", async function() {
+          MGP.fermer(d);
+          await P.rangerSurSaPage();
+        });
+      }
       MGP.ouvrir(d, "[data-fermer]");
       return;
     }
     await P.noterInstallation(cfg.contenu);
   };
 })(MGP.parcours);
-MGP.parcours.CONTENU = { "carte": 23, "id": "taches", "titre": "Règles d'accès", "competence": "acces", "surprise": { "genre": "widget", "nom": "Tâches de la maison", "widget": "taches", "texte": "Qui fait quoi à la maison, la tournante des corvées et l'équilibre de la semaine, chacun avec ses droits." }, "widget": "taches", "niveau": "expert", "niveauNom": "Expert", "contrat": { "note": "Tables du widget Tâches de la maison : la mission construit le début de Taches_de_la_maison et une règle d'accès sur cette table ; le widget l'adopte (MGP.parcours.adopter), garde la règle telle quelle, ajoute ses colonnes et formules, puis crée Pièces, Tâches faites et Pauses vacances. Signature : NOM, FREQ_UNITE, MINUTES.", "tables": [{ "id": "Taches_de_la_maison", "colonnes": { "NOM": "Text", "FREQ_UNITE": "Choice (Jours, Semaines, Mois, Jours de la semaine)", "MINUTES": "Int" } }], "regles": [{ "table": "Taches_de_la_maison", "contient": "user.Access", "permissions": "-CUD" }] }, "objectif": "Décider qui voit et qui modifie quoi, ligne par ligne si besoin.", "durees": { "lecon": 15, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "Au-delà des rôles", "paragraphes": ["Les **règles d'accès** affinent les rôles : cacher une table aux éditeurs, interdire de supprimer, ou ne montrer à chacun que ses propres lignes. Elles se règlent dans **Règles d'accès**, en bas à gauche (propriétaire seulement)."] }, { "titre": "Une règle = une condition et des permissions", "code": "user.Access != OWNER", "paragraphes": ["Pour la table Taches_de_la_maison : si la condition est vraie (la personne n'est pas propriétaire du document), on refuse C, U et D. Les éditeurs lisent la liste des corvées, sans pouvoir la changer.", "Une règle peut aussi regarder la ligne elle-même : avec `user.Email != rec.AUTEUR` et R, U, D refusés, chacun ne voit que les lignes qu'il a écrites."] }, { "titre": "Les lettres", "liste": ["R : lire", "U : modifier", "C : créer", "D : supprimer", "S : changer la structure"] }, { "titre": "Tester", "paragraphes": ["Le bouton **Voir en tant que** montre le document comme le voit un autre utilisateur : le meilleur moyen de vérifier une règle avant de partager."] }], "mission": { "titre": "La liste des corvées, protégée", "intro": "Construisez le cœur du widget Tâches de la maison : la table des tâches, et une règle d'accès pour que seuls les propriétaires du document changent la liste. Le foyer pourra toujours dire « Fait » : le widget le note dans une autre table.", "etapes": ["Créez une table **Taches_de_la_maison** avec NOM (Texte), FREQ_UNITE (Choix : Jours, Semaines, Mois, Jours de la semaine) et MINUTES (Entier).", "Ajoutez deux tâches, par exemple « Vider le lave-vaisselle », tous les Jours, 10 minutes.", "Dans **Règles d'accès**, ajoutez des règles pour la table Taches_de_la_maison : condition `user.Access != OWNER`, permissions C, U et D refusées (lecture seule). Enregistrez.", "Vérifiez avec « Voir en tant que » un éditeur : il lit la liste sans pouvoir la modifier."], "verifications": [{ "type": "table", "table": "Taches_de_la_maison" }, { "type": "choix", "table": "Taches_de_la_maison", "colonne": "FREQ_UNITE", "choix": ["Jours", "Semaines", "Mois", "Jours de la semaine"] }, { "type": "colonne", "table": "Taches_de_la_maison", "colonne": "MINUTES", "typeCol": ["Int", "Numeric"] }, { "type": "lignes", "table": "Taches_de_la_maison", "min": 2 }, { "type": "regle", "table": "Taches_de_la_maison", "contient": "user.Access", "permissions": "-CUD", "libelle": "Une règle d’accès met « Taches_de_la_maison » en lecture seule pour les non-propriétaires", "indices": ["Les règles d’accès se règlent dans le menu « Règles d’accès », en bas à gauche (propriétaire du document seulement).", "Ajoutez des règles pour la table Taches_de_la_maison : la condition teste le rôle (`user.Access`), et les permissions C, U et D sont refusées.", "Règles d’accès > Ajouter des règles de table > Taches_de_la_maison > Condition : user.Access != OWNER > Permissions : C, U et D refusées (ou « Lecture seule ») > Enregistrer."] }] }, "questions": [{ "type": "qcm", "competence": "acces", "question": "Qui peut modifier les règles d'accès ?", "choix": ["Les propriétaires", "Les éditeurs", "Tout le monde"], "bonne": 0, "explication": "Seuls les propriétaires voient le menu Règles d'accès.", "aide": "https://support.getgrist.com/access-rules/" }, { "type": "qcm", "competence": "acces", "question": "Taches_de_la_maison est en lecture seule pour les non-propriétaires. Un éditeur peut-il encore dire « Fait » dans le widget ?", "choix": ["Oui : « Fait » écrit une ligne dans Tâches faites, une autre table", "Non : la règle bloque tout le document", "Seulement s'il est aussi lecteur"], "bonne": 0, "explication": "Une règle de table ne protège que cette table. L'historique Tâches faites reste ouvert à l'écriture.", "aide": "https://support.getgrist.com/access-rules/" }, { "type": "paires", "competence": "acces", "question": "Reliez chaque lettre à sa permission.", "paires": [["R", "Lire"], ["U", "Modifier"], ["C", "Créer"], ["D", "Supprimer"]], "explication": "S, en plus, concerne la structure.", "aide": "https://support.getgrist.com/access-rules/" }, { "type": "trou", "competence": "acces", "question": "Complétez la condition : la ligne n'est pas de cet utilisateur.", "formule": "user.Email != ___.AUTEUR", "reponses": [["rec"]], "explication": "`rec` désigne la ligne testée par la règle.", "aide": "https://support.getgrist.com/access-rules/" }, { "type": "qcm", "competence": "acces", "question": "Comment vérifier une règle sans demander à quelqu'un ?", "choix": ["« Voir en tant que »", "Se déconnecter", "Exporter le document"], "bonne": 0, "explication": "« Voir en tant que » simule la vue d'un autre utilisateur.", "aide": "https://support.getgrist.com/access-rules/" }, { "type": "multiple", "competence": "acces", "question": "Que peuvent faire des règles d'accès ?", "choix": ["Cacher une table", "Cacher certaines colonnes", "Ne montrer à chacun que ses lignes", "Chiffrer les données"], "bonnes": [0, 1, 2], "explication": "Elles décident qui voit et modifie quoi ; le chiffrement est une autre affaire.", "aide": "https://support.getgrist.com/access-rules/" }] };
+MGP.parcours.CONTENU = { "carte": 23, "id": "taches", "titre": "Règles d'accès", "competence": "acces", "surprise": { "genre": "widget", "nom": "Tâches de la maison", "widget": "taches", "texte": "Qui fait quoi à la maison, la tournante des corvées et l'équilibre de la semaine, chacun avec ses droits." }, "widget": "taches", "niveau": "expert", "niveauNom": "Expert", "contrat": { "note": "Tables du widget Tâches de la maison : la mission construit le début de Taches_de_la_maison et une règle d'accès sur cette table ; le widget l'adopte (MGP.parcours.adopter), garde la règle telle quelle, ajoute ses colonnes et formules, puis crée Pièces, Tâches faites et Pauses vacances. Signature : NOM, FREQ_UNITE, MINUTES.", "tables": [{ "id": "Taches_de_la_maison", "colonnes": { "NOM": "Text", "FREQ_UNITE": "Choice (Jours, Semaines, Mois, Jours de la semaine)", "MINUTES": "Int" } }], "regles": [{ "table": "Taches_de_la_maison", "contient": "user.Access", "permissions": "-CUD" }] }, "objectif": "Décider qui voit et qui modifie quoi, ligne par ligne si besoin.", "durees": { "lecon": 15, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "Au-delà des rôles", "paragraphes": ["Les **règles d'accès** affinent les rôles : cacher une table aux éditeurs, interdire de supprimer, ou ne montrer à chacun que ses propres lignes. Elles se règlent dans **Permissions avancées**, en bas à gauche (la page des règles d'accès, propriétaire seulement)."] }, { "titre": "Une règle = une condition et des permissions", "code": "user.Access != OWNER", "paragraphes": ["Pour la table Taches_de_la_maison : si la condition est vraie (la personne n'est pas propriétaire du document), on refuse C, U et D. Les éditeurs lisent la liste des corvées, sans pouvoir la changer.", "Une règle peut aussi regarder la ligne elle-même : avec `user.Email != rec.AUTEUR` et R, U, D refusés, chacun ne voit que les lignes qu'il a écrites."] }, { "titre": "Les lettres", "liste": ["R : lire", "U : modifier", "C : créer", "D : supprimer", "S : changer la structure"] }, { "titre": "Tester", "paragraphes": ["Le bouton **Voir en tant que** montre le document comme le voit un autre utilisateur : le meilleur moyen de vérifier une règle avant de partager."] }], "mission": { "titre": "La liste des corvées, protégée", "intro": "Construisez le cœur du widget Tâches de la maison : la table des tâches, et une règle d'accès pour que seuls les propriétaires du document changent la liste. Le foyer pourra toujours dire « Fait » : le widget le note dans une autre table.", "etapes": ["Créez une table **Taches_de_la_maison** avec NOM (Texte), FREQ_UNITE (Choix unique : Jours, Semaines, Mois, Jours de la semaine) et MINUTES (Entier).", "Ajoutez deux tâches, par exemple « Vider le lave-vaisselle », tous les Jours, 10 minutes.", "Dans **Permissions avancées**, touchez **Ajouter des règles pour la table** > Taches_de_la_maison : condition `user.Access != OWNER`, droits C, U et D refusés (**Lecture seule**). Puis **Enregistrer**.", "Vérifiez avec « Voir en tant que » un éditeur : il lit la liste sans pouvoir la modifier."], "verifications": [{ "type": "table", "table": "Taches_de_la_maison" }, { "type": "choix", "table": "Taches_de_la_maison", "colonne": "FREQ_UNITE", "choix": ["Jours", "Semaines", "Mois", "Jours de la semaine"] }, { "type": "colonne", "table": "Taches_de_la_maison", "colonne": "MINUTES", "typeCol": ["Int", "Numeric"] }, { "type": "lignes", "table": "Taches_de_la_maison", "min": 2 }, { "type": "regle", "table": "Taches_de_la_maison", "contient": "user.Access", "permissions": "-CUD", "libelle": "Une règle d’accès met « Taches_de_la_maison » en lecture seule pour les non-propriétaires", "indices": ["Les règles d’accès se règlent dans « Permissions avancées », en bas à gauche (propriétaire du document seulement).", "Ajoutez des règles pour la table Taches_de_la_maison : la condition teste le rôle (`user.Access`), et les droits C, U et D sont refusés.", "Permissions avancées > Ajouter des règles pour la table > Taches_de_la_maison > Condition : user.Access != OWNER > Droits : C, U et D refusés (ou « Lecture seule ») > Enregistrer."] }] }, "questions": [{ "type": "qcm", "competence": "acces", "question": "Qui peut modifier les règles d'accès ?", "choix": ["Les propriétaires", "Les éditeurs", "Tout le monde"], "bonne": 0, "explication": "Seuls les propriétaires peuvent ouvrir et modifier les Permissions avancées.", "aide": "https://support.getgrist.com/access-rules/" }, { "type": "qcm", "competence": "acces", "question": "Taches_de_la_maison est en lecture seule pour les non-propriétaires. Un éditeur peut-il encore dire « Fait » dans le widget ?", "choix": ["Oui : « Fait » écrit une ligne dans Tâches faites, une autre table", "Non : la règle bloque tout le document", "Seulement s'il est aussi en lecture seule"], "bonne": 0, "explication": "Une règle de table ne protège que cette table. L'historique Tâches faites reste ouvert à l'écriture.", "aide": "https://support.getgrist.com/access-rules/" }, { "type": "paires", "competence": "acces", "question": "Reliez chaque lettre à sa permission.", "paires": [["R", "Lire"], ["U", "Modifier"], ["C", "Créer"], ["D", "Supprimer"]], "explication": "S, en plus, concerne la structure.", "aide": "https://support.getgrist.com/access-rules/" }, { "type": "trou", "competence": "acces", "question": "Complétez la condition : la ligne n'est pas de cet utilisateur.", "formule": "user.Email != ___.AUTEUR", "reponses": [["rec"]], "explication": "`rec` désigne la ligne testée par la règle.", "aide": "https://support.getgrist.com/access-rules/" }, { "type": "qcm", "competence": "acces", "question": "Comment vérifier une règle sans demander à quelqu'un ?", "choix": ["« Voir en tant que »", "Se déconnecter", "Exporter le document"], "bonne": 0, "explication": "« Voir en tant que » simule la vue d'un autre utilisateur.", "aide": "https://support.getgrist.com/access-rules/" }, { "type": "multiple", "competence": "acces", "question": "Que peuvent faire des règles d'accès ?", "choix": ["Cacher une table", "Cacher certaines colonnes", "Ne montrer à chacun que ses lignes", "Chiffrer les données"], "bonnes": [0, 1, 2], "explication": "Elles décident qui voit et modifie quoi ; le chiffrement est une autre affaire.", "aide": "https://support.getgrist.com/access-rules/" }] };
 var TAC = { WIDGET: "taches", NOM: "Tâches de la maison", NOM_PAGE: "🧹 Tâches de la maison", d: { pieces: [], taches: [], faits: [], pauses: [], personnes: [] }, onglet: "afaire", lundi: null, lundiEq: null, moi: 0, enfant: 0, ft: { t: null }, fn: { t: null }, modele: "Cuisine", CLE_MOI: "mgp-taches-moi" };
 TAC.JOURS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 TAC.JOURS_LONGS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
@@ -5932,9 +6502,9 @@ TAC.UNITES = [["Jours", "Citron"], ["Semaines", "Menthe"], ["Mois", "Lavande"], 
 TAC.STATUTS = [["En retard", "Flamant"], ["Aujourd’hui", "Citron"], ["À faire", "Citron"], ["Bientôt", "Pêche"], ["Plus tard", "Menthe"], ["En pause", "Écume"]];
 TAC.DUS = ["En retard", "Aujourd’hui", "À faire"];
 TAC.FORMULES = { DERNIER_FAIT: "max([f for f in {FAITS}.lookupRecords(TACHE=$id) if f.DATE], key=lambda f: (f.DATE, f.id), default=None)", DERNIERE: "$DERNIER_FAIT.DATE if $DERNIER_FAIT else None", BASE: "$DERNIERE or $DEBUT", DECALAGE: "sum(p.JOURS_PAUSE for p in {PAUSES}.all if p.DEBUT and $BASE and p.DEBUT > $BASE and p.DEBUT <= TODAY())", PROCHAINE: 'DATEADD(next((DATEADD($BASE, days=k) for k in range(1, 8) if WEEKDAY(DATEADD($BASE, days=k), 2) in [["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].index(j) + 1 for j in ($JOURS or [])]), $BASE) if $FREQ_UNITE == "Jours de la semaine" else DATEADD($BASE, days=($FREQ_NB or 1) if $FREQ_UNITE == "Jours" else 0, weeks=($FREQ_NB or 1) if $FREQ_UNITE == "Semaines" else 0, months=($FREQ_NB or 1) if $FREQ_UNITE == "Mois" else 0), days=$DECALAGE or 0) if $BASE else None', RETARD: "DAYS(TODAY(), $PROCHAINE) if $PROCHAINE and $PROCHAINE < TODAY() and not $EN_PAUSE else 0", STATUT: '"En pause" if $EN_PAUSE else "À faire" if not $PROCHAINE else "En retard" if $PROCHAINE < TODAY() else "Aujourd’hui" if $PROCHAINE == TODAY() else "Bientôt" if DAYS($PROCHAINE, TODAY()) <= 2 else "Plus tard"', QUI: "(list($TOURNANTE)[([p.id for p in $TOURNANTE].index($DERNIER_FAIT.PAR.id) + 1) % len($TOURNANTE)] if $DERNIER_FAIT and $DERNIER_FAIT.PAR.id in [p.id for p in $TOURNANTE] else list($TOURNANTE)[0]) if len($TOURNANTE) else $ASSIGNE", NB_FAITS: "len({FAITS}.lookupRecords(TACHE=$id))", SEMAINE: "DATEADD($DATE, days=-WEEKDAY($DATE, 3)) if $DATE else None", JOURS_PAUSE: "DAYS($FIN, $DEBUT) + 1 if $DEBUT and $FIN and $FIN >= $DEBUT else 0", A_FAIRE: 'len([t for t in {TACHES}.lookupRecords(PIECE=$id) if t.STATUT in ("En retard", "Aujourd’hui", "À faire")])' };
-TAC.DEFS = { PIECES: { cle: "PIECES", id: "Pieces", label: "🚪 Pièces", nom: "Pièces", signature: ["NOM", "ORDRE", "A_FAIRE"], affichage: "NOM", colonnes: [{ id: "NOM", type: "Text" }, { id: "EMOJI", type: "Text" }, { id: "ORDRE", type: "Int" }, { id: "NOTE", type: "Text" }, { id: "A_FAIRE", type: "Int", formule: TAC.FORMULES.A_FAIRE }] }, TACHES: { cle: "TACHES", id: "Taches_de_la_maison", label: "🧹 Tâches de la maison", nom: "Tâches de la maison", signature: ["NOM", "FREQ_UNITE", "MINUTES"], affichage: "NOM", colonnes: [{ id: "NOM", type: "Text" }, { id: "EMOJI", type: "Text" }, { id: "PIECE", type: "Ref:@PIECES" }, { id: "FREQ_NB", type: "Int" }, { id: "FREQ_UNITE", type: "Choice", choix: TAC.UNITES }, { id: "JOURS", type: "ChoiceList", choix: TAC.JOURS.map(function(j) {
+TAC.DEFS = { PIECES: { cle: "PIECES", id: "Pieces", label: "🚪 Pièces", nom: "Pièces", signature: ["NOM", "ORDRE", "A_FAIRE"], affichage: "NOM", description: "Les pièces de la maison : une ligne par pièce, avec le nombre de tâches à faire.", colonnes: [{ id: "NOM", type: "Text", description: "Nom de la pièce." }, { id: "EMOJI", type: "Text", description: "Un emoji pour la pièce." }, { id: "ORDRE", type: "Int", description: "Ordre d’affichage des pièces." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "A_FAIRE", type: "Int", formule: TAC.FORMULES.A_FAIRE, description: "Formule : nombre de tâches de la pièce en retard, du jour ou à faire." }] }, TACHES: { cle: "TACHES", id: "Taches_de_la_maison", label: "🧹 Tâches de la maison", nom: "Tâches de la maison", signature: ["NOM", "FREQ_UNITE", "MINUTES"], affichage: "NOM", description: "Les tâches ménagères qui reviennent : une ligne par tâche, avec sa fréquence, qui la fait et sa prochaine date calculée.", colonnes: [{ id: "NOM", type: "Text", description: "Nom de la tâche." }, { id: "EMOJI", type: "Text", description: "Un emoji pour la tâche." }, { id: "PIECE", type: "Ref:@PIECES", description: "Pièce concernée (Référence vers Pièces)." }, { id: "FREQ_NB", type: "Int", description: "Tous les combien : le nombre de la fréquence (tous les 2 jours, toutes les 3 semaines...)." }, { id: "FREQ_UNITE", type: "Choice", choix: TAC.UNITES, description: "Unité de la fréquence, en Choix unique : Jours, Semaines, Mois ou Jours de la semaine." }, { id: "JOURS", type: "ChoiceList", choix: TAC.JOURS.map(function(j) {
   return [j, "Pêche"];
-}) }, { id: "MINUTES", type: "Int" }, { id: "ASSIGNE", type: "Ref:@PERSONNES" }, { id: "TOURNANTE", type: "RefList:@PERSONNES" }, { id: "POUR_ENFANTS", type: "Bool" }, { id: "EN_PAUSE", type: "Bool" }, { id: "DEBUT", type: "Date" }, { id: "NOTE", type: "Text" }, { id: "DERNIER_FAIT", type: "Ref:@FAITS", formule: TAC.FORMULES.DERNIER_FAIT }, { id: "DERNIERE", type: "Date", formule: TAC.FORMULES.DERNIERE }, { id: "BASE", type: "Date", formule: TAC.FORMULES.BASE }, { id: "DECALAGE", type: "Int", formule: TAC.FORMULES.DECALAGE }, { id: "PROCHAINE", type: "Date", formule: TAC.FORMULES.PROCHAINE }, { id: "RETARD", type: "Int", formule: TAC.FORMULES.RETARD }, { id: "STATUT", type: "Choice", choix: TAC.STATUTS, formule: TAC.FORMULES.STATUT }, { id: "QUI", type: "Ref:@PERSONNES", formule: TAC.FORMULES.QUI }, { id: "NB_FAITS", type: "Int", formule: TAC.FORMULES.NB_FAITS }] }, FAITS: { cle: "FAITS", id: "Taches_faites", label: "✅ Tâches faites", nom: "Tâches faites", signature: ["TACHE", "PAR", "DATE", "MINUTES"], colonnes: [{ id: "TACHE", type: "Ref:@TACHES" }, { id: "LIBELLE", type: "Text" }, { id: "PAR", type: "Ref:@PERSONNES" }, { id: "DATE", type: "Date" }, { id: "MINUTES", type: "Int" }, { id: "NOTE", type: "Text" }, { id: "SEMAINE", type: "Date", formule: TAC.FORMULES.SEMAINE }] }, PAUSES: { cle: "PAUSES", id: "Pauses_vacances", label: "🏖️ Pauses vacances", nom: "Pauses vacances", signature: ["DEBUT", "FIN", "JOURS_PAUSE"], colonnes: [{ id: "DEBUT", type: "Date" }, { id: "FIN", type: "Date" }, { id: "NOTE", type: "Text" }, { id: "JOURS_PAUSE", type: "Int", formule: TAC.FORMULES.JOURS_PAUSE }] } };
+}), description: "Jours de la semaine choisis, en Choix multiple, quand FREQ_UNITE vaut Jours de la semaine." }, { id: "MINUTES", type: "Int", description: "Temps qu’il faut, en minutes." }, { id: "ASSIGNE", type: "Ref:@PERSONNES", description: "Personne qui s’en charge toujours (Référence vers Personnes)." }, { id: "TOURNANTE", type: "RefList:@PERSONNES", description: "Personnes qui la font à tour de rôle (Référence multiple vers Personnes)." }, { id: "POUR_ENFANTS", type: "Bool", description: "Coché si la tâche est faisable par un enfant." }, { id: "EN_PAUSE", type: "Bool", description: "Coché pour suspendre la tâche." }, { id: "DEBUT", type: "Date", description: "Date de départ, tant que la tâche n’a jamais été faite." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "DERNIER_FAIT", type: "Ref:@FAITS", formule: TAC.FORMULES.DERNIER_FAIT, description: "Formule : la fois la plus récente où la tâche a été faite (Référence vers Tâches faites)." }, { id: "DERNIERE", type: "Date", formule: TAC.FORMULES.DERNIERE, description: "Formule : date de DERNIER_FAIT." }, { id: "BASE", type: "Date", formule: TAC.FORMULES.BASE, description: "Formule : DERNIERE, sinon DEBUT, le point de départ du calcul." }, { id: "DECALAGE", type: "Int", formule: TAC.FORMULES.DECALAGE, description: "Formule : jours de pause vacances commencés depuis BASE, qui repoussent la prochaine date." }, { id: "PROCHAINE", type: "Date", formule: TAC.FORMULES.PROCHAINE, description: "Formule : BASE plus la fréquence (ou le prochain jour de la semaine choisi), plus DECALAGE, avec DATEADD." }, { id: "RETARD", type: "Int", formule: TAC.FORMULES.RETARD, description: "Formule : nombre de jours de retard, 0 si la tâche est à l’heure ou en pause." }, { id: "STATUT", type: "Choice", choix: TAC.STATUTS, formule: TAC.FORMULES.STATUT, description: "Formule : En retard, Aujourd’hui, À faire, Bientôt, Plus tard ou En pause (Choix unique)." }, { id: "QUI", type: "Ref:@PERSONNES", formule: TAC.FORMULES.QUI, description: "Formule : à qui c’est le tour (la personne suivante de TOURNANTE, sinon ASSIGNE)." }, { id: "NB_FAITS", type: "Int", formule: TAC.FORMULES.NB_FAITS, description: "Formule : nombre de fois où la tâche a été faite." }] }, FAITS: { cle: "FAITS", id: "Taches_faites", label: "✅ Tâches faites", nom: "Tâches faites", signature: ["TACHE", "PAR", "DATE", "MINUTES"], description: "L’historique des tâches faites : une ligne à chaque fois qu’une tâche est cochée.", colonnes: [{ id: "TACHE", type: "Ref:@TACHES", description: "Tâche faite (Référence vers Tâches de la maison)." }, { id: "LIBELLE", type: "Text", description: "Nom de la tâche au moment où elle a été faite." }, { id: "PAR", type: "Ref:@PERSONNES", description: "Personne qui l’a faite (Référence vers Personnes)." }, { id: "DATE", type: "Date", description: "Date à laquelle elle a été faite." }, { id: "MINUTES", type: "Int", description: "Temps passé, en minutes." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "SEMAINE", type: "Date", formule: TAC.FORMULES.SEMAINE, description: "Formule : lundi de la semaine, pour les totaux par semaine." }] }, PAUSES: { cle: "PAUSES", id: "Pauses_vacances", label: "🏖️ Pauses vacances", nom: "Pauses vacances", signature: ["DEBUT", "FIN", "JOURS_PAUSE"], description: "Les pauses vacances : une ligne par période d’absence, qui décale les tâches au lieu de les mettre en retard.", colonnes: [{ id: "DEBUT", type: "Date", description: "Premier jour de la pause." }, { id: "FIN", type: "Date", description: "Dernier jour de la pause." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "JOURS_PAUSE", type: "Int", formule: TAC.FORMULES.JOURS_PAUSE, description: "Formule : nombre de jours de la pause, bornes comprises." }] } };
 TAC.ORDRE = ["PIECES", "PAUSES", "TACHES", "FAITS"];
 TAC.defsWidget = function() {
   return TAC.ORDRE.map(function(c) {
@@ -6976,7 +7546,7 @@ TAC.rendreCapot = async function() {
 TAC.exemple = function(ctx, cle, f) {
   return (ctx.donnees[cle] || []).filter(f)[0] || null;
 };
-TAC.DICO = { tables: { TACHES: { emoji: "🧹", nom: "Tâches de la maison", couleur: "Citron", role: "Une ligne par tâche qui revient : la pièce, la fréquence, la durée, qui s’en occupe. Les formules disent quand elle revient et à qui c’est le tour. Une règle d’accès peut la mettre en lecture seule pour les non-propriétaires : « Fait » reste possible pour tout le foyer, puisqu’il écrit dans Tâches faites." }, FAITS: { emoji: "✅", nom: "Tâches faites", couleur: "Menthe", role: "Une ligne à chaque fois qu’une tâche est faite : laquelle, par qui, quel jour, combien de minutes. Rien ne s’efface." }, PIECES: { emoji: "🚪", nom: "Pièces", couleur: "Pêche", role: "Les pièces de la maison, pour ranger les tâches." }, PAUSES: { emoji: "🏖️", nom: "Pauses vacances", couleur: "Écume", role: "Les absences : pendant ces jours, rien ne passe en retard." }, PERSONNES: { emoji: "👥", nom: "Personnes", couleur: "Lavande", role: "Le foyer, commun à tous vos widgets." } }, champs: { TACHES: { NOM: "le nom de la tâche.", EMOJI: "son emoji.", PIECE: "une **Référence** vers Pièces.", FREQ_NB: "tous les combien.", FREQ_UNITE: "un **Choix** : Jours, Semaines, Mois ou Jours de la semaine.", JOURS: "une **Liste de choix** : les jours de la semaine.", MINUTES: "la durée, pour l’équilibre.", ASSIGNE: "une **Référence** vers la personne qui s’en occupe.", TOURNANTE: "une **Liste de références** : les personnes qui se relaient.", POUR_ENFANTS: "coché : la tâche apparaît dans le mode enfants.", EN_PAUSE: "coché : la tâche ne revient plus pour l’instant.", DEBUT: "pour une tâche jamais faite, le jour à partir duquel compter.", NOTE: "une note.", DERNIER_FAIT: "calculé : la dernière ligne de Tâches faites.", DERNIERE: "calculé : sa date.", BASE: "calculé : la dernière fois, sinon le début.", DECALAGE: "calculé : les jours de vacances depuis.", PROCHAINE: "calculé : la prochaine fois.", RETARD: "calculé : les jours de retard.", STATUT: "calculé : En retard, Aujourd’hui, À faire, Bientôt, Plus tard ou En pause.", QUI: "calculé : à qui c’est le tour.", NB_FAITS: "calculé : combien de fois elle a été faite." }, FAITS: { TACHE: "une **Référence** vers la tâche.", LIBELLE: "le nom de la tâche, gardé si la tâche est supprimée.", PAR: "une **Référence** vers la personne.", DATE: "le jour.", MINUTES: "la durée, recopiée au moment où c’est fait.", NOTE: "une note.", SEMAINE: "calculé : le lundi de la semaine." }, PIECES: { NOM: "le nom.", EMOJI: "l’emoji.", ORDRE: "l’ordre d’affichage.", NOTE: "une note.", A_FAIRE: "calculé : les tâches de la pièce à faire." }, PAUSES: { DEBUT: "le premier jour.", FIN: "le dernier jour (compris).", NOTE: "une note.", JOURS_PAUSE: "calculé : le nombre de jours." } }, formules: [{ cle: "TACHES", col: "DERNIER_FAIT", defaut: TAC.FORMULES.DERNIER_FAIT, intro: "La dernière fois qu’une tâche a été faite : parmi ses lignes de Tâches faites, celle qui a la date la plus récente.", jetons: [["Taches_faites.lookupRecords(TACHE=$id)", "toutes les fois où la tâche a été faite."], ["max(..., key=lambda f: (f.DATE, f.id))", "garde la plus récente ; à date égale, la dernière saisie."], ["default=None", "rien si elle n’a jamais été faite."]], exemple: function(ctx) {
+TAC.DICO = { tables: { TACHES: { emoji: "🧹", nom: "Tâches de la maison", couleur: "Citron", role: "Une ligne par tâche qui revient : la pièce, la fréquence, la durée, qui s’en occupe. Les formules disent quand elle revient et à qui c’est le tour. Une règle d’accès peut la mettre en lecture seule pour les non-propriétaires : « Fait » reste possible pour tout le foyer, puisqu’il écrit dans Tâches faites." }, FAITS: { emoji: "✅", nom: "Tâches faites", couleur: "Menthe", role: "Une ligne à chaque fois qu’une tâche est faite : laquelle, par qui, quel jour, combien de minutes. Rien ne s’efface." }, PIECES: { emoji: "🚪", nom: "Pièces", couleur: "Pêche", role: "Les pièces de la maison, pour ranger les tâches." }, PAUSES: { emoji: "🏖️", nom: "Pauses vacances", couleur: "Écume", role: "Les absences : pendant ces jours, rien ne passe en retard." }, PERSONNES: { emoji: "👥", nom: "Personnes", couleur: "Lavande", role: "Le foyer, commun à tous vos widgets." } }, champs: { TACHES: { NOM: "le nom de la tâche.", EMOJI: "son emoji.", PIECE: "une **Référence** vers Pièces.", FREQ_NB: "tous les combien.", FREQ_UNITE: "un **Choix unique** : Jours, Semaines, Mois ou Jours de la semaine.", JOURS: "un **Choix multiple** : les jours de la semaine.", MINUTES: "la durée, pour l’équilibre.", ASSIGNE: "une **Référence** vers la personne qui s’en occupe.", TOURNANTE: "une **Référence multiple** : les personnes qui se relaient.", POUR_ENFANTS: "coché : la tâche apparaît dans le mode enfants.", EN_PAUSE: "coché : la tâche ne revient plus pour l’instant.", DEBUT: "pour une tâche jamais faite, le jour à partir duquel compter.", NOTE: "une note.", DERNIER_FAIT: "calculé : la dernière ligne de Tâches faites.", DERNIERE: "calculé : sa date.", BASE: "calculé : la dernière fois, sinon le début.", DECALAGE: "calculé : les jours de vacances depuis.", PROCHAINE: "calculé : la prochaine fois.", RETARD: "calculé : les jours de retard.", STATUT: "calculé : En retard, Aujourd’hui, À faire, Bientôt, Plus tard ou En pause.", QUI: "calculé : à qui c’est le tour.", NB_FAITS: "calculé : combien de fois elle a été faite." }, FAITS: { TACHE: "une **Référence** vers la tâche.", LIBELLE: "le nom de la tâche, gardé si la tâche est supprimée.", PAR: "une **Référence** vers la personne.", DATE: "le jour.", MINUTES: "la durée, recopiée au moment où c’est fait.", NOTE: "une note.", SEMAINE: "calculé : le lundi de la semaine." }, PIECES: { NOM: "le nom.", EMOJI: "l’emoji.", ORDRE: "l’ordre d’affichage.", NOTE: "une note.", A_FAIRE: "calculé : les tâches de la pièce à faire." }, PAUSES: { DEBUT: "le premier jour.", FIN: "le dernier jour (compris).", NOTE: "une note.", JOURS_PAUSE: "calculé : le nombre de jours." } }, formules: [{ cle: "TACHES", col: "DERNIER_FAIT", defaut: TAC.FORMULES.DERNIER_FAIT, intro: "La dernière fois qu’une tâche a été faite : parmi ses lignes de Tâches faites, celle qui a la date la plus récente.", jetons: [["Taches_faites.lookupRecords(TACHE=$id)", "toutes les fois où la tâche a été faite."], ["max(..., key=lambda f: (f.DATE, f.id))", "garde la plus récente ; à date égale, la dernière saisie."], ["default=None", "rien si elle n’a jamais été faite."]], exemple: function(ctx) {
   var t = TAC.exemple(ctx, "TACHES", function(x) {
     return x.DERNIERE;
   });
@@ -6991,7 +7561,7 @@ TAC.DICO = { tables: { TACHES: { emoji: "🧹", nom: "Tâches de la maison", cou
     return x.STATUT === "En retard";
   });
   return t ? t.NOM + " : **" + t.STATUT + "** de " + t.RETARD + " jours" : "";
-}, defi: 'ajoutez une mise en forme conditionnelle sur NOM : fond rose quand `$STATUT == "En retard"`.' }, { cle: "TACHES", col: "QUI", defaut: TAC.FORMULES.QUI, intro: "La tournante : on cherche dans la liste la personne qui a fait la tâche la dernière fois, et on prend la suivante ; après la dernière, on revient à la première.", jetons: [["[p.id for p in $TOURNANTE].index(...)", "la place de la personne dans la liste."], ["% len($TOURNANTE)", "le reste de la division : après la dernière, on revient à 0."], ["else $ASSIGNE", "sans tournante, la personne choisie."]], exemple: function(ctx) {
+}, defi: 'ajoutez un style conditionnel sur NOM : fond rose quand `$STATUT == "En retard"`.' }, { cle: "TACHES", col: "QUI", defaut: TAC.FORMULES.QUI, intro: "La tournante : on cherche dans la liste la personne qui a fait la tâche la dernière fois, et on prend la suivante ; après la dernière, on revient à la première.", jetons: [["[p.id for p in $TOURNANTE].index(...)", "la place de la personne dans la liste."], ["% len($TOURNANTE)", "le reste de la division : après la dernière, on revient à 0."], ["else $ASSIGNE", "sans tournante, la personne choisie."]], exemple: function(ctx) {
   var t = TAC.exemple(ctx, "TACHES", function(x) {
     return MGP.liste(x.TOURNANTE).length && x.QUI;
   });
@@ -7006,10 +7576,7 @@ TAC.montrer = function(ecran) {
   if (ecran === "app") {
     setTimeout(MGP.g.afficherIndicePage, 0);
   }
-  document.body.classList.toggle("noel-fond", ecran === "deballage");
-  if (ecran === "deballage") {
-    MGP.noel.decorer(document.getElementById("ecran-deballage"));
-  }
+  MGP.parcours.habiller(document.getElementById("ecran-deballage"), ecran === "deballage");
   document.getElementById("ecran-deballage").hidden = ecran !== "deballage";
   document.getElementById("ecran-app").hidden = ecran !== "app";
   if (ecran !== "app") {
@@ -7293,7 +7860,7 @@ TAC.reprendre = async function() {
   masquerLoader();
 };
 window.TAC = TAC;
-MGP.g.CADEAU = { jour: 21, cle: "taches", section: "maison", nom: TAC.NOM, page: TAC.NOM_PAGE };
+MGP.g.CADEAU = { jour: 21, cle: "taches", section: "maison", nom: TAC.NOM, page: TAC.NOM_PAGE, description: "Les tâches de la maison qui reviennent : fréquences, tours de rôle, pauses vacances et historique.", defs: TAC.defsWidget };
 MGP.g.reprendre = TAC.reprendre;
 TAC.demarrer();</script>
 </body>
