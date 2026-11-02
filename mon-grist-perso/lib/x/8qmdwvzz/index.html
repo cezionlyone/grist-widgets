@@ -1543,144 +1543,6 @@ a.pc-aide {
     color: #555;
   }
 }
-.noel {
-  --nuit1: #1B2440;
-  --nuit2: #3A2D5C;
-  --nuit0: #4A3B73;
-  --creme: #FFF8F0;
-  --lune: #D9D2EE;
-  --or: #F2C76E;
-  --or-clair: #FFE7A8;
-  --or-f: #B8862B;
-  --focus: 3px solid var(--or-clair);
-  position: relative;
-  overflow: hidden;
-  min-height: 100vh;
-  background:
-    radial-gradient(
-      ellipse at 50% -10%,
-      var(--nuit0) 0%,
-      var(--nuit2) 35%,
-      var(--nuit1) 85%);
-  color: var(--creme);
-}
-body.noel-fond {
-  background: var(--nuit1, #1B2440);
-  background-color: #1b2440;
-}
-.noel :focus-visible {
-  outline: 3px solid #FFE7A8;
-  outline-offset: 3px;
-}
-.noel > h1,
-.noel .barre h1,
-.noel .deb h1 {
-  color: var(--creme);
-}
-.noel .barre .marque,
-.noel .accroche,
-.noel > .mini,
-.noel .avantages .mini {
-  color: var(--lune);
-}
-.noel .avantages b {
-  color: var(--creme);
-}
-.noel .carte,
-.noel dialog {
-  color: var(--encre);
-}
-.noel .carte .mini {
-  color: var(--gris);
-}
-.noel .hero {
-  background: #ffffff14;
-  color: var(--creme);
-  box-shadow: inset 0 0 0 1px #ffffff1f;
-}
-.noel .hero p {
-  color: var(--lune);
-}
-.noel .jauge {
-  background: #ffffff29;
-}
-.noel .jauge > i {
-  background:
-    linear-gradient(
-      90deg,
-      var(--or),
-      var(--or-clair));
-}
-.noel .pil.or {
-  background: var(--or);
-  color: var(--encre);
-}
-.noel .guirlande {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 46px;
-  pointer-events: none;
-  z-index: 0;
-}
-.noel .flocons {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-}
-.noel .flocons i {
-  position: absolute;
-  top: -10px;
-  border-radius: 50%;
-  background: #fff;
-  opacity: .8;
-  animation: neige 14s linear infinite;
-}
-@keyframes neige {
-  0% {
-    transform: translateY(-10px);
-    opacity: 0;
-  }
-  10% {
-    opacity: .85;
-  }
-  to {
-    transform: translateY(105vh);
-    opacity: .2;
-  }
-}
-.noel .sapin {
-  position: absolute;
-  right: 18px;
-  bottom: -4px;
-  font-size: 72px;
-  opacity: .9;
-  pointer-events: none;
-  z-index: 0;
-}
-@media (max-width: 699px) {
-  .noel .sapin {
-    font-size: 48px;
-    right: 8px;
-  }
-}
-.noel > *:not(.guirlande):not(.flocons):not(.sapin) {
-  position: relative;
-  z-index: 1;
-}
-@media (prefers-reduced-motion: reduce) {
-  .noel .flocons i {
-    animation: none;
-    top: auto;
-    opacity: .7;
-  }
-}
-.page.noel {
-  padding-top: 46px;
-}
 .deb {
   display: grid;
   gap: 24px;
@@ -3893,7 +3755,7 @@ MGP.capot.rendre = function(conteneur, cfg) {
     conteneur.querySelector("#capot-role").textContent = t.role;
     conteneur.querySelector("#capot-fiches").innerHTML = MGP.capot.fiches(t, cfg, etat.champ);
   }
-  conteneur.innerHTML = '<div class="capot-grille"><section class="carte"><h2>Les tables et leurs liens <span class="mini" style="font-weight:600">· lu en direct dans votre document</span></h2><p class="mini" style="margin:6px 0 10px">Une flèche = une colonne <b>Référence</b> : elle pointe vers une ligne d’une autre table. En pointillés : une <b>Référence multiple</b>. Touchez un champ pour voir sa fiche.</p><div class="vue-bureau">' + MGP.capot.schemaSVG(tables) + '</div><div class="vue-mobile">' + MGP.capot.schemaMobile(tables) + "</div></section><div>" + MGP.capot.formules(cfg, tables) + MGP.capot.extras(cfg) + '</div></div><section class="carte" style="margin-top:16px" id="capot-champs"><h2>Les champs, un par un</h2><div class="choix" id="capot-choix-table" role="group" aria-label="Choisir la table" style="margin:10px 0"></div><p class="mini" id="capot-role" style="margin-bottom:12px"></p><div id="capot-fiches"></div></section>';
+  conteneur.innerHTML = '<div class="capot-grille"><section class="carte"><h2>Les tables et leurs liens <span class="mini" style="font-weight:600">· lu en direct dans votre document</span></h2><p class="mini" style="margin:6px 0 10px">Une flèche = une colonne <b>Référence</b> : elle pointe vers une ligne d’une autre table. En pointillés : une <b>Référence multiple</b>. Cliquez sur un champ pour voir sa fiche.</p><div class="vue-bureau">' + MGP.capot.schemaSVG(tables) + '</div><div class="vue-mobile">' + MGP.capot.schemaMobile(tables) + "</div></section><div>" + MGP.capot.formules(cfg, tables) + MGP.capot.extras(cfg) + '</div></div><section class="carte" style="margin-top:16px" id="capot-champs"><h2>Les champs, un par un</h2><div class="choix" id="capot-choix-table" role="group" aria-label="Choisir la table" style="margin:10px 0"></div><p class="mini" id="capot-role" style="margin-bottom:12px"></p><div id="capot-fiches"></div></section>';
   rendreFiches();
   function montrerChamp(cle, col) {
     etat.table = cle;
@@ -4137,21 +3999,6 @@ MGP.socleUI.carteSocle = async function(conteneur) {
   } catch (e) {
     logSecurite("jauge", e);
   }
-};
-MGP.noel = {};
-MGP.noel.decorer = function(el) {
-  if (!el || el.querySelector(":scope > .guirlande")) {
-    return;
-  }
-  var couleurs = ["#F2C76E", "#FFC2D1", "#A8E6E2", "#F2C76E", "#CDEDC8", "#FFC2D1", "#DCD0F7", "#F2C76E"];
-  var g = '<svg class="guirlande" viewBox="0 0 1280 46" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0 8 Q 80 40 160 10 T 320 10 T 480 10 T 640 10 T 800 10 T 960 10 T 1120 10 T 1280 10" stroke="#5E5480" stroke-width="2" fill="none"/>' + couleurs.map(function(c, i) {
-    return '<circle cx="' + (80 + i * 160) + '" cy="25" r="6" fill="' + c + '"/>';
-  }).join("") + "</svg>";
-  var f = '<div class="flocons" aria-hidden="true">' + [[6, 3, 5], [18, 9, 4], [31, 1, 6], [44, 6, 4], [57, 11, 5], [69, 4, 6], [81, 8, 4], [92, 2, 5], [12, 12, 4], [74, 13, 5]].map(function(x) {
-    return '<i style="left:' + x[0] + "%;width:" + x[2] + "px;height:" + x[2] + "px;animation-delay:-" + x[1] + 's"></i>';
-  }).join("") + "</div>";
-  el.insertAdjacentHTML("afterbegin", g + f);
-  el.insertAdjacentHTML("beforeend", '<div class="sapin" aria-hidden="true">🎄</div>');
 };
 MGP.parcours = MGP.parcours || {};
 (function(P) {
@@ -4720,7 +4567,7 @@ MGP.parcours = MGP.parcours || {};
     });
     return bon.length ? { ok: true } : { ok: false, detail: "La table récapitulative n’est pas groupée par " + c.groupes.join(", ") + "." };
   }, indices: function(c) {
-    return ["Une table récapitulative regroupe les lignes d’une table et calcule des totaux.", "Ajoutez une vue à la page, choisissez la table « " + c.table + " » et touchez l’icône de somme (Σ) pour la grouper.", "Ajouter > Ajouter une vue à la page > Table > " + c.table + " > Σ, Grouper par : " + (c.groupes || []).join(", ") + " > Ajouter à la Page."];
+    return ["Une table récapitulative regroupe les lignes d’une table et calcule des totaux.", "Ajoutez une vue à la page, choisissez la table « " + c.table + " » et cliquez sur l’icône de somme (Σ) pour la grouper.", "Ajouter > Ajouter une vue à la page > Table > " + c.table + " > Σ, Grouper par : " + (c.groupes || []).join(", ") + " > Ajouter à la Page."];
   } }, vue: { libelle: function(c) {
     return "Une page montre « " + c.table + " » dans une vue " + (P.GENRES_VUE[c.genre] || c.genre);
   }, verifier: function(c, m) {
@@ -4816,7 +4663,7 @@ MGP.parcours = MGP.parcours || {};
       });
       return col ? l.indexOf(col.id) >= 0 : l.length > 0;
     });
-    return ok ? { ok: true } : { ok: false, detail: "Aucun tri enregistré" + (c.colonne ? " sur " + c.colonne : "") + " : triez, puis touchez « Enregistrer »." };
+    return ok ? { ok: true } : { ok: false, detail: "Aucun tri enregistré" + (c.colonne ? " sur " + c.colonne : "") + " : triez, puis cliquez sur « Enregistrer »." };
   }, indices: function(c) {
     return ["Un tri se règle en haut de la colonne, puis s’enregistre pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + " (la petite flèche de l’en-tête) et choisissez un tri, puis « Enregistrer » dans la barre qui apparaît.", "En-tête de " + (c.colonne || "la colonne") + " > menu > Trier > A-Z (ou Z-A) > bouton vert « Enregistrer » en haut de la vue."];
   } };
@@ -4839,7 +4686,7 @@ MGP.parcours = MGP.parcours || {};
     });
     return ok ? { ok: true } : { ok: false, detail: "Aucun filtre enregistré" + (c.colonne ? " sur " + c.colonne : "") + "." };
   }, indices: function(c) {
-    return ["Un filtre cache des lignes sans les effacer ; enregistré, il reste en place pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + ", décochez les valeurs à cacher, puis touchez « Enregistrer ».", "En-tête de " + (c.colonne || "la colonne") + " > menu > Filtrer les données > décochez les valeurs, puis « Enregistrer » en haut de la vue."];
+    return ["Un filtre cache des lignes sans les effacer ; enregistré, il reste en place pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + ", décochez les valeurs à cacher, puis cliquez sur « Enregistrer ».", "En-tête de " + (c.colonne || "la colonne") + " > menu > Filtrer les données > décochez les valeurs, puis « Enregistrer » en haut de la vue."];
   } };
   P.CHECKS.lien = { libelle: function(c) {
     return "Sur une page, « " + c.table + " » suit la ligne choisie dans « " + c.source + " »";
@@ -5319,7 +5166,7 @@ MGP.parcours = MGP.parcours || {};
         return '<label class="pc-option" for="' + id + "-" + k + '"><input type="' + ty + '" name="' + id + '" id="' + id + "-" + k + '" value="' + k + '"' + (coche ? " checked" : "") + bloque + ' autocomplete="off"><span>' + rich(c) + "</span></label>";
       }).join("") + "</fieldset>";
     } else if (q.type === "erreur") {
-      html = '<p class="mini">Touchez le morceau qui contient l’erreur.</p><div class="pc-formule" role="group" aria-label="Morceaux de la formule">' + q.segments.map(function(s, k) {
+      html = '<p class="mini">Cliquez sur le morceau qui contient l’erreur.</p><div class="pc-formule" role="group" aria-label="Morceaux de la formule">' + q.segments.map(function(s, k) {
         return '<button type="button" class="pc-seg" data-pc-seg="' + k + '" aria-pressed="' + (etat.rep === k ? "true" : "false") + '"' + bloque + ">" + echapperHTML(s) + "</button>";
       }).join("") + "</div>";
     } else if (q.type === "prediction") {
@@ -5346,7 +5193,7 @@ MGP.parcours = MGP.parcours || {};
         }).join("") + "</select></div>";
       }).join("") + "</div>";
     } else if (q.type === "faire") {
-      html = '<p class="mini">Faites-le dans votre document, puis touchez « Vérifier » : le widget regarde vos tables.</p><ul class="pc-verifs">' + q.verifications.map(function(c, k) {
+      html = '<p class="mini">Faites-le dans votre document, puis cliquez sur « Vérifier » : le widget regarde vos tables.</p><ul class="pc-verifs">' + q.verifications.map(function(c, k) {
         var r = etat.verifs && etat.verifs[k];
         return '<li class="pc-verif ' + (r ? r.ok ? "ok" : "ko" : "attente") + '"><span class="pc-etat" aria-hidden="true">' + (r ? r.ok ? "✅" : "❌" : "⬜") + '</span><span class="x"><b>' + echapperHTML(P.libelle(c)) + "</b>" + (r && !r.ok && r.detail ? '<br><span class="mini">' + echapperHTML(r.detail) + "</span>" : "") + "</span></li>";
       }).join("") + "</ul>";
@@ -5910,29 +5757,8 @@ MGP.parcours = MGP.parcours || {};
   P.etiquetteCarte = function(c) {
     return [c && c.carte ? "Carte " + c.carte : "", c && c.niveauNom ? "Niveau " + c.niveauNom : ""].filter(Boolean).join(" · ");
   };
-  P.fete = function() {
-    try {
-      return !!(MGP.g.tech && MGP.g.reglage("ACADEMIE:FETE", false) === true);
-    } catch (e) {
-      return false;
-    }
-  };
-  P.habiller = function(ecran, montre) {
-    var on = !!(ecran && montre && P.fete());
-    document.body.classList.toggle("noel-fond", on);
-    if (!ecran) {
-      return;
-    }
-    ecran.classList.toggle("noel", on);
-    if (on) {
-      if (MGP.noel) {
-        MGP.noel.decorer(ecran);
-      }
-    } else {
-      Array.prototype.forEach.call(ecran.querySelectorAll(":scope > .guirlande, :scope > .flocons, :scope > .sapin"), function(x) {
-        x.remove();
-      });
-    }
+  P.habiller = function() {
+    document.body.classList.remove("noel-fond");
   };
   P.etatMission = function(module) {
     var l = P.ligne("Module", module);
@@ -6192,7 +6018,7 @@ MGP.parcours = MGP.parcours || {};
       return '<li class="pc-verif ' + (r ? r.ok ? "ok" : "ko" : "attente") + '"><span class="pc-etat" aria-hidden="true">' + (r ? r.ok ? "✅" : "❌" : "⬜") + '</span><div class="x"><b>' + echapperHTML(P.libelle(v)) + "</b>" + (r && !r.ok && r.detail ? '<br><span class="mini">' + echapperHTML(r.detail) + "</span>" : "") + (niv ? '<div class="pc-indices">' + ind.slice(0, niv).map(function(t, n) {
         return "<p><b>" + P.TITRE_INDICE[n] + " :</b> " + rich(t) + "</p>";
       }).join("") + "</div>" : "") + "</div>" + (r && !r.ok && niv < 3 ? '<div class="pc-act"><button type="button" class="btn doux" data-pc-indice="' + k + '">' + P.LIB_INDICE[niv] + "</button></div>" : "") + "</li>";
-    }).join("") + '</ol><p class="mini" role="status" id="pc-mission-etat">' + echapperHTML(res ? nOk + " sur " + res.length + " : " + (nOk === res.length ? "tout est bon !" : "encore un effort.") : "Faites la mission dans votre document, puis touchez « Vérifier ».") + (Object.keys(P.mission.niveaux).length ? " Points possibles : " + P.pointsMission() + "." : "") + '</p><div class="pc-pied"><button type="button" class="btn" data-pc-verifier>Vérifier mon document</button></div></section>';
+    }).join("") + '</ol><p class="mini" role="status" id="pc-mission-etat">' + echapperHTML(res ? nOk + " sur " + res.length + " : " + (nOk === res.length ? "tout est bon !" : "encore un effort.") : "Faites la mission dans votre document, puis cliquez sur « Vérifier ».") + (Object.keys(P.mission.niveaux).length ? " Points possibles : " + P.pointsMission() + "." : "") + '</p><div class="pc-pied"><button type="button" class="btn" data-pc-verifier>Vérifier mon document</button></div></section>';
   };
   P.clicEcran = async function(ev) {
     var b;
@@ -6335,7 +6161,7 @@ MGP.parcours = MGP.parcours || {};
     await P.noterInstallation(cfg.contenu);
   };
 })(MGP.parcours);
-MGP.parcours.CONTENU = { "carte": 25, "id": "accueil", "titre": "Vues personnalisées (widgets personnalisés)", "competence": "widgets", "surprise": { "genre": "widget", "nom": "Mes 3 choses du jour", "widget": "accueil", "texte": "Votre page d'accueil : les trois choses du jour, et les échéances de tout le document réunies au même endroit." }, "widget": "accueil", "niveau": "expert", "niveauNom": "Expert", "contrat": { "note": "Tables du widget Mes 3 choses du jour (src/widgets/accueil) : la mission construit Choses_du_jour et une page avec un widget personnalisé ; le widget l’adopte (MGP.parcours.adopter) puis agrège les échéances du document. Signature : CHOSE, FAITE, POUR_LE.", "tables": [{ "id": "Choses_du_jour", "colonnes": { "CHOSE": "Text", "FAITE": "Bool", "POUR_LE": "Date" } }], "vues": [{ "table": "Choses_du_jour", "genre": "custom" }] }, "objectif": "Ajouter une vue personnalisée (un widget personnalisé) et comprendre ce qu'elle peut faire.", "durees": { "lecon": 10, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "Une vue venue d’une adresse", "paragraphes": ["Une **vue personnalisée** (widget personnalisé) est une page web branchée sur une table. Tous les cadeaux de l'académie en sont : ils sont chargés depuis leur adresse, sur internet.", "Pour en ajouter une par son adresse : **Ajouter** > **Ajouter une page** (ou **Ajouter une vue à la page**), choisissez **Personnalisée**, puis la table. Dans la galerie, touchez **Ajouter votre propre widget** et collez l'adresse dans **URL du widget** (dans le panneau de droite, le même champ s'appelle **URL personnalisée**, « Entrer une URL personnalisée »). Réglez enfin le niveau d'accès, par exemple **Accès complet au document**.", "Grist affiche alors un avertissement, « Attention aux vues personnalisées de source inconnue ». C'est normal : il vous demande si vous faites confiance à cette adresse. Pour une adresse que vous connaissez, comme celle d'un cadeau de l'académie, cochez « J’ai bien lu ces recommandations et je confirme vouloir ajouter cette vue », puis confirmez."] }, { "titre": "Par adresse, ou « Créez le vôtre » ?", "liste": ["**Par adresse** (Ajouter votre propre widget, URL du widget) : le widget vit sur un site ; une nouvelle version arrive toute seule. C'est ainsi qu'on ajoute les cadeaux de l'académie.", "**Créez le vôtre** (dans la liste des vues, au moment d'ajouter) : c'est un éditeur de code, un « Widget personnalisé intégré dans le document ». Le code est collé et vit dans le document. Il ne charge pas une adresse : n'y collez pas l'adresse d'un cadeau, elle ne s'ouvrirait pas."] }, { "titre": "Le niveau d’accès", "liste": ["**Pas d’accès au document** : le widget n’affiche que ce qu’on lui montre.", "**Lire les données source sélectionnées** : il lit la table choisie.", "**Accès complet au document** : il lit et modifie tout le document. À n’accorder qu’aux widgets de confiance."] }, { "titre": "Relier les colonnes", "paragraphes": ["Certains widgets demandent quelles colonnes utiliser (le titre, la date...) : on les relie dans le panneau de droite, onglet **Vue**."] }], "mission": { "titre": "Votre page d’accueil", "intro": "Le cœur du widget Mes 3 choses du jour : une petite table et une vue personnalisée sur une page.", "etapes": ["Créez **Choses_du_jour** avec CHOSE (Texte), FAITE (Booléen) et POUR_LE (Date).", "Ajoutez trois choses.", "Sur la page de cette table : **Ajouter** > **Ajouter une vue à la page** > **Personnalisée** > Choses_du_jour > **Ajouter à la Page**.", "Dans la galerie, prenez « Markdown » (puis reliez CHOSE dans le panneau de droite), ou touchez **Ajouter votre propre widget** et collez l'adresse du cadeau Mes 3 choses du jour dans **URL du widget**, avec l'**Accès complet au document**. Pas « Créez le vôtre » : il attend du code, pas une adresse.", "Si Grist affiche « Attention aux vues personnalisées de source inconnue », c'est normal : cochez la confirmation, puis validez. Revenez ici et touchez « Vérifier mon document »."], "verifications": [{ "type": "table", "table": "Choses_du_jour" }, { "type": "colonne", "table": "Choses_du_jour", "colonne": "FAITE", "typeCol": ["Bool"] }, { "type": "colonne", "table": "Choses_du_jour", "colonne": "POUR_LE", "typeCol": ["Date"] }, { "type": "vue", "table": "Choses_du_jour", "genre": "custom" }] }, "questions": [{ "type": "qcm", "competence": "widgets", "question": "Un widget demande l'« Accès complet au document ». Que peut-il faire ?", "choix": ["Lire et modifier tout le document", "Seulement lire sa table", "Rien sans votre mot de passe"], "bonne": 0, "explication": "D'où la règle : accès complet seulement pour un widget de confiance.", "aide": "https://support.getgrist.com/widget-custom/" }, { "type": "paires", "competence": "widgets", "question": "Reliez chaque niveau d'accès à ce qu'il permet.", "paires": [["Pas d’accès au document", "Afficher sans lire le document"], ["Lire les données source sélectionnées", "Lire la table choisie"], ["Accès complet au document", "Lire et modifier tout le document"]], "explication": "Le niveau se choisit dans le panneau de droite, rubrique Niveau d’accès.", "aide": "https://support.getgrist.com/widget-custom/" }, { "type": "ordre", "competence": "widgets", "question": "Remettez dans l'ordre pour ajouter un cadeau par son adresse.", "etapes": ["Ajouter > Ajouter une page", "Choisir « Personnalisée » et la table", "Toucher « Ajouter votre propre widget »", "Coller l'adresse dans « URL du widget »", "Choisir « Accès complet au document »"], "explication": "On passe par l'adresse (« Ajouter votre propre widget »), jamais par « Créez le vôtre », qui attend du code collé. Puis on règle le niveau d'accès ; l'avertissement « source inconnue » est normal pour une adresse de confiance.", "aide": "https://support.getgrist.com/widget-custom/" }, { "type": "multiple", "competence": "widgets", "question": "Lesquels sont vrais ?", "choix": ["Une vue personnalisée est une page web", "Elle peut venir de la galerie de Grist", "On peut coller l’adresse d’un widget dans « URL du widget »", "Elle remplace les tables du document"], "bonnes": [0, 1, 2], "explication": "Elle s'ajoute à côté des autres vues ; les données restent dans les tables.", "aide": "https://support.getgrist.com/widget-custom/" }, { "type": "qcm", "competence": "widgets", "question": "Un widget veut savoir quelle colonne contient la date. Où le régler ?", "choix": ["Dans le panneau de droite (onglet Vue), en reliant les colonnes", "Dans le code du widget", "En renommant la colonne"], "bonne": 0, "explication": "Le panneau propose de relier chaque besoin du widget à une colonne.", "aide": "https://support.getgrist.com/widget-custom/" }] };
+MGP.parcours.CONTENU = { "carte": 25, "id": "accueil", "titre": "Vues personnalisées (widgets personnalisés)", "competence": "widgets", "surprise": { "genre": "widget", "nom": "Mes 3 choses du jour", "widget": "accueil", "texte": "Votre page d'accueil : les trois choses du jour, et les échéances de tout le document réunies au même endroit." }, "widget": "accueil", "niveau": "expert", "niveauNom": "Expert", "contrat": { "note": "Tables du widget Mes 3 choses du jour (src/widgets/accueil) : la mission construit Choses_du_jour et une page avec un widget personnalisé ; le widget l’adopte (MGP.parcours.adopter) puis agrège les échéances du document. Signature : CHOSE, FAITE, POUR_LE.", "tables": [{ "id": "Choses_du_jour", "colonnes": { "CHOSE": "Text", "FAITE": "Bool", "POUR_LE": "Date" } }], "vues": [{ "table": "Choses_du_jour", "genre": "custom" }] }, "objectif": "Ajouter une vue personnalisée (un widget personnalisé) et comprendre ce qu'elle peut faire.", "durees": { "lecon": 10, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "Une vue venue d’une adresse", "paragraphes": ["Une **vue personnalisée** (widget personnalisé) est une page web branchée sur une table. Tous les cadeaux de l'académie en sont : ils sont chargés depuis leur adresse, sur internet.", "Elle s'ajoute comme les autres vues, en choisissant le type **Personnalisée**. Grist ouvre alors une galerie : des widgets tout prêts (Markdown, Carte, Calendrier...), et **Ajouter votre propre widget** pour en donner un par son adresse, dans **URL du widget** (dans le panneau de droite, le même champ s'appelle **URL personnalisée**). Chaque widget a enfin un niveau d'accès au document.", "Pour une adresse qu'il ne connaît pas, Grist affiche un avertissement, « Attention aux vues personnalisées de source inconnue ». C'est normal : une vue personnalisée exécute le code d'un autre site, et Grist vous demande si vous faites confiance à cette adresse. On ne confirme que pour une adresse connue, comme celle d'un cadeau de l'académie."] }, { "titre": "Par adresse, ou « Créez le vôtre » ?", "liste": ["**Par adresse** (Ajouter votre propre widget, URL du widget) : le widget vit sur un site ; une nouvelle version arrive toute seule. C'est ainsi qu'on ajoute les cadeaux de l'académie.", "**Créez le vôtre** (dans la liste des vues, au moment d'ajouter) : c'est un éditeur de code, un « Widget personnalisé intégré dans le document ». Le code est collé et vit dans le document. Il ne charge pas une adresse : n'y collez pas l'adresse d'un cadeau, elle ne s'ouvrirait pas."] }, { "titre": "Le niveau d’accès", "liste": ["**Pas d’accès au document** : le widget n’affiche que ce qu’on lui montre.", "**Lire les données source sélectionnées** : il lit la table choisie.", "**Accès complet au document** : il lit et modifie tout le document. À n’accorder qu’aux widgets de confiance."] }, { "titre": "Relier les colonnes", "paragraphes": ["Certains widgets demandent quelles colonnes utiliser (le titre, la date...) : on les relie dans le panneau de droite, onglet **Vue**."] }], "mission": { "titre": "Votre page d’accueil", "intro": "Le cœur du widget Mes 3 choses du jour : une petite table et une vue personnalisée sur une page.", "etapes": ["Créez **Choses_du_jour** avec CHOSE (Texte), FAITE (Booléen) et POUR_LE (Date).", "Ajoutez trois choses.", "Sur la page de cette table : **Ajouter** > **Ajouter une vue à la page** > **Personnalisée** > Choses_du_jour > **Ajouter à la Page**.", "Dans la galerie, prenez « Markdown » (puis reliez CHOSE dans le panneau de droite), ou cliquez sur **Ajouter votre propre widget** et collez l'adresse du cadeau Mes 3 choses du jour dans **URL du widget** (ou, dans le panneau de droite, **URL personnalisée**), avec l'**Accès complet au document**. Pas « Créez le vôtre » : il attend du code, pas une adresse.", "Si Grist affiche « Attention aux vues personnalisées de source inconnue », c'est normal : cochez « J’ai bien lu ces recommandations et je confirme vouloir ajouter cette vue », puis confirmez. Revenez ici et cliquez sur « Vérifier mon document »."], "verifications": [{ "type": "table", "table": "Choses_du_jour" }, { "type": "colonne", "table": "Choses_du_jour", "colonne": "FAITE", "typeCol": ["Bool"] }, { "type": "colonne", "table": "Choses_du_jour", "colonne": "POUR_LE", "typeCol": ["Date"] }, { "type": "vue", "table": "Choses_du_jour", "genre": "custom" }] }, "questions": [{ "type": "qcm", "competence": "widgets", "question": "Un widget demande l'« Accès complet au document ». Que peut-il faire ?", "choix": ["Lire et modifier tout le document", "Seulement lire sa table", "Rien sans votre mot de passe"], "bonne": 0, "explication": "D'où la règle : accès complet seulement pour un widget de confiance.", "aide": "https://support.getgrist.com/widget-custom/" }, { "type": "paires", "competence": "widgets", "question": "Reliez chaque niveau d'accès à ce qu'il permet.", "paires": [["Pas d’accès au document", "Afficher sans lire le document"], ["Lire les données source sélectionnées", "Lire la table choisie"], ["Accès complet au document", "Lire et modifier tout le document"]], "explication": "Le niveau se choisit dans le panneau de droite, rubrique Niveau d’accès.", "aide": "https://support.getgrist.com/widget-custom/" }, { "type": "ordre", "competence": "widgets", "question": "Remettez dans l'ordre pour ajouter un cadeau par son adresse.", "etapes": ["Ajouter > Ajouter une page", "Choisir « Personnalisée » et la table", "Cliquer sur « Ajouter votre propre widget »", "Coller l'adresse dans « URL du widget »", "Choisir « Accès complet au document »"], "explication": "On passe par l'adresse (« Ajouter votre propre widget »), jamais par « Créez le vôtre », qui attend du code collé. Puis on règle le niveau d'accès ; l'avertissement « source inconnue » est normal pour une adresse de confiance.", "aide": "https://support.getgrist.com/widget-custom/" }, { "type": "multiple", "competence": "widgets", "question": "Lesquels sont vrais ?", "choix": ["Une vue personnalisée est une page web", "Elle peut venir de la galerie de Grist", "On peut coller l’adresse d’un widget dans « URL du widget »", "Elle remplace les tables du document"], "bonnes": [0, 1, 2], "explication": "Elle s'ajoute à côté des autres vues ; les données restent dans les tables.", "aide": "https://support.getgrist.com/widget-custom/" }, { "type": "qcm", "competence": "widgets", "question": "Un widget veut savoir quelle colonne contient la date. Où le régler ?", "choix": ["Dans le panneau de droite (onglet Vue), en reliant les colonnes", "Dans le code du widget", "En renommant la colonne"], "bonne": 0, "explication": "Le panneau propose de relier chaque besoin du widget à une colonne.", "aide": "https://support.getgrist.com/widget-custom/" }] };
 var ACC = { WIDGET: "accueil", NOM: "Mes 3 choses du jour", NOM_PAGE: "🏠 Mes 3 choses du jour", d: { choses: [], items: [], lu: [], personnes: [] }, onglet: "jour", urlDoc: null, enCours: null };
 ACC.FORMULES = { JOURS: "DAYS($POUR_LE, TODAY()) if $POUR_LE else None", QUAND: '"Fait" if $FAITE else "Sans date" if not $POUR_LE else "En retard" if $JOURS < 0 else "Aujourd’hui" if $JOURS == 0 else "Demain" if $JOURS == 1 else "Cette semaine" if $JOURS <= 7 else "Plus tard"', POINTS: "0 if $FAITE else (20 if $JOURS is None else 60 + min(-$JOURS, 30) if $JOURS < 0 else max(0, 60 - 2 * $JOURS)) + 5" };
 ACC.QUANDS = [["En retard", "Flamant"], ["Aujourd’hui", "Citron"], ["Demain", "Pêche"], ["Cette semaine", "Lavande"], ["Plus tard", "Écume"], ["Sans date", "Écume"], ["Fait", "Menthe"]];

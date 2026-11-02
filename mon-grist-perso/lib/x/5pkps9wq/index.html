@@ -1543,144 +1543,6 @@ a.pc-aide {
     color: #555;
   }
 }
-.noel {
-  --nuit1: #1B2440;
-  --nuit2: #3A2D5C;
-  --nuit0: #4A3B73;
-  --creme: #FFF8F0;
-  --lune: #D9D2EE;
-  --or: #F2C76E;
-  --or-clair: #FFE7A8;
-  --or-f: #B8862B;
-  --focus: 3px solid var(--or-clair);
-  position: relative;
-  overflow: hidden;
-  min-height: 100vh;
-  background:
-    radial-gradient(
-      ellipse at 50% -10%,
-      var(--nuit0) 0%,
-      var(--nuit2) 35%,
-      var(--nuit1) 85%);
-  color: var(--creme);
-}
-body.noel-fond {
-  background: var(--nuit1, #1B2440);
-  background-color: #1b2440;
-}
-.noel :focus-visible {
-  outline: 3px solid #FFE7A8;
-  outline-offset: 3px;
-}
-.noel > h1,
-.noel .barre h1,
-.noel .deb h1 {
-  color: var(--creme);
-}
-.noel .barre .marque,
-.noel .accroche,
-.noel > .mini,
-.noel .avantages .mini {
-  color: var(--lune);
-}
-.noel .avantages b {
-  color: var(--creme);
-}
-.noel .carte,
-.noel dialog {
-  color: var(--encre);
-}
-.noel .carte .mini {
-  color: var(--gris);
-}
-.noel .hero {
-  background: #ffffff14;
-  color: var(--creme);
-  box-shadow: inset 0 0 0 1px #ffffff1f;
-}
-.noel .hero p {
-  color: var(--lune);
-}
-.noel .jauge {
-  background: #ffffff29;
-}
-.noel .jauge > i {
-  background:
-    linear-gradient(
-      90deg,
-      var(--or),
-      var(--or-clair));
-}
-.noel .pil.or {
-  background: var(--or);
-  color: var(--encre);
-}
-.noel .guirlande {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 46px;
-  pointer-events: none;
-  z-index: 0;
-}
-.noel .flocons {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-}
-.noel .flocons i {
-  position: absolute;
-  top: -10px;
-  border-radius: 50%;
-  background: #fff;
-  opacity: .8;
-  animation: neige 14s linear infinite;
-}
-@keyframes neige {
-  0% {
-    transform: translateY(-10px);
-    opacity: 0;
-  }
-  10% {
-    opacity: .85;
-  }
-  to {
-    transform: translateY(105vh);
-    opacity: .2;
-  }
-}
-.noel .sapin {
-  position: absolute;
-  right: 18px;
-  bottom: -4px;
-  font-size: 72px;
-  opacity: .9;
-  pointer-events: none;
-  z-index: 0;
-}
-@media (max-width: 699px) {
-  .noel .sapin {
-    font-size: 48px;
-    right: 8px;
-  }
-}
-.noel > *:not(.guirlande):not(.flocons):not(.sapin) {
-  position: relative;
-  z-index: 1;
-}
-@media (prefers-reduced-motion: reduce) {
-  .noel .flocons i {
-    animation: none;
-    top: auto;
-    opacity: .7;
-  }
-}
-.page.noel {
-  padding-top: 46px;
-}
 .deb {
   display: grid;
   gap: 24px;
@@ -4051,7 +3913,7 @@ MGP.capot.rendre = function(conteneur, cfg) {
     conteneur.querySelector("#capot-role").textContent = t.role;
     conteneur.querySelector("#capot-fiches").innerHTML = MGP.capot.fiches(t, cfg, etat.champ);
   }
-  conteneur.innerHTML = '<div class="capot-grille"><section class="carte"><h2>Les tables et leurs liens <span class="mini" style="font-weight:600">· lu en direct dans votre document</span></h2><p class="mini" style="margin:6px 0 10px">Une flèche = une colonne <b>Référence</b> : elle pointe vers une ligne d’une autre table. En pointillés : une <b>Référence multiple</b>. Touchez un champ pour voir sa fiche.</p><div class="vue-bureau">' + MGP.capot.schemaSVG(tables) + '</div><div class="vue-mobile">' + MGP.capot.schemaMobile(tables) + "</div></section><div>" + MGP.capot.formules(cfg, tables) + MGP.capot.extras(cfg) + '</div></div><section class="carte" style="margin-top:16px" id="capot-champs"><h2>Les champs, un par un</h2><div class="choix" id="capot-choix-table" role="group" aria-label="Choisir la table" style="margin:10px 0"></div><p class="mini" id="capot-role" style="margin-bottom:12px"></p><div id="capot-fiches"></div></section>';
+  conteneur.innerHTML = '<div class="capot-grille"><section class="carte"><h2>Les tables et leurs liens <span class="mini" style="font-weight:600">· lu en direct dans votre document</span></h2><p class="mini" style="margin:6px 0 10px">Une flèche = une colonne <b>Référence</b> : elle pointe vers une ligne d’une autre table. En pointillés : une <b>Référence multiple</b>. Cliquez sur un champ pour voir sa fiche.</p><div class="vue-bureau">' + MGP.capot.schemaSVG(tables) + '</div><div class="vue-mobile">' + MGP.capot.schemaMobile(tables) + "</div></section><div>" + MGP.capot.formules(cfg, tables) + MGP.capot.extras(cfg) + '</div></div><section class="carte" style="margin-top:16px" id="capot-champs"><h2>Les champs, un par un</h2><div class="choix" id="capot-choix-table" role="group" aria-label="Choisir la table" style="margin:10px 0"></div><p class="mini" id="capot-role" style="margin-bottom:12px"></p><div id="capot-fiches"></div></section>';
   rendreFiches();
   function montrerChamp(cle, col) {
     etat.table = cle;
@@ -4295,21 +4157,6 @@ MGP.socleUI.carteSocle = async function(conteneur) {
   } catch (e) {
     logSecurite("jauge", e);
   }
-};
-MGP.noel = {};
-MGP.noel.decorer = function(el) {
-  if (!el || el.querySelector(":scope > .guirlande")) {
-    return;
-  }
-  var couleurs = ["#F2C76E", "#FFC2D1", "#A8E6E2", "#F2C76E", "#CDEDC8", "#FFC2D1", "#DCD0F7", "#F2C76E"];
-  var g = '<svg class="guirlande" viewBox="0 0 1280 46" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0 8 Q 80 40 160 10 T 320 10 T 480 10 T 640 10 T 800 10 T 960 10 T 1120 10 T 1280 10" stroke="#5E5480" stroke-width="2" fill="none"/>' + couleurs.map(function(c, i) {
-    return '<circle cx="' + (80 + i * 160) + '" cy="25" r="6" fill="' + c + '"/>';
-  }).join("") + "</svg>";
-  var f = '<div class="flocons" aria-hidden="true">' + [[6, 3, 5], [18, 9, 4], [31, 1, 6], [44, 6, 4], [57, 11, 5], [69, 4, 6], [81, 8, 4], [92, 2, 5], [12, 12, 4], [74, 13, 5]].map(function(x) {
-    return '<i style="left:' + x[0] + "%;width:" + x[2] + "px;height:" + x[2] + "px;animation-delay:-" + x[1] + 's"></i>';
-  }).join("") + "</div>";
-  el.insertAdjacentHTML("afterbegin", g + f);
-  el.insertAdjacentHTML("beforeend", '<div class="sapin" aria-hidden="true">🎄</div>');
 };
 MGP.parcours = MGP.parcours || {};
 (function(P) {
@@ -4878,7 +4725,7 @@ MGP.parcours = MGP.parcours || {};
     });
     return bon.length ? { ok: true } : { ok: false, detail: "La table récapitulative n’est pas groupée par " + c.groupes.join(", ") + "." };
   }, indices: function(c) {
-    return ["Une table récapitulative regroupe les lignes d’une table et calcule des totaux.", "Ajoutez une vue à la page, choisissez la table « " + c.table + " » et touchez l’icône de somme (Σ) pour la grouper.", "Ajouter > Ajouter une vue à la page > Table > " + c.table + " > Σ, Grouper par : " + (c.groupes || []).join(", ") + " > Ajouter à la Page."];
+    return ["Une table récapitulative regroupe les lignes d’une table et calcule des totaux.", "Ajoutez une vue à la page, choisissez la table « " + c.table + " » et cliquez sur l’icône de somme (Σ) pour la grouper.", "Ajouter > Ajouter une vue à la page > Table > " + c.table + " > Σ, Grouper par : " + (c.groupes || []).join(", ") + " > Ajouter à la Page."];
   } }, vue: { libelle: function(c) {
     return "Une page montre « " + c.table + " » dans une vue " + (P.GENRES_VUE[c.genre] || c.genre);
   }, verifier: function(c, m) {
@@ -4974,7 +4821,7 @@ MGP.parcours = MGP.parcours || {};
       });
       return col ? l.indexOf(col.id) >= 0 : l.length > 0;
     });
-    return ok ? { ok: true } : { ok: false, detail: "Aucun tri enregistré" + (c.colonne ? " sur " + c.colonne : "") + " : triez, puis touchez « Enregistrer »." };
+    return ok ? { ok: true } : { ok: false, detail: "Aucun tri enregistré" + (c.colonne ? " sur " + c.colonne : "") + " : triez, puis cliquez sur « Enregistrer »." };
   }, indices: function(c) {
     return ["Un tri se règle en haut de la colonne, puis s’enregistre pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + " (la petite flèche de l’en-tête) et choisissez un tri, puis « Enregistrer » dans la barre qui apparaît.", "En-tête de " + (c.colonne || "la colonne") + " > menu > Trier > A-Z (ou Z-A) > bouton vert « Enregistrer » en haut de la vue."];
   } };
@@ -4997,7 +4844,7 @@ MGP.parcours = MGP.parcours || {};
     });
     return ok ? { ok: true } : { ok: false, detail: "Aucun filtre enregistré" + (c.colonne ? " sur " + c.colonne : "") + "." };
   }, indices: function(c) {
-    return ["Un filtre cache des lignes sans les effacer ; enregistré, il reste en place pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + ", décochez les valeurs à cacher, puis touchez « Enregistrer ».", "En-tête de " + (c.colonne || "la colonne") + " > menu > Filtrer les données > décochez les valeurs, puis « Enregistrer » en haut de la vue."];
+    return ["Un filtre cache des lignes sans les effacer ; enregistré, il reste en place pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + ", décochez les valeurs à cacher, puis cliquez sur « Enregistrer ».", "En-tête de " + (c.colonne || "la colonne") + " > menu > Filtrer les données > décochez les valeurs, puis « Enregistrer » en haut de la vue."];
   } };
   P.CHECKS.lien = { libelle: function(c) {
     return "Sur une page, « " + c.table + " » suit la ligne choisie dans « " + c.source + " »";
@@ -5477,7 +5324,7 @@ MGP.parcours = MGP.parcours || {};
         return '<label class="pc-option" for="' + id + "-" + k + '"><input type="' + ty + '" name="' + id + '" id="' + id + "-" + k + '" value="' + k + '"' + (coche ? " checked" : "") + bloque + ' autocomplete="off"><span>' + rich(c) + "</span></label>";
       }).join("") + "</fieldset>";
     } else if (q.type === "erreur") {
-      html = '<p class="mini">Touchez le morceau qui contient l’erreur.</p><div class="pc-formule" role="group" aria-label="Morceaux de la formule">' + q.segments.map(function(s, k) {
+      html = '<p class="mini">Cliquez sur le morceau qui contient l’erreur.</p><div class="pc-formule" role="group" aria-label="Morceaux de la formule">' + q.segments.map(function(s, k) {
         return '<button type="button" class="pc-seg" data-pc-seg="' + k + '" aria-pressed="' + (etat.rep === k ? "true" : "false") + '"' + bloque + ">" + echapperHTML(s) + "</button>";
       }).join("") + "</div>";
     } else if (q.type === "prediction") {
@@ -5504,7 +5351,7 @@ MGP.parcours = MGP.parcours || {};
         }).join("") + "</select></div>";
       }).join("") + "</div>";
     } else if (q.type === "faire") {
-      html = '<p class="mini">Faites-le dans votre document, puis touchez « Vérifier » : le widget regarde vos tables.</p><ul class="pc-verifs">' + q.verifications.map(function(c, k) {
+      html = '<p class="mini">Faites-le dans votre document, puis cliquez sur « Vérifier » : le widget regarde vos tables.</p><ul class="pc-verifs">' + q.verifications.map(function(c, k) {
         var r = etat.verifs && etat.verifs[k];
         return '<li class="pc-verif ' + (r ? r.ok ? "ok" : "ko" : "attente") + '"><span class="pc-etat" aria-hidden="true">' + (r ? r.ok ? "✅" : "❌" : "⬜") + '</span><span class="x"><b>' + echapperHTML(P.libelle(c)) + "</b>" + (r && !r.ok && r.detail ? '<br><span class="mini">' + echapperHTML(r.detail) + "</span>" : "") + "</span></li>";
       }).join("") + "</ul>";
@@ -6068,29 +5915,8 @@ MGP.parcours = MGP.parcours || {};
   P.etiquetteCarte = function(c) {
     return [c && c.carte ? "Carte " + c.carte : "", c && c.niveauNom ? "Niveau " + c.niveauNom : ""].filter(Boolean).join(" · ");
   };
-  P.fete = function() {
-    try {
-      return !!(MGP.g.tech && MGP.g.reglage("ACADEMIE:FETE", false) === true);
-    } catch (e) {
-      return false;
-    }
-  };
-  P.habiller = function(ecran, montre) {
-    var on = !!(ecran && montre && P.fete());
-    document.body.classList.toggle("noel-fond", on);
-    if (!ecran) {
-      return;
-    }
-    ecran.classList.toggle("noel", on);
-    if (on) {
-      if (MGP.noel) {
-        MGP.noel.decorer(ecran);
-      }
-    } else {
-      Array.prototype.forEach.call(ecran.querySelectorAll(":scope > .guirlande, :scope > .flocons, :scope > .sapin"), function(x) {
-        x.remove();
-      });
-    }
+  P.habiller = function() {
+    document.body.classList.remove("noel-fond");
   };
   P.etatMission = function(module) {
     var l = P.ligne("Module", module);
@@ -6350,7 +6176,7 @@ MGP.parcours = MGP.parcours || {};
       return '<li class="pc-verif ' + (r ? r.ok ? "ok" : "ko" : "attente") + '"><span class="pc-etat" aria-hidden="true">' + (r ? r.ok ? "✅" : "❌" : "⬜") + '</span><div class="x"><b>' + echapperHTML(P.libelle(v)) + "</b>" + (r && !r.ok && r.detail ? '<br><span class="mini">' + echapperHTML(r.detail) + "</span>" : "") + (niv ? '<div class="pc-indices">' + ind.slice(0, niv).map(function(t, n) {
         return "<p><b>" + P.TITRE_INDICE[n] + " :</b> " + rich(t) + "</p>";
       }).join("") + "</div>" : "") + "</div>" + (r && !r.ok && niv < 3 ? '<div class="pc-act"><button type="button" class="btn doux" data-pc-indice="' + k + '">' + P.LIB_INDICE[niv] + "</button></div>" : "") + "</li>";
-    }).join("") + '</ol><p class="mini" role="status" id="pc-mission-etat">' + echapperHTML(res ? nOk + " sur " + res.length + " : " + (nOk === res.length ? "tout est bon !" : "encore un effort.") : "Faites la mission dans votre document, puis touchez « Vérifier ».") + (Object.keys(P.mission.niveaux).length ? " Points possibles : " + P.pointsMission() + "." : "") + '</p><div class="pc-pied"><button type="button" class="btn" data-pc-verifier>Vérifier mon document</button></div></section>';
+    }).join("") + '</ol><p class="mini" role="status" id="pc-mission-etat">' + echapperHTML(res ? nOk + " sur " + res.length + " : " + (nOk === res.length ? "tout est bon !" : "encore un effort.") : "Faites la mission dans votre document, puis cliquez sur « Vérifier ».") + (Object.keys(P.mission.niveaux).length ? " Points possibles : " + P.pointsMission() + "." : "") + '</p><div class="pc-pied"><button type="button" class="btn" data-pc-verifier>Vérifier mon document</button></div></section>';
   };
   P.clicEcran = async function(ev) {
     var b;
@@ -6493,7 +6319,7 @@ MGP.parcours = MGP.parcours || {};
     await P.noterInstallation(cfg.contenu);
   };
 })(MGP.parcours);
-MGP.parcours.CONTENU = { "carte": 13, "id": "patrimoine", "titre": "Graphiques", "competence": "graphiques", "surprise": { "genre": "widget", "nom": "Mon patrimoine", "widget": "patrimoine", "texte": "Tous vos comptes et biens réunis, leur répartition et leur évolution, mois après mois." }, "widget": "patrimoine", "niveau": "pratique", "niveauNom": "Pratique", "contrat": { "note": "Tables du widget Mon patrimoine (src/widgets/patrimoine) : la mission construit Avoirs et un graphique ; le widget l’adopte (MGP.parcours.adopter) puis le complète. Signature : NOM, TYPE, MONTANT.", "tables": [{ "id": "Avoirs", "colonnes": { "NOM": "Text", "TYPE": "Choice (Compte courant, Épargne, Placement, Immobilier, Autre)", "MONTANT": "Numeric" } }], "vues": [{ "table": "Avoirs", "genre": "chart" }] }, "objectif": "Faire parler vos chiffres avec un graphique.", "durees": { "lecon": 10, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "Une vue Graphique", "paragraphes": ["Un graphique est une vue comme une autre : **Ajouter une vue à la page**, **Graphique**, puis la table. Dans le panneau de droite, on choisit le **Type de graphique** (Graphique en barres, Diagramme circulaire, Graphique en courbes...), l'**Axe horizontal** et la ou les **Séries**."] }, { "titre": "Grouper avant de dessiner", "paragraphes": ["Pour un total par type, le plus propre est de dessiner une **table récapitulative**, groupée par TYPE (carte 17) ; le graphique additionne aussi les valeurs identiques de l'axe horizontal."] }, { "titre": "Un graphique qui suit la sélection", "paragraphes": ["Relié à un tableau par « Sélectionner par » (carte 10), le graphique montre la ligne choisie : l'évolution d'un seul compte, par exemple."] }], "mission": { "titre": "Votre patrimoine en un coup d’œil", "intro": "Le cœur du widget Mon patrimoine : vos avoirs et leur répartition dessinée.", "etapes": ["Créez une table **Avoirs** avec NOM (Texte), TYPE (Choix unique : Compte courant, Épargne, Placement, Immobilier, Autre) et MONTANT (Numérique).", "Ajoutez au moins trois avoirs.", "Ajoutez une vue **Graphique** de la table Avoirs (un diagramme circulaire par TYPE, par exemple)."], "verifications": [{ "type": "table", "table": "Avoirs" }, { "type": "choix", "table": "Avoirs", "colonne": "TYPE", "choix": ["Compte courant", "Épargne", "Placement", "Immobilier", "Autre"] }, { "type": "colonne", "table": "Avoirs", "colonne": "MONTANT", "typeCol": ["Numeric", "Int"] }, { "type": "lignes", "table": "Avoirs", "min": 3 }, { "type": "vue", "table": "Avoirs", "genre": "chart" }] }, "questions": [{ "type": "paires", "competence": "graphiques", "question": "Reliez chaque question au graphique qui y répond le mieux.", "paires": [["Quelle part pour chaque type ?", "Diagramme circulaire"], ["Comment ça évolue mois après mois ?", "Graphique en courbes"], ["Quel poste est le plus gros ?", "Graphique en barres"]], "explication": "Une part : diagramme circulaire ; une évolution : graphique en courbes ; une comparaison : graphique en barres.", "aide": "https://support.getgrist.com/widget-chart/" }, { "type": "qcm", "competence": "graphiques", "question": "Comment ajoute-t-on un graphique ?", "choix": ["Ajouter > Ajouter une vue à la page > Graphique", "Clic droit sur une colonne > Graphique", "En exportant vers un tableur"], "bonne": 0, "explication": "Un graphique est une vue de page, branché sur une table.", "aide": "https://support.getgrist.com/widget-chart/" }, { "type": "qcm", "competence": "graphiques", "question": "Vous modifiez un MONTANT dans la table. Le graphique ?", "choix": ["Se met à jour tout seul", "Doit être recréé", "Se met à jour le lendemain"], "bonne": 0, "explication": "Le graphique lit la table en direct.", "aide": "https://support.getgrist.com/widget-chart/" }, { "type": "multiple", "competence": "graphiques", "question": "Que règle-t-on dans le panneau d'un graphique ?", "choix": ["Le type de graphique", "L'axe horizontal", "Les séries", "Le type des colonnes de la table"], "bonnes": [0, 1, 2], "explication": "Le type des colonnes se règle dans le panneau de chaque colonne, pas du graphique.", "aide": "https://support.getgrist.com/widget-chart/" }, { "type": "ordre", "competence": "graphiques", "question": "Remettez dans l'ordre pour un diagramme circulaire par type.", "etapes": ["Ajouter une vue Graphique de la table Avoirs", "Choisir le type Diagramme circulaire", "Mettre TYPE en axe horizontal", "Mettre MONTANT en série"], "explication": "Le graphique additionne les montants qui partagent le même TYPE.", "aide": "https://support.getgrist.com/widget-chart/" }] };
+MGP.parcours.CONTENU = { "carte": 13, "id": "patrimoine", "titre": "Graphiques", "competence": "graphiques", "surprise": { "genre": "widget", "nom": "Mon patrimoine", "widget": "patrimoine", "texte": "Tous vos comptes et biens réunis, leur répartition et leur évolution, mois après mois." }, "widget": "patrimoine", "niveau": "pratique", "niveauNom": "Pratique", "contrat": { "note": "Tables du widget Mon patrimoine (src/widgets/patrimoine) : la mission construit Avoirs et un graphique ; le widget l’adopte (MGP.parcours.adopter) puis le complète. Signature : NOM, TYPE, MONTANT.", "tables": [{ "id": "Avoirs", "colonnes": { "NOM": "Text", "TYPE": "Choice (Compte courant, Épargne, Placement, Immobilier, Autre)", "MONTANT": "Numeric" } }], "vues": [{ "table": "Avoirs", "genre": "chart" }] }, "objectif": "Faire parler vos chiffres avec un graphique.", "durees": { "lecon": 10, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "Une vue Graphique", "paragraphes": ["Un graphique est une vue comme une autre : **Ajouter une vue à la page**, **Graphique**, puis la table. Dans le panneau de droite, on choisit le **Type de graphique** (Graphique en barres, Diagramme circulaire, Graphique en courbes...), l'**Axe horizontal** et la ou les **Séries**."] }, { "titre": "Grouper avant de dessiner", "paragraphes": ["Pour un total par catégorie, le plus propre est de dessiner une **table récapitulative**, groupée par cette catégorie (carte 17) ; le graphique additionne aussi les valeurs identiques de l'axe horizontal."] }, { "titre": "Un graphique qui suit la sélection", "paragraphes": ["Relié à un tableau par « Sélectionner par » (carte 10), le graphique montre la ligne choisie : l'évolution d'un seul compte, par exemple."] }], "mission": { "titre": "Votre patrimoine en un coup d’œil", "intro": "Le cœur du widget Mon patrimoine : vos avoirs et leur répartition dessinée.", "etapes": ["Créez une table **Avoirs** avec NOM (Texte), TYPE (Choix unique : Compte courant, Épargne, Placement, Immobilier, Autre) et MONTANT (Numérique).", "Ajoutez au moins trois avoirs.", "Ajoutez une vue **Graphique** de la table Avoirs : **Ajouter** > **Ajouter une vue à la page** > **Graphique** > Avoirs > **Ajouter à la Page**. Dans le panneau de droite, choisissez par exemple **Diagramme circulaire**, TYPE en **Axe horizontal** et MONTANT en **Séries**."], "verifications": [{ "type": "table", "table": "Avoirs" }, { "type": "choix", "table": "Avoirs", "colonne": "TYPE", "choix": ["Compte courant", "Épargne", "Placement", "Immobilier", "Autre"] }, { "type": "colonne", "table": "Avoirs", "colonne": "MONTANT", "typeCol": ["Numeric", "Int"] }, { "type": "lignes", "table": "Avoirs", "min": 3 }, { "type": "vue", "table": "Avoirs", "genre": "chart" }] }, "questions": [{ "type": "paires", "competence": "graphiques", "question": "Reliez chaque question au graphique qui y répond le mieux.", "paires": [["Quelle part pour chaque type ?", "Diagramme circulaire"], ["Comment ça évolue mois après mois ?", "Graphique en courbes"], ["Quel poste est le plus gros ?", "Graphique en barres"]], "explication": "Une part : diagramme circulaire ; une évolution : graphique en courbes ; une comparaison : graphique en barres.", "aide": "https://support.getgrist.com/widget-chart/" }, { "type": "qcm", "competence": "graphiques", "question": "Comment ajoute-t-on un graphique ?", "choix": ["Ajouter > Ajouter une vue à la page > Graphique", "Clic droit sur une colonne > Graphique", "En exportant vers un tableur"], "bonne": 0, "explication": "Un graphique est une vue de page, branché sur une table.", "aide": "https://support.getgrist.com/widget-chart/" }, { "type": "qcm", "competence": "graphiques", "question": "Vous modifiez un MONTANT dans la table. Le graphique ?", "choix": ["Se met à jour tout seul", "Doit être recréé", "Se met à jour le lendemain"], "bonne": 0, "explication": "Le graphique lit la table en direct.", "aide": "https://support.getgrist.com/widget-chart/" }, { "type": "multiple", "competence": "graphiques", "question": "Que règle-t-on dans le panneau d'un graphique ?", "choix": ["Le type de graphique", "L'axe horizontal", "Les séries", "Le type des colonnes de la table"], "bonnes": [0, 1, 2], "explication": "Le type des colonnes se règle dans le panneau de chaque colonne, pas du graphique.", "aide": "https://support.getgrist.com/widget-chart/" }, { "type": "ordre", "competence": "graphiques", "question": "Remettez dans l'ordre pour un diagramme circulaire par type.", "etapes": ["Ajouter une vue Graphique de la table Avoirs", "Choisir le type Diagramme circulaire", "Mettre TYPE en axe horizontal", "Mettre MONTANT en série"], "explication": "Le graphique additionne les montants qui partagent le même TYPE.", "aide": "https://support.getgrist.com/widget-chart/" }] };
 var PAT = { WIDGET: "patrimoine", NOM: "Mon patrimoine", NOM_PAGE: "💰 Mon patrimoine", d: { avoirs: [], dettes: [], valeurs: [], bilans: [], personnes: [], comptes: null, comptesId: null, logements: null, logementsId: null, colCapital: null }, onglet: "bord", releve: { mois: null }, fa: { a: null }, fd: { d: null } };
 PAT.TYPES = [["Compte courant", "Écume", "🏦", "#1F7F7A"], ["Épargne", "Menthe", "🌱", "#3D7F44"], ["Placement", "Lavande", "📈", "#6A4FB8"], ["Immobilier", "Pêche", "🏠", "#C25A2C"], ["Autre", "Citron", "💎", "#8A6D00"]];
 PAT.HEX_DETTE = "#C2406A";

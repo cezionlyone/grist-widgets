@@ -1543,144 +1543,6 @@ a.pc-aide {
     color: #555;
   }
 }
-.noel {
-  --nuit1: #1B2440;
-  --nuit2: #3A2D5C;
-  --nuit0: #4A3B73;
-  --creme: #FFF8F0;
-  --lune: #D9D2EE;
-  --or: #F2C76E;
-  --or-clair: #FFE7A8;
-  --or-f: #B8862B;
-  --focus: 3px solid var(--or-clair);
-  position: relative;
-  overflow: hidden;
-  min-height: 100vh;
-  background:
-    radial-gradient(
-      ellipse at 50% -10%,
-      var(--nuit0) 0%,
-      var(--nuit2) 35%,
-      var(--nuit1) 85%);
-  color: var(--creme);
-}
-body.noel-fond {
-  background: var(--nuit1, #1B2440);
-  background-color: #1b2440;
-}
-.noel :focus-visible {
-  outline: 3px solid #FFE7A8;
-  outline-offset: 3px;
-}
-.noel > h1,
-.noel .barre h1,
-.noel .deb h1 {
-  color: var(--creme);
-}
-.noel .barre .marque,
-.noel .accroche,
-.noel > .mini,
-.noel .avantages .mini {
-  color: var(--lune);
-}
-.noel .avantages b {
-  color: var(--creme);
-}
-.noel .carte,
-.noel dialog {
-  color: var(--encre);
-}
-.noel .carte .mini {
-  color: var(--gris);
-}
-.noel .hero {
-  background: #ffffff14;
-  color: var(--creme);
-  box-shadow: inset 0 0 0 1px #ffffff1f;
-}
-.noel .hero p {
-  color: var(--lune);
-}
-.noel .jauge {
-  background: #ffffff29;
-}
-.noel .jauge > i {
-  background:
-    linear-gradient(
-      90deg,
-      var(--or),
-      var(--or-clair));
-}
-.noel .pil.or {
-  background: var(--or);
-  color: var(--encre);
-}
-.noel .guirlande {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 46px;
-  pointer-events: none;
-  z-index: 0;
-}
-.noel .flocons {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-}
-.noel .flocons i {
-  position: absolute;
-  top: -10px;
-  border-radius: 50%;
-  background: #fff;
-  opacity: .8;
-  animation: neige 14s linear infinite;
-}
-@keyframes neige {
-  0% {
-    transform: translateY(-10px);
-    opacity: 0;
-  }
-  10% {
-    opacity: .85;
-  }
-  to {
-    transform: translateY(105vh);
-    opacity: .2;
-  }
-}
-.noel .sapin {
-  position: absolute;
-  right: 18px;
-  bottom: -4px;
-  font-size: 72px;
-  opacity: .9;
-  pointer-events: none;
-  z-index: 0;
-}
-@media (max-width: 699px) {
-  .noel .sapin {
-    font-size: 48px;
-    right: 8px;
-  }
-}
-.noel > *:not(.guirlande):not(.flocons):not(.sapin) {
-  position: relative;
-  z-index: 1;
-}
-@media (prefers-reduced-motion: reduce) {
-  .noel .flocons i {
-    animation: none;
-    top: auto;
-    opacity: .7;
-  }
-}
-.page.noel {
-  padding-top: 46px;
-}
 .deb {
   display: grid;
   gap: 24px;
@@ -4178,7 +4040,7 @@ MGP.capot.rendre = function(conteneur, cfg) {
     conteneur.querySelector("#capot-role").textContent = t.role;
     conteneur.querySelector("#capot-fiches").innerHTML = MGP.capot.fiches(t, cfg, etat.champ);
   }
-  conteneur.innerHTML = '<div class="capot-grille"><section class="carte"><h2>Les tables et leurs liens <span class="mini" style="font-weight:600">· lu en direct dans votre document</span></h2><p class="mini" style="margin:6px 0 10px">Une flèche = une colonne <b>Référence</b> : elle pointe vers une ligne d’une autre table. En pointillés : une <b>Référence multiple</b>. Touchez un champ pour voir sa fiche.</p><div class="vue-bureau">' + MGP.capot.schemaSVG(tables) + '</div><div class="vue-mobile">' + MGP.capot.schemaMobile(tables) + "</div></section><div>" + MGP.capot.formules(cfg, tables) + MGP.capot.extras(cfg) + '</div></div><section class="carte" style="margin-top:16px" id="capot-champs"><h2>Les champs, un par un</h2><div class="choix" id="capot-choix-table" role="group" aria-label="Choisir la table" style="margin:10px 0"></div><p class="mini" id="capot-role" style="margin-bottom:12px"></p><div id="capot-fiches"></div></section>';
+  conteneur.innerHTML = '<div class="capot-grille"><section class="carte"><h2>Les tables et leurs liens <span class="mini" style="font-weight:600">· lu en direct dans votre document</span></h2><p class="mini" style="margin:6px 0 10px">Une flèche = une colonne <b>Référence</b> : elle pointe vers une ligne d’une autre table. En pointillés : une <b>Référence multiple</b>. Cliquez sur un champ pour voir sa fiche.</p><div class="vue-bureau">' + MGP.capot.schemaSVG(tables) + '</div><div class="vue-mobile">' + MGP.capot.schemaMobile(tables) + "</div></section><div>" + MGP.capot.formules(cfg, tables) + MGP.capot.extras(cfg) + '</div></div><section class="carte" style="margin-top:16px" id="capot-champs"><h2>Les champs, un par un</h2><div class="choix" id="capot-choix-table" role="group" aria-label="Choisir la table" style="margin:10px 0"></div><p class="mini" id="capot-role" style="margin-bottom:12px"></p><div id="capot-fiches"></div></section>';
   rendreFiches();
   function montrerChamp(cle, col) {
     etat.table = cle;
@@ -4422,21 +4284,6 @@ MGP.socleUI.carteSocle = async function(conteneur) {
   } catch (e) {
     logSecurite("jauge", e);
   }
-};
-MGP.noel = {};
-MGP.noel.decorer = function(el) {
-  if (!el || el.querySelector(":scope > .guirlande")) {
-    return;
-  }
-  var couleurs = ["#F2C76E", "#FFC2D1", "#A8E6E2", "#F2C76E", "#CDEDC8", "#FFC2D1", "#DCD0F7", "#F2C76E"];
-  var g = '<svg class="guirlande" viewBox="0 0 1280 46" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0 8 Q 80 40 160 10 T 320 10 T 480 10 T 640 10 T 800 10 T 960 10 T 1120 10 T 1280 10" stroke="#5E5480" stroke-width="2" fill="none"/>' + couleurs.map(function(c, i) {
-    return '<circle cx="' + (80 + i * 160) + '" cy="25" r="6" fill="' + c + '"/>';
-  }).join("") + "</svg>";
-  var f = '<div class="flocons" aria-hidden="true">' + [[6, 3, 5], [18, 9, 4], [31, 1, 6], [44, 6, 4], [57, 11, 5], [69, 4, 6], [81, 8, 4], [92, 2, 5], [12, 12, 4], [74, 13, 5]].map(function(x) {
-    return '<i style="left:' + x[0] + "%;width:" + x[2] + "px;height:" + x[2] + "px;animation-delay:-" + x[1] + 's"></i>';
-  }).join("") + "</div>";
-  el.insertAdjacentHTML("afterbegin", g + f);
-  el.insertAdjacentHTML("beforeend", '<div class="sapin" aria-hidden="true">🎄</div>');
 };
 MGP.parcours = MGP.parcours || {};
 (function(P) {
@@ -5005,7 +4852,7 @@ MGP.parcours = MGP.parcours || {};
     });
     return bon.length ? { ok: true } : { ok: false, detail: "La table récapitulative n’est pas groupée par " + c.groupes.join(", ") + "." };
   }, indices: function(c) {
-    return ["Une table récapitulative regroupe les lignes d’une table et calcule des totaux.", "Ajoutez une vue à la page, choisissez la table « " + c.table + " » et touchez l’icône de somme (Σ) pour la grouper.", "Ajouter > Ajouter une vue à la page > Table > " + c.table + " > Σ, Grouper par : " + (c.groupes || []).join(", ") + " > Ajouter à la Page."];
+    return ["Une table récapitulative regroupe les lignes d’une table et calcule des totaux.", "Ajoutez une vue à la page, choisissez la table « " + c.table + " » et cliquez sur l’icône de somme (Σ) pour la grouper.", "Ajouter > Ajouter une vue à la page > Table > " + c.table + " > Σ, Grouper par : " + (c.groupes || []).join(", ") + " > Ajouter à la Page."];
   } }, vue: { libelle: function(c) {
     return "Une page montre « " + c.table + " » dans une vue " + (P.GENRES_VUE[c.genre] || c.genre);
   }, verifier: function(c, m) {
@@ -5101,7 +4948,7 @@ MGP.parcours = MGP.parcours || {};
       });
       return col ? l.indexOf(col.id) >= 0 : l.length > 0;
     });
-    return ok ? { ok: true } : { ok: false, detail: "Aucun tri enregistré" + (c.colonne ? " sur " + c.colonne : "") + " : triez, puis touchez « Enregistrer »." };
+    return ok ? { ok: true } : { ok: false, detail: "Aucun tri enregistré" + (c.colonne ? " sur " + c.colonne : "") + " : triez, puis cliquez sur « Enregistrer »." };
   }, indices: function(c) {
     return ["Un tri se règle en haut de la colonne, puis s’enregistre pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + " (la petite flèche de l’en-tête) et choisissez un tri, puis « Enregistrer » dans la barre qui apparaît.", "En-tête de " + (c.colonne || "la colonne") + " > menu > Trier > A-Z (ou Z-A) > bouton vert « Enregistrer » en haut de la vue."];
   } };
@@ -5124,7 +4971,7 @@ MGP.parcours = MGP.parcours || {};
     });
     return ok ? { ok: true } : { ok: false, detail: "Aucun filtre enregistré" + (c.colonne ? " sur " + c.colonne : "") + "." };
   }, indices: function(c) {
-    return ["Un filtre cache des lignes sans les effacer ; enregistré, il reste en place pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + ", décochez les valeurs à cacher, puis touchez « Enregistrer ».", "En-tête de " + (c.colonne || "la colonne") + " > menu > Filtrer les données > décochez les valeurs, puis « Enregistrer » en haut de la vue."];
+    return ["Un filtre cache des lignes sans les effacer ; enregistré, il reste en place pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + ", décochez les valeurs à cacher, puis cliquez sur « Enregistrer ».", "En-tête de " + (c.colonne || "la colonne") + " > menu > Filtrer les données > décochez les valeurs, puis « Enregistrer » en haut de la vue."];
   } };
   P.CHECKS.lien = { libelle: function(c) {
     return "Sur une page, « " + c.table + " » suit la ligne choisie dans « " + c.source + " »";
@@ -5604,7 +5451,7 @@ MGP.parcours = MGP.parcours || {};
         return '<label class="pc-option" for="' + id + "-" + k + '"><input type="' + ty + '" name="' + id + '" id="' + id + "-" + k + '" value="' + k + '"' + (coche ? " checked" : "") + bloque + ' autocomplete="off"><span>' + rich(c) + "</span></label>";
       }).join("") + "</fieldset>";
     } else if (q.type === "erreur") {
-      html = '<p class="mini">Touchez le morceau qui contient l’erreur.</p><div class="pc-formule" role="group" aria-label="Morceaux de la formule">' + q.segments.map(function(s, k) {
+      html = '<p class="mini">Cliquez sur le morceau qui contient l’erreur.</p><div class="pc-formule" role="group" aria-label="Morceaux de la formule">' + q.segments.map(function(s, k) {
         return '<button type="button" class="pc-seg" data-pc-seg="' + k + '" aria-pressed="' + (etat.rep === k ? "true" : "false") + '"' + bloque + ">" + echapperHTML(s) + "</button>";
       }).join("") + "</div>";
     } else if (q.type === "prediction") {
@@ -5631,7 +5478,7 @@ MGP.parcours = MGP.parcours || {};
         }).join("") + "</select></div>";
       }).join("") + "</div>";
     } else if (q.type === "faire") {
-      html = '<p class="mini">Faites-le dans votre document, puis touchez « Vérifier » : le widget regarde vos tables.</p><ul class="pc-verifs">' + q.verifications.map(function(c, k) {
+      html = '<p class="mini">Faites-le dans votre document, puis cliquez sur « Vérifier » : le widget regarde vos tables.</p><ul class="pc-verifs">' + q.verifications.map(function(c, k) {
         var r = etat.verifs && etat.verifs[k];
         return '<li class="pc-verif ' + (r ? r.ok ? "ok" : "ko" : "attente") + '"><span class="pc-etat" aria-hidden="true">' + (r ? r.ok ? "✅" : "❌" : "⬜") + '</span><span class="x"><b>' + echapperHTML(P.libelle(c)) + "</b>" + (r && !r.ok && r.detail ? '<br><span class="mini">' + echapperHTML(r.detail) + "</span>" : "") + "</span></li>";
       }).join("") + "</ul>";
@@ -6195,29 +6042,8 @@ MGP.parcours = MGP.parcours || {};
   P.etiquetteCarte = function(c) {
     return [c && c.carte ? "Carte " + c.carte : "", c && c.niveauNom ? "Niveau " + c.niveauNom : ""].filter(Boolean).join(" · ");
   };
-  P.fete = function() {
-    try {
-      return !!(MGP.g.tech && MGP.g.reglage("ACADEMIE:FETE", false) === true);
-    } catch (e) {
-      return false;
-    }
-  };
-  P.habiller = function(ecran, montre) {
-    var on = !!(ecran && montre && P.fete());
-    document.body.classList.toggle("noel-fond", on);
-    if (!ecran) {
-      return;
-    }
-    ecran.classList.toggle("noel", on);
-    if (on) {
-      if (MGP.noel) {
-        MGP.noel.decorer(ecran);
-      }
-    } else {
-      Array.prototype.forEach.call(ecran.querySelectorAll(":scope > .guirlande, :scope > .flocons, :scope > .sapin"), function(x) {
-        x.remove();
-      });
-    }
+  P.habiller = function() {
+    document.body.classList.remove("noel-fond");
   };
   P.etatMission = function(module) {
     var l = P.ligne("Module", module);
@@ -6477,7 +6303,7 @@ MGP.parcours = MGP.parcours || {};
       return '<li class="pc-verif ' + (r ? r.ok ? "ok" : "ko" : "attente") + '"><span class="pc-etat" aria-hidden="true">' + (r ? r.ok ? "✅" : "❌" : "⬜") + '</span><div class="x"><b>' + echapperHTML(P.libelle(v)) + "</b>" + (r && !r.ok && r.detail ? '<br><span class="mini">' + echapperHTML(r.detail) + "</span>" : "") + (niv ? '<div class="pc-indices">' + ind.slice(0, niv).map(function(t, n) {
         return "<p><b>" + P.TITRE_INDICE[n] + " :</b> " + rich(t) + "</p>";
       }).join("") + "</div>" : "") + "</div>" + (r && !r.ok && niv < 3 ? '<div class="pc-act"><button type="button" class="btn doux" data-pc-indice="' + k + '">' + P.LIB_INDICE[niv] + "</button></div>" : "") + "</li>";
-    }).join("") + '</ol><p class="mini" role="status" id="pc-mission-etat">' + echapperHTML(res ? nOk + " sur " + res.length + " : " + (nOk === res.length ? "tout est bon !" : "encore un effort.") : "Faites la mission dans votre document, puis touchez « Vérifier ».") + (Object.keys(P.mission.niveaux).length ? " Points possibles : " + P.pointsMission() + "." : "") + '</p><div class="pc-pied"><button type="button" class="btn" data-pc-verifier>Vérifier mon document</button></div></section>';
+    }).join("") + '</ol><p class="mini" role="status" id="pc-mission-etat">' + echapperHTML(res ? nOk + " sur " + res.length + " : " + (nOk === res.length ? "tout est bon !" : "encore un effort.") : "Faites la mission dans votre document, puis cliquez sur « Vérifier ».") + (Object.keys(P.mission.niveaux).length ? " Points possibles : " + P.pointsMission() + "." : "") + '</p><div class="pc-pied"><button type="button" class="btn" data-pc-verifier>Vérifier mon document</button></div></section>';
   };
   P.clicEcran = async function(ev) {
     var b;
@@ -6620,7 +6446,7 @@ MGP.parcours = MGP.parcours || {};
     await P.noterInstallation(cfg.contenu);
   };
 })(MGP.parcours);
-MGP.parcours.CONTENU = { "carte": 2, "id": "cadeaux", "titre": "Les types de colonnes", "competence": "tables", "surprise": { "genre": "widget", "nom": "Mes cadeaux", "widget": "cadeaux", "texte": "Un widget pour toutes vos idées de cadeaux, toute l'année : pour qui, où vous en êtes, combien ça coûte." }, "widget": "cadeaux", "niveau": "decouverte", "niveauNom": "Découverte", "contrat": { "note": "Tables du widget Mes cadeaux (src/widgets/cadeaux) : la carte 1 a créé Cadeaux (IDEE en Texte, des idées, une vue Fiche) ; cette mission la type (PRIX en Numérique, STATUT en Choix unique), puis le widget l’adopte (MGP.parcours.adopter, signature POUR, IDEE, STATUT : il ajoute POUR) et la complète (OCCASION, PHOTO, EST_PRET...).", "tables": [{ "id": "Cadeaux", "colonnes": { "IDEE": "Text (carte 1)", "PRIX": "Numeric", "STATUT": "Choice (Idée, Acheté, Emballé, Offert)" } }] }, "objectif": "Donner à chaque colonne le bon type : texte, nombre, choix unique.", "durees": { "lecon": 5, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "Une table, des colonnes, des lignes", "paragraphes": ["Dans Grist, chaque liste est une **table** : une ligne par cadeau, une colonne par information. Contrairement à un tableur, toute la colonne partage le même **type**. Votre table Cadeaux de la carte 1 n'a encore que des idées : donnons-lui un prix et un statut."] }, { "titre": "Le type fait le travail", "liste": ["**Texte** pour l'idée de cadeau.", "**Numérique** pour le prix : les totaux et les tris deviennent justes.", "**Choix unique** pour le statut : une liste fermée (Idée, Acheté, Emballé, Offert), avec une couleur par valeur."], "paragraphes": ["Le type se règle dans le panneau de la colonne, à droite (clic droit sur l'en-tête > **Options de la colonne**), rubrique **TYPE DE COLONNE**. Un prix tapé dans une colonne Texte reste du texte : impossible de l'additionner."] }, { "titre": "Des identifiants en majuscules", "paragraphes": ["Le nom d'une colonne sert aussi d'identifiant dans les formules (`$PRIX`). Les widgets Mon Grist perso utilisent des identifiants en majuscules, sans accent : IDEE, PRIX, STATUT. Grâce à ces noms, le widget Mes cadeaux reconnaîtra votre table et l'adoptera."], "code": "$PRIX * 2" }], "mission": { "titre": "Typez les colonnes de vos cadeaux", "intro": "Reprenez la table Cadeaux de la carte 1 : deux colonnes de plus, bien typées, et le cœur du cadeau est prêt. Le widget ajoutera ensuite le reste (pour qui, occasion, photo...) autour de votre table, sans toucher à vos idées.", "etapes": ["Ouvrez la page **Cadeaux** de la carte 1. Pas encore de table ? **Ajouter** > **Ajouter une table vide**, nommez-la **Cadeaux** et renommez la colonne A en **IDEE**.", "Renommez la colonne B en **PRIX** et choisissez le type **Numérique** dans le panneau de la colonne (**TYPE DE COLONNE**). Donnez un prix à vos idées.", "Renommez la colonne C en **STATUT**, type **Choix unique**, avec les valeurs Idée, Acheté, Emballé et Offert (rubrique **CHOIX**, puis **Modifier**).", "Revenez ici et touchez « Vérifier mon document »."], "verifications": [{ "type": "table", "table": "Cadeaux" }, { "type": "colonne", "table": "Cadeaux", "colonne": "IDEE", "typeCol": ["Text"] }, { "type": "colonne", "table": "Cadeaux", "colonne": "PRIX", "typeCol": ["Numeric", "Int"] }, { "type": "choix", "table": "Cadeaux", "colonne": "STATUT", "choix": ["Idée", "Acheté", "Emballé", "Offert"] }] }, "questions": [{ "type": "qcm", "competence": "tables", "question": "Quel type donner à la colonne PRIX pour pouvoir additionner les prix ?", "choix": ["Texte", "Numérique", "Choix unique", "Date"], "bonne": 1, "explication": "Seule une colonne Numérique (ou Entier) se calcule : totaux, moyennes, tris dans le bon ordre. En Texte, « 12 » et « 9 » se trient mal et ne s'additionnent pas.", "aide": "https://support.getgrist.com/col-types/" }, { "type": "multiple", "competence": "choix", "question": "Lesquelles de ces informations conviennent à une colonne Choix unique ?", "choix": ["Le statut : Idée, Acheté, Emballé, Offert", "Le prix du cadeau", "L'occasion : Noël, Anniversaire, Fête des mères", "Le lien vers la boutique"], "bonnes": [0, 2], "explication": "Un Choix unique sert aux listes fermées de valeurs qui reviennent. Un prix est un nombre, un lien est un texte libre (ou un type Texte affiché en lien).", "aide": "https://support.getgrist.com/col-types/" }, { "type": "ordre", "competence": "tables", "question": "Remettez dans l'ordre les étapes pour créer la colonne PRIX.", "etapes": ["Ajouter une colonne à la table", "Ouvrir le panneau de la colonne", "Nommer la colonne PRIX", "Choisir le type Numérique"], "explication": "On crée la colonne, puis on règle son nom et son type dans le panneau de droite. Le type peut aussi être changé plus tard : Grist convertit les valeurs.", "aide": "https://support.getgrist.com/col-types/" }, { "type": "erreur", "competence": "formules", "question": "Cette formule doit donner le prix avec 20 % de marge pour les cadeaux achetés. Où est l'erreur ?", "segments": ["$PRIX * 1.2", "if", '$STATUT = "Acheté"', "else 0"], "bonne": 2, "correction": '$STATUT == "Acheté"', "explication": "En Python, une comparaison s'écrit avec deux signes égal : `==`. Un seul `=` sert à donner une valeur, et la formule est refusée.", "aide": "https://support.getgrist.com/formulas/" }, { "type": "paires", "competence": "tables", "question": "Reliez chaque type de colonne à une valeur qui lui convient.", "paires": [["Texte", "Un puzzle de 1000 pièces"], ["Numérique", "24,90"], ["Choix unique", "Emballé"], ["Date", "24/12/2026"]], "explication": "Choisir le bon type dès le départ évite les surprises : les dates se comparent, les nombres s'additionnent, les choix se colorent.", "aide": "https://support.getgrist.com/col-types/" }] };
+MGP.parcours.CONTENU = { "carte": 2, "id": "cadeaux", "titre": "Les types de colonnes", "competence": "tables", "surprise": { "genre": "widget", "nom": "Mes cadeaux", "widget": "cadeaux", "texte": "Un widget pour toutes vos idées de cadeaux, toute l'année : pour qui, où vous en êtes, combien ça coûte." }, "widget": "cadeaux", "niveau": "decouverte", "niveauNom": "Découverte", "contrat": { "note": "Tables du widget Mes cadeaux (src/widgets/cadeaux) : la carte 1 a créé Cadeaux (IDEE en Texte, des idées, une vue Fiche) ; cette mission la type (PRIX en Numérique, STATUT en Choix unique), puis le widget l’adopte (MGP.parcours.adopter, signature POUR, IDEE, STATUT : il ajoute POUR) et la complète (OCCASION, PHOTO, EST_PRET...).", "tables": [{ "id": "Cadeaux", "colonnes": { "IDEE": "Text (carte 1)", "PRIX": "Numeric", "STATUT": "Choice (Idée, Acheté, Emballé, Offert)" } }] }, "objectif": "Donner à chaque colonne le bon type : texte, nombre, choix unique.", "durees": { "lecon": 5, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "Une table, des colonnes, des lignes", "paragraphes": ["Dans Grist, chaque liste est une **table** : une ligne par élément, une colonne par information. Contrairement à un tableur, toute la colonne partage le même **type** : du texte, des nombres, des dates, une liste de valeurs... Le type décide de ce que Grist sait faire avec la colonne."] }, { "titre": "Le type fait le travail", "liste": ["**Texte** pour des mots ou des phrases : un nom, une idée, une remarque.", "**Numérique** pour des quantités et des montants : les totaux et les tris deviennent justes.", "**Choix unique** pour un statut ou une catégorie : une liste fermée de valeurs, réglée dans la rubrique **CHOIX** du panneau, avec une couleur par valeur."], "paragraphes": ["Le type se règle dans le panneau de la colonne, à droite (clic droit sur l'en-tête > **Options de la colonne**), rubrique **TYPE DE COLONNE**. Un prix tapé dans une colonne Texte reste du texte : impossible de l'additionner."] }, { "titre": "Des identifiants en majuscules", "paragraphes": ["Le nom d'une colonne sert aussi d'identifiant dans les formules (`$PRIX`). Les widgets Mon Grist perso utilisent des identifiants en majuscules, sans accent : c'est grâce à ces noms qu'un widget reconnaît une table construite à la main et l'adopte sans rien perdre. C'est ce que vous préparerez dans la mission."], "code": "$PRIX * 2" }], "mission": { "titre": "Typez les colonnes de vos cadeaux", "intro": "Reprenez la table Cadeaux de la carte 1 : deux colonnes de plus, bien typées, et le cœur du cadeau est prêt. Le widget ajoutera ensuite le reste (pour qui, occasion, photo...) autour de votre table, sans toucher à vos idées.", "etapes": ["Ouvrez la page **Cadeaux** de la carte 1. Pas encore de table ? **Ajouter** > **Ajouter une table vide**, nommez-la **Cadeaux** et renommez la colonne A en **IDEE**.", "Renommez la colonne B en **PRIX** et choisissez le type **Numérique** dans le panneau de la colonne (**TYPE DE COLONNE**). Donnez un prix à vos idées.", "Renommez la colonne C en **STATUT**, type **Choix unique**, avec les valeurs Idée, Acheté, Emballé et Offert (rubrique **CHOIX**, puis **Modifier**).", "Revenez ici et cliquez sur « Vérifier mon document »."], "verifications": [{ "type": "table", "table": "Cadeaux" }, { "type": "colonne", "table": "Cadeaux", "colonne": "IDEE", "typeCol": ["Text"] }, { "type": "colonne", "table": "Cadeaux", "colonne": "PRIX", "typeCol": ["Numeric", "Int"] }, { "type": "choix", "table": "Cadeaux", "colonne": "STATUT", "choix": ["Idée", "Acheté", "Emballé", "Offert"] }] }, "questions": [{ "type": "qcm", "competence": "tables", "question": "Quel type donner à la colonne PRIX pour pouvoir additionner les prix ?", "choix": ["Texte", "Numérique", "Choix unique", "Date"], "bonne": 1, "explication": "Seule une colonne Numérique (ou Entier) se calcule : totaux, moyennes, tris dans le bon ordre. En Texte, « 12 » et « 9 » se trient mal et ne s'additionnent pas.", "aide": "https://support.getgrist.com/col-types/" }, { "type": "multiple", "competence": "choix", "question": "Lesquelles de ces informations conviennent à une colonne Choix unique ?", "choix": ["Le statut : Idée, Acheté, Emballé, Offert", "Le prix du cadeau", "L'occasion : Noël, Anniversaire, Fête des mères", "Le lien vers la boutique"], "bonnes": [0, 2], "explication": "Un Choix unique sert aux listes fermées de valeurs qui reviennent. Un prix est un nombre, un lien est un texte libre (ou un type Texte affiché en lien).", "aide": "https://support.getgrist.com/col-types/" }, { "type": "ordre", "competence": "tables", "question": "Remettez dans l'ordre les étapes pour créer la colonne PRIX.", "etapes": ["Ajouter une colonne à la table", "Ouvrir le panneau de la colonne", "Nommer la colonne PRIX", "Choisir le type Numérique"], "explication": "On crée la colonne, puis on règle son nom et son type dans le panneau de droite. Le type peut aussi être changé plus tard : Grist convertit les valeurs.", "aide": "https://support.getgrist.com/col-types/" }, { "type": "erreur", "competence": "formules", "question": "Cette formule doit donner le prix avec 20 % de marge pour les cadeaux achetés. Où est l'erreur ?", "segments": ["$PRIX * 1.2", "if", '$STATUT = "Acheté"', "else 0"], "bonne": 2, "correction": '$STATUT == "Acheté"', "explication": "En Python, une comparaison s'écrit avec deux signes égal : `==`. Un seul `=` sert à donner une valeur, et la formule est refusée.", "aide": "https://support.getgrist.com/formulas/" }, { "type": "paires", "competence": "tables", "question": "Reliez chaque type de colonne à une valeur qui lui convient.", "paires": [["Texte", "Un puzzle de 1000 pièces"], ["Numérique", "24,90"], ["Choix unique", "Emballé"], ["Date", "24/12/2026"]], "explication": "Choisir le bon type dès le départ évite les surprises : les dates se comparent, les nombres s'additionnent, les choix se colorent.", "aide": "https://support.getgrist.com/col-types/" }] };
 var CAD = { WIDGET: "cadeaux", NOM: "Mes cadeaux", NOM_PAGE: "🎁 Mes cadeaux", STATUTS_DEFAUT: ["Idée", "Acheté", "Emballé", "Offert"], COULEURS_STATUT: { "Idée": "Citron", "Acheté": "Écume", "Emballé": "Menthe", "Offert": "Lavande" }, TAGS: [["Noël", "Flamant"], ["Anniversaire", "Pêche"], ["Mariage", "Lavande"], ["Naissance", "Menthe"], ["Fête des mères", "Citron"], ["Fête des pères", "Écume"], ["Saint-Valentin", "Flamant"], ["Crémaillère", "Pêche"], ["Remerciement", "Menthe"], ["Autre", "Écume"]], d: { personnes: [], categories: [], cadeaux: [], budgets: [] }, filtre: { tag: null, annee: null, cherche: "", personne: 0, statut: "", tri: "date" }, vue: "liste", onglet: "cadeaux", edition: null, photo: null, kb: null };
 var CAD_DEPENSE = "SUM([c.PRIX for c in {CADEAUX}.lookupRecords(POUR=$PERSONNE, ANNEE=$ANNEE) if $OCCASION in (c.OCCASION or [])])";
 var CAD_DEPENSE_ANCIEN = "SUM({CADEAUX}.lookupRecords(POUR=$PERSONNE, ANNEE=$ANNEE, OCCASION=$OCCASION).PRIX)";

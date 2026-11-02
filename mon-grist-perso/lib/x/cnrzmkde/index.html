@@ -1543,144 +1543,6 @@ a.pc-aide {
     color: #555;
   }
 }
-.noel {
-  --nuit1: #1B2440;
-  --nuit2: #3A2D5C;
-  --nuit0: #4A3B73;
-  --creme: #FFF8F0;
-  --lune: #D9D2EE;
-  --or: #F2C76E;
-  --or-clair: #FFE7A8;
-  --or-f: #B8862B;
-  --focus: 3px solid var(--or-clair);
-  position: relative;
-  overflow: hidden;
-  min-height: 100vh;
-  background:
-    radial-gradient(
-      ellipse at 50% -10%,
-      var(--nuit0) 0%,
-      var(--nuit2) 35%,
-      var(--nuit1) 85%);
-  color: var(--creme);
-}
-body.noel-fond {
-  background: var(--nuit1, #1B2440);
-  background-color: #1b2440;
-}
-.noel :focus-visible {
-  outline: 3px solid #FFE7A8;
-  outline-offset: 3px;
-}
-.noel > h1,
-.noel .barre h1,
-.noel .deb h1 {
-  color: var(--creme);
-}
-.noel .barre .marque,
-.noel .accroche,
-.noel > .mini,
-.noel .avantages .mini {
-  color: var(--lune);
-}
-.noel .avantages b {
-  color: var(--creme);
-}
-.noel .carte,
-.noel dialog {
-  color: var(--encre);
-}
-.noel .carte .mini {
-  color: var(--gris);
-}
-.noel .hero {
-  background: #ffffff14;
-  color: var(--creme);
-  box-shadow: inset 0 0 0 1px #ffffff1f;
-}
-.noel .hero p {
-  color: var(--lune);
-}
-.noel .jauge {
-  background: #ffffff29;
-}
-.noel .jauge > i {
-  background:
-    linear-gradient(
-      90deg,
-      var(--or),
-      var(--or-clair));
-}
-.noel .pil.or {
-  background: var(--or);
-  color: var(--encre);
-}
-.noel .guirlande {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 46px;
-  pointer-events: none;
-  z-index: 0;
-}
-.noel .flocons {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-}
-.noel .flocons i {
-  position: absolute;
-  top: -10px;
-  border-radius: 50%;
-  background: #fff;
-  opacity: .8;
-  animation: neige 14s linear infinite;
-}
-@keyframes neige {
-  0% {
-    transform: translateY(-10px);
-    opacity: 0;
-  }
-  10% {
-    opacity: .85;
-  }
-  to {
-    transform: translateY(105vh);
-    opacity: .2;
-  }
-}
-.noel .sapin {
-  position: absolute;
-  right: 18px;
-  bottom: -4px;
-  font-size: 72px;
-  opacity: .9;
-  pointer-events: none;
-  z-index: 0;
-}
-@media (max-width: 699px) {
-  .noel .sapin {
-    font-size: 48px;
-    right: 8px;
-  }
-}
-.noel > *:not(.guirlande):not(.flocons):not(.sapin) {
-  position: relative;
-  z-index: 1;
-}
-@media (prefers-reduced-motion: reduce) {
-  .noel .flocons i {
-    animation: none;
-    top: auto;
-    opacity: .7;
-  }
-}
-.page.noel {
-  padding-top: 46px;
-}
 .deb {
   display: grid;
   gap: 24px;
@@ -5552,7 +5414,7 @@ MGP.capot.rendre = function(conteneur, cfg) {
     conteneur.querySelector("#capot-role").textContent = t.role;
     conteneur.querySelector("#capot-fiches").innerHTML = MGP.capot.fiches(t, cfg, etat.champ);
   }
-  conteneur.innerHTML = '<div class="capot-grille"><section class="carte"><h2>Les tables et leurs liens <span class="mini" style="font-weight:600">· lu en direct dans votre document</span></h2><p class="mini" style="margin:6px 0 10px">Une flèche = une colonne <b>Référence</b> : elle pointe vers une ligne d’une autre table. En pointillés : une <b>Référence multiple</b>. Touchez un champ pour voir sa fiche.</p><div class="vue-bureau">' + MGP.capot.schemaSVG(tables) + '</div><div class="vue-mobile">' + MGP.capot.schemaMobile(tables) + "</div></section><div>" + MGP.capot.formules(cfg, tables) + MGP.capot.extras(cfg) + '</div></div><section class="carte" style="margin-top:16px" id="capot-champs"><h2>Les champs, un par un</h2><div class="choix" id="capot-choix-table" role="group" aria-label="Choisir la table" style="margin:10px 0"></div><p class="mini" id="capot-role" style="margin-bottom:12px"></p><div id="capot-fiches"></div></section>';
+  conteneur.innerHTML = '<div class="capot-grille"><section class="carte"><h2>Les tables et leurs liens <span class="mini" style="font-weight:600">· lu en direct dans votre document</span></h2><p class="mini" style="margin:6px 0 10px">Une flèche = une colonne <b>Référence</b> : elle pointe vers une ligne d’une autre table. En pointillés : une <b>Référence multiple</b>. Cliquez sur un champ pour voir sa fiche.</p><div class="vue-bureau">' + MGP.capot.schemaSVG(tables) + '</div><div class="vue-mobile">' + MGP.capot.schemaMobile(tables) + "</div></section><div>" + MGP.capot.formules(cfg, tables) + MGP.capot.extras(cfg) + '</div></div><section class="carte" style="margin-top:16px" id="capot-champs"><h2>Les champs, un par un</h2><div class="choix" id="capot-choix-table" role="group" aria-label="Choisir la table" style="margin:10px 0"></div><p class="mini" id="capot-role" style="margin-bottom:12px"></p><div id="capot-fiches"></div></section>';
   rendreFiches();
   function montrerChamp(cle, col) {
     etat.table = cle;
@@ -5796,21 +5658,6 @@ MGP.socleUI.carteSocle = async function(conteneur) {
   } catch (e) {
     logSecurite("jauge", e);
   }
-};
-MGP.noel = {};
-MGP.noel.decorer = function(el) {
-  if (!el || el.querySelector(":scope > .guirlande")) {
-    return;
-  }
-  var couleurs = ["#F2C76E", "#FFC2D1", "#A8E6E2", "#F2C76E", "#CDEDC8", "#FFC2D1", "#DCD0F7", "#F2C76E"];
-  var g = '<svg class="guirlande" viewBox="0 0 1280 46" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0 8 Q 80 40 160 10 T 320 10 T 480 10 T 640 10 T 800 10 T 960 10 T 1120 10 T 1280 10" stroke="#5E5480" stroke-width="2" fill="none"/>' + couleurs.map(function(c, i) {
-    return '<circle cx="' + (80 + i * 160) + '" cy="25" r="6" fill="' + c + '"/>';
-  }).join("") + "</svg>";
-  var f = '<div class="flocons" aria-hidden="true">' + [[6, 3, 5], [18, 9, 4], [31, 1, 6], [44, 6, 4], [57, 11, 5], [69, 4, 6], [81, 8, 4], [92, 2, 5], [12, 12, 4], [74, 13, 5]].map(function(x) {
-    return '<i style="left:' + x[0] + "%;width:" + x[2] + "px;height:" + x[2] + "px;animation-delay:-" + x[1] + 's"></i>';
-  }).join("") + "</div>";
-  el.insertAdjacentHTML("afterbegin", g + f);
-  el.insertAdjacentHTML("beforeend", '<div class="sapin" aria-hidden="true">🎄</div>');
 };
 MGP.parcours = MGP.parcours || {};
 (function(P) {
@@ -6379,7 +6226,7 @@ MGP.parcours = MGP.parcours || {};
     });
     return bon.length ? { ok: true } : { ok: false, detail: "La table récapitulative n’est pas groupée par " + c.groupes.join(", ") + "." };
   }, indices: function(c) {
-    return ["Une table récapitulative regroupe les lignes d’une table et calcule des totaux.", "Ajoutez une vue à la page, choisissez la table « " + c.table + " » et touchez l’icône de somme (Σ) pour la grouper.", "Ajouter > Ajouter une vue à la page > Table > " + c.table + " > Σ, Grouper par : " + (c.groupes || []).join(", ") + " > Ajouter à la Page."];
+    return ["Une table récapitulative regroupe les lignes d’une table et calcule des totaux.", "Ajoutez une vue à la page, choisissez la table « " + c.table + " » et cliquez sur l’icône de somme (Σ) pour la grouper.", "Ajouter > Ajouter une vue à la page > Table > " + c.table + " > Σ, Grouper par : " + (c.groupes || []).join(", ") + " > Ajouter à la Page."];
   } }, vue: { libelle: function(c) {
     return "Une page montre « " + c.table + " » dans une vue " + (P.GENRES_VUE[c.genre] || c.genre);
   }, verifier: function(c, m) {
@@ -6475,7 +6322,7 @@ MGP.parcours = MGP.parcours || {};
       });
       return col ? l.indexOf(col.id) >= 0 : l.length > 0;
     });
-    return ok ? { ok: true } : { ok: false, detail: "Aucun tri enregistré" + (c.colonne ? " sur " + c.colonne : "") + " : triez, puis touchez « Enregistrer »." };
+    return ok ? { ok: true } : { ok: false, detail: "Aucun tri enregistré" + (c.colonne ? " sur " + c.colonne : "") + " : triez, puis cliquez sur « Enregistrer »." };
   }, indices: function(c) {
     return ["Un tri se règle en haut de la colonne, puis s’enregistre pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + " (la petite flèche de l’en-tête) et choisissez un tri, puis « Enregistrer » dans la barre qui apparaît.", "En-tête de " + (c.colonne || "la colonne") + " > menu > Trier > A-Z (ou Z-A) > bouton vert « Enregistrer » en haut de la vue."];
   } };
@@ -6498,7 +6345,7 @@ MGP.parcours = MGP.parcours || {};
     });
     return ok ? { ok: true } : { ok: false, detail: "Aucun filtre enregistré" + (c.colonne ? " sur " + c.colonne : "") + "." };
   }, indices: function(c) {
-    return ["Un filtre cache des lignes sans les effacer ; enregistré, il reste en place pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + ", décochez les valeurs à cacher, puis touchez « Enregistrer ».", "En-tête de " + (c.colonne || "la colonne") + " > menu > Filtrer les données > décochez les valeurs, puis « Enregistrer » en haut de la vue."];
+    return ["Un filtre cache des lignes sans les effacer ; enregistré, il reste en place pour tout le monde.", "Ouvrez le menu de la colonne " + (c.colonne || "voulue") + ", décochez les valeurs à cacher, puis cliquez sur « Enregistrer ».", "En-tête de " + (c.colonne || "la colonne") + " > menu > Filtrer les données > décochez les valeurs, puis « Enregistrer » en haut de la vue."];
   } };
   P.CHECKS.lien = { libelle: function(c) {
     return "Sur une page, « " + c.table + " » suit la ligne choisie dans « " + c.source + " »";
@@ -6978,7 +6825,7 @@ MGP.parcours = MGP.parcours || {};
         return '<label class="pc-option" for="' + id + "-" + k + '"><input type="' + ty + '" name="' + id + '" id="' + id + "-" + k + '" value="' + k + '"' + (coche ? " checked" : "") + bloque + ' autocomplete="off"><span>' + rich(c) + "</span></label>";
       }).join("") + "</fieldset>";
     } else if (q.type === "erreur") {
-      html = '<p class="mini">Touchez le morceau qui contient l’erreur.</p><div class="pc-formule" role="group" aria-label="Morceaux de la formule">' + q.segments.map(function(s, k) {
+      html = '<p class="mini">Cliquez sur le morceau qui contient l’erreur.</p><div class="pc-formule" role="group" aria-label="Morceaux de la formule">' + q.segments.map(function(s, k) {
         return '<button type="button" class="pc-seg" data-pc-seg="' + k + '" aria-pressed="' + (etat.rep === k ? "true" : "false") + '"' + bloque + ">" + echapperHTML(s) + "</button>";
       }).join("") + "</div>";
     } else if (q.type === "prediction") {
@@ -7005,7 +6852,7 @@ MGP.parcours = MGP.parcours || {};
         }).join("") + "</select></div>";
       }).join("") + "</div>";
     } else if (q.type === "faire") {
-      html = '<p class="mini">Faites-le dans votre document, puis touchez « Vérifier » : le widget regarde vos tables.</p><ul class="pc-verifs">' + q.verifications.map(function(c, k) {
+      html = '<p class="mini">Faites-le dans votre document, puis cliquez sur « Vérifier » : le widget regarde vos tables.</p><ul class="pc-verifs">' + q.verifications.map(function(c, k) {
         var r = etat.verifs && etat.verifs[k];
         return '<li class="pc-verif ' + (r ? r.ok ? "ok" : "ko" : "attente") + '"><span class="pc-etat" aria-hidden="true">' + (r ? r.ok ? "✅" : "❌" : "⬜") + '</span><span class="x"><b>' + echapperHTML(P.libelle(c)) + "</b>" + (r && !r.ok && r.detail ? '<br><span class="mini">' + echapperHTML(r.detail) + "</span>" : "") + "</span></li>";
       }).join("") + "</ul>";
@@ -7569,29 +7416,8 @@ MGP.parcours = MGP.parcours || {};
   P.etiquetteCarte = function(c) {
     return [c && c.carte ? "Carte " + c.carte : "", c && c.niveauNom ? "Niveau " + c.niveauNom : ""].filter(Boolean).join(" · ");
   };
-  P.fete = function() {
-    try {
-      return !!(MGP.g.tech && MGP.g.reglage("ACADEMIE:FETE", false) === true);
-    } catch (e) {
-      return false;
-    }
-  };
-  P.habiller = function(ecran, montre) {
-    var on = !!(ecran && montre && P.fete());
-    document.body.classList.toggle("noel-fond", on);
-    if (!ecran) {
-      return;
-    }
-    ecran.classList.toggle("noel", on);
-    if (on) {
-      if (MGP.noel) {
-        MGP.noel.decorer(ecran);
-      }
-    } else {
-      Array.prototype.forEach.call(ecran.querySelectorAll(":scope > .guirlande, :scope > .flocons, :scope > .sapin"), function(x) {
-        x.remove();
-      });
-    }
+  P.habiller = function() {
+    document.body.classList.remove("noel-fond");
   };
   P.etatMission = function(module) {
     var l = P.ligne("Module", module);
@@ -7851,7 +7677,7 @@ MGP.parcours = MGP.parcours || {};
       return '<li class="pc-verif ' + (r ? r.ok ? "ok" : "ko" : "attente") + '"><span class="pc-etat" aria-hidden="true">' + (r ? r.ok ? "✅" : "❌" : "⬜") + '</span><div class="x"><b>' + echapperHTML(P.libelle(v)) + "</b>" + (r && !r.ok && r.detail ? '<br><span class="mini">' + echapperHTML(r.detail) + "</span>" : "") + (niv ? '<div class="pc-indices">' + ind.slice(0, niv).map(function(t, n) {
         return "<p><b>" + P.TITRE_INDICE[n] + " :</b> " + rich(t) + "</p>";
       }).join("") + "</div>" : "") + "</div>" + (r && !r.ok && niv < 3 ? '<div class="pc-act"><button type="button" class="btn doux" data-pc-indice="' + k + '">' + P.LIB_INDICE[niv] + "</button></div>" : "") + "</li>";
-    }).join("") + '</ol><p class="mini" role="status" id="pc-mission-etat">' + echapperHTML(res ? nOk + " sur " + res.length + " : " + (nOk === res.length ? "tout est bon !" : "encore un effort.") : "Faites la mission dans votre document, puis touchez « Vérifier ».") + (Object.keys(P.mission.niveaux).length ? " Points possibles : " + P.pointsMission() + "." : "") + '</p><div class="pc-pied"><button type="button" class="btn" data-pc-verifier>Vérifier mon document</button></div></section>';
+    }).join("") + '</ol><p class="mini" role="status" id="pc-mission-etat">' + echapperHTML(res ? nOk + " sur " + res.length + " : " + (nOk === res.length ? "tout est bon !" : "encore un effort.") : "Faites la mission dans votre document, puis cliquez sur « Vérifier ».") + (Object.keys(P.mission.niveaux).length ? " Points possibles : " + P.pointsMission() + "." : "") + '</p><div class="pc-pied"><button type="button" class="btn" data-pc-verifier>Vérifier mon document</button></div></section>';
   };
   P.clicEcran = async function(ev) {
     var b;
@@ -7994,7 +7820,7 @@ MGP.parcours = MGP.parcours || {};
     await P.noterInstallation(cfg.contenu);
   };
 })(MGP.parcours);
-MGP.parcours.CONTENU = { "carte": 22, "id": "voyages", "titre": "Partage, rôles et invités", "competence": "partage", "surprise": { "genre": "widget", "nom": "Mes voyages", "widget": "voyages", "texte": "Le programme jour par jour, les réservations, le budget partagé et la valise, à préparer à plusieurs." }, "widget": "voyages", "niveau": "expert", "niveauNom": "Expert", "contrat": { "note": "Tables du widget Mes voyages : la mission construit le début de Voyages, avec CREE_PAR (la colonne de suivi de toutes les tables du widget) ; le widget l'adopte (MGP.parcours.adopter), ajoute DEVISE et ses autres colonnes et formules, puis crée Étapes, Idées, Dépenses de voyage, Valise, Avant le départ et Collections. Signature : DESTINATION, DEBUT, FIN, DEVISE. Une installation existante n'est jamais adoptée de nouveau.", "tables": [{ "id": "Voyages", "colonnes": { "DESTINATION": "Text", "DEBUT": "Date", "FIN": "Date", "CREE_PAR": "formule d’initialisation user.Name, nouvelles lignes" } }] }, "objectif": "Partager un document avec les bons rôles, et savoir qui a écrit quoi.", "durees": { "lecon": 10, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "Trois rôles", "liste": ["**Lecture seule** : voit, ne modifie rien.", "**Éditeur** : modifie les données, pas la structure ni les droits.", "**Propriétaire** : tout, y compris le partage."] }, { "titre": "Inviter", "paragraphes": ["Le bouton **Partager**, puis **Gérer les utilisateurs**, invite par adresse e-mail, avec un rôle. L'**Accès public** ouvre aussi un lien en lecture seule, pour montrer un programme de voyage sans rien laisser modifier."] }, { "titre": "Savoir qui a écrit", "code": "user.Name", "paragraphes": ["En formule d’initialisation sur les nouvelles lignes, `user.Name` note le nom de la personne qui a ajouté la ligne : utile dès qu'on écrit à plusieurs. Les widgets de Mon Grist perso le font dans chaque table, avec la colonne CREE_PAR."] }, { "titre": "Le bon niveau", "paragraphes": ["Donnez le rôle le plus petit qui suffit. Pour aller plus loin (chacun ne voit que ses lignes), ce sont les règles d'accès de la carte 23."] }], "mission": { "titre": "Le carnet de voyage, à plusieurs", "intro": "Construisez le cœur du widget Mes voyages : la table de vos voyages, où chaque ligne garde le nom de la personne qui l'a ajoutée. Le widget ajoutera ensuite le programme, le budget et la valise autour.", "etapes": ["Créez une table **Voyages** avec DESTINATION (Texte), DEBUT (Date) et FIN (Date).", "Ajoutez **CREE_PAR** (Texte) en formule d’initialisation `user.Name`, avec **Appliquer sur les nouvelles lignes uniquement**.", "Ajoutez un voyage, avec sa destination et ses deux dates : CREE_PAR se remplit tout seul avec votre nom.", "Ouvrez **Partager** > **Gérer les utilisateurs** et regardez les trois rôles proposés. Inviter quelqu'un n'est pas obligatoire pour réussir la mission."], "verifications": [{ "type": "table", "table": "Voyages" }, { "type": "colonne", "table": "Voyages", "colonne": "DEBUT", "typeCol": ["Date"] }, { "type": "colonne", "table": "Voyages", "colonne": "FIN", "typeCol": ["Date"] }, { "type": "declencheur", "table": "Voyages", "colonne": "CREE_PAR", "formule": "user.Name" }, { "type": "lignes", "table": "Voyages", "min": 1 }] }, "questions": [{ "type": "paires", "competence": "partage", "question": "Reliez chaque rôle à ce qu'il permet.", "paires": [["Lecture seule", "Voir sans modifier"], ["Éditeur", "Modifier les données"], ["Propriétaire", "Tout, y compris le partage"]], "explication": "Trois rôles suffisent dans la plupart des cas.", "aide": "https://support.getgrist.com/sharing/" }, { "type": "qcm", "competence": "partage", "question": "Vos compagnons de voyage doivent ajouter des dépenses, sans toucher aux colonnes. Quel rôle ?", "choix": ["Lecture seule", "Éditeur", "Propriétaire"], "bonne": 1, "explication": "Un éditeur modifie les données, pas la structure.", "aide": "https://support.getgrist.com/sharing/" }, { "type": "ordre", "competence": "partage", "question": "Remettez dans l'ordre l'invitation d'un compagnon de voyage qui ajoutera des dépenses.", "etapes": ["Ouvrir « Partager » > « Gérer les utilisateurs »", "Taper son adresse e-mail", "Choisir le rôle Éditeur", "Confirmer l'invitation"], "explication": "Le rôle se choisit avant d'envoyer : Éditeur suffit pour ajouter des dépenses, sans toucher à la structure.", "aide": "https://support.getgrist.com/sharing/" }, { "type": "qcm", "competence": "partage", "question": "Vous voulez montrer le programme du voyage à la famille, sans compte. Le plus simple ?", "choix": ["L'accès public, en lecture seule", "Leur donner le rôle propriétaire", "Envoyer le mot de passe"], "bonne": 0, "explication": "Un lien en lecture seule se partage sans rien risquer.", "aide": "https://support.getgrist.com/sharing/" }, { "type": "trou", "competence": "partage", "question": "Complétez la formule d’initialisation qui note l'auteur.", "formule": "user.___", "reponses": [["Name"]], "explication": "`user.Name` ; `user.Email` donne l'adresse.", "aide": "https://support.getgrist.com/formulas/" }, { "type": "multiple", "competence": "partage", "question": "Un utilisateur en lecture seule peut-il... ?", "choix": ["Voir les pages", "Filtrer pour lui-même", "Modifier une cellule", "Inviter quelqu’un"], "bonnes": [0, 1], "explication": "Il consulte, trie et filtre pour lui ; il ne modifie rien.", "aide": "https://support.getgrist.com/sharing/" }] };
+MGP.parcours.CONTENU = { "carte": 22, "id": "voyages", "titre": "Partage, rôles et invités", "competence": "partage", "surprise": { "genre": "widget", "nom": "Mes voyages", "widget": "voyages", "texte": "Le programme jour par jour, les réservations, le budget partagé et la valise, à préparer à plusieurs." }, "widget": "voyages", "niveau": "expert", "niveauNom": "Expert", "contrat": { "note": "Tables du widget Mes voyages : la mission construit le début de Voyages, avec CREE_PAR (la colonne de suivi de toutes les tables du widget) ; le widget l'adopte (MGP.parcours.adopter), ajoute DEVISE et ses autres colonnes et formules, puis crée Étapes, Idées, Dépenses de voyage, Valise, Avant le départ et Collections. Signature : DESTINATION, DEBUT, FIN, DEVISE. Une installation existante n'est jamais adoptée de nouveau.", "tables": [{ "id": "Voyages", "colonnes": { "DESTINATION": "Text", "DEBUT": "Date", "FIN": "Date", "CREE_PAR": "formule d’initialisation user.Name, nouvelles lignes" } }] }, "objectif": "Partager un document avec les bons rôles, et savoir qui a écrit quoi.", "durees": { "lecon": 10, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "Trois rôles", "liste": ["**Lecture seule** : voit, ne modifie rien.", "**Éditeur** : modifie les données, pas la structure ni les droits.", "**Propriétaire** : tout, y compris le partage."] }, { "titre": "Inviter", "paragraphes": ["Le bouton **Partager**, puis **Gérer les utilisateurs**, invite par adresse e-mail, avec un rôle. L'**Accès public** ouvre aussi un lien en lecture seule, pour montrer un programme de voyage sans rien laisser modifier."] }, { "titre": "Savoir qui a écrit", "code": "user.Name", "paragraphes": ["En formule d’initialisation sur les nouvelles lignes, `user.Name` note le nom de la personne qui a ajouté la ligne : utile dès qu'on écrit à plusieurs. Les widgets de Mon Grist perso le font dans chaque table. C'est ce que vous ferez dans la mission."] }, { "titre": "Le bon niveau", "paragraphes": ["Donnez le rôle le plus petit qui suffit. Pour aller plus loin (chacun ne voit que ses lignes), ce sont les règles d'accès de la carte 23."] }], "mission": { "titre": "Le carnet de voyage, à plusieurs", "intro": "Construisez le cœur du widget Mes voyages : la table de vos voyages, où chaque ligne garde le nom de la personne qui l'a ajoutée. Le widget ajoutera ensuite le programme, le budget et la valise autour.", "etapes": ["Créez une table **Voyages** avec DESTINATION (Texte), DEBUT (Date) et FIN (Date).", "Ajoutez **CREE_PAR** (Texte) en formule d’initialisation `user.Name`, avec **Appliquer sur les nouvelles lignes uniquement**.", "Ajoutez un voyage, avec sa destination et ses deux dates : CREE_PAR se remplit tout seul avec votre nom.", "Ouvrez **Partager** > **Gérer les utilisateurs** et regardez les trois rôles proposés. Inviter quelqu'un n'est pas obligatoire pour réussir la mission."], "verifications": [{ "type": "table", "table": "Voyages" }, { "type": "colonne", "table": "Voyages", "colonne": "DEBUT", "typeCol": ["Date"] }, { "type": "colonne", "table": "Voyages", "colonne": "FIN", "typeCol": ["Date"] }, { "type": "declencheur", "table": "Voyages", "colonne": "CREE_PAR", "formule": "user.Name" }, { "type": "lignes", "table": "Voyages", "min": 1 }] }, "questions": [{ "type": "paires", "competence": "partage", "question": "Reliez chaque rôle à ce qu'il permet.", "paires": [["Lecture seule", "Voir sans modifier"], ["Éditeur", "Modifier les données"], ["Propriétaire", "Tout, y compris le partage"]], "explication": "Trois rôles suffisent dans la plupart des cas.", "aide": "https://support.getgrist.com/sharing/" }, { "type": "qcm", "competence": "partage", "question": "Vos compagnons de voyage doivent ajouter des dépenses, sans toucher aux colonnes. Quel rôle ?", "choix": ["Lecture seule", "Éditeur", "Propriétaire"], "bonne": 1, "explication": "Un éditeur modifie les données, pas la structure.", "aide": "https://support.getgrist.com/sharing/" }, { "type": "ordre", "competence": "partage", "question": "Remettez dans l'ordre l'invitation d'un compagnon de voyage qui ajoutera des dépenses.", "etapes": ["Ouvrir « Partager » > « Gérer les utilisateurs »", "Taper son adresse e-mail", "Choisir le rôle Éditeur", "Confirmer l'invitation"], "explication": "Le rôle se choisit avant d'envoyer : Éditeur suffit pour ajouter des dépenses, sans toucher à la structure.", "aide": "https://support.getgrist.com/sharing/" }, { "type": "qcm", "competence": "partage", "question": "Vous voulez montrer le programme du voyage à la famille, sans compte. Le plus simple ?", "choix": ["L'accès public, en lecture seule", "Leur donner le rôle propriétaire", "Envoyer le mot de passe"], "bonne": 0, "explication": "Un lien en lecture seule se partage sans rien risquer.", "aide": "https://support.getgrist.com/sharing/" }, { "type": "trou", "competence": "partage", "question": "Complétez la formule d’initialisation qui note l'auteur.", "formule": "user.___", "reponses": [["Name"]], "explication": "`user.Name` ; `user.Email` donne l'adresse.", "aide": "https://support.getgrist.com/formulas/" }, { "type": "multiple", "competence": "partage", "question": "Un utilisateur en lecture seule peut-il... ?", "choix": ["Voir les pages", "Filtrer pour lui-même", "Modifier une cellule", "Inviter quelqu’un"], "bonnes": [0, 1], "explication": "Il consulte, trie et filtre pour lui ; il ne modifie rien.", "aide": "https://support.getgrist.com/sharing/" }] };
 var VOY = window.VOY = { WIDGET: "voyages", NOM: "Mes voyages", NOM_PAGE: "🧳 Mes voyages", d: { personnes: [], voyages: [], etapes: [], idees: [], depenses: [], valise: [], prepa: [], collections: [], documents: [], pj: [], conges: null, feries: null }, voyage: null, jour: null, etape: null, onglet: "accueil", vueProg: "jour", filtreValise: "tous", edition: null };
 VOY.TYPES = ["Transport", "Logement", "Activité", "Repas", "Note"];
 VOY.TYPE_INFO = { "Transport": { emoji: "✈️", couleur: "Écume", cls: "t-ecume", lib: "Transport" }, "Logement": { emoji: "🏨", couleur: "Lavande", cls: "t-lavande", lib: "Logement" }, "Activité": { emoji: "🎟️", couleur: "Menthe", cls: "t-menthe", lib: "Activité" }, "Repas": { emoji: "🍜", couleur: "Pêche", cls: "t-peche", lib: "Repas" }, "Note": { emoji: "📝", couleur: "Citron", cls: "t-citron", lib: "Note" } };
@@ -10420,7 +10246,7 @@ VOY.panneauHTML = function(v, etapes) {
   var tot = dep.reduce(function(s, d) {
     return s + VOY.montantMaison(d, v);
   }, 0);
-  return '<h2>Le jour en bref</h2><p class="mini" style="margin:6px 0 12px">Touchez une étape pour voir ses détails, ses billets et ses actions.</p><div class="stats"><div class="stat"><b>' + jr.etapes.length + '</b><span class="mini">étapes</span></div><div class="stat"><b>' + echapperHTML(VOY.formatDevise(tot, VOY.maison(v))) + '</b><span class="mini">dépensés ce jour</span></div></div>' + (jr.logements.length ? '<p class="mini">Logement : <b style="color:var(--encre)">' + echapperHTML(jr.logements.map(function(l) {
+  return '<h2>Le jour en bref</h2><p class="mini" style="margin:6px 0 12px">Cliquez sur une étape pour voir ses détails, ses billets et ses actions.</p><div class="stats"><div class="stat"><b>' + jr.etapes.length + '</b><span class="mini">étapes</span></div><div class="stat"><b>' + echapperHTML(VOY.formatDevise(tot, VOY.maison(v))) + '</b><span class="mini">dépensés ce jour</span></div></div>' + (jr.logements.length ? '<p class="mini">Logement : <b style="color:var(--encre)">' + echapperHTML(jr.logements.map(function(l) {
     return l.e.TITRE || "Logement";
   }).join(", ")) + "</b></p>" : "") + '<div class="actions"><button type="button" class="btn" data-ajouter-etape>+ Ajouter une étape</button><button type="button" class="btn sec" data-nouvelle-depense>+ Dépense</button></div>';
 };
@@ -12134,7 +11960,7 @@ VOY.texteCoords = function(x) {
   return VOY.aCoords(x) ? x.LAT + ", " + x.LNG : "";
 };
 VOY.champPosition = function(pre, x) {
-  return '<div class="champ"><label for="' + pre + '-pos">Position (facultatif)</label><input type="text" id="' + pre + '-pos" value="' + echapperHTML(VOY.texteCoords(x)) + '" placeholder="Lien Google Maps ou 35.7148, 139.7967" autocomplete="off"><p class="aide">Dans Google Maps : touchez le lieu, « Partager », « Copier le lien », puis collez ici (le lien long, avec les coordonnées). Ou un appui long sur la carte, puis copiez « 35.71, 139.79 ». Sert à la vue d’ensemble et aux itinéraires.</p></div>';
+  return '<div class="champ"><label for="' + pre + '-pos">Position (facultatif)</label><input type="text" id="' + pre + '-pos" value="' + echapperHTML(VOY.texteCoords(x)) + '" placeholder="Lien Google Maps ou 35.7148, 139.7967" autocomplete="off"><p class="aide">Dans Google Maps : cliquez sur le lieu, « Partager », « Copier le lien », puis collez ici (le lien long, avec les coordonnées). Ou un appui long sur la carte, puis copiez « 35.71, 139.79 ». Sert à la vue d’ensemble et aux itinéraires.</p></div>';
 };
 VOY.lirePositionChamp = function(pre) {
   var el = document.getElementById(pre + "-pos"), t = el ? el.value.trim() : "";
@@ -12414,7 +12240,7 @@ VOY.rendreResas = function() {
     return '<article class="resa-l" aria-label="' + echapperHTML(e.TITRE || "Étape") + '"><button type="button" class="resa-o" data-modifier-etape="' + e.id + '"><span class="nuits jour" aria-hidden="true"><b>' + (j !== null && a !== null ? "J" + (j - a + 1) : "?") + "</b>" + echapperHTML(j !== null ? VOY.texteJourMois(j) : "") + '</span><span class="x"><b>' + echapperHTML(VOY.iconeEtape(e) + " " + (e.TITRE || e.TYPE)) + '</b><span class="mini">' + echapperHTML(j !== null ? VOY.texteJour(j) + (e.HEURE ? " à " + VOY.normHeure(e.HEURE) : "") : "date à fixer") + "</span>" + (dates.length || Number(e.PRIX) ? '<span class="infos">' + dates.join("") + (Number(e.PRIX) ? '<span class="pil t-sable">' + echapperHTML(VOY.double(e.PRIX, d, v)) + "</span>" : "") + "</span>" : "") + "</span></button>" + VOY.actionsResaHTML(e) + "</article>";
   }).join("");
   var bloc2 = VOY.filtreResa === "Réservé" ? "" : '<section class="carte resa-bloc" aria-labelledby="resa-reste-t"><div class="tete-jour"><h2 id="resa-reste-t">⏳ Tout ce qui reste à réserver <span class="mini">' + reste.length + '</span></h2></div><p class="mini" style="margin:-4px 0 8px">Visites, trains, restaurants... marqués « À réserver », dans l’ordre où il faut s’en occuper : ouverture des ventes, date limite, puis date de l’étape.</p>' + (r2 || '<div class="vide" style="padding:14px"><div class="gros" aria-hidden="true">🎉</div><p>Rien d’autre à réserver.</p></div>') + "</section>";
-  z.innerHTML = '<p class="mini lisible" style="margin-bottom:10px">Les arrivées et départs de chaque logement d’un coup d’œil, et tout ce qui reste à réserver. Touchez une ligne pour la modifier.</p>' + filtres + '<div class="resas-grille">' + bloc1 + bloc2 + "</div>";
+  z.innerHTML = '<p class="mini lisible" style="margin-bottom:10px">Les arrivées et départs de chaque logement d’un coup d’œil, et tout ce qui reste à réserver. Cliquez sur une ligne pour la modifier.</p>' + filtres + '<div class="resas-grille">' + bloc1 + bloc2 + "</div>";
 };
 VOY.ouvrirResaOk = function(id) {
   var e = VOY.parId(VOY.d.etapes, id);
