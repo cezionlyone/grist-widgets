@@ -1794,6 +1794,10 @@ a.pc-aide {
   right: 6px;
   top: 6px;
 }
+.ac-carte[data-etat=ouverte] .ac-arriere,
+.ac-carte[data-etat="en cours"] .ac-arriere {
+  box-shadow: 0 0 0 2px #16b378, 0 2px 8px #16b37833;
+}
 .ac-carte.terminee .ac-arriere {
   background: var(--ecume);
   border-color: #a2e1c9;
@@ -5765,13 +5769,13 @@ ACA.charger = async function() {
 };
 ACA.carteHTML = function(m) {
   var e = ACA.etats.etats[m.id], n = P.niveauParcours(m.niveau) || { nom: "" }, c = ACA.COULEURS[m.niveau] || ["#D9D9D9", "#EFEFEF"];
-  var fini = e === "terminée", surp = m.surprise || {}, ic = ACA.ICONES[surp.genre] || "⭐";
-  var avant = '<button type="button" class="ac-face ac-avant" data-ac-carte="' + m.carte + '" style="--niv:' + c[0] + ";--niv-clair:" + c[1] + '" aria-label="' + echapperHTML("Carte " + m.carte + ", niveau " + n.nom + ", " + m.titre + " : " + e + (e === "verrouillée" ? "" : ". Retourner la carte")) + '"' + (fini ? " inert" : "") + '><span class="num" aria-hidden="true">' + m.carte + '</span><span class="niv" aria-hidden="true">' + echapperHTML(n.nom) + '</span><span class="ic" aria-hidden="true">' + ({ "verrouillée": "🔒", "en cours": "⏳", "terminée": "✅" }[e] || "✨") + '</span><span class="et" aria-hidden="true">' + echapperHTML(ACA.LIB_ETAT[e]) + "</span></button>";
+  var fini = e === "terminée", vu = e !== "verrouillée", surp = m.surprise || {}, ic = ACA.ICONES[surp.genre] || "⭐";
+  var avant = '<button type="button" class="ac-face ac-avant" data-ac-carte="' + m.carte + '" style="--niv:' + c[0] + ";--niv-clair:" + c[1] + '" aria-label="' + echapperHTML("Carte " + m.carte + ", niveau " + n.nom + ", " + m.titre + " : " + e) + '"' + (vu ? " inert" : "") + '><span class="num" aria-hidden="true">' + m.carte + '</span><span class="niv" aria-hidden="true">' + echapperHTML(n.nom) + '</span><span class="ic" aria-hidden="true">' + ({ "verrouillée": "🔒", "en cours": "⏳", "terminée": "✅" }[e] || "✨") + '</span><span class="et" aria-hidden="true">' + echapperHTML(ACA.LIB_ETAT[e]) + "</span></button>";
   var unites = [["capot", "📖", "Leçon"], ["mission", "🛠️", "Mission"], ["quiz", "🧠", "Quiz"], ["surprise", ic, "Surprise"]];
-  var arriere = '<section class="ac-face ac-arriere" aria-labelledby="ac-t-' + m.carte + '"' + (fini ? "" : " inert") + '><div class="haut">' + (fini ? '<span class="ac-coche" aria-hidden="true">✓</span>' : "") + '<span class="pil ' + (fini ? "t-ecume" : "t-lavande") + '">' + echapperHTML("Carte " + m.carte + (fini ? " · terminée" : "")) + '</span></div><h3 id="ac-t-' + m.carte + '" tabindex="-1">' + echapperHTML(m.titre) + "</h3>" + (fini ? '<span class="mini">' + echapperHTML((ACA.LIB_SURPRISE[surp.genre] || "Surprise") + " : " + (surp.nom || "")) + "</span>" : "") + (fini ? "" : '<button type="button" class="btn-icone ac-retourner" data-ac-retourner="' + m.carte + '" aria-label="Retourner la carte ' + m.carte + ' face cachée">↩</button>') + '<div class="ac-unites" role="group" aria-label="' + echapperHTML("Contenu de la carte " + m.carte) + '">' + unites.map(function(u) {
+  var arriere = '<section class="ac-face ac-arriere" aria-labelledby="ac-t-' + m.carte + '"' + (vu ? "" : " inert") + '><div class="haut">' + (fini ? '<span class="ac-coche" aria-hidden="true">✓</span>' : "") + '<span class="pil ' + (fini ? "t-ecume" : "t-lavande") + '">' + echapperHTML("Carte " + m.carte + (fini ? " · terminée" : "")) + '</span></div><h3 id="ac-t-' + m.carte + '" tabindex="-1">' + echapperHTML(m.titre) + "</h3>" + (fini ? '<span class="mini">' + echapperHTML((ACA.LIB_SURPRISE[surp.genre] || "Surprise") + " : " + (surp.nom || "")) + "</span>" : "") + '<div class="ac-unites" role="group" aria-label="' + echapperHTML("Contenu de la carte " + m.carte) + '">' + unites.map(function(u) {
     return '<button type="button" data-ac-ouvrir="' + u[0] + '" data-ac-id="' + echapperHTML(m.id) + '" title="' + u[2] + '" aria-label="' + echapperHTML(u[2] + ", carte " + m.carte) + '"><span aria-hidden="true">' + u[1] + "</span></button>";
   }).join("") + "</div></section>";
-  return '<div class="ac-carte' + (fini ? " retournee terminee" : "") + '" data-id="' + echapperHTML(m.id) + '" data-carte="' + m.carte + '" data-etat="' + e + '"><div class="ac-int">' + avant + arriere + "</div></div>";
+  return '<div class="ac-carte' + (vu ? " retournee" : "") + (fini ? " terminee" : "") + '" data-id="' + echapperHTML(m.id) + '" data-carte="' + m.carte + '" data-etat="' + e + '"><div class="ac-int">' + avant + arriere + "</div></div>";
 };
 ACA.LIB_SURPRISE = { widget: "Bonus", astuce: "Astuce", outil: "Mini-outil" };
 ACA.bilanHTML = function(n, i, dernier) {
@@ -5787,7 +5791,7 @@ ACA.rendre = function() {
   document.getElementById("ac-jauge").innerHTML = MGP.jaugeHTML(faites, cartes.length, "Cartes terminées");
   document.getElementById("ac-niveaux").innerHTML = niveaux.map(function(n, i) {
     var et = ACA.etats.niveaux[n.id];
-    return '<section class="ac-niveau" aria-labelledby="ac-n-' + n.id + '"><div class="ac-niveau-tete"><h2 id="ac-n-' + n.id + '">Niveau ' + (i + 1) + " · " + echapperHTML(n.nom) + '</h2><span class="mini">' + et.faites + " sur " + et.total + (et.place ? " · ouvert par le quiz « Je connais déjà »" : "") + '</span><div class="actions">' + (et.ouvert || i === 0 ? "" : '<button type="button" class="btn sec" data-ac-placement="' + n.id + '">⏩ Je connais déjà ce niveau</button>') + '</div></div><div class="ac-grille">' + n.modules.map(function(id) {
+    return '<section class="ac-niveau" aria-labelledby="ac-n-' + n.id + '"><div class="ac-niveau-tete"><h2 id="ac-n-' + n.id + '">Niveau ' + (i + 1) + " · " + echapperHTML(n.nom) + '</h2><span class="mini">' + et.faites + " sur " + et.total + (et.place ? " · ouvert par le quiz « Je connais déjà »" : "") + '</span><div class="actions">' + (et.ouvert ? "" : '<button type="button" class="btn sec" data-ac-placement="' + n.id + '">⏩ Je connais déjà ce niveau</button>') + '</div></div><div class="ac-grille">' + n.modules.map(function(id) {
       return ACA.carteHTML(P.module(id));
     }).join("") + "</div>" + ACA.bilanHTML(n, i, i === niveaux.length - 1) + "</section>";
   }).join("");
