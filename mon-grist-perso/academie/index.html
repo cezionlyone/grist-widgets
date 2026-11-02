@@ -1706,7 +1706,10 @@ a.pc-aide {
   color: var(--gris);
 }
 .ac-carte[data-etat=verrouillée] .ac-avant {
-  background: var(--sable);
+  background: var(--niv-clair, var(--sable));
+}
+.ac-carte[data-etat=verrouillée] .ac-avant .niv {
+  background: var(--blanc);
 }
 .ac-carte[data-etat=verrouillée] .ac-avant .num {
   color: var(--gris);
