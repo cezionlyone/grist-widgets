@@ -71,7 +71,7 @@
     jeton en lecture seule pour les fichiers avec repli, date de création
     dans le fuseau de la colonne, focus après ajout ou suppression,
     compteurs et décimales des devises au format.
-  1.0.2 - 02/11/2026 - madeXcé - Nouvelles couleurs du logo madeXcé (X orange Grist, cé vert Grist).
+  1.0.2 - 02/11/2026 - madeXcé - Nouveau logo madeXcé aux couleurs Grist.
 
   DÉPENDANCES
   ------------
@@ -258,10 +258,10 @@
     .w-bandeau__sep{width:1px;align-self:stretch;margin:.25rem 0;background:var(--border-default-grey);flex-shrink:0; color: var(--text-default-grey); }
     .w-bandeau__titre{font-size:2rem;font-weight:600;color:var(--text-title-blue-france);white-space:nowrap;margin:0;line-height:1}
     .w-bandeau__version{font-size:.75rem;color:var(--text-mention-grey);font-weight:400;margin-left:.5rem;white-space:nowrap}
-    /* Logo madeXcé : made aux couleurs du thème, X orange Grist, cé vert Grist */
+    /* Logo madeXcé : orange et vert Grist */
     .w-logo{display:block;width:100%;height:auto}
     .w-logo__made{fill:var(--text-mention-grey);font-weight:400}
-    .w-logo__x{fill:#F9AE41;font-weight:700}
+    .w-logo__x{fill:#F9AE41;font-weight:800}
     .w-logo__ce{fill:#16B378;font-weight:800}
 
   /* === SECTION : LOADER ET BANNIERES === */
@@ -1103,23 +1103,26 @@ function dessinerLogo() {
   if (!c) { return; }
   var ns = 'http://www.w3.org/2000/svg';
   var svg = document.createElementNS(ns, 'svg');
-  svg.setAttribute('viewBox', '0 0 100 40');
+  svg.setAttribute('viewBox', '0 0 122 40');
   svg.setAttribute('class', 'w-logo');
   svg.setAttribute('role', 'img');
   svg.setAttribute('aria-label', 'madeXcé');
   svg.setAttribute('focusable', 'false');
   var texte = document.createElementNS(ns, 'text');
   texte.setAttribute('x', '2');
-  texte.setAttribute('y', '27');
-  texte.setAttribute('font-size', '19');
-  texte.setAttribute('textLength', '96');
-  texte.setAttribute('lengthAdjust', 'spacingAndGlyphs');
-  [['made', 'w-logo__made'], ['X', 'w-logo__x'], ['cé', 'w-logo__ce']].forEach(function (morceau) {
+  texte.setAttribute('y', '29');
+  texte.setAttribute('font-size', '30');
+  [['X', 'w-logo__x'], ['cé', 'w-logo__ce'], ['w/', 'w-logo__x']].forEach(function (morceau) {
     var t = document.createElementNS(ns, 'tspan');
     t.setAttribute('class', morceau[1]);
     t.textContent = morceau[0];
     texte.appendChild(t);
   });
+  var coeur = document.createElementNS(ns, 'path');
+  coeur.setAttribute('class', 'w-logo__ce');
+  coeur.setAttribute('transform', 'translate(96 12)');
+  coeur.setAttribute('d', 'M10 18 C10 18 0 11.5 0 5.5 C0 2.5 2.4 0 5.2 0 C7.2 0 8.9 1.2 10 3 C11.1 1.2 12.8 0 14.8 0 C17.6 0 20 2.5 20 5.5 C20 11.5 10 18 10 18 Z');
+  svg.appendChild(coeur);
   svg.appendChild(texte);
   c.textContent = '';
   c.appendChild(svg);
