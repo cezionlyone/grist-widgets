@@ -4173,7 +4173,7 @@ MGP.g.demarrer = function(accesRequis) {
   });
 };
 MGP.CHAMPS_SUIVI = ["CREE_LE", "CREE_PAR", "MODIFIE_LE", "MODIFIE_PAR"];
-MGP.SOCLE = { TECH: { cle: "TECH", id: "BIBLIOTHEQUE_MON_GRIST_PERSO_", label: "⚙️ BIBLIOTHÈQUE MON GRIST PERSO ⚡", motif: "BIBLIOTHEQUE_MON_GRIST_PERSO", description: "Table technique des widgets Mon Grist perso : réglages, tables installées, cadeaux ouverts et progression. Une ligne par réglage, à ne pas modifier à la main.", signature: ["CLE", "VALEUR"], colonnes: [{ id: "CLE", type: "Text", description: "Nom du réglage (par exemple TABLE:CADEAUX, INSTALL:conges ou cadeau.jour-01). Une seule ligne par nom." }, { id: "VALEUR", type: "Text", description: "Valeur du réglage, en texte ou en JSON : l’id réel d’une table, l’état d’une installation, une date..." }] }, PERSONNES: { cle: "PERSONNES", id: "Personnes", label: "👥 Personnes", nom: "Personnes", description: "Les personnes du foyer et les proches, partagées par tous les widgets (cadeaux, congés, santé...). Une ligne par personne.", signature: ["PRENOM", "FOYER", "TYPE"], colonnes: [{ id: "PRENOM", type: "Text", description: "Prénom ou surnom de la personne, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "TYPE", type: "Choice", choix: [["Adulte", "Pêche"], ["Enfant", "Lavande"], ["Proche", "Écume"], ["Ami", "Menthe"]], description: "Lien avec vous, en Choix unique : Adulte, Enfant, Proche ou Ami." }, { id: "FOYER", type: "Bool", description: "Coché si la personne vit sous votre toit (Booléen)." }, { id: "NAISSANCE", type: "Date", description: "Date de naissance, facultative : elle sert aux anniversaires et aux âges." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la personne dans les widgets." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la personne dans les widgets (Choix unique)." }, { id: "NOTES", type: "Text", description: "Notes libres : tailles, goûts, idées..." }], affichage: "PRENOM" }, CATEGORIES: { cle: "CATEGORIES", id: "Categories", label: "🏷️ Catégories", nom: "Catégories", description: "Catégories de dépenses et de documents, partagées par tous les widgets (Alimentation, Maison, Transport...). Une ligne par catégorie.", signature: ["NOM", "EMOJI", "COULEUR"], colonnes: [{ id: "NOM", type: "Text", description: "Nom de la catégorie, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la catégorie." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la catégorie dans les widgets (Choix unique)." }], affichage: "NOM", graines: [["Alimentation", "🛒", "Menthe"], ["Maison", "🏠", "Pêche"], ["Transport", "🚗", "Écume"], ["Loisirs", "🎭", "Lavande"], ["Cadeaux", "🎁", "Flamant"], ["Abonnements", "📱", "Citron"], ["Santé", "🩺", "Écume"], ["Épargne", "🌱", "Menthe"]] }, DOCUMENTS: { cle: "DOCUMENTS", id: "Documents", label: "📎 Documents", nom: "Documents", description: "Fichiers rangés par les widgets : factures, garanties, contrats, photos. Une ligne par document, reliée aux autres tables par des colonnes de type Référence.", signature: ["FICHIER", "TITRE"], colonnes: [{ id: "TITRE", type: "Text", description: "Nom du document, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "FICHIER", type: "Attachments", description: "Le fichier lui-même (Pièce jointe) : il compte dans la taille du document Grist." }, { id: "TYPE", type: "Choice", choix: [["Facture", "Citron"], ["Garantie", "Menthe"], ["Contrat", "Lavande"], ["Photo", "Flamant"], ["Autre", "Écume"]], description: "Nature du document, en Choix unique : Facture, Garantie, Contrat, Photo... Certains widgets ajoutent leurs choix." }, { id: "PERSONNE", type: "Ref:@PERSONNES", description: "Personne concernée (Référence vers Personnes), facultative." }, { id: "CATEGORIE", type: "Ref:@CATEGORIES", description: "Catégorie du document (Référence vers Catégories), facultative." }, { id: "DATE_DOC", type: "Date", description: "Date du document (date de la facture, du contrat...)." }, { id: "NOTES", type: "Text", description: "Notes libres sur le document." }], affichage: "TITRE" } };
+MGP.SOCLE = { TECH: { cle: "TECH", id: "BIBLIOTHEQUE_MON_GRIST_PERSO_", label: "⚙️ BIBLIOTHÈQUE MON GRIST PERSO ⚡", motif: "BIBLIOTHEQUE_MON_GRIST_PERSO", description: "Table technique des widgets Mon Grist perso : réglages, tables installées, bonus installés et progression. Une ligne par réglage, à ne pas modifier à la main.", signature: ["CLE", "VALEUR"], colonnes: [{ id: "CLE", type: "Text", description: "Nom du réglage (par exemple TABLE:CADEAUX, INSTALL:conges ou cadeau.jour-01). Une seule ligne par nom." }, { id: "VALEUR", type: "Text", description: "Valeur du réglage, en texte ou en JSON : l’id réel d’une table, l’état d’une installation, une date..." }] }, PERSONNES: { cle: "PERSONNES", id: "Personnes", label: "👥 Personnes", nom: "Personnes", description: "Les personnes du foyer et les proches, partagées par tous les widgets (cadeaux, congés, santé...). Une ligne par personne.", signature: ["PRENOM", "FOYER", "TYPE"], colonnes: [{ id: "PRENOM", type: "Text", description: "Prénom ou surnom de la personne, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "TYPE", type: "Choice", choix: [["Adulte", "Pêche"], ["Enfant", "Lavande"], ["Proche", "Écume"], ["Ami", "Menthe"]], description: "Lien avec vous, en Choix unique : Adulte, Enfant, Proche ou Ami." }, { id: "FOYER", type: "Bool", description: "Coché si la personne vit sous votre toit (Booléen)." }, { id: "NAISSANCE", type: "Date", description: "Date de naissance, facultative : elle sert aux anniversaires et aux âges." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la personne dans les widgets." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la personne dans les widgets (Choix unique)." }, { id: "NOTES", type: "Text", description: "Notes libres : tailles, goûts, idées..." }], affichage: "PRENOM" }, CATEGORIES: { cle: "CATEGORIES", id: "Categories", label: "🏷️ Catégories", nom: "Catégories", description: "Catégories de dépenses et de documents, partagées par tous les widgets (Alimentation, Maison, Transport...). Une ligne par catégorie.", signature: ["NOM", "EMOJI", "COULEUR"], colonnes: [{ id: "NOM", type: "Text", description: "Nom de la catégorie, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la catégorie." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la catégorie dans les widgets (Choix unique)." }], affichage: "NOM", graines: [["Alimentation", "🛒", "Menthe"], ["Maison", "🏠", "Pêche"], ["Transport", "🚗", "Écume"], ["Loisirs", "🎭", "Lavande"], ["Cadeaux", "🎁", "Flamant"], ["Abonnements", "📱", "Citron"], ["Santé", "🩺", "Écume"], ["Épargne", "🌱", "Menthe"]] }, DOCUMENTS: { cle: "DOCUMENTS", id: "Documents", label: "📎 Documents", nom: "Documents", description: "Fichiers rangés par les widgets : factures, garanties, contrats, photos. Une ligne par document, reliée aux autres tables par des colonnes de type Référence.", signature: ["FICHIER", "TITRE"], colonnes: [{ id: "TITRE", type: "Text", description: "Nom du document, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "FICHIER", type: "Attachments", description: "Le fichier lui-même (Pièce jointe) : il compte dans la taille du document Grist." }, { id: "TYPE", type: "Choice", choix: [["Facture", "Citron"], ["Garantie", "Menthe"], ["Contrat", "Lavande"], ["Photo", "Flamant"], ["Autre", "Écume"]], description: "Nature du document, en Choix unique : Facture, Garantie, Contrat, Photo... Certains widgets ajoutent leurs choix." }, { id: "PERSONNE", type: "Ref:@PERSONNES", description: "Personne concernée (Référence vers Personnes), facultative." }, { id: "CATEGORIE", type: "Ref:@CATEGORIES", description: "Catégorie du document (Référence vers Catégories), facultative." }, { id: "DATE_DOC", type: "Date", description: "Date du document (date de la facture, du contrat...)." }, { id: "NOTES", type: "Text", description: "Notes libres sur le document." }], affichage: "TITRE" } };
 MGP.ORDRE_SOCLE = ["TECH", "PERSONNES", "CATEGORIES", "DOCUMENTS"];
 MGP.colonnesSuivi = function() {
   return [{ id: "CREE_LE", type: "DateTime:Europe/Paris", declencheur: "NOW()", quand: 0, description: "Date et heure de création de la ligne, posées une fois par une formule d’initialisation (NOW())." }, { id: "CREE_PAR", type: "Text", declencheur: "user.Name", quand: 0, description: "Nom de la personne qui a créé la ligne, posé une fois par une formule d’initialisation (user.Name)." }, { id: "MODIFIE_LE", type: "DateTime:Europe/Paris", declencheur: "NOW()", quand: 2, description: "Date et heure de la dernière modification de la ligne : formule d’initialisation (NOW()) recalculée à chaque changement." }, { id: "MODIFIE_PAR", type: "Text", declencheur: "user.Name", quand: 2, description: "Nom de la dernière personne qui a modifié la ligne : formule d’initialisation (user.Name) recalculée à chaque changement." }];
@@ -4378,7 +4378,7 @@ MGP.g.completerDescriptions = async function(defs) {
     return 0;
   }
 };
-MGP.g.DESCRIPTION_ATTENTE = "Page préparée par l’Académie : le widget cadeau s’y installe, puis lui donne son nom et sa description.";
+MGP.g.DESCRIPTION_ATTENTE = "Page préparée par l’Académie : le widget bonus s’y installe, puis lui donne son nom et sa description.";
 MGP.g.actionDecrireSection = function(s, titre, description) {
   if (!s) {
     return null;
@@ -6459,7 +6459,7 @@ MGP.parcours = MGP.parcours || {};
       try {
         await P.placerSurSaPage(x.ref, x.def);
       } catch (e) {
-        logSecurite("page du cadeau", e);
+        logSecurite("page du bonus", e);
       }
     }
   };
@@ -6645,7 +6645,7 @@ MGP.parcours = MGP.parcours || {};
       return null;
     }
     if (!dejaLa) {
-      await P.ajouterWidgetSurPage(t.id, vue, url, c.page, "Votre cadeau " + c.nom + ", construit autour de votre table : il garde vos lignes et ajoute ce qui manque.");
+      await P.ajouterWidgetSurPage(t.id, vue, url, c.page, "Votre bonus " + c.nom + ", construit autour de votre table : il garde vos lignes et ajoute ce qui manque.");
     }
     var v = vues.filter(function(x) {
       return x.id === vue;
@@ -6688,7 +6688,7 @@ MGP.parcours = MGP.parcours || {};
     if (!d || !d.retirable) {
       return false;
     }
-    var oui = await MGP.confirmer("Ranger mon cadeau sur ma page", "Votre cadeau est déjà sur « " + d.sa + " », avec votre table. La page « " + d.nom + " » ne montre que ce widget : elle sera retirée du menu. Aucune table ni aucune ligne n’est supprimée.", "Retirer la page en double");
+    var oui = await MGP.confirmer("Ranger mon bonus sur ma page", "Votre bonus est déjà sur « " + d.sa + " », avec votre table. La page « " + d.nom + " » ne montre que ce widget : elle sera retirée du menu. Aucune table ni aucune ligne n’est supprimée.", "Retirer la page en double");
     if (!oui) {
       if (bouton) {
         bouton.focus();
@@ -6700,7 +6700,7 @@ MGP.parcours = MGP.parcours || {};
       var c = MGP.g.CADEAU, r = MGP.g.reglage(P.cleePage(c.cle), null) || {};
       r.depuis = null;
       await MGP.g.ecrireReglage(P.cleePage(c.cle), r);
-      MGP.annoncer("Votre cadeau est rangé sur « " + d.sa + " » : ouvrez-la dans le menu de gauche.", "ok");
+      MGP.annoncer("Votre bonus est rangé sur « " + d.sa + " » : ouvrez-la dans le menu de gauche.", "ok");
       return true;
     } catch (e) {
       logSecurite("page en double", e);
@@ -7382,7 +7382,7 @@ MGP.parcours = MGP.parcours || {};
     ecran.className = "page";
     ecran.id = "ecran-parcours";
     ecran.hidden = true;
-    ecran.innerHTML = '<header class="barre"><div class="titre"><h1>🎓 Académie Grist</h1><span class="marque">' + echapperHTML(P.situation(cfg.contenu)) + '</span></div><div class="actions"><button type="button" class="btn sec" data-pc-fermer>🎁 Mon cadeau</button></div></header><div class="pc-nav" role="group" aria-label="Unités du module">' + [["mission", "🛠️ Mission"], ["quiz", "🧠 Quiz"], ["capot", "🔧 Sous le capot"], ["cadeau", "🎁 Mon cadeau"]].map(function(x) {
+    ecran.innerHTML = '<header class="barre"><div class="titre"><h1>🎓 Académie Grist</h1><span class="marque">' + echapperHTML(P.situation(cfg.contenu)) + '</span></div><div class="actions"><button type="button" class="btn sec" data-pc-fermer>⭐ Mon bonus</button></div></header><div class="pc-nav" role="group" aria-label="Unités du module">' + [["mission", "🛠️ Mission"], ["quiz", "🧠 Quiz"], ["capot", "🔧 Sous le capot"], ["cadeau", "⭐ Mon bonus"]].map(function(x) {
       return '<button type="button" data-pc-vue="' + x[0] + '" aria-pressed="false">' + x[1] + "</button>";
     }).join("") + '</div><div id="pc-vue"></div>';
     var toasts = document.getElementById("toasts");
@@ -7477,11 +7477,11 @@ MGP.parcours = MGP.parcours || {};
       return x.colonnes.join(", ");
     }).join(" ; ") + "). « Je le construis » la termine avec la mission ; « Installe pour moi » la complète autour : vos lignes et vos colonnes sont gardées, rien n’est en double.") + "</p>" : "";
     if (mode === "completer") {
-      corps = '<h2 id="pc-entree-t">✅ Mission réussie : votre table est prête.</h2><p style="margin-top:6px">' + echapperHTML("Le widget garde votre table et vos lignes, ajoute les champs qui manquent et termine le cadeau. Rien de ce que vous avez construit n’est effacé.") + "</p>" + (full ? "" : '<p class="mini" style="margin-top:6px;color:var(--flamant-f)">Pour compléter le cadeau, ce widget a besoin de l’accès complet au document (panneau de droite, « Accès complet au document »).</p>') + '<div class="pc-pied"><button type="button" class="btn" data-pc-completer' + (full ? "" : " disabled") + ">🎁 Compléter mon cadeau autour de ma table</button></div>";
+      corps = '<h2 id="pc-entree-t">✅ Mission réussie : votre table est prête.</h2><p style="margin-top:6px">' + echapperHTML("Le widget garde votre table et vos lignes, ajoute les champs qui manquent et termine le bonus. Rien de ce que vous avez construit n’est effacé.") + "</p>" + (full ? "" : '<p class="mini" style="margin-top:6px;color:var(--flamant-f)">Pour compléter le bonus, ce widget a besoin de l’accès complet au document (panneau de droite, « Accès complet au document »).</p>') + '<div class="pc-pied"><button type="button" class="btn" data-pc-completer' + (full ? "" : " disabled") + ">⭐ Compléter mon bonus autour de ma table</button></div>";
     } else if (mode === "direct") {
       corps = '<h2 id="pc-entree-t">⚡ Installe pour moi</h2>' + (cfg.contenu.objectif ? '<p class="mini" style="margin-top:4px">' + rich(cfg.contenu.objectif) + "</p>" : "") + '<div class="pc-installe" id="pc-installe"></div>';
     } else {
-      corps = '<h2 id="pc-entree-t">Deux façons d’ouvrir votre cadeau</h2>' + (cfg.contenu.objectif ? '<p class="mini" style="margin-top:4px">' + rich(cfg.contenu.objectif) + "</p>" : "") + notePart + '<div class="pc-voies"><button type="button" class="pc-voie" data-pc-ouvrir="mission"><span class="e" aria-hidden="true">🛠️</span><b>Je le construis</b><span class="mini">' + echapperHTML("La mission : " + P.duree(du.mission) + " dans votre document, avec des indices si besoin. Le widget complète ensuite votre cadeau autour de vos tables.") + '</span></button><button type="button" class="pc-voie" data-pc-installer aria-expanded="' + (P.installOuvert ? "true" : "false") + '"' + (P.inst ? ' aria-controls="pc-installe"' : "") + '><span class="e" aria-hidden="true">⚡</span><b>Installe pour moi</b><span class="mini">Tout est créé en un geste, vide ou avec des exemples. La leçon et le quiz restent disponibles.</span></button></div><div class="pc-installe" id="pc-installe"' + (P.installOuvert ? "" : " hidden") + "></div>";
+      corps = '<h2 id="pc-entree-t">Deux façons d’obtenir votre bonus</h2>' + (cfg.contenu.objectif ? '<p class="mini" style="margin-top:4px">' + rich(cfg.contenu.objectif) + "</p>" : "") + notePart + '<div class="pc-voies"><button type="button" class="pc-voie" data-pc-ouvrir="mission"><span class="e" aria-hidden="true">🛠️</span><b>Je le construis</b><span class="mini">' + echapperHTML("La mission : " + P.duree(du.mission) + " dans votre document, avec des indices si besoin. Le widget complète ensuite votre bonus autour de vos tables.") + '</span></button><button type="button" class="pc-voie" data-pc-installer aria-expanded="' + (P.installOuvert ? "true" : "false") + '"' + (P.inst ? ' aria-controls="pc-installe"' : "") + '><span class="e" aria-hidden="true">⚡</span><b>Installe pour moi</b><span class="mini">Tout est créé en un geste, vide ou avec des exemples. La leçon et le quiz restent disponibles.</span></button></div><div class="pc-installe" id="pc-installe"' + (P.installOuvert ? "" : " hidden") + "></div>";
     }
     a.innerHTML = '<section class="carte pc-entree" aria-labelledby="pc-entree-t">' + (etiquette ? '<span class="pil t-lavande">' + echapperHTML(etiquette) + "</span>" : "") + corps + '<div class="pc-liens">' + (nq ? '<button type="button" class="btn sec" data-pc-ouvrir="quiz">🧠 Quiz du module · ' + echapperHTML(P.duree(du.quiz)) + "</button>" : "") + '<button type="button" class="btn lien" data-pc-ouvrir="capot">🔧 La leçon · ' + echapperHTML(P.duree(du.lecon)) + "</button></div>" + (etat.length ? '<p class="mini pc-etat-l" role="status">' + echapperHTML(etat.join(" · ")) + "</p>" : "") + (mode === "completer" ? '<div class="pc-installe" id="pc-installe" hidden></div>' : "") + "</section>";
     var zone = document.getElementById("pc-installe");
@@ -7528,12 +7528,12 @@ MGP.parcours = MGP.parcours || {};
       return;
     }
     if (MGP.g.acces !== "full") {
-      MGP.annoncer("Le widget a besoin de l’accès complet au document pour compléter le cadeau.", "err");
+      MGP.annoncer("Le widget a besoin de l’accès complet au document pour compléter le bonus.", "err");
       return;
     }
     if (bouton) {
       bouton.disabled = true;
-      bouton.textContent = "Le cadeau se complète...";
+      bouton.textContent = "Le bonus se complète...";
     }
     try {
       sessionStorage.setItem("mgp-parcours-fete", cfg.module);
@@ -7544,8 +7544,8 @@ MGP.parcours = MGP.parcours || {};
     try {
       await cfg.completer();
     } catch (e) {
-      logSecurite("compléter le cadeau", e);
-      MGP.annoncer("Le cadeau n’a pas pu se compléter : " + (e && e.message ? e.message : e), "err");
+      logSecurite("compléter le bonus", e);
+      MGP.annoncer("Le bonus n’a pas pu se compléter : " + (e && e.message ? e.message : e), "err");
       if (bouton && bouton.isConnected) {
         bouton.disabled = false;
         bouton.textContent = lib;
@@ -7645,7 +7645,7 @@ MGP.parcours = MGP.parcours || {};
       }).join("") + (b.liste ? "<ul>" + b.liste.map(function(x) {
         return "<li>" + rich(x) + "</li>";
       }).join("") + "</ul>" : "") + (b.code ? '<pre class="code">' + echapperHTML(b.code) + "</pre>" : "");
-    }).join("") + '<p><a href="' + echapperHTML(comp ? comp.aide : "https://support.getgrist.com/") + '" target="_blank" rel="noopener" class="pc-aide">📖 ' + echapperHTML(comp ? comp.nom : "Grist") + " dans l’aide de Grist</a></p>" + (cfg.capot && cfg.installe && cfg.installe() ? '<div class="pc-pied"><button type="button" class="btn sec" data-pc-capot>Voir les tables de mon cadeau</button></div>' : "") + "</section>";
+    }).join("") + '<p><a href="' + echapperHTML(comp ? comp.aide : "https://support.getgrist.com/") + '" target="_blank" rel="noopener" class="pc-aide">📖 ' + echapperHTML(comp ? comp.nom : "Grist") + " dans l’aide de Grist</a></p>" + (cfg.capot && cfg.installe && cfg.installe() ? '<div class="pc-pied"><button type="button" class="btn sec" data-pc-capot>Voir les tables de mon bonus</button></div>' : "") + "</section>";
   };
   P.pointsMission = function() {
     var n = Object.keys(P.mission.niveaux).reduce(function(s, k) {
@@ -7664,10 +7664,10 @@ MGP.parcours = MGP.parcours || {};
       return "<li>" + rich(e) + "</li>";
     }).join("") + "</ol>" : "");
     if (l && l.MISSION === "Réussie") {
-      return tete + '<div class="pc-retour ok" role="status"><p class="pc-verdict">✅ Mission réussie : ' + (l.MISSION_POINTS || 0) + " points</p><p>Votre cadeau a été complété autour de vos tables.</p></div></section>";
+      return tete + '<div class="pc-retour ok" role="status"><p class="pc-verdict">✅ Mission réussie : ' + (l.MISSION_POINTS || 0) + " points</p><p>Votre bonus a été complété autour de vos tables.</p></div></section>";
     }
     if (cfg.installe && cfg.installe()) {
-      return tete + '<div class="pc-retour" role="status"><p class="pc-verdict">Le cadeau est déjà installé</p><p>La mission se fait avant l’installation : elle construit le début du cadeau. Pour vous entraîner, refaites-la dans un document neuf, ou passez au quiz.</p></div><div class="pc-pied"><button type="button" class="btn" data-pc-vue="quiz">🧠 Passer au quiz</button></div></section>';
+      return tete + '<div class="pc-retour" role="status"><p class="pc-verdict">Le bonus est déjà installé</p><p>La mission se fait avant l’installation : elle construit le début du bonus. Pour vous entraîner, refaites-la dans un document neuf, ou passez au quiz.</p></div><div class="pc-pied"><button type="button" class="btn" data-pc-vue="quiz">🧠 Passer au quiz</button></div></section>';
     }
     var res = P.mission.resultats, nOk = res ? res.filter(function(r) {
       return r.ok;
@@ -7757,16 +7757,16 @@ MGP.parcours = MGP.parcours || {};
     } catch (e) {
       logSecurite("sessionStorage", e);
     }
-    document.getElementById("pc-vue").innerHTML = '<section class="carte pc-fete" role="status"><p class="gros" aria-hidden="true">🎉</p><h2>Mission réussie !</h2><p>' + champs.MISSION_POINTS + " points. Votre cadeau se complète maintenant autour de vos tables : rien de ce que vous avez fait n’est effacé.</p></section>";
-    MGP.annoncer("Mission réussie : votre cadeau se complète", "ok");
+    document.getElementById("pc-vue").innerHTML = '<section class="carte pc-fete" role="status"><p class="gros" aria-hidden="true">🎉</p><h2>Mission réussie !</h2><p>' + champs.MISSION_POINTS + " points. Votre bonus se complète maintenant autour de vos tables : rien de ce que vous avez fait n’est effacé.</p></section>";
+    MGP.annoncer("Mission réussie : votre bonus se complète", "ok");
     if (cfg.completer) {
       setTimeout(async function() {
         P.fermer();
         try {
           await cfg.completer();
         } catch (e) {
-          logSecurite("compléter le cadeau", e);
-          MGP.annoncer("Le cadeau n’a pas pu se compléter : " + (e && e.message ? e.message : e), "err");
+          logSecurite("compléter le bonus", e);
+          MGP.annoncer("Le bonus n’a pas pu se compléter : " + (e && e.message ? e.message : e), "err");
         }
       }, 900);
     }
@@ -7800,8 +7800,8 @@ MGP.parcours = MGP.parcours || {};
       } catch (e) {
         logSecurite("page en double", e);
       }
-      var txtDbl = dbl ? dbl.retirable ? "Votre cadeau est maintenant sur votre page « " + dbl.sa + " », avec votre table. Cette page-ci, « " + dbl.nom + " », fait doublon : rangez votre cadeau sur votre page pour n’en garder qu’une." : "Votre cadeau est maintenant sur votre page « " + dbl.sa + " », avec votre table. La page « " + dbl.nom + " » montre aussi d’autres vues : elle reste, retirez ce widget à la main si vous le souhaitez." : "";
-      d.innerHTML = '<div class="poignee" aria-hidden="true"></div><div class="corps pc-fete"><p class="gros" aria-hidden="true">🎉</p><h2 id="pc-fete-t">Bravo, vous avez construit votre cadeau</h2><p>' + echapperHTML("Mission réussie (" + (l && l.MISSION_POINTS || 0) + " points). Le widget a ajouté les champs et les exemples qui manquaient autour de votre table.") + "</p>" + (txtDbl ? '<p class="pc-doublon">' + echapperHTML(txtDbl) + "</p>" : "") + '<div class="pied"><button type="button" class="btn sec" data-pc-fete-quiz>🧠 Quiz du module</button>' + (dbl && dbl.retirable ? '<button type="button" class="btn sec" data-pc-ranger>🧹 Ranger mon cadeau sur ma page</button>' : "") + '<button type="button" class="btn" data-fermer>Voir mon cadeau</button></div></div>';
+      var txtDbl = dbl ? dbl.retirable ? "Votre bonus est maintenant sur votre page « " + dbl.sa + " », avec votre table. Cette page-ci, « " + dbl.nom + " », fait doublon : rangez votre bonus sur votre page pour n’en garder qu’une." : "Votre bonus est maintenant sur votre page « " + dbl.sa + " », avec votre table. La page « " + dbl.nom + " » montre aussi d’autres vues : elle reste, retirez ce widget à la main si vous le souhaitez." : "";
+      d.innerHTML = '<div class="poignee" aria-hidden="true"></div><div class="corps pc-fete"><p class="gros" aria-hidden="true">🎉</p><h2 id="pc-fete-t">Bravo, vous avez construit votre bonus</h2><p>' + echapperHTML("Mission réussie (" + (l && l.MISSION_POINTS || 0) + " points). Le widget a ajouté les champs et les exemples qui manquaient autour de votre table.") + "</p>" + (txtDbl ? '<p class="pc-doublon">' + echapperHTML(txtDbl) + "</p>" : "") + '<div class="pied"><button type="button" class="btn sec" data-pc-fete-quiz>🧠 Quiz du module</button>' + (dbl && dbl.retirable ? '<button type="button" class="btn sec" data-pc-ranger>🧹 Ranger mon bonus sur ma page</button>' : "") + '<button type="button" class="btn" data-fermer>Voir mon bonus</button></div></div>';
       MGP.brancherDialogues();
       d.querySelector("[data-pc-fete-quiz]").addEventListener("click", function() {
         MGP.fermer(d);
@@ -8845,7 +8845,7 @@ VOY.chargerConges = async function() {
   }
 };
 VOY.completerMission = async function() {
-  montrerLoader("Votre cadeau se complète...");
+  montrerLoader("Votre bonus se complète...");
   await MGP.parcours.adopter([VOY.DEFS.VOYAGES]);
   await VOY.installer(true);
 };
