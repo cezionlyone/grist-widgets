@@ -4144,10 +4144,10 @@ MGP.parcours = MGP.parcours || {};
     var qs = P.tirerBilan(opts.banque || P.BANQUE, [], { niveau, parCompetence: 1, max: 10, graine: opts.graine });
     var nv = P.niveauParcours(niveau) || { nom: niveau };
     if (!qs.length) {
-      conteneur.innerHTML = '<p class="vide">Le test de placement du niveau ' + echapperHTML(nv.nom) + " arrive bientôt : ses questions ne sont pas encore écrites.</p>";
+      conteneur.innerHTML = '<p class="vide">Le quiz « Je connais déjà » du niveau ' + echapperHTML(nv.nom) + " arrive bientôt : ses questions ne sont pas encore écrites.</p>";
       return null;
     }
-    conteneur.innerHTML = '<p class="mini" style="margin-bottom:10px">' + echapperHTML(qs.length + " questions sur les notions du niveau " + nv.nom + ". Avec 80 % de bonnes réponses, toutes ses cartes s’ouvrent.") + '</p><div class="pc-placement"></div>';
+    conteneur.innerHTML = '<p class="mini" style="margin-bottom:10px">' + echapperHTML(qs.length + " questions sur les notions du niveau " + nv.nom + ". Vous connaissez déjà Grist ? Avec 80 % de bonnes réponses, toutes les cartes du niveau s’ouvrent d’un coup, sans passer par les précédentes.") + '</p><div class="pc-placement"></div>';
     return P.quiz(conteneur.querySelector(".pc-placement"), qs, { sansRefaire: true, onFin: async function(r) {
       var l = P.ligne("Placement", niveau), ok = r.score >= P.SEUIL_PLACEMENT;
       await P.enregistrer("Placement", niveau, { QUIZ_POINTS: r.points, QUIZ_MAX: r.max, QUIZ_SCORE: Math.max(r.score, l && Number(l.QUIZ_SCORE) || 0), QUIZ_LE: P.maintenantSec(), ESSAIS_QUIZ: (l && l.ESSAIS_QUIZ || 0) + 1, QUIZ_REPONSES: JSON.stringify(r.reponses.map(function(x) {

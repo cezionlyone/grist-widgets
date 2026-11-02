@@ -3703,10 +3703,10 @@ MGP.parcours = MGP.parcours || {};
     var qs = P2.tirerBilan(opts.banque || P2.BANQUE, [], { niveau, parCompetence: 1, max: 10, graine: opts.graine });
     var nv = P2.niveauParcours(niveau) || { nom: niveau };
     if (!qs.length) {
-      conteneur.innerHTML = '<p class="vide">Le test de placement du niveau ' + echapperHTML(nv.nom) + " arrive bientôt : ses questions ne sont pas encore écrites.</p>";
+      conteneur.innerHTML = '<p class="vide">Le quiz « Je connais déjà » du niveau ' + echapperHTML(nv.nom) + " arrive bientôt : ses questions ne sont pas encore écrites.</p>";
       return null;
     }
-    conteneur.innerHTML = '<p class="mini" style="margin-bottom:10px">' + echapperHTML(qs.length + " questions sur les notions du niveau " + nv.nom + ". Avec 80 % de bonnes réponses, toutes ses cartes s’ouvrent.") + '</p><div class="pc-placement"></div>';
+    conteneur.innerHTML = '<p class="mini" style="margin-bottom:10px">' + echapperHTML(qs.length + " questions sur les notions du niveau " + nv.nom + ". Vous connaissez déjà Grist ? Avec 80 % de bonnes réponses, toutes les cartes du niveau s’ouvrent d’un coup, sans passer par les précédentes.") + '</p><div class="pc-placement"></div>';
     return P2.quiz(conteneur.querySelector(".pc-placement"), qs, { sansRefaire: true, onFin: async function(r) {
       var l = P2.ligne("Placement", niveau), ok = r.score >= P2.SEUIL_PLACEMENT;
       await P2.enregistrer("Placement", niveau, { QUIZ_POINTS: r.points, QUIZ_MAX: r.max, QUIZ_SCORE: Math.max(r.score, l && Number(l.QUIZ_SCORE) || 0), QUIZ_LE: P2.maintenantSec(), ESSAIS_QUIZ: (l && l.ESSAIS_QUIZ || 0) + 1, QUIZ_REPONSES: JSON.stringify(r.reponses.map(function(x) {
@@ -5780,7 +5780,7 @@ ACA.rendre = function() {
   document.getElementById("ac-jauge").innerHTML = MGP.jaugeHTML(faites, cartes.length, "Cartes terminées");
   document.getElementById("ac-niveaux").innerHTML = niveaux.map(function(n, i) {
     var et = ACA.etats.niveaux[n.id];
-    return '<section class="ac-niveau" aria-labelledby="ac-n-' + n.id + '"><div class="ac-niveau-tete"><h2 id="ac-n-' + n.id + '">Niveau ' + (i + 1) + " · " + echapperHTML(n.nom) + '</h2><span class="mini">' + et.faites + " sur " + et.total + (et.place ? " · ouvert par le test de placement" : "") + '</span><div class="actions">' + (et.ouvert || i === 0 ? "" : '<button type="button" class="btn sec" data-ac-placement="' + n.id + '">🚀 Test de placement</button>') + '</div></div><div class="ac-grille">' + n.modules.map(function(id) {
+    return '<section class="ac-niveau" aria-labelledby="ac-n-' + n.id + '"><div class="ac-niveau-tete"><h2 id="ac-n-' + n.id + '">Niveau ' + (i + 1) + " · " + echapperHTML(n.nom) + '</h2><span class="mini">' + et.faites + " sur " + et.total + (et.place ? " · ouvert par le quiz « Je connais déjà »" : "") + '</span><div class="actions">' + (et.ouvert || i === 0 ? "" : '<button type="button" class="btn sec" data-ac-placement="' + n.id + '">⏩ Je connais déjà ce niveau</button>') + '</div></div><div class="ac-grille">' + n.modules.map(function(id) {
       return ACA.carteHTML(P.module(id));
     }).join("") + "</div>" + ACA.bilanHTML(n, i, i === niveaux.length - 1) + "</section>";
   }).join("");
@@ -5823,7 +5823,7 @@ ACA.secouer = function(b) {
     b.classList.remove("secoue");
   }, 500);
   var n = Number(b.dataset.acCarte);
-  MGP.annoncer("Carte " + n + " verrouillée : terminez d’abord la carte " + (n - 1) + ", ou passez le test de placement du niveau.", "sr");
+  MGP.annoncer("Carte " + n + " verrouillée : terminez d’abord la carte " + (n - 1) + ", ou passez le quiz « Je connais déjà ce niveau ».", "sr");
 };
 ACA.ouvrirCarte = function(id, vue) {
   var m = P.module(id), d = document.getElementById("dlg-carte");
@@ -5983,7 +5983,7 @@ ACA.brancher = function() {
     }
     if (b = ev.target.closest("[data-ac-placement]")) {
       var niv = b.dataset.acPlacement, n = P.niveauParcours(niv);
-      ACA.ouvrirBilan("🚀 Test de placement : niveau " + n.nom, function(z) {
+      ACA.ouvrirBilan("⏩ Je connais déjà le niveau " + n.nom, function(z) {
         P.placement(z, niv, { onFin: async function() {
           await ACA.charger();
           ACA.rendre();
