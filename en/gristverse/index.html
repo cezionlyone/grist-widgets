@@ -3,8 +3,8 @@
   ============================================================================
   READ ME - Gristverse
   ============================================================================
-  Version     : 2.0.0-en
-  Date        : 30/10/2026
+  Version     : 2.0.1-en
+  Date        : 02/11/2026
   Author      : madeXcé
   License     : MIT
   Platform    : Grist (custom widget)
@@ -217,6 +217,7 @@
 
   HISTORY
   -------
+  2.0.1 - 2026-11-02 - madeXcé - New madeXcé logo colors (Grist orange X, Grist green cé).
   2.0.0 - 2026-10-30 - madeXcé - Several verses as tabs (one per department, subsidiary or site), people shown by first name with an optional emoji, settings attached to each person, maps that stay readable for large teams.
   1.4.0 - 2026-10-30 - madeXcé - Fun extras: day and night, seasons, Friday afternoon, the team plant, task confetti and trophy, Avane the office dog and Avane's bowl, varied houses and islands, a hidden surprise. The map toolbar moves into the header bar on wide screens (more height for the map).
   1.3.0 - 2026-10-30 - madeXcé - Manage everything from the widget: meetings, team, tasks, resources, projects, activities and presence periods (create, edit, delete).
@@ -432,11 +433,11 @@
     .w-bandeau__sep{width:1px;align-self:stretch;margin:.25rem 0;background:var(--border-default-grey);flex-shrink:0; color: var(--text-default-grey); }
     .w-bandeau__titre{font-size:2rem;font-weight:600;color:var(--text-title-primary);white-space:nowrap;margin:0;line-height:1}
     .w-bandeau__version{font-size:.75rem;color:var(--text-mention-grey);font-weight:400;margin-left:.5rem;white-space:nowrap}
-    /* madeXcé logo: colors read from the design tokens */
+    /* madeXcé logo: made in the theme grey, X in Grist orange, cé in Grist green */
     .w-logo{display:block;width:100%;height:auto}
     .w-logo__made{fill:var(--text-mention-grey);font-weight:400}
-    .w-logo__x{fill:var(--text-label-accent-pink);font-weight:700}
-    .w-logo__ce{fill:var(--text-title-primary);font-weight:800}
+    .w-logo__x{fill:#F9AE41;font-weight:700}
+    .w-logo__ce{fill:#16B378;font-weight:800}
 
   /* === SECTION : LOADER AND BANNERS === */
     .w-loader { display: none; position: fixed; inset: 0; z-index: 9998;
@@ -1445,7 +1446,7 @@ function dessinerLogo() {
   texte.setAttribute('font-size', '19');
   texte.setAttribute('textLength', '96');
   texte.setAttribute('lengthAdjust', 'spacingAndGlyphs');
-  [['made', 'w-logo__made'], ['X', 'w-logo__x'], ['Cé', 'w-logo__ce']].forEach(function (morceau) {
+  [['made', 'w-logo__made'], ['X', 'w-logo__x'], ['cé', 'w-logo__ce']].forEach(function (morceau) {
     var t = document.createElementNS(ns, 'tspan');
     t.setAttribute('class', morceau[1]);
     t.textContent = morceau[0];

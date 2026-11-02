@@ -3,8 +3,8 @@
   ============================================================================
   READ ME - Gristcity
   ============================================================================
-  Version     : 1.1.0
-  Date        : 30/10/2026
+  Version     : 1.1.1
+  Date        : 02/11/2026
   Auteur      : madeXcé
   Licence     : MIT
   Plateforme  : Grist (widget personnalisé)
@@ -198,6 +198,7 @@
   1.1.0 - 30/10/2026 - madeXcé - Tout se gère depuis le widget : supprimer
     un élément, gérer les personnes et les quartiers (créer, modifier,
     supprimer).
+  1.1.1 - 02/11/2026 - madeXcé - Nouvelles couleurs du logo madeXcé (X orange Grist, cé vert Grist).
 
   THÈME
   ------
@@ -240,11 +241,11 @@
     .w-bandeau__sep{width:1px;align-self:stretch;margin:.25rem 0;background:var(--border-default-grey);flex-shrink:0; color: var(--text-default-grey); }
     .w-bandeau__titre{font-size:2rem;font-weight:600;color:var(--text-title-blue-france);white-space:nowrap;margin:0;line-height:1}
     .w-bandeau__version{font-size:.75rem;color:var(--text-mention-grey);font-weight:400;margin-left:.5rem;white-space:nowrap}
-    /* Logo madeXcé : couleurs lues dans les jetons DSFR */
+    /* Logo madeXcé : made aux couleurs du thème, X orange Grist, cé vert Grist */
     .w-logo{display:block;width:100%;height:auto}
     .w-logo__made{fill:var(--text-mention-grey);font-weight:400}
-    .w-logo__x{fill:var(--text-label-pink-tuile);font-weight:700}
-    .w-logo__ce{fill:var(--text-title-blue-france);font-weight:800}
+    .w-logo__x{fill:#F9AE41;font-weight:700}
+    .w-logo__ce{fill:#16B378;font-weight:800}
 
   /* === SECTION : LOADER ET BANNIERES === */
     .w-loader { display: none; position: fixed; inset: 0; z-index: 9998;
@@ -1149,7 +1150,7 @@ function dessinerLogo() {
   texte.setAttribute('font-size', '19');
   texte.setAttribute('textLength', '96');
   texte.setAttribute('lengthAdjust', 'spacingAndGlyphs');
-  [['made', 'w-logo__made'], ['X', 'w-logo__x'], ['Cé', 'w-logo__ce']].forEach(function (morceau) {
+  [['made', 'w-logo__made'], ['X', 'w-logo__x'], ['cé', 'w-logo__ce']].forEach(function (morceau) {
     var t = document.createElementNS(ns, 'tspan');
     t.setAttribute('class', morceau[1]);
     t.textContent = morceau[0];
