@@ -1585,6 +1585,9 @@ a.pc-aide {
   align-self: center;
   display: block;
 }
+.pc-quiz-jauge {
+  margin-top: 14px;
+}
 .deb {
   display: grid;
   gap: 24px;
@@ -5428,10 +5431,14 @@ MGP.parcours = MGP.parcours || {};
   };
   P.questionHTML = function(q, i, etat) {
     var id = "pcq" + i, bloque = etat.valide ? " disabled" : "", html = "";
-    var graine = P.hash(q.question || i);
+    var graine = etat.graine !== void 0 ? etat.graine : P.hash(q.question || i);
     if (q.type === "qcm" || q.type === "multiple") {
       var ty = q.type === "qcm" ? "radio" : "checkbox";
-      html = '<fieldset class="pc-options"><legend class="sr">' + echapperHTML(q.question) + "</legend>" + q.choix.map(function(c, k) {
+      var ordreChoix = P.melanger(q.choix.map(function(c, k) {
+        return k;
+      }), graine);
+      html = '<fieldset class="pc-options"><legend class="sr">' + echapperHTML(q.question) + "</legend>" + ordreChoix.map(function(k) {
+        var c = q.choix[k];
         var coche = q.type === "qcm" ? etat.rep === k : (etat.rep || []).indexOf(k) >= 0;
         return '<label class="pc-option" for="' + id + "-" + k + '"><input type="' + ty + '" name="' + id + '" id="' + id + "-" + k + '" value="' + k + '"' + (coche ? " checked" : "") + bloque + ' autocomplete="off"><span>' + rich(c) + "</span></label>";
       }).join("") + "</fieldset>";
@@ -5521,8 +5528,12 @@ MGP.parcours = MGP.parcours || {};
   };
   P.quiz = function(conteneur, questions, opts) {
     opts = opts || {};
-    var Q = { questions, i: 0, etats: questions.map(function() {
-      return { rep: null, valide: false, ok: false };
+    var tirage = opts.graineAffichage !== void 0 ? opts.graineAffichage : (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
+    if (opts.melanger !== false && !window.MGP_QUIZ_ORDRE_FIXE && questions.length > 1) {
+      questions = P.melanger(questions, tirage);
+    }
+    var Q = { questions, i: 0, etats: questions.map(function(q, k) {
+      return { rep: null, valide: false, ok: false, graine: P.hash(q.question || k) + tirage >>> 0 };
     }), fini: false, opts };
     conteneur.__pcQuiz = Q;
     P.rendreQuiz(conteneur);
@@ -5567,7 +5578,7 @@ MGP.parcours = MGP.parcours || {};
     if (e.valide) {
       retour = '<div class="pc-retour ' + (e.ok ? "ok" : "ko") + '" role="status"><p class="pc-verdict">' + (e.ok ? "✅ Bonne réponse" : "❌ Pas tout à fait") + "</p>" + (!e.ok ? "<p><b>La bonne réponse :</b> " + rich(P.TYPES_Q[q.type].solution(q)) + "</p>" : "") + (q.explication ? "<p>" + rich(q.explication) + "</p>" : "") + '<p><a href="' + echapperHTML(P.lienAide(q)) + '" target="_blank" rel="noopener" class="pc-aide">📖 En savoir plus dans l’aide de Grist</a></p></div>';
     }
-    conteneur.innerHTML = '<div class="pc-quiz-tete"><span class="mini">Question ' + (Q.i + 1) + " sur " + n + " · " + echapperHTML(P.TYPES_Q[q.type].nom) + "</span>" + (comp ? '<span class="pil t-lavande">' + echapperHTML(comp.nom) + "</span>" : "") + "</div>" + MGP.jaugeHTML(Q.i + (e.valide ? 1 : 0), n, "Avancement du quiz") + '<section class="pc-question" aria-labelledby="pcq-titre"><h3 id="pcq-titre" tabindex="-1">' + rich(q.question) + "</h3>" + P.questionHTML(q, Q.i, e) + '<p class="mini pc-erreur" role="alert"></p>' + retour + '<div class="pc-pied">' + (e.valide ? '<button type="button" class="btn" data-pc-suivant>' + (Q.i + 1 < n ? "Question suivante" : "Voir mon résultat") + "</button>" : '<button type="button" class="btn" data-pc-valider>Vérifier</button>') + "</div></section>";
+    conteneur.innerHTML = '<div class="pc-quiz-tete"><span class="mini">Question ' + (Q.i + 1) + " sur " + n + " · " + echapperHTML(P.TYPES_Q[q.type].nom) + "</span>" + (comp ? '<span class="pil t-lavande">' + echapperHTML(comp.nom) + "</span>" : "") + '</div><section class="pc-question" aria-labelledby="pcq-titre"><h3 id="pcq-titre" tabindex="-1">' + rich(q.question) + "</h3>" + P.questionHTML(q, Q.i, e) + '<p class="mini pc-erreur" role="alert"></p>' + retour + '<div class="pc-pied">' + (e.valide ? '<button type="button" class="btn" data-pc-suivant>' + (Q.i + 1 < n ? "Question suivante" : "Voir mon résultat") + "</button>" : '<button type="button" class="btn" data-pc-valider>Vérifier</button>') + '</div></section><div class="pc-quiz-jauge">' + MGP.jaugeHTML(Q.i + (e.valide ? 1 : 0), n, "Avancement du quiz") + "</div>";
     if (focus === "titre") {
       var h = conteneur.querySelector("#pcq-titre");
       if (h) {
@@ -6225,7 +6236,7 @@ MGP.parcours = MGP.parcours || {};
     }
     var l = P.ligne("Module", cfg.module);
     if (vue === "quiz") {
-      z.innerHTML = '<section class="carte"><h2>🧠 Quiz du module</h2><p class="mini" style="margin:4px 0 12px">' + echapperHTML((l && l.QUIZ_MAX ? "Votre dernier résultat : " + l.QUIZ_POINTS + " sur " + l.QUIZ_MAX + ". " : "") + "Pas de chronomètre : chaque réponse est expliquée, et le quiz se refait quand vous voulez.") + '</p><div id="pc-quiz"></div></section>';
+      z.innerHTML = '<section class="carte"><h2>🧠 Quiz du module</h2><div id="pc-quiz" style="margin-top:10px"></div><p class="mini pc-quiz-note" style="margin-top:12px">' + echapperHTML((l && l.QUIZ_MAX ? "Votre dernier résultat : " + l.QUIZ_POINTS + " sur " + l.QUIZ_MAX + ". " : "") + "Pas de chronomètre : chaque réponse est expliquée, et le quiz se refait quand vous voulez.") + "</p></section>";
       P.quiz(document.getElementById("pc-quiz"), c.questions || [], { onFin: P.finQuizModule });
     } else if (vue === "capot") {
       z.innerHTML = P.capotHTML(c, cfg);
