@@ -1652,6 +1652,13 @@ a.pc-aide {
   -webkit-backface-visibility: hidden;
   overflow: hidden;
 }
+.ac-face {
+  transition: visibility 0s linear .3s;
+}
+.ac-carte.retournee .ac-avant,
+.ac-carte:not(.retournee) .ac-arriere {
+  visibility: hidden;
+}
 .ac-avant {
   border: 1px solid var(--trait);
   border-top: 6px solid var(--niv, var(--trait));
@@ -1855,7 +1862,11 @@ a.pc-aide {
     transform: none;
   }
   .ac-face {
-    transition: opacity .3s ease;
+    transition: opacity .3s ease, visibility 0s linear .3s;
+  }
+  .ac-carte.retournee .ac-arriere,
+  .ac-carte:not(.retournee) .ac-avant {
+    transition: opacity .3s ease, visibility 0s;
   }
   .ac-arriere {
     opacity: 0;
