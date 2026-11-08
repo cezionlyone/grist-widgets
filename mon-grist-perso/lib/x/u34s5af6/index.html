@@ -2273,15 +2273,25 @@ MGP.g.trouver = function(def) {
   if (t) {
     return t;
   }
+  var prises = Object.keys(MGP.g.registre || {}).filter(function(k) {
+    return k !== def.cle;
+  }).map(function(k) {
+    return MGP.g.registre[k];
+  });
+  var libre = function(x) {
+    return prises.indexOf(x.tableId) < 0;
+  };
   if (def.motif) {
     t = tables.filter(function(x) {
-      return x.tableId.toUpperCase().indexOf(def.motif) >= 0 && aSignature(x);
+      return x.tableId.toUpperCase().indexOf(def.motif) >= 0 && aSignature(x) && libre(x);
     })[0];
     if (t) {
       return t;
     }
   }
-  return def.motif ? null : tables.filter(aSignature)[0] || null;
+  return def.motif ? null : tables.filter(function(x) {
+    return aSignature(x) && libre(x);
+  })[0] || null;
 };
 MGP.g.chargerTech = async function() {
   var t = MGP.g.trouver(MGP.SOCLE.TECH);
@@ -3145,6 +3155,22 @@ MGP.g.decrireWidget = async function() {
     return false;
   }
 };
+MGP.g.NOM_PAGE_DEFAUT = /^(new page|nouvelle page|untitled( page)?|page sans titre|table\d*|)$/i;
+MGP.g.nommerPageParDefaut = async function(vue, nom) {
+  try {
+    var vues = await MGP.g.lire("_grist_Views"), v = vues.filter(function(x) {
+      return x.id === vue;
+    })[0];
+    if (!v || !MGP.g.NOM_PAGE_DEFAUT.test(String(v.name || "").trim())) {
+      return false;
+    }
+    await MGP.g.actions([["UpdateRecord", "_grist_Views", vue, { name: nom }]]);
+    return true;
+  } catch (e) {
+    logSecurite("nom de page par défaut", e);
+    return false;
+  }
+};
 MGP.g.marquerCadeau = async function() {
   var c = MGP.g.CADEAU;
   if (!c || !MGP.g.tech || MGP.g.acces !== "full") {
@@ -3157,6 +3183,9 @@ MGP.g.marquerCadeau = async function() {
       avant = null;
     }
     var vue = await MGP.g.vueCourante();
+    if (vue && c.page) {
+      await MGP.g.nommerPageParDefaut(vue, c.page);
+    }
     MGP.g.pageInconnue = !vue && !(avant && avant.vue);
     var v = { widget: c.nom, cle: c.cle || null, section: c.section || null, installe_le: avant && avant.installe_le || new Date(MGP.maintenant()).toISOString(), vue: vue || avant && avant.vue || null };
     if (avant && JSON.stringify(avant) === JSON.stringify(v)) {
@@ -3400,13 +3429,21 @@ SD.demarrer = async function() {
   await MGP.g.demarrer("full");
   await SD.lancer();
   try {
+    var vue = await MGP.g.vueCourante();
+    if (vue && MGP.g.acces === "full") {
+      await MGP.g.nommerPageParDefaut(vue, MGP.g.CADEAU.page);
+    }
+  } catch (e) {
+    logSecurite("nom de page", e);
+  }
+  try {
     await MGP.g.chargerTech();
     await MGP.g.marquerCadeau();
   } catch (e) {
     logSecurite("marqueur", e);
   }
 };
-MGP.g.CADEAU = { cle: "sante_doc", nom: SD.NOM, section: null, description: "Contrôle de santé du document : nombre de lignes, taille, pièces jointes et formules à surveiller, lu en direct." };
+MGP.g.CADEAU = { cle: "sante_doc", nom: SD.NOM, page: "🩻 " + SD.NOM, section: null, description: "Contrôle de santé du document : nombre de lignes, taille, pièces jointes et formules à surveiller, lu en direct." };
 MGP.g.reprendre = SD.lancer;
 window.SD = SD;
 SD.demarrer();</script>
