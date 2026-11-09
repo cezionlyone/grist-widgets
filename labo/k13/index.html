@@ -148,6 +148,13 @@
           ne s'affiche plus (il restait visible, jaune et vide) ; l'encart des
           droits indique « Permissions avancées », rubrique « Outils » du
           panneau de gauche, libellé réel de l'instance.
+          Récapitulatif : une liste encore vide (ex. « Responsable » du
+          modèle Suivi des demandes) n'apparaît plus comme un blocage :
+          encadré « Vous pouvez créer le Kanban ainsi » et bouton « Ajouter
+          des personnes à… » qui rouvre l'information. Information de type
+          Personne : « Reprendre les personnes du document » remplit la
+          liste depuis une table de personnes (utilisateurs, équipe,
+          agents…).
           Volet : les icônes de sortie sont sur une seule ligne et, au
           survol, seule l'info-bulle apparaît (plus de carré blanc).
           Impression : seulement le titre de la vue et son contenu, avec les
@@ -4499,6 +4506,7 @@ function detailInformation(info, i) {
     zone.appendChild(creer('div', { classe: 'fr-input-group' }, [creer('p', { classe: 'fr-label fr-mb-1v', texte: info.genre === 'personne' ? 'Personnes proposées' : 'Valeurs possibles' }),
       puces, creer('div', { classe: 'w-outils fr-mb-0' }, [creer('label', { classe: 'fr-sr-only', attrs: { 'for': 'kVal' + i }, texte: 'Nouvelle valeur' }), nv,
         bouton('Ajouter', 'secondaire', 'add-line', ajouterValeur, { petit: true, aria: 'Ajouter la valeur' })]),
+      info.genre === 'personne' ? reprisePersonnes(info, i) : null,
       info.nouvelle ? null : creer('p', { classe: 'fr-hint-text', texte: 'Retirer une valeur ne l\'efface pas des cartes qui la portent déjà.' })]));
   }
   var roles = creer('div', { classe: 'w-outils fr-mb-0' });
@@ -4844,13 +4852,70 @@ function compterChangements(b) {
   return Object.keys(g).reduce(function (s, k) { return s + g[k].length; }, 0);
 }
 
+/* Personnes du document : colonnes de nom des tables de personnes
+   (utilisateurs, equipe, agents...). Rend [{ tableId, col, prenom, libelle }]. */
+var MOTIF_TABLE_PERSONNES = /UTILISATEUR|EQUIPE|TEAM|AGENT|PERSONNE|MEMBRE|ANNUAIRE|REGISTRE|CONTACT|STAGIAIRE|PARTICIPANT/;
+function sourcesPersonnes() {
+  var res = [];
+  Object.keys((etat.meta || {}).tables || {}).forEach(function (tid) {
+    var up = normaliser(tid).toUpperCase();
+    if (estTableExclue(tid) || /KANBAN|LIBRARY|BIBLIOTHEQUE/.test(up) || !MOTIF_TABLE_PERSONNES.test(up)) { return; }
+    var cols = (etat.meta.colonnes[tid] || []).filter(function (c) { return /^(Text|Any|Choice)$/.test(String(c.type).split(':')[0]); });
+    var nomDe = function (re) { return cols.filter(function (c) { return re.test(normaliser(c.colId + ' ' + c.label).toUpperCase()); })[0]; };
+    var complet = nomDe(/NOM_COMPLET|NOM COMPLET|PRENOM_NOM|PRENOM NOM|NOM_PRENOM|FULL ?NAME|\bNAME\b|AGENT/);
+    var prenom = nomDe(/\bPRENOM\b|FIRST ?NAME/), nom = cols.filter(function (c) { return /^NOM$|^NOM_DE_FAMILLE$|^LAST_?NAME$/i.test(normaliser(c.colId)); })[0];
+    var lib = etat.meta.tables[tid].libelle || tid.replace(/_/g, ' ');
+    if (complet) { res.push({ tableId: tid, col: complet.colId, prenom: null, libelle: lib + ' : ' + complet.label }); }
+    else if (prenom && nom) { res.push({ tableId: tid, col: nom.colId, prenom: prenom.colId, libelle: lib + ' : ' + prenom.label + ' et ' + nom.label }); }
+    else if (nom) { res.push({ tableId: tid, col: nom.colId, prenom: null, libelle: lib + ' : ' + nom.label }); }
+  });
+  return res;
+}
+function reprisePersonnes(info, i) {
+  var sources = sourcesPersonnes();
+  if (!sources.length) { return null; }
+  var sel = creer('select', { classe: 'fr-select', id: 'kPers' + i }, [creer('option', { attrs: { value: '' }, texte: 'Choisir une table de personnes' })].concat(sources.map(function (x, k) { return creer('option', { attrs: { value: String(k) }, texte: x.libelle }); })));
+  return creer('div', { classe: 'fr-input-group fr-mt-2v' }, [creer('label', { classe: 'fr-label', attrs: { 'for': 'kPers' + i } }, ['Reprendre les personnes du document', creer('span', { classe: 'fr-hint-text', texte: 'Leurs noms s\'ajoutent à la liste ; vous pourrez en retirer.' })]),
+    creer('div', { classe: 'w-outils fr-mb-0' }, [sel, bouton('Reprendre', 'secondaire', 'user-add-line', async function () {
+      var x = sources[+sel.value];
+      if (!sel.value || !x) { marquerInvalide('kPers' + i, 'Choisissez une table de personnes.'); return; }
+      var d = await lireTable(x.tableId);
+      var noms = (d.id || []).map(function (id, k) { return [x.prenom ? d[x.prenom][k] : '', d[x.col][k]].map(function (v) { return v === null || v === undefined ? '' : String(v).trim(); }).filter(Boolean).join(' '); })
+        .filter(Boolean);
+      var deja = info.valeurs.map(normaliser), ajout = 0;
+      noms.sort(function (a, b) { return a.localeCompare(b, 'fr'); }).forEach(function (n) { if (deja.indexOf(normaliser(n)) === -1 && info.valeurs.length < 500) { info.valeurs.push(n); deja.push(normaliser(n)); ajout++; } });
+      majAttente(); redessinerEtape('kVal' + i);
+      annoncer(ajout ? ajout + (ajout > 1 ? ' personnes ajoutées.' : ' personne ajoutée.') : 'Aucune nouvelle personne : elles sont déjà dans la liste.');
+    }, { petit: true, id: 'kPersOk' + i })])]);
+}
+
+/* Listes encore vides (personnes, choix) : simple rappel, la creation
+   reste possible ; un bouton ouvre l'information a l'etape « Les
+   informations ». */
+function alerteListesVides(infos) {
+  var corps = creer('div', {}, [creer('p', { texte: (infos.length > 1 ? 'Ces listes n\'ont encore aucune valeur : ' : 'Cette liste n\'a encore aucune valeur : ') + infos.map(function (i) { return '« ' + i.libelle + ' »'; }).join(', ') +
+    '. ' + (infos.length > 1 ? 'Elles resteront vides' : 'Elle restera vide') + ' dans les cartes tant que vous n\'en ajoutez pas ; vous pourrez le faire plus tard dans les paramétrages.' })]);
+  var outils = creer('div', { classe: 'w-outils fr-mb-0' });
+  infos.forEach(function (info, k) {
+    outils.appendChild(bouton(info.genre === 'personne' ? 'Ajouter des personnes à « ' + info.libelle + ' »' : 'Ajouter des valeurs à « ' + info.libelle + ' »', 'secondaire', 'add-line', function () {
+      info.ouverte = true;
+      allerEtape(3);
+      var j = etat.brouillon.infos.indexOf(info), champ = document.getElementById('kVal' + j);
+      if (champ) { champ.focus(); }
+    }, { petit: true, id: 'aRecapVide' + k }));
+  });
+  corps.appendChild(outils);
+  return alerte('info', 'Vous pouvez créer le Kanban ainsi', corps);
+}
+
 /* --- Etape 7 : recapitulatif (creation) --- */
 function etapeRecapitulatif() {
   var b = etat.brouillon;
   var lib = function (u) { var i = infoParUid(u); return i && infoActive(i) ? i.libelle : ''; };
   var visibles = function (cle, prop) { return b[cle].map(infoParUid).filter(function (i) { return infoActive(i) && i[prop]; }).map(function (i) { return i.libelle; }).join(', '); };
   var infos = b.infos.filter(infoActive);
-  var vides = infos.filter(function (i) { return GENRES_A_VALEURS.indexOf(i.genre) !== -1 && !i.valeurs.length; }).map(function (i) { return i.libelle; });
+  var videsInfos = infos.filter(function (i) { return GENRES_A_VALEURS.indexOf(i.genre) !== -1 && !i.valeurs.length; });
+  var vides = videsInfos.map(function (i) { return i.libelle; });
   var filtres = b.filtres.map(lib).filter(Boolean);
   var groupes = [
     { etape: 'Général', rang: 1, lignes: [['Nom', b.nom.trim()], ['Explication', b.description.trim()]] },
@@ -4865,7 +4930,7 @@ function etapeRecapitulatif() {
       ['En retard seulement', b.filtreRetard ? 'Proposé' : 'Non proposé']] }];
   return grilleParam([], '1-1', [titreColonne('Vos choix', null),
     creer('p', { classe: 'w-mention', texte: 'Rien n\'a encore été créé. Relisez votre Kanban, puis créez-le.' }),
-    vides.length ? alerte('warning', null, 'Aucune valeur proposée pour ' + vides.join(', ') + ' : la liste restera vide dans les cartes tant que vous n\'en ajoutez pas.') : null,
+    vides.length ? alerteListesVides(videsInfos) : null,
     blocRecapitulatif(groupes)], apercuEtape('Récapitulatif'));
 }
 
