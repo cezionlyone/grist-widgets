@@ -2019,13 +2019,29 @@ MGP.formatNombre = function(n) {
     return String(n);
   }
 };
-MGP.lireMontant = function(s) {
-  var t = String(s === null || s === void 0 ? "" : s).replace(/\s/g, "").replace(/[^\d,.-]/g, "").replace(",", ".");
+MGP.lireNombre = function(s) {
+  var brut = String(s === null || s === void 0 ? "" : s).trim();
+  var neg = /^[(\-−]/.test(brut) || /-\s*$/.test(brut);
+  var t = brut.replace(/[^\d,.]/g, "");
   if (!t) {
     return null;
   }
-  var v = parseFloat(t);
-  return isNaN(v) ? null : Math.round(v * 100) / 100;
+  var ip = t.lastIndexOf("."), iv = t.lastIndexOf(","), v;
+  if (ip >= 0 && iv >= 0) {
+    var dec = Math.max(ip, iv);
+    v = parseFloat(t.slice(0, dec).replace(/[.,]/g, "") + "." + t.slice(dec + 1));
+  } else if (iv >= 0) {
+    v = t.split(",").length > 2 ? parseFloat(t.replace(/,/g, "")) : parseFloat(t.replace(",", "."));
+  } else if (ip >= 0 && /^\d{1,3}(\.\d{3})+$/.test(t)) {
+    v = parseFloat(t.replace(/\./g, ""));
+  } else {
+    v = parseFloat(t);
+  }
+  return isNaN(v) ? null : neg ? -v : v;
+};
+MGP.lireMontant = function(s) {
+  var v = MGP.lireNombre(s);
+  return v === null ? null : Math.round(v * 100) / 100;
 };
 var MOIS_LONGS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
 var MOIS_COURTS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
@@ -2455,11 +2471,11 @@ MGP.g.lignes = function(col) {
 MGP.g.lire = async function(tableId) {
   return MGP.g.lignes(await grist.docApi.fetchTable(tableId));
 };
-MGP.g.actions = async function(liste) {
+MGP.g.actions = async function(liste, options) {
   if (!liste.length) {
     return { retValues: [] };
   }
-  return grist.docApi.applyUserActions(liste);
+  return options ? grist.docApi.applyUserActions(liste, options) : grist.docApi.applyUserActions(liste);
 };
 MGP.g.chargerMeta = async function() {
   var t = await MGP.g.lire("_grist_Tables");
@@ -2540,6 +2556,30 @@ MGP.g.demarrer = function(accesRequis) {
 MGP.CHAMPS_SUIVI = ["CREE_LE", "CREE_PAR", "MODIFIE_LE", "MODIFIE_PAR"];
 MGP.SOCLE = { TECH: { cle: "TECH", id: "BIBLIOTHEQUE_MON_GRIST_PERSO_", label: "⚙️ BIBLIOTHÈQUE MON GRIST PERSO ⚡", motif: "BIBLIOTHEQUE_MON_GRIST_PERSO", description: "Table technique des widgets Mon Grist perso : réglages, tables installées, bonus installés et progression. Une ligne par réglage, à ne pas modifier à la main.", signature: ["CLE", "VALEUR"], colonnes: [{ id: "CLE", type: "Text", description: "Nom du réglage (par exemple TABLE:CADEAUX, INSTALL:conges ou cadeau.jour-01). Une seule ligne par nom." }, { id: "VALEUR", type: "Text", description: "Valeur du réglage, en texte ou en JSON : l’id réel d’une table, l’état d’une installation, une date..." }] }, PERSONNES: { cle: "PERSONNES", id: "Personnes", label: "👥 Personnes", nom: "Personnes", description: "Les personnes du foyer et les proches, partagées par tous les widgets (cadeaux, congés, santé...). Une ligne par personne.", signature: ["PRENOM", "FOYER", "TYPE"], colonnes: [{ id: "PRENOM", type: "Text", description: "Prénom ou surnom de la personne, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "TYPE", type: "Choice", choix: [["Adulte", "Pêche"], ["Enfant", "Lavande"], ["Proche", "Écume"], ["Ami", "Menthe"]], description: "Lien avec vous, en Choix unique : Adulte, Enfant, Proche ou Ami." }, { id: "FOYER", type: "Bool", description: "Coché si la personne vit sous votre toit (Booléen)." }, { id: "NAISSANCE", type: "Date", description: "Date de naissance, facultative : elle sert aux anniversaires et aux âges." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la personne dans les widgets." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la personne dans les widgets (Choix unique)." }, { id: "NOTES", type: "Text", description: "Notes libres : tailles, goûts, idées..." }], affichage: "PRENOM" }, CATEGORIES: { cle: "CATEGORIES", id: "Categories", label: "🏷️ Catégories", nom: "Catégories", description: "Catégories de dépenses et de documents, partagées par tous les widgets (Alimentation, Maison, Transport...). Une ligne par catégorie.", signature: ["NOM", "EMOJI", "COULEUR"], colonnes: [{ id: "NOM", type: "Text", description: "Nom de la catégorie, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la catégorie." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la catégorie dans les widgets (Choix unique)." }], affichage: "NOM", graines: [["Alimentation", "🛒", "Menthe"], ["Maison", "🏠", "Pêche"], ["Transport", "🚗", "Écume"], ["Loisirs", "🎭", "Lavande"], ["Cadeaux", "🎁", "Flamant"], ["Abonnements", "📱", "Citron"], ["Santé", "🩺", "Écume"], ["Épargne", "🌱", "Menthe"]] }, DOCUMENTS: { cle: "DOCUMENTS", id: "Documents", label: "📎 Documents", nom: "Documents", description: "Fichiers rangés par les widgets : factures, garanties, contrats, photos. Une ligne par document, reliée aux autres tables par des colonnes de type Référence.", signature: ["FICHIER", "TITRE"], colonnes: [{ id: "TITRE", type: "Text", description: "Nom du document, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "FICHIER", type: "Attachments", description: "Le fichier lui-même (Pièce jointe) : il compte dans la taille du document Grist." }, { id: "TYPE", type: "Choice", choix: [["Facture", "Citron"], ["Garantie", "Menthe"], ["Contrat", "Lavande"], ["Photo", "Flamant"], ["Autre", "Écume"]], description: "Nature du document, en Choix unique : Facture, Garantie, Contrat, Photo... Certains widgets ajoutent leurs choix." }, { id: "PERSONNE", type: "Ref:@PERSONNES", description: "Personne concernée (Référence vers Personnes), facultative." }, { id: "CATEGORIE", type: "Ref:@CATEGORIES", description: "Catégorie du document (Référence vers Catégories), facultative." }, { id: "DATE_DOC", type: "Date", description: "Date du document (date de la facture, du contrat...)." }, { id: "NOTES", type: "Text", description: "Notes libres sur le document." }], affichage: "TITRE" } };
 MGP.ORDRE_SOCLE = ["TECH", "PERSONNES", "CATEGORIES", "DOCUMENTS"];
+MGP.g.ACCENTS = { ACHETE: "ACHETÉ", AGE: "ÂGE", ANNEE: "ANNÉE", APPORTE: "APPORTÉ", APRES: "APRÈS", ARRETE: "ARRÊTÉ", ARRIVEE: "ARRIVÉE", ASSIGNE: "ASSIGNÉ", CATEGORIE: "CATÉGORIE", CATEGORIES: "CATÉGORIES", CLE: "CLÉ", CLOTURE: "CLÔTURE", COCHE: "COCHÉ", COMPETENCE: "COMPÉTENCE", COUT: "COÛT", CREDIT: "CRÉDIT", CREDITS: "CRÉDITS", CREE: "CRÉÉ", DEBALLES: "DÉBALLÉS", DEBIT: "DÉBIT", DEBITE: "DÉBITÉ", DEBUT: "DÉBUT", DECALAGE: "DÉCALAGE", DECALER: "DÉCALER", DECOMPTE: "DÉCOMPTE", DELAI: "DÉLAI", DEMENAGEUR: "DÉMÉNAGEUR", DEMENAGEMENT: "DÉMÉNAGEMENT", DEPART: "DÉPART", DEPENSE: "DÉPENSE", DEPENSES: "DÉPENSES", DEPOT: "DÉPÔT", DERNIERE: "DERNIÈRE", DETAIL: "DÉTAIL", DIFFERE: "DIFFÉRÉ", DUREE: "DURÉE", ECART: "ÉCART", ECHEANCE: "ÉCHÉANCE", ECHEANCES: "ÉCHÉANCES", ECOULE: "ÉCOULÉ", EMPRUNTE: "EMPRUNTÉ", ENERGIE: "ÉNERGIE", ENGAGE: "ENGAGÉ", ENTREE: "ENTRÉE", EPARGNE: "ÉPARGNE", EQUIPEMENT: "ÉQUIPEMENT", ESPECE: "ESPÈCE", ESTIMEE: "ESTIMÉE", ETABLISSEMENT: "ÉTABLISSEMENT", ETAGE: "ÉTAGE", ETAPE: "ÉTAPE", ETAPES: "ÉTAPES", ETAT: "ÉTAT", ETIQUETTE: "ÉTIQUETTE", ETOILES: "ÉTOILES", EVENEMENT: "ÉVÉNEMENT", EXPIRE: "EXPIRÉ", FACTUREE: "FACTURÉE", FREQUENCE: "FRÉQUENCE", IDEE: "IDÉE", INTERETS: "INTÉRÊTS", INVITE: "INVITÉ", INVITES: "INVITÉS", LIBELLE: "LIBELLÉ", LIE: "LIÉ", LIQUIDITE: "LIQUIDITÉ", MEDECIN: "MÉDECIN", METIER: "MÉTIER", MODELE: "MODÈLE", MODIFIE: "MODIFIÉ", NUMERO: "NUMÉRO", OCCUPEES: "OCCUPÉES", OPERATION: "OPÉRATION", OPERATIONS: "OPÉRATIONS", PASSE: "PASSÉ", PAYE: "PAYÉ", PAYEES: "PAYÉES", PERCU: "PERÇU", PERIODE: "PÉRIODE", PERIODICITE: "PÉRIODICITÉ", PIECE: "PIÈCE", PIECES: "PIÈCES", POINTE: "POINTÉ", PREAVIS: "PRÉAVIS", PRECEDENT: "PRÉCÉDENT", PREFIXE: "PRÉFIXE", PRELEVEMENT: "PRÉLÈVEMENT", PREMIERE: "PREMIÈRE", PRENOM: "PRÉNOM", PREPARER: "PRÉPARER", PRESENTS: "PRÉSENTS", PRET: "PRÊT", PRETE: "PRÊTE", PRETEUR: "PRÊTEUR", PRETS: "PRÊTS", PREVENU: "PRÉVENU", PREVU: "PRÉVU", PREVUE: "PRÉVUE", PREVUES: "PRÉVUES", PRIORITE: "PRIORITÉ", PROJETE: "PROJETÉ", PROPRIETAIRES: "PROPRIÉTAIRES", QTE: "QTÉ", QUANTITE: "QUANTITÉ", RECIT: "RÉCIT", RECURRENCE: "RÉCURRENCE", RECURRENCES: "RÉCURRENCES", REFERENCE: "RÉFÉRENCE", REGIMES: "RÉGIMES", REGLE: "RÈGLE", REGLES: "RÈGLES", REGULARISATION: "RÉGULARISATION", RELEVE: "RELEVÉ", RELIE: "RELIÉ", REMBOURSE: "REMBOURSÉ", REPONSE: "RÉPONSE", REPONSES: "RÉPONSES", RESA: "RÉSA", RESERVE: "RÉSERVÉ", RESERVER: "RÉSERVER", RESERVOIR: "RÉSERVOIR", RESILIATION: "RÉSILIATION", RETRO: "RÉTRO", REVISE: "RÉVISÉ", REVISION: "RÉVISION", SECU: "SÉCU", SERIE: "SÉRIE", SPECIALITE: "SPÉCIALITÉ", TACHE: "TÂCHE", TACHES: "TÂCHES", TEL: "TÉL", TELEPHONE: "TÉLÉPHONE", THEME: "THÈME", UNITE: "UNITÉ", VEHICULE: "VÉHICULE", VERSE: "VERSÉ", ELECTRICITE: "ÉLECTRICITÉ" };
+MGP.g.libelleColonne = function(id) {
+  var l = String(id || "").split("_").filter(Boolean).map(function(w) {
+    return w === "A" ? "À" : MGP.g.ACCENTS[w] || w;
+  }).join(" ");
+  return l.replace(/\bJUSQU (AU|À)\b/g, "JUSQU’$1") || String(id || "");
+};
+MGP.g.actionsLibelles = function(tableId, colonnesDoc, ids) {
+  var a = [];
+  colonnesDoc.forEach(function(col) {
+    if (ids.indexOf(col.colId) < 0 || col.label !== col.colId) {
+      return;
+    }
+    var lib = MGP.g.libelleColonne(col.colId);
+    if (lib === col.label) {
+      return;
+    }
+    if (!col.untieColIdFromLabel) {
+      a.push(["ModifyColumn", tableId, col.colId, { untieColIdFromLabel: true }]);
+    }
+    a.push(["ModifyColumn", tableId, col.colId, { label: lib }]);
+  });
+  return a;
+};
 MGP.colonnesSuivi = function() {
   return [{ id: "CREE_LE", type: "DateTime:Europe/Paris", declencheur: "NOW()", quand: 0, description: "Date et heure de création de la ligne, posées une fois par une formule d’initialisation (NOW())." }, { id: "CREE_PAR", type: "Text", declencheur: "user.Name", quand: 0, description: "Nom de la personne qui a créé la ligne, posé une fois par une formule d’initialisation (user.Name)." }, { id: "MODIFIE_LE", type: "DateTime:Europe/Paris", declencheur: "NOW()", quand: 2, description: "Date et heure de la dernière modification de la ligne : formule d’initialisation (NOW()) recalculée à chaque changement." }, { id: "MODIFIE_PAR", type: "Text", declencheur: "user.Name", quand: 2, description: "Nom de la dernière personne qui a modifié la ligne : formule d’initialisation (user.Name) recalculée à chaque changement." }];
 };
@@ -2566,15 +2606,25 @@ MGP.g.trouver = function(def) {
   if (t) {
     return t;
   }
+  var prises = Object.keys(MGP.g.registre || {}).filter(function(k) {
+    return k !== def.cle;
+  }).map(function(k) {
+    return MGP.g.registre[k];
+  });
+  var libre = function(x) {
+    return prises.indexOf(x.tableId) < 0;
+  };
   if (def.motif) {
     t = tables.filter(function(x) {
-      return x.tableId.toUpperCase().indexOf(def.motif) >= 0 && aSignature(x);
+      return x.tableId.toUpperCase().indexOf(def.motif) >= 0 && aSignature(x) && libre(x);
     })[0];
     if (t) {
       return t;
     }
   }
-  return def.motif ? null : tables.filter(aSignature)[0] || null;
+  return def.motif ? null : tables.filter(function(x) {
+    return aSignature(x) && libre(x);
+  })[0] || null;
 };
 MGP.g.chargerTech = async function() {
   var t = MGP.g.trouver(MGP.SOCLE.TECH);
@@ -2647,7 +2697,11 @@ MGP.g.optionsChoix = function(choix) {
 };
 MGP.g.actionsColonne = function(tableId, c, nouvelle) {
   var a = [];
-  var props = { type: MGP.g.resoudreType(c.type), label: c.id };
+  var props = { type: MGP.g.resoudreType(c.type) };
+  if (nouvelle) {
+    props.label = MGP.g.libelleColonne(c.id);
+    props.untieColIdFromLabel = true;
+  }
   if (c.formule) {
     props.isFormula = true;
     props.formula = MGP.g.resoudreFormule(c.formule);
@@ -2720,6 +2774,9 @@ MGP.g.actionsDescriptions = async function(defs) {
       a.push(["UpdateRecord", "_grist_Views_section", brute.id, { description: d.description }]);
     }
     var cols = MGP.g.colonnesDe(t.id);
+    a = a.concat(MGP.g.actionsLibelles(t.tableId, cols, d.colonnes.concat(MGP.colonnesSuivi()).map(function(c) {
+      return c.id;
+    })));
     d.colonnes.concat(MGP.colonnesSuivi()).forEach(function(c) {
       var col = cols.filter(function(x) {
         return x.colId === c.id;
@@ -2790,7 +2847,7 @@ MGP.g.reprendreTable1 = async function(def) {
   }
   var cols = def.colonnes.concat(MGP.colonnesSuivi());
   var a = cols.map(function(c) {
-    return ["AddColumn", "Table1", c.id, { type: c.formule ? "Any" : MGP.g.resoudreType(c.type), isFormula: false, label: c.id }];
+    return ["AddColumn", "Table1", c.id, { type: c.formule ? "Any" : MGP.g.resoudreType(c.type), isFormula: false, label: MGP.g.libelleColonne(c.id), untieColIdFromLabel: true }];
   });
   ["A", "B", "C"].forEach(function(id) {
     a.push(["RemoveColumn", "Table1", id]);
@@ -2845,7 +2902,7 @@ MGP.g.creerTables = async function(defs) {
       }
     }
     var cols = def.colonnes.concat(MGP.colonnesSuivi()).map(function(c2) {
-      return { id: c2.id, type: c2.formule ? "Any" : MGP.g.resoudreType(c2.type), label: c2.id };
+      return { id: c2.id, type: c2.formule ? "Any" : MGP.g.resoudreType(c2.type), label: MGP.g.libelleColonne(c2.id), untieColIdFromLabel: true };
     });
     var res = await MGP.g.actions([["AddTable", def.id, cols]]);
     var rv = res.retValues[0] || {};
@@ -2923,7 +2980,7 @@ MGP.g.creerTables = async function(defs) {
     for (var j = 0; j < toutes.length; j++) {
       var c = toutes[j];
       if (presentes.indexOf(c.id) < 0) {
-        var r = await MGP.g.actions([["AddColumn", tid, c.id, { type: c.formule ? "Any" : MGP.g.resoudreType(c.type), label: c.id }]]);
+        var r = await MGP.g.actions([["AddColumn", tid, c.id, { type: c.formule ? "Any" : MGP.g.resoudreType(c.type), label: MGP.g.libelleColonne(c.id), untieColIdFromLabel: true }]]);
         var vrai = r.retValues[0] && r.retValues[0].colId;
         if (vrai && vrai !== c.id) {
           logSecurite("colonne renommée par le document", c.id + " -> " + vrai);
@@ -2932,6 +2989,13 @@ MGP.g.creerTables = async function(defs) {
         mods = mods.concat(MGP.g.actionsColonne(tid, c, true));
       } else if (nouvelleTable) {
         mods = mods.concat(MGP.g.actionsColonne(tid, c, true));
+      } else if (!c.formule && /^(Numeric|Int|Date|Bool)$/.test(c.type)) {
+        var ex = MGP.g.colonnesDe(tab.id).filter(function(x) {
+          return x.colId === c.id;
+        })[0];
+        if (ex && !ex.isFormula && /^(Any|ChoiceList|RefList:.*)$/.test(String(ex.type))) {
+          mods.push(["ModifyColumn", tid, c.id, { type: c.type }]);
+        }
       } else if (c.formule && MGP.g.adoptees && MGP.g.adoptees[d.cle]) {
         mods = mods.concat(MGP.g.actionsColonne(tid, c, false));
       }
@@ -3438,6 +3502,22 @@ MGP.g.decrireWidget = async function() {
     return false;
   }
 };
+MGP.g.NOM_PAGE_DEFAUT = /^(new page|nouvelle page|untitled( page)?|page sans titre|table\d*|)$/i;
+MGP.g.nommerPageParDefaut = async function(vue, nom) {
+  try {
+    var vues = await MGP.g.lire("_grist_Views"), v = vues.filter(function(x) {
+      return x.id === vue;
+    })[0];
+    if (!v || !MGP.g.NOM_PAGE_DEFAUT.test(String(v.name || "").trim())) {
+      return false;
+    }
+    await MGP.g.actions([["UpdateRecord", "_grist_Views", vue, { name: nom }]]);
+    return true;
+  } catch (e) {
+    logSecurite("nom de page par défaut", e);
+    return false;
+  }
+};
 MGP.g.marquerCadeau = async function() {
   var c = MGP.g.CADEAU;
   if (!c || !MGP.g.tech || MGP.g.acces !== "full") {
@@ -3450,6 +3530,9 @@ MGP.g.marquerCadeau = async function() {
       avant = null;
     }
     var vue = await MGP.g.vueCourante();
+    if (vue && c.page) {
+      await MGP.g.nommerPageParDefaut(vue, c.page);
+    }
     MGP.g.pageInconnue = !vue && !(avant && avant.vue);
     var v = { widget: c.nom, cle: c.cle || null, section: c.section || null, installe_le: avant && avant.installe_le || new Date(MGP.maintenant()).toISOString(), vue: vue || avant && avant.vue || null };
     if (avant && JSON.stringify(avant) === JSON.stringify(v)) {
@@ -3726,7 +3809,7 @@ MGP.capot.fiches = function(t, cfg, actif) {
       ex = MGP.capot.formater(c, lignes[i][c.colId], cfg);
     }
     var classe = ty.formule ? "t-lavande" : ty.auto ? "t-citron" : "t-ecume";
-    return '<article class="fiche-champ' + (actif === c.colId ? " active" : "") + '" id="fiche-' + echapperHTML(t.cle + "-" + c.colId) + '" tabindex="-1"><h3>' + echapperHTML(c.colId) + ' <span class="pil ' + classe + '">' + echapperHTML(ty.txt + (ty.detail ? " · " + ty.detail : "")) + "</span></h3>" + (role ? '<p class="mini" style="margin-top:6px">' + MGP.texteRiche(role) + "</p>" : "") + (c.formula ? '<pre class="code">' + echapperHTML(c.formula) + "</pre>" : "") + '<p class="ex"><b>Exemple chez vous :</b> ' + (ex ? echapperHTML(ex) : '<span class="mini">pas encore de valeur</span>') + "</p></article>";
+    return '<article class="fiche-champ' + (actif === c.colId ? " active" : "") + '" id="fiche-' + echapperHTML(t.cle + "-" + c.colId) + '" tabindex="-1"><h3>' + echapperHTML(c.colId) + ' <span class="pil ' + classe + '">' + echapperHTML(ty.txt + (ty.detail ? " · " + ty.detail : "")) + "</span></h3>" + (c.label && c.label !== c.colId ? '<p class="mini">' + echapperHTML("Dans la table, la colonne s’affiche « " + c.label + " » ; dans les formules, on écrit $" + c.colId + ".") + "</p>" : "") + (role ? '<p class="mini" style="margin-top:6px">' + MGP.texteRiche(role) + "</p>" : "") + (c.formula ? '<pre class="code">' + echapperHTML(c.formula) + "</pre>" : "") + '<p class="ex"><b>Exemple chez vous :</b> ' + (ex ? echapperHTML(ex) : '<span class="mini">pas encore de valeur</span>') + "</p></article>";
   }).join("") + "</div>";
 };
 MGP.capot.formules = function(cfg, tables) {
@@ -4814,7 +4897,7 @@ MGP.parcours = MGP.parcours || {};
         if (!c) {
           continue;
         }
-        await MGP.g.actions([["AddColumn", t.tableId, c.id, { type: c.formule ? "Any" : MGP.g.resoudreType(c.type), label: c.id }]]);
+        await MGP.g.actions([["AddColumn", t.tableId, c.id, { type: c.formule ? "Any" : MGP.g.resoudreType(c.type), label: MGP.g.libelleColonne(c.id), untieColIdFromLabel: true }]]);
         await MGP.g.actions(MGP.g.actionsColonne(t.tableId, c, true));
       }
       await P.nommerTable(def, t, m);

@@ -1998,7 +1998,7 @@ details.plus summary {
       <h1>🩺 Carnet de santé</h1>
       <p class="accroche lisible">Le carnet de santé de la maison : vous, votre famille et vos animaux. Rendez-vous, vaccins, traitements, mesures, documents et remboursements, au même endroit.</p>
       <ul class="avantages">
-        <li><span class="t-ecume" aria-hidden="true">📅</span><div><b>Les rendez-vous de tout le monde</b><br><span class="mini">un rendez-vous peut concerner plusieurs patients, avec le compte rendu et les documents</span></div></li>
+        <li><span class="t-ecume" aria-hidden="true">📅</span><div><b>Les rendez-vous de tout le monde</b><br><span class="mini">un rendez-vous peut concerner plusieurs personnes, avec le compte rendu et les documents</span></div></li>
         <li><span class="t-flamant" aria-hidden="true">💉</span><div><b>Les vaccins et leurs rappels</b><br><span class="mini">une alerte avant la date, et un modèle du calendrier des enfants à vérifier avec votre médecin</span></div></li>
         <li><span class="t-citron" aria-hidden="true">💶</span><div><b>Ce qui reste à votre charge</b><br><span class="mini">payé, Sécurité sociale, mutuelle : les remboursements en attente</span></div></li>
         <li><span class="t-peche" aria-hidden="true">🆘</span><div><b>Une fiche urgence pour chacun</b><br><span class="mini">groupe sanguin, allergies, traitements, contacts : à imprimer</span></div></li>
@@ -2165,13 +2165,29 @@ MGP.formatNombre = function(n) {
     return String(n);
   }
 };
-MGP.lireMontant = function(s) {
-  var t = String(s === null || s === void 0 ? "" : s).replace(/\s/g, "").replace(/[^\d,.-]/g, "").replace(",", ".");
+MGP.lireNombre = function(s) {
+  var brut = String(s === null || s === void 0 ? "" : s).trim();
+  var neg = /^[(\-−]/.test(brut) || /-\s*$/.test(brut);
+  var t = brut.replace(/[^\d,.]/g, "");
   if (!t) {
     return null;
   }
-  var v = parseFloat(t);
-  return isNaN(v) ? null : Math.round(v * 100) / 100;
+  var ip = t.lastIndexOf("."), iv = t.lastIndexOf(","), v;
+  if (ip >= 0 && iv >= 0) {
+    var dec = Math.max(ip, iv);
+    v = parseFloat(t.slice(0, dec).replace(/[.,]/g, "") + "." + t.slice(dec + 1));
+  } else if (iv >= 0) {
+    v = t.split(",").length > 2 ? parseFloat(t.replace(/,/g, "")) : parseFloat(t.replace(",", "."));
+  } else if (ip >= 0 && /^\d{1,3}(\.\d{3})+$/.test(t)) {
+    v = parseFloat(t.replace(/\./g, ""));
+  } else {
+    v = parseFloat(t);
+  }
+  return isNaN(v) ? null : neg ? -v : v;
+};
+MGP.lireMontant = function(s) {
+  var v = MGP.lireNombre(s);
+  return v === null ? null : Math.round(v * 100) / 100;
 };
 var MOIS_LONGS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
 var MOIS_COURTS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
@@ -2601,11 +2617,11 @@ MGP.g.lignes = function(col) {
 MGP.g.lire = async function(tableId) {
   return MGP.g.lignes(await grist.docApi.fetchTable(tableId));
 };
-MGP.g.actions = async function(liste) {
+MGP.g.actions = async function(liste, options) {
   if (!liste.length) {
     return { retValues: [] };
   }
-  return grist.docApi.applyUserActions(liste);
+  return options ? grist.docApi.applyUserActions(liste, options) : grist.docApi.applyUserActions(liste);
 };
 MGP.g.chargerMeta = async function() {
   var t = await MGP.g.lire("_grist_Tables");
@@ -2686,6 +2702,30 @@ MGP.g.demarrer = function(accesRequis) {
 MGP.CHAMPS_SUIVI = ["CREE_LE", "CREE_PAR", "MODIFIE_LE", "MODIFIE_PAR"];
 MGP.SOCLE = { TECH: { cle: "TECH", id: "BIBLIOTHEQUE_MON_GRIST_PERSO_", label: "⚙️ BIBLIOTHÈQUE MON GRIST PERSO ⚡", motif: "BIBLIOTHEQUE_MON_GRIST_PERSO", description: "Table technique des widgets Mon Grist perso : réglages, tables installées, bonus installés et progression. Une ligne par réglage, à ne pas modifier à la main.", signature: ["CLE", "VALEUR"], colonnes: [{ id: "CLE", type: "Text", description: "Nom du réglage (par exemple TABLE:CADEAUX, INSTALL:conges ou cadeau.jour-01). Une seule ligne par nom." }, { id: "VALEUR", type: "Text", description: "Valeur du réglage, en texte ou en JSON : l’id réel d’une table, l’état d’une installation, une date..." }] }, PERSONNES: { cle: "PERSONNES", id: "Personnes", label: "👥 Personnes", nom: "Personnes", description: "Les personnes du foyer et les proches, partagées par tous les widgets (cadeaux, congés, santé...). Une ligne par personne.", signature: ["PRENOM", "FOYER", "TYPE"], colonnes: [{ id: "PRENOM", type: "Text", description: "Prénom ou surnom de la personne, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "TYPE", type: "Choice", choix: [["Adulte", "Pêche"], ["Enfant", "Lavande"], ["Proche", "Écume"], ["Ami", "Menthe"]], description: "Lien avec vous, en Choix unique : Adulte, Enfant, Proche ou Ami." }, { id: "FOYER", type: "Bool", description: "Coché si la personne vit sous votre toit (Booléen)." }, { id: "NAISSANCE", type: "Date", description: "Date de naissance, facultative : elle sert aux anniversaires et aux âges." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la personne dans les widgets." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la personne dans les widgets (Choix unique)." }, { id: "NOTES", type: "Text", description: "Notes libres : tailles, goûts, idées..." }], affichage: "PRENOM" }, CATEGORIES: { cle: "CATEGORIES", id: "Categories", label: "🏷️ Catégories", nom: "Catégories", description: "Catégories de dépenses et de documents, partagées par tous les widgets (Alimentation, Maison, Transport...). Une ligne par catégorie.", signature: ["NOM", "EMOJI", "COULEUR"], colonnes: [{ id: "NOM", type: "Text", description: "Nom de la catégorie, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la catégorie." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la catégorie dans les widgets (Choix unique)." }], affichage: "NOM", graines: [["Alimentation", "🛒", "Menthe"], ["Maison", "🏠", "Pêche"], ["Transport", "🚗", "Écume"], ["Loisirs", "🎭", "Lavande"], ["Cadeaux", "🎁", "Flamant"], ["Abonnements", "📱", "Citron"], ["Santé", "🩺", "Écume"], ["Épargne", "🌱", "Menthe"]] }, DOCUMENTS: { cle: "DOCUMENTS", id: "Documents", label: "📎 Documents", nom: "Documents", description: "Fichiers rangés par les widgets : factures, garanties, contrats, photos. Une ligne par document, reliée aux autres tables par des colonnes de type Référence.", signature: ["FICHIER", "TITRE"], colonnes: [{ id: "TITRE", type: "Text", description: "Nom du document, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "FICHIER", type: "Attachments", description: "Le fichier lui-même (Pièce jointe) : il compte dans la taille du document Grist." }, { id: "TYPE", type: "Choice", choix: [["Facture", "Citron"], ["Garantie", "Menthe"], ["Contrat", "Lavande"], ["Photo", "Flamant"], ["Autre", "Écume"]], description: "Nature du document, en Choix unique : Facture, Garantie, Contrat, Photo... Certains widgets ajoutent leurs choix." }, { id: "PERSONNE", type: "Ref:@PERSONNES", description: "Personne concernée (Référence vers Personnes), facultative." }, { id: "CATEGORIE", type: "Ref:@CATEGORIES", description: "Catégorie du document (Référence vers Catégories), facultative." }, { id: "DATE_DOC", type: "Date", description: "Date du document (date de la facture, du contrat...)." }, { id: "NOTES", type: "Text", description: "Notes libres sur le document." }], affichage: "TITRE" } };
 MGP.ORDRE_SOCLE = ["TECH", "PERSONNES", "CATEGORIES", "DOCUMENTS"];
+MGP.g.ACCENTS = { ACHETE: "ACHETÉ", AGE: "ÂGE", ANNEE: "ANNÉE", APPORTE: "APPORTÉ", APRES: "APRÈS", ARRETE: "ARRÊTÉ", ARRIVEE: "ARRIVÉE", ASSIGNE: "ASSIGNÉ", CATEGORIE: "CATÉGORIE", CATEGORIES: "CATÉGORIES", CLE: "CLÉ", CLOTURE: "CLÔTURE", COCHE: "COCHÉ", COMPETENCE: "COMPÉTENCE", COUT: "COÛT", CREDIT: "CRÉDIT", CREDITS: "CRÉDITS", CREE: "CRÉÉ", DEBALLES: "DÉBALLÉS", DEBIT: "DÉBIT", DEBITE: "DÉBITÉ", DEBUT: "DÉBUT", DECALAGE: "DÉCALAGE", DECALER: "DÉCALER", DECOMPTE: "DÉCOMPTE", DELAI: "DÉLAI", DEMENAGEUR: "DÉMÉNAGEUR", DEMENAGEMENT: "DÉMÉNAGEMENT", DEPART: "DÉPART", DEPENSE: "DÉPENSE", DEPENSES: "DÉPENSES", DEPOT: "DÉPÔT", DERNIERE: "DERNIÈRE", DETAIL: "DÉTAIL", DIFFERE: "DIFFÉRÉ", DUREE: "DURÉE", ECART: "ÉCART", ECHEANCE: "ÉCHÉANCE", ECHEANCES: "ÉCHÉANCES", ECOULE: "ÉCOULÉ", EMPRUNTE: "EMPRUNTÉ", ENERGIE: "ÉNERGIE", ENGAGE: "ENGAGÉ", ENTREE: "ENTRÉE", EPARGNE: "ÉPARGNE", EQUIPEMENT: "ÉQUIPEMENT", ESPECE: "ESPÈCE", ESTIMEE: "ESTIMÉE", ETABLISSEMENT: "ÉTABLISSEMENT", ETAGE: "ÉTAGE", ETAPE: "ÉTAPE", ETAPES: "ÉTAPES", ETAT: "ÉTAT", ETIQUETTE: "ÉTIQUETTE", ETOILES: "ÉTOILES", EVENEMENT: "ÉVÉNEMENT", EXPIRE: "EXPIRÉ", FACTUREE: "FACTURÉE", FREQUENCE: "FRÉQUENCE", IDEE: "IDÉE", INTERETS: "INTÉRÊTS", INVITE: "INVITÉ", INVITES: "INVITÉS", LIBELLE: "LIBELLÉ", LIE: "LIÉ", LIQUIDITE: "LIQUIDITÉ", MEDECIN: "MÉDECIN", METIER: "MÉTIER", MODELE: "MODÈLE", MODIFIE: "MODIFIÉ", NUMERO: "NUMÉRO", OCCUPEES: "OCCUPÉES", OPERATION: "OPÉRATION", OPERATIONS: "OPÉRATIONS", PASSE: "PASSÉ", PAYE: "PAYÉ", PAYEES: "PAYÉES", PERCU: "PERÇU", PERIODE: "PÉRIODE", PERIODICITE: "PÉRIODICITÉ", PIECE: "PIÈCE", PIECES: "PIÈCES", POINTE: "POINTÉ", PREAVIS: "PRÉAVIS", PRECEDENT: "PRÉCÉDENT", PREFIXE: "PRÉFIXE", PRELEVEMENT: "PRÉLÈVEMENT", PREMIERE: "PREMIÈRE", PRENOM: "PRÉNOM", PREPARER: "PRÉPARER", PRESENTS: "PRÉSENTS", PRET: "PRÊT", PRETE: "PRÊTE", PRETEUR: "PRÊTEUR", PRETS: "PRÊTS", PREVENU: "PRÉVENU", PREVU: "PRÉVU", PREVUE: "PRÉVUE", PREVUES: "PRÉVUES", PRIORITE: "PRIORITÉ", PROJETE: "PROJETÉ", PROPRIETAIRES: "PROPRIÉTAIRES", QTE: "QTÉ", QUANTITE: "QUANTITÉ", RECIT: "RÉCIT", RECURRENCE: "RÉCURRENCE", RECURRENCES: "RÉCURRENCES", REFERENCE: "RÉFÉRENCE", REGIMES: "RÉGIMES", REGLE: "RÈGLE", REGLES: "RÈGLES", REGULARISATION: "RÉGULARISATION", RELEVE: "RELEVÉ", RELIE: "RELIÉ", REMBOURSE: "REMBOURSÉ", REPONSE: "RÉPONSE", REPONSES: "RÉPONSES", RESA: "RÉSA", RESERVE: "RÉSERVÉ", RESERVER: "RÉSERVER", RESERVOIR: "RÉSERVOIR", RESILIATION: "RÉSILIATION", RETRO: "RÉTRO", REVISE: "RÉVISÉ", REVISION: "RÉVISION", SECU: "SÉCU", SERIE: "SÉRIE", SPECIALITE: "SPÉCIALITÉ", TACHE: "TÂCHE", TACHES: "TÂCHES", TEL: "TÉL", TELEPHONE: "TÉLÉPHONE", THEME: "THÈME", UNITE: "UNITÉ", VEHICULE: "VÉHICULE", VERSE: "VERSÉ", ELECTRICITE: "ÉLECTRICITÉ" };
+MGP.g.libelleColonne = function(id) {
+  var l = String(id || "").split("_").filter(Boolean).map(function(w) {
+    return w === "A" ? "À" : MGP.g.ACCENTS[w] || w;
+  }).join(" ");
+  return l.replace(/\bJUSQU (AU|À)\b/g, "JUSQU’$1") || String(id || "");
+};
+MGP.g.actionsLibelles = function(tableId, colonnesDoc, ids) {
+  var a = [];
+  colonnesDoc.forEach(function(col) {
+    if (ids.indexOf(col.colId) < 0 || col.label !== col.colId) {
+      return;
+    }
+    var lib = MGP.g.libelleColonne(col.colId);
+    if (lib === col.label) {
+      return;
+    }
+    if (!col.untieColIdFromLabel) {
+      a.push(["ModifyColumn", tableId, col.colId, { untieColIdFromLabel: true }]);
+    }
+    a.push(["ModifyColumn", tableId, col.colId, { label: lib }]);
+  });
+  return a;
+};
 MGP.colonnesSuivi = function() {
   return [{ id: "CREE_LE", type: "DateTime:Europe/Paris", declencheur: "NOW()", quand: 0, description: "Date et heure de création de la ligne, posées une fois par une formule d’initialisation (NOW())." }, { id: "CREE_PAR", type: "Text", declencheur: "user.Name", quand: 0, description: "Nom de la personne qui a créé la ligne, posé une fois par une formule d’initialisation (user.Name)." }, { id: "MODIFIE_LE", type: "DateTime:Europe/Paris", declencheur: "NOW()", quand: 2, description: "Date et heure de la dernière modification de la ligne : formule d’initialisation (NOW()) recalculée à chaque changement." }, { id: "MODIFIE_PAR", type: "Text", declencheur: "user.Name", quand: 2, description: "Nom de la dernière personne qui a modifié la ligne : formule d’initialisation (user.Name) recalculée à chaque changement." }];
 };
@@ -2712,15 +2752,25 @@ MGP.g.trouver = function(def) {
   if (t) {
     return t;
   }
+  var prises = Object.keys(MGP.g.registre || {}).filter(function(k) {
+    return k !== def.cle;
+  }).map(function(k) {
+    return MGP.g.registre[k];
+  });
+  var libre = function(x) {
+    return prises.indexOf(x.tableId) < 0;
+  };
   if (def.motif) {
     t = tables.filter(function(x) {
-      return x.tableId.toUpperCase().indexOf(def.motif) >= 0 && aSignature(x);
+      return x.tableId.toUpperCase().indexOf(def.motif) >= 0 && aSignature(x) && libre(x);
     })[0];
     if (t) {
       return t;
     }
   }
-  return def.motif ? null : tables.filter(aSignature)[0] || null;
+  return def.motif ? null : tables.filter(function(x) {
+    return aSignature(x) && libre(x);
+  })[0] || null;
 };
 MGP.g.chargerTech = async function() {
   var t = MGP.g.trouver(MGP.SOCLE.TECH);
@@ -2793,7 +2843,11 @@ MGP.g.optionsChoix = function(choix) {
 };
 MGP.g.actionsColonne = function(tableId, c, nouvelle) {
   var a = [];
-  var props = { type: MGP.g.resoudreType(c.type), label: c.id };
+  var props = { type: MGP.g.resoudreType(c.type) };
+  if (nouvelle) {
+    props.label = MGP.g.libelleColonne(c.id);
+    props.untieColIdFromLabel = true;
+  }
   if (c.formule) {
     props.isFormula = true;
     props.formula = MGP.g.resoudreFormule(c.formule);
@@ -2866,6 +2920,9 @@ MGP.g.actionsDescriptions = async function(defs) {
       a.push(["UpdateRecord", "_grist_Views_section", brute.id, { description: d.description }]);
     }
     var cols = MGP.g.colonnesDe(t.id);
+    a = a.concat(MGP.g.actionsLibelles(t.tableId, cols, d.colonnes.concat(MGP.colonnesSuivi()).map(function(c) {
+      return c.id;
+    })));
     d.colonnes.concat(MGP.colonnesSuivi()).forEach(function(c) {
       var col = cols.filter(function(x) {
         return x.colId === c.id;
@@ -2936,7 +2993,7 @@ MGP.g.reprendreTable1 = async function(def) {
   }
   var cols = def.colonnes.concat(MGP.colonnesSuivi());
   var a = cols.map(function(c) {
-    return ["AddColumn", "Table1", c.id, { type: c.formule ? "Any" : MGP.g.resoudreType(c.type), isFormula: false, label: c.id }];
+    return ["AddColumn", "Table1", c.id, { type: c.formule ? "Any" : MGP.g.resoudreType(c.type), isFormula: false, label: MGP.g.libelleColonne(c.id), untieColIdFromLabel: true }];
   });
   ["A", "B", "C"].forEach(function(id) {
     a.push(["RemoveColumn", "Table1", id]);
@@ -2991,7 +3048,7 @@ MGP.g.creerTables = async function(defs) {
       }
     }
     var cols = def.colonnes.concat(MGP.colonnesSuivi()).map(function(c2) {
-      return { id: c2.id, type: c2.formule ? "Any" : MGP.g.resoudreType(c2.type), label: c2.id };
+      return { id: c2.id, type: c2.formule ? "Any" : MGP.g.resoudreType(c2.type), label: MGP.g.libelleColonne(c2.id), untieColIdFromLabel: true };
     });
     var res = await MGP.g.actions([["AddTable", def.id, cols]]);
     var rv = res.retValues[0] || {};
@@ -3069,7 +3126,7 @@ MGP.g.creerTables = async function(defs) {
     for (var j = 0; j < toutes.length; j++) {
       var c = toutes[j];
       if (presentes.indexOf(c.id) < 0) {
-        var r = await MGP.g.actions([["AddColumn", tid, c.id, { type: c.formule ? "Any" : MGP.g.resoudreType(c.type), label: c.id }]]);
+        var r = await MGP.g.actions([["AddColumn", tid, c.id, { type: c.formule ? "Any" : MGP.g.resoudreType(c.type), label: MGP.g.libelleColonne(c.id), untieColIdFromLabel: true }]]);
         var vrai = r.retValues[0] && r.retValues[0].colId;
         if (vrai && vrai !== c.id) {
           logSecurite("colonne renommée par le document", c.id + " -> " + vrai);
@@ -3078,6 +3135,13 @@ MGP.g.creerTables = async function(defs) {
         mods = mods.concat(MGP.g.actionsColonne(tid, c, true));
       } else if (nouvelleTable) {
         mods = mods.concat(MGP.g.actionsColonne(tid, c, true));
+      } else if (!c.formule && /^(Numeric|Int|Date|Bool)$/.test(c.type)) {
+        var ex = MGP.g.colonnesDe(tab.id).filter(function(x) {
+          return x.colId === c.id;
+        })[0];
+        if (ex && !ex.isFormula && /^(Any|ChoiceList|RefList:.*)$/.test(String(ex.type))) {
+          mods.push(["ModifyColumn", tid, c.id, { type: c.type }]);
+        }
       } else if (c.formule && MGP.g.adoptees && MGP.g.adoptees[d.cle]) {
         mods = mods.concat(MGP.g.actionsColonne(tid, c, false));
       }
@@ -3584,6 +3648,22 @@ MGP.g.decrireWidget = async function() {
     return false;
   }
 };
+MGP.g.NOM_PAGE_DEFAUT = /^(new page|nouvelle page|untitled( page)?|page sans titre|table\d*|)$/i;
+MGP.g.nommerPageParDefaut = async function(vue, nom) {
+  try {
+    var vues = await MGP.g.lire("_grist_Views"), v = vues.filter(function(x) {
+      return x.id === vue;
+    })[0];
+    if (!v || !MGP.g.NOM_PAGE_DEFAUT.test(String(v.name || "").trim())) {
+      return false;
+    }
+    await MGP.g.actions([["UpdateRecord", "_grist_Views", vue, { name: nom }]]);
+    return true;
+  } catch (e) {
+    logSecurite("nom de page par défaut", e);
+    return false;
+  }
+};
 MGP.g.marquerCadeau = async function() {
   var c = MGP.g.CADEAU;
   if (!c || !MGP.g.tech || MGP.g.acces !== "full") {
@@ -3596,6 +3676,9 @@ MGP.g.marquerCadeau = async function() {
       avant = null;
     }
     var vue = await MGP.g.vueCourante();
+    if (vue && c.page) {
+      await MGP.g.nommerPageParDefaut(vue, c.page);
+    }
     MGP.g.pageInconnue = !vue && !(avant && avant.vue);
     var v = { widget: c.nom, cle: c.cle || null, section: c.section || null, installe_le: avant && avant.installe_le || new Date(MGP.maintenant()).toISOString(), vue: vue || avant && avant.vue || null };
     if (avant && JSON.stringify(avant) === JSON.stringify(v)) {
@@ -3872,7 +3955,7 @@ MGP.capot.fiches = function(t, cfg, actif) {
       ex = MGP.capot.formater(c, lignes[i][c.colId], cfg);
     }
     var classe = ty.formule ? "t-lavande" : ty.auto ? "t-citron" : "t-ecume";
-    return '<article class="fiche-champ' + (actif === c.colId ? " active" : "") + '" id="fiche-' + echapperHTML(t.cle + "-" + c.colId) + '" tabindex="-1"><h3>' + echapperHTML(c.colId) + ' <span class="pil ' + classe + '">' + echapperHTML(ty.txt + (ty.detail ? " · " + ty.detail : "")) + "</span></h3>" + (role ? '<p class="mini" style="margin-top:6px">' + MGP.texteRiche(role) + "</p>" : "") + (c.formula ? '<pre class="code">' + echapperHTML(c.formula) + "</pre>" : "") + '<p class="ex"><b>Exemple chez vous :</b> ' + (ex ? echapperHTML(ex) : '<span class="mini">pas encore de valeur</span>') + "</p></article>";
+    return '<article class="fiche-champ' + (actif === c.colId ? " active" : "") + '" id="fiche-' + echapperHTML(t.cle + "-" + c.colId) + '" tabindex="-1"><h3>' + echapperHTML(c.colId) + ' <span class="pil ' + classe + '">' + echapperHTML(ty.txt + (ty.detail ? " · " + ty.detail : "")) + "</span></h3>" + (c.label && c.label !== c.colId ? '<p class="mini">' + echapperHTML("Dans la table, la colonne s’affiche « " + c.label + " » ; dans les formules, on écrit $" + c.colId + ".") + "</p>" : "") + (role ? '<p class="mini" style="margin-top:6px">' + MGP.texteRiche(role) + "</p>" : "") + (c.formula ? '<pre class="code">' + echapperHTML(c.formula) + "</pre>" : "") + '<p class="ex"><b>Exemple chez vous :</b> ' + (ex ? echapperHTML(ex) : '<span class="mini">pas encore de valeur</span>') + "</p></article>";
   }).join("") + "</div>";
 };
 MGP.capot.formules = function(cfg, tables) {
@@ -4960,7 +5043,7 @@ MGP.parcours = MGP.parcours || {};
         if (!c) {
           continue;
         }
-        await MGP.g.actions([["AddColumn", t.tableId, c.id, { type: c.formule ? "Any" : MGP.g.resoudreType(c.type), label: c.id }]]);
+        await MGP.g.actions([["AddColumn", t.tableId, c.id, { type: c.formule ? "Any" : MGP.g.resoudreType(c.type), label: MGP.g.libelleColonne(c.id), untieColIdFromLabel: true }]]);
         await MGP.g.actions(MGP.g.actionsColonne(t.tableId, c, true));
       }
       await P.nommerTable(def, t, m);
@@ -6339,10 +6422,14 @@ MGP.parcours = MGP.parcours || {};
     await P.noterInstallation(cfg.contenu);
   };
 })(MGP.parcours);
-MGP.parcours.CONTENU = { "carte": 8, "id": "sante", "titre": "Références multiples", "competence": "listes", "surprise": { "genre": "widget", "nom": "Carnet de santé", "widget": "sante", "texte": "Rendez-vous, vaccins, traitements et ordonnances de toute la maison, animaux compris, avec les rappels à venir." }, "widget": "sante", "niveau": "pratique", "niveauNom": "Pratique", "contrat": { "note": "Tables du widget Carnet de santé (src/widgets/sante) : la mission construit Patients et Rendez_vous_sante, le widget les adopte (MGP.parcours.adopter) puis les complète. Patients couvre les humains et les animaux (ESPECE). Signatures : Patients NOM, ESPECE ; Rendez_vous_sante QUOI, DATE, QUI.", "tables": [{ "id": "Patients", "colonnes": { "NOM": "Text", "ESPECE": "Choice (Humain, Chien, Chat, Autre)" } }, { "id": "Rendez_vous_sante", "colonnes": { "QUOI": "Text", "DATE": "Date", "QUI": "RefList:Patients" } }] }, "objectif": "Relier une ligne à plusieurs lignes d'une autre table avec une Référence multiple.", "durees": { "lecon": 10, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "Plusieurs à la fois", "paragraphes": ["Une colonne **Référence multiple** relie une ligne à plusieurs lignes d'une autre table : un rendez-vous de vaccination pour toute la famille, chien compris. Dans la cellule, chaque personne apparaît comme une petite étiquette."] }, { "titre": "Lire la liste", "code": '", ".join(p.NOM for p in $QUI)', "paragraphes": ["`$QUI` est une liste de lignes : on la parcourt avec `for`. `len($QUI)` compte les personnes concernées."] }, { "titre": "Retrouver les rendez-vous d’un patient", "code": "Rendez_vous_sante.lookupRecords(QUI=CONTAINS($id))", "paragraphes": ["Depuis un patient, `CONTAINS` cherche les rendez-vous dont la liste QUI le contient."] }, { "titre": "Référence ou Référence multiple ?", "liste": ["Un seul lien par ligne : Référence (le convive et sa soirée).", "Plusieurs liens par ligne : Référence multiple (le rendez-vous et les patients).", "Beaucoup d’informations sur chaque lien (dose, lot, réaction) : une table de liaison, carte 18."] }], "mission": { "titre": "Le carnet de la famille", "intro": "Le cœur du widget Carnet de santé : les patients de la maison, humains et animaux, et leurs rendez-vous.", "etapes": ["Créez une table **Patients** avec NOM (Texte) et ESPECE (Choix unique : Humain, Chien, Chat, Autre).", "Créez une table **Rendez_vous_sante** avec QUOI (Texte) et DATE (Date).", "Ajoutez à Rendez_vous_sante une colonne **QUI** de type Référence multiple vers Patients.", "Notez un rendez-vous qui concerne au moins deux patients."], "verifications": [{ "type": "table", "table": "Patients" }, { "type": "choix", "table": "Patients", "colonne": "ESPECE", "choix": ["Humain", "Chien", "Chat", "Autre"] }, { "type": "table", "table": "Rendez_vous_sante" }, { "type": "colonne", "table": "Rendez_vous_sante", "colonne": "DATE", "typeCol": ["Date"] }, { "type": "reference", "table": "Rendez_vous_sante", "colonne": "QUI", "cible": "Patients", "liste": true }, { "type": "lignes", "table": "Rendez_vous_sante", "min": 1 }] }, "questions": [{ "type": "qcm", "competence": "listes", "question": "Un rendez-vous peut concerner plusieurs patients. Quel type pour QUI ?", "choix": ["Référence", "Référence multiple", "Choix multiple", "Texte"], "bonne": 1, "explication": "Plusieurs lignes d'une autre table : Référence multiple. Un Choix multiple ne connaîtrait que des textes, pas les fiches des patients.", "aide": "https://support.getgrist.com/col-refs/" }, { "type": "prediction", "competence": "listes", "question": "QUI contient Léa, Tom et Pixel. Que vaut cette formule ?", "formule": "len($QUI)", "reponses": [3], "explication": "len compte les éléments de la liste : trois patients.", "aide": "https://support.getgrist.com/references-lookups/" }, { "type": "trou", "competence": "listes", "question": "Complétez pour trouver les rendez-vous d'un patient, depuis la table Patients.", "formule": "Rendez_vous_sante.lookupRecords(QUI=___($id))", "reponses": [["CONTAINS"]], "explication": "CONTAINS cherche les lignes dont la liste contient ce patient.", "aide": "https://support.getgrist.com/references-lookups/" }, { "type": "paires", "competence": "listes", "question": "Reliez chaque besoin au bon outil.", "paires": [["Un convive et sa soirée", "Référence"], ["Un rendez-vous et ses patients", "Référence multiple"], ["Des humeurs : Zen, Sportif", "Choix multiple"], ["Une vaccination avec sa dose et son lot", "Table de liaison"]], "explication": "Dès qu'un lien porte ses propres informations, il mérite sa propre table.", "aide": "https://support.getgrist.com/col-refs/" }, { "type": "erreur", "competence": "listes", "question": "Cette formule doit lister les noms des patients. Où est l'erreur ?", "segments": ['", ".join(', "p.NOM", "for p in", "QUI)"], "bonne": 3, "correction": "$QUI)", "explication": "Il manque le $ devant QUI.", "aide": "https://support.getgrist.com/formulas/" }] };
-var SAN = { WIDGET: "sante", NOM: "Carnet de santé", NOM_PAGE: "🩺 Carnet de santé", d: { patients: [], pros: [], rdv: [], vaccins: [], mesures: [], traitements: [], documents: [], personnes: [] }, onglet: "carnet", f: { patient: 0, quand: "avenir" }, pm: 0, fr: { r: null, docs: [] } };
-SAN.ESPECES = [["Humain", "Lavande"], ["Chien", "Pêche"], ["Chat", "Citron"], ["Autre", "Menthe"]];
-SAN.EMOJI_ESPECE = { "Humain": "🙂", "Chien": "🐶", "Chat": "🐱", "Autre": "🐾" };
+MGP.parcours.CONTENU = { "carte": 8, "id": "sante", "titre": "Références multiples", "competence": "listes", "surprise": { "genre": "widget", "nom": "Carnet de santé", "widget": "sante", "texte": "Rendez-vous, vaccins, traitements et ordonnances de toute la maison, animaux compris, reliés à vos Personnes, avec les rappels à venir." }, "widget": "sante", "niveau": "pratique", "niveauNom": "Pratique", "contrat": { "note": "Tables du widget Carnet de santé (src/widgets/sante) : la mission s'appuie sur la table commune Personnes (celle de Mes cadeaux, carte 2, ou faite à la main avec PRENOM) et construit Rendez_vous_sante, que le widget adopte (MGP.parcours.adopter) puis complète. Les animaux sont des Personnes de type Animal. Les données médicales vont dans la table Fiches santé du widget, jamais dans Personnes. Signatures : Personnes PRENOM ; Rendez_vous_sante QUOI, DATE, QUI.", "tables": [{ "id": "Personnes", "colonnes": { "PRENOM": "Text" } }, { "id": "Rendez_vous_sante", "colonnes": { "QUOI": "Text", "DATE": "Date", "QUI": "RefList:Personnes" } }] }, "objectif": "Relier une ligne à plusieurs lignes d'une autre table avec une Référence multiple.", "durees": { "lecon": 10, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "Plusieurs à la fois", "paragraphes": ["Une colonne **Référence multiple** relie une ligne à plusieurs lignes d'une autre table : un rendez-vous de vaccination pour toute la famille, chien compris. Dans la cellule, chaque personne apparaît comme une petite étiquette."] }, { "titre": "Lire la liste", "code": '", ".join(p.PRENOM for p in $QUI)', "paragraphes": ["`$QUI` est une liste de lignes : on la parcourt avec `for`. `len($QUI)` compte les personnes concernées."] }, { "titre": "Retrouver les rendez-vous d’une personne", "code": "Rendez_vous_sante.lookupRecords(QUI=CONTAINS($id))", "paragraphes": ["Depuis la table Personnes, `CONTAINS` cherche les rendez-vous dont la liste QUI contient cette personne. Dans la table Fiches santé du widget, qui pointe vers Personnes, on écrit `CONTAINS($PERSONNE.id)`."] }, { "titre": "Référence ou Référence multiple ?", "liste": ["Un seul lien par ligne : Référence (le convive et sa soirée).", "Plusieurs liens par ligne : Référence multiple (le rendez-vous et les personnes concernées).", "Beaucoup d’informations sur chaque lien (dose, lot, réaction) : une table de liaison, carte 18."] }], "mission": { "titre": "Le carnet de la famille", "intro": "Le cœur du widget Carnet de santé : les rendez-vous de la maison, reliés à vos Personnes, animaux compris.", "etapes": ["Ouvrez la table **Personnes** (celle de Mes cadeaux ; sinon créez-la, avec une colonne PRENOM de type Texte) et vérifiez qu'elle compte au moins deux personnes. Un animal de compagnie y a sa place aussi.", "Créez une table **Rendez_vous_sante** avec QUOI (Texte) et DATE (Date).", "Ajoutez à Rendez_vous_sante une colonne **QUI** de type Référence multiple vers Personnes.", "Notez un rendez-vous qui concerne au moins deux personnes."], "verifications": [{ "type": "table", "table": "Personnes" }, { "type": "lignes", "table": "Personnes", "min": 2 }, { "type": "table", "table": "Rendez_vous_sante" }, { "type": "colonne", "table": "Rendez_vous_sante", "colonne": "DATE", "typeCol": ["Date"] }, { "type": "reference", "table": "Rendez_vous_sante", "colonne": "QUI", "cible": "Personnes", "liste": true }, { "type": "lignes", "table": "Rendez_vous_sante", "min": 1 }] }, "questions": [{ "type": "qcm", "competence": "listes", "question": "Un rendez-vous peut concerner plusieurs personnes. Quel type pour QUI ?", "choix": ["Référence", "Référence multiple", "Choix multiple", "Texte"], "bonne": 1, "explication": "Plusieurs lignes d'une autre table : Référence multiple. Un Choix multiple ne connaîtrait que des textes, pas les lignes de Personnes.", "aide": "https://support.getgrist.com/col-refs/" }, { "type": "prediction", "competence": "listes", "question": "QUI contient Léa, Tom et Pixel. Que vaut cette formule ?", "formule": "len($QUI)", "reponses": [3], "explication": "len compte les éléments de la liste : trois personnes, le chat compris.", "aide": "https://support.getgrist.com/references-lookups/" }, { "type": "trou", "competence": "listes", "question": "Complétez pour trouver les rendez-vous d'une personne, depuis la table Personnes.", "formule": "Rendez_vous_sante.lookupRecords(QUI=___($id))", "reponses": [["CONTAINS"]], "explication": "CONTAINS cherche les lignes dont la liste contient cette personne.", "aide": "https://support.getgrist.com/references-lookups/" }, { "type": "paires", "competence": "listes", "question": "Reliez chaque besoin au bon outil.", "paires": [["Un convive et sa soirée", "Référence"], ["Un rendez-vous et ses personnes", "Référence multiple"], ["Des humeurs : Zen, Sportif", "Choix multiple"], ["Une vaccination avec sa dose et son lot", "Table de liaison"]], "explication": "Dès qu'un lien porte ses propres informations, il mérite sa propre table.", "aide": "https://support.getgrist.com/col-refs/" }, { "type": "erreur", "competence": "listes", "question": "Cette formule doit lister les prénoms des personnes du rendez-vous. Où est l'erreur ?", "segments": ['", ".join(', "p.PRENOM", "for p in", "QUI)"], "bonne": 3, "correction": "$QUI)", "explication": "Il manque le $ devant QUI.", "aide": "https://support.getgrist.com/formulas/" }] };
+var SAN = { WIDGET: "sante", NOM: "Carnet de santé", NOM_PAGE: "🩺 Carnet de santé", d: { fiches: [], patients: [], pros: [], rdv: [], vaccins: [], mesures: [], traitements: [], documents: [], personnes: [] }, onglet: "carnet", f: { patient: 0, quand: "avenir" }, pm: 0, fr: { r: null, docs: [] } };
+SAN.ANIMAL = ["Animal", "Menthe"];
+SAN.TYPES_HUMAINS = [["Adulte", "Pêche"], ["Enfant", "Lavande"], ["Proche", "Écume"]];
+SAN.ESPECES = ["Chien", "Chat", "Lapin", "Oiseau", "Autre"];
+SAN.EMOJI_ESPECE = { "Chien": "🐶", "Chat": "🐱", "Lapin": "🐰", "Oiseau": "🐦", "Autre": "🐾" };
+SAN.EMOJIS_HUMAINS = ["🙂", "🌟", "🧑", "👩", "👨", "👧", "👦", "👶", "👵", "👴"];
+SAN.EMOJIS_ANIMAUX = ["🐶", "🐱", "🐰", "🐦", "🐠", "🐴", "🐹", "🐢", "🐾"];
 SAN.GROUPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Inconnu"].map(function(g) {
   return [g, "Flamant"];
 });
@@ -6352,16 +6439,16 @@ SAN.ALERTES = [["En retard", "Flamant"], ["Bientôt", "Pêche"], ["Prévu", "Lav
 SAN.REMB = [["En attente", "Pêche"], ["Remboursé", "Menthe"], ["Rien à attendre", "Écume"]];
 SAN.EURO = { numMode: "currency", decimals: 2, maxDecimals: 2 };
 SAN.CALENDRIER = [[2, "DTCaP-Hib-HepB, 1re dose"], [2, "Pneumocoque, 1re dose"], [3, "Méningocoque B, 1re dose"], [4, "DTCaP-Hib-HepB, 2e dose"], [4, "Pneumocoque, 2e dose"], [5, "Méningocoque B, 2e dose"], [6, "Méningocoques ACWY, 1re dose"], [11, "DTCaP-Hib-HepB, rappel"], [11, "Pneumocoque, rappel"], [12, "ROR, 1re dose"], [12, "Méningocoques ACWY, rappel"], [12, "Méningocoque B, rappel"], [16, "ROR, 2e dose"], [72, "DTCaP, rappel de 6 ans"], [132, "dTcaP, rappel de 11 ans"], [132, "Papillomavirus (HPV)"], [132, "Méningocoques ACWY, adolescence"]];
-SAN.FORMULES = { AGE: 'DATEDIF($NAISSANCE, TODAY(), "Y") if $NAISSANCE else None', AGE_TEXTE: '"" if not $NAISSANCE else str(DATEDIF($NAISSANCE, TODAY(), "M")) + " mois" if DATEDIF($NAISSANCE, TODAY(), "Y") < 2 else str(DATEDIF($NAISSANCE, TODAY(), "Y")) + " ans"', NB_RDV: "len({RDV}.lookupRecords(QUI=CONTAINS($id)))", PROCHAIN_RDV: "min([r.DATE for r in {RDV}.lookupRecords(QUI=CONTAINS($id)) if r.DATE and r.DATE >= TODAY()], default=None)", VACCINS_A_FAIRE: 'len([v for v in {VACCINS}.lookupRecords(PATIENT=$id) if v.ALERTE in ("En retard", "Bientôt")])', RESTE_A_CHARGE_AN: "ROUND(sum([(r.RESTE_A_CHARGE or 0) / max(1, len(r.QUI)) for r in {RDV}.lookupRecords(QUI=CONTAINS($id)) if r.DATE and r.DATE.year == TODAY().year]), 2)", PATIENTS_NOMS: '", ".join(p.NOM for p in $POUR)', NB_RDV_PRO: "len({RDV}.lookupRecords(PRO=$id))", NOMS: '", ".join(p.NOM for p in $QUI)', NB_PATIENTS: "len($QUI)", A_VENIR: "bool($DATE) and $DATE >= TODAY()", RESTE_A_CHARGE: "ROUND(($MONTANT or 0) - ($REMB_SECU or 0) - ($REMB_MUTUELLE or 0), 2)", REMBOURSEMENT: '"" if not $MONTANT else "Remboursé" if $REMB_SECU or $REMB_MUTUELLE else "Rien à attendre" if $SANS_REMBOURSEMENT else "En attente"', EST_DERNIER: "not [v for v in {VACCINS}.lookupRecords(PATIENT=$PATIENT, VACCIN=$VACCIN) if v.id != $id and v.DATE and (not $DATE or (v.DATE, v.id) > ($DATE, $id))]", ALERTE: '"" if not $EST_DERNIER or not $RAPPEL else "En retard" if $RAPPEL < TODAY() else "Bientôt" if DAYS($RAPPEL, TODAY()) <= 60 else "Prévu" if not $DATE else "À jour"', AGE_MOIS: 'DATEDIF($PATIENT.NAISSANCE, $DATE, "M") if $DATE and $PATIENT.NAISSANCE and $DATE >= $PATIENT.NAISSANCE else None', EN_COURS: "(not $DEBUT or $DEBUT <= TODAY()) and (not $FIN or $FIN >= TODAY())", JOURS_RESTANTS: "DAYS($FIN, TODAY()) if $FIN and $FIN >= TODAY() else None" };
-SAN.DEFS = { PATIENTS: { cle: "PATIENTS", id: "Patients", label: "🩺 Patients", nom: "Patients", signature: ["NOM", "ESPECE"], affichage: "NOM", description: "Les membres de la famille suivis, animaux compris : une ligne par patient, avec ses infos d’urgence et ses prochains rendez-vous.", colonnes: [{ id: "NOM", type: "Text", description: "Prénom ou nom du patient." }, { id: "EMOJI", type: "Text", description: "Un emoji pour le patient." }, { id: "ESPECE", type: "Choice", choix: SAN.ESPECES, description: "Humain, Chien, Chat ou Autre (Choix unique)." }, { id: "PERSONNE", type: "Ref:@PERSONNES", description: "Personne correspondante dans Personnes (Référence), pour un humain." }, { id: "NAISSANCE", type: "Date", description: "Date de naissance." }, { id: "GROUPE_SANGUIN", type: "Choice", choix: SAN.GROUPES, description: "Groupe sanguin, en Choix unique." }, { id: "ALLERGIES", type: "Text", description: "Allergies connues." }, { id: "INFOS_URGENCE", type: "Text", description: "Ce qu’il faut savoir en cas d’urgence (maladie, traitement...)." }, { id: "CONTACT_URGENCE", type: "Text", description: "Personne à prévenir en cas d’urgence." }, { id: "TEL_URGENCE", type: "Text", description: "Téléphone de la personne à prévenir." }, { id: "MEDECIN", type: "Ref:@PROS", description: "Médecin traitant ou vétérinaire (Référence vers Professionnels de santé)." }, { id: "MUTUELLE", type: "Text", description: "Mutuelle et numéro d’adhérent." }, { id: "IDENTIFICATION", type: "Text", description: "Numéro de puce ou de tatouage, pour un animal." }, { id: "COULEUR", type: "Choice", choix: MGP.COULEURS.map(function(c) {
-  return [c, c];
-}), description: "Couleur du patient dans le widget (Choix unique)." }, { id: "NOTES", type: "Text", description: "Notes libres." }, { id: "AGE", type: "Int", formule: SAN.FORMULES.AGE, description: "Formule : âge en années, avec DATEDIF." }, { id: "AGE_TEXTE", type: "Text", formule: SAN.FORMULES.AGE_TEXTE, description: "Formule : âge affiché, en mois avant 2 ans, en années ensuite." }, { id: "NB_RDV", type: "Int", formule: SAN.FORMULES.NB_RDV, description: "Formule : nombre de rendez-vous du patient." }, { id: "PROCHAIN_RDV", type: "Date", formule: SAN.FORMULES.PROCHAIN_RDV, description: "Formule : date du prochain rendez-vous à venir." }, { id: "VACCINS_A_FAIRE", type: "Int", formule: SAN.FORMULES.VACCINS_A_FAIRE, description: "Formule : nombre de rappels de vaccin en retard ou bientôt dus." }, { id: "RESTE_A_CHARGE_AN", type: "Numeric", options: SAN.EURO, formule: SAN.FORMULES.RESTE_A_CHARGE_AN, description: "Formule : reste à charge de l’année en cours, partagé entre les patients d’un même rendez-vous." }] }, PROS: { cle: "PROS", id: "Professionnels_de_sante", label: "👩‍⚕️ Professionnels de santé", nom: "Professionnels de santé", signature: ["NOM", "SPECIALITE", "TELEPHONE"], affichage: "NOM", description: "Les professionnels de santé : une ligne par médecin, dentiste, vétérinaire, pharmacie...", colonnes: [{ id: "NOM", type: "Text", description: "Nom du professionnel ou du cabinet." }, { id: "SPECIALITE", type: "Choice", choix: SAN.SPECIALITES, description: "Spécialité, en Choix unique (Médecin traitant, Dentiste, Vétérinaire...)." }, { id: "TELEPHONE", type: "Text", description: "Numéro de téléphone." }, { id: "ADRESSE", type: "Text", description: "Adresse du cabinet." }, { id: "LIEN", type: "Text", options: { widget: "HyperLink" }, description: "Adresse web pour prendre rendez-vous." }, { id: "POUR", type: "RefList:@PATIENTS", description: "Patients suivis (Référence multiple vers Patients)." }, { id: "NOTES", type: "Text", description: "Notes libres." }, { id: "PATIENTS_NOMS", type: "Text", formule: SAN.FORMULES.PATIENTS_NOMS, description: "Formule : noms des patients suivis, séparés par des virgules." }, { id: "NB_RDV", type: "Int", formule: SAN.FORMULES.NB_RDV_PRO, description: "Formule : nombre de rendez-vous avec ce professionnel." }] }, RDV: { cle: "RDV", id: "Rendez_vous_sante", label: "📅 Rendez-vous santé", nom: "Rendez-vous santé", signature: ["QUOI", "DATE", "QUI"], description: "Les rendez-vous de santé : une ligne par rendez-vous, avec ses patients, son coût et ses remboursements.", colonnes: [{ id: "QUOI", type: "Text", description: "Motif du rendez-vous." }, { id: "DATE", type: "Date", description: "Date du rendez-vous." }, { id: "HEURE", type: "Text", description: "Heure, en texte libre." }, { id: "QUI", type: "RefList:@PATIENTS", description: "Patients concernés (Référence multiple vers Patients)." }, { id: "PRO", type: "Ref:@PROS", description: "Professionnel consulté (Référence vers Professionnels de santé)." }, { id: "NOTE", type: "Text", description: "Note libre : ce qui a été dit, à faire ensuite..." }, { id: "DOCUMENTS", type: "RefList:@DOCUMENTS", description: "Ordonnance, compte rendu, feuille de soins (Référence multiple vers Documents)." }, { id: "MONTANT", type: "Numeric", options: SAN.EURO, description: "Montant payé, en euros." }, { id: "REMB_SECU", type: "Numeric", options: SAN.EURO, description: "Remboursement de la Sécurité sociale, en euros." }, { id: "REMB_MUTUELLE", type: "Numeric", options: SAN.EURO, description: "Remboursement de la mutuelle, en euros." }, { id: "SANS_REMBOURSEMENT", type: "Bool", description: "Coché si aucun remboursement n’est attendu." }, { id: "NOMS", type: "Text", formule: SAN.FORMULES.NOMS, description: "Formule : noms des patients, séparés par des virgules." }, { id: "NB_PATIENTS", type: "Int", formule: SAN.FORMULES.NB_PATIENTS, description: "Formule : nombre de patients du rendez-vous." }, { id: "A_VENIR", type: "Bool", formule: SAN.FORMULES.A_VENIR, description: "Formule : coché si le rendez-vous est aujourd’hui ou plus tard." }, { id: "RESTE_A_CHARGE", type: "Numeric", options: SAN.EURO, formule: SAN.FORMULES.RESTE_A_CHARGE, description: "Formule : MONTANT moins les remboursements de la Sécurité sociale et de la mutuelle." }, { id: "REMBOURSEMENT", type: "Choice", choix: SAN.REMB, formule: SAN.FORMULES.REMBOURSEMENT, description: "Formule : En attente, Remboursé ou Rien à attendre (Choix unique)." }] }, VACCINS: { cle: "VACCINS", id: "Vaccins", label: "💉 Vaccins", nom: "Vaccins", signature: ["PATIENT", "VACCIN", "RAPPEL"], description: "Les vaccins : une ligne par injection, avec la date du rappel et une alerte quand il approche.", colonnes: [{ id: "PATIENT", type: "Ref:@PATIENTS", description: "Patient vacciné (Référence vers Patients)." }, { id: "VACCIN", type: "Text", description: "Nom du vaccin." }, { id: "DATE", type: "Date", description: "Date de l’injection, vide pour un vaccin prévu." }, { id: "RAPPEL", type: "Date", description: "Date du prochain rappel." }, { id: "LOT", type: "Text", description: "Numéro de lot." }, { id: "PRO", type: "Ref:@PROS", description: "Professionnel qui a vacciné (Référence vers Professionnels de santé)." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "EST_DERNIER", type: "Bool", formule: SAN.FORMULES.EST_DERNIER, description: "Formule : coché pour l’injection la plus récente de ce vaccin pour ce patient." }, { id: "ALERTE", type: "Choice", choix: SAN.ALERTES, formule: SAN.FORMULES.ALERTE, description: "Formule : En retard, Bientôt (60 jours), Prévu ou À jour (Choix unique), sur la dernière injection seulement." }] }, MESURES: { cle: "MESURES", id: "Mesures", label: "📏 Mesures", nom: "Mesures", signature: ["PATIENT", "DATE", "POIDS"], description: "Les mesures de croissance : une ligne par pesée ou mesure, pour la courbe.", colonnes: [{ id: "PATIENT", type: "Ref:@PATIENTS", description: "Patient mesuré (Référence vers Patients)." }, { id: "DATE", type: "Date", description: "Date de la mesure." }, { id: "POIDS", type: "Numeric", options: { decimals: 1, maxDecimals: 3 }, description: "Poids, en kilos." }, { id: "TAILLE", type: "Numeric", options: { decimals: 0, maxDecimals: 1 }, description: "Taille, en centimètres." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "AGE_MOIS", type: "Int", formule: SAN.FORMULES.AGE_MOIS, description: "Formule : âge du patient en mois à la date de la mesure, avec DATEDIF." }] }, TRAITEMENTS: { cle: "TRAITEMENTS", id: "Traitements", label: "💊 Traitements", nom: "Traitements", signature: ["PATIENT", "TRAITEMENT", "FIN"], description: "Les traitements : une ligne par médicament ou soin, avec ses dates et son ordonnance.", colonnes: [{ id: "PATIENT", type: "Ref:@PATIENTS", description: "Patient traité (Référence vers Patients)." }, { id: "TRAITEMENT", type: "Text", description: "Nom du médicament ou du soin." }, { id: "POSOLOGIE", type: "Text", description: "Comment le prendre." }, { id: "DEBUT", type: "Date", description: "Premier jour du traitement." }, { id: "FIN", type: "Date", description: "Dernier jour du traitement, vide pour un traitement au long cours." }, { id: "ORDONNANCE", type: "RefList:@DOCUMENTS", description: "Ordonnance (Référence multiple vers Documents)." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "EN_COURS", type: "Bool", formule: SAN.FORMULES.EN_COURS, description: "Formule : coché si aujourd’hui est entre DEBUT et FIN." }, { id: "JOURS_RESTANTS", type: "Int", formule: SAN.FORMULES.JOURS_RESTANTS, description: "Formule : nombre de jours d’ici FIN." }] } };
-SAN.ORDRE = ["PATIENTS", "PROS", "RDV", "VACCINS", "MESURES", "TRAITEMENTS"];
+SAN.FORMULES = { NAISSANCE: "$PERSONNE.NAISSANCE", AGE: 'DATEDIF($NAISSANCE, TODAY(), "Y") if $NAISSANCE else None', AGE_TEXTE: '"" if not $NAISSANCE else str(DATEDIF($NAISSANCE, TODAY(), "M")) + " mois" if DATEDIF($NAISSANCE, TODAY(), "Y") < 2 else str(DATEDIF($NAISSANCE, TODAY(), "Y")) + " ans"', NB_RDV: "len({RDV}.lookupRecords(QUI=CONTAINS($PERSONNE.id)))", PROCHAIN_RDV: "min([r.DATE for r in {RDV}.lookupRecords(QUI=CONTAINS($PERSONNE.id)) if r.DATE and r.DATE >= TODAY()], default=None)", VACCINS_A_FAIRE: 'len([v for v in {VACCINS}.lookupRecords(PERSONNE=$PERSONNE.id) if v.ALERTE in ("En retard", "Bientôt")])', RESTE_A_CHARGE_AN: "ROUND(sum([(r.RESTE_A_CHARGE or 0) / max(1, len(r.QUI)) for r in {RDV}.lookupRecords(QUI=CONTAINS($PERSONNE.id)) if r.DATE and r.DATE.year == TODAY().year]), 2)", NOMS_SUIVIS: '", ".join(p.PRENOM for p in $POUR)', NB_RDV_PRO: "len({RDV}.lookupRecords(PRO=$id))", NOMS: '", ".join(p.PRENOM for p in $QUI)', NB_PERSONNES: "len($QUI)", A_VENIR: "bool($DATE) and $DATE >= TODAY()", RESTE_A_CHARGE: "ROUND(($MONTANT or 0) - ($REMB_SECU or 0) - ($REMB_MUTUELLE or 0), 2)", REMBOURSEMENT: '"" if not $MONTANT else "Remboursé" if $REMB_SECU or $REMB_MUTUELLE else "Rien à attendre" if $SANS_REMBOURSEMENT else "En attente"', EST_DERNIER: "not [v for v in {VACCINS}.lookupRecords(PERSONNE=$PERSONNE, VACCIN=$VACCIN) if v.id != $id and v.DATE and (not $DATE or (v.DATE, v.id) > ($DATE, $id))]", ALERTE: '"" if not $EST_DERNIER or not $RAPPEL else "En retard" if $RAPPEL < TODAY() else "Bientôt" if DAYS($RAPPEL, TODAY()) <= 60 else "Prévu" if not $DATE else "À jour"', AGE_MOIS: 'DATEDIF($PERSONNE.NAISSANCE, $DATE, "M") if $DATE and $PERSONNE.NAISSANCE and $DATE >= $PERSONNE.NAISSANCE else None', EN_COURS: "(not $DEBUT or $DEBUT <= TODAY()) and (not $FIN or $FIN >= TODAY())", JOURS_RESTANTS: "DAYS($FIN, TODAY()) if $FIN and $FIN >= TODAY() else None" };
+SAN.DEFS = { PROS: { cle: "PROS", id: "Professionnels_de_sante", label: "👩‍⚕️ Professionnels de santé", nom: "Professionnels de santé", signature: ["NOM", "SPECIALITE", "TELEPHONE"], affichage: "NOM", description: "Les professionnels de santé : une ligne par médecin, dentiste, vétérinaire, pharmacie...", colonnes: [{ id: "NOM", type: "Text", description: "Nom du professionnel ou du cabinet." }, { id: "SPECIALITE", type: "Choice", choix: SAN.SPECIALITES, description: "Spécialité, en Choix unique (Médecin traitant, Dentiste, Vétérinaire...)." }, { id: "TELEPHONE", type: "Text", description: "Numéro de téléphone." }, { id: "ADRESSE", type: "Text", description: "Adresse du cabinet." }, { id: "LIEN", type: "Text", options: { widget: "HyperLink" }, description: "Adresse web pour prendre rendez-vous." }, { id: "POUR", type: "RefList:@PERSONNES", description: "Personnes suivies par ce professionnel (Référence multiple vers Personnes)." }, { id: "NOTES", type: "Text", description: "Notes libres." }, { id: "NOMS_SUIVIS", type: "Text", formule: SAN.FORMULES.NOMS_SUIVIS, description: "Formule : prénoms des personnes suivies, lus dans Personnes, séparés par des virgules." }, { id: "NB_RDV", type: "Int", formule: SAN.FORMULES.NB_RDV_PRO, description: "Formule : nombre de rendez-vous avec ce professionnel." }] }, FICHES_SANTE: { cle: "FICHES_SANTE", id: "Fiches_sante", label: "🩺 Fiches santé", nom: "Fiches santé", motif: "FICHES_SANTE", signature: ["PERSONNE", "GROUPE_SANGUIN", "ALLERGIES"], description: "Une fiche par personne suivie dans le carnet, animaux compris : groupe sanguin, allergies, médecin, contacts d’urgence. Prénom, emoji, couleur et date de naissance restent dans Personnes ; les données médicales restent ici, jamais dans Personnes.", colonnes: [{ id: "PERSONNE", type: "Ref:@PERSONNES", description: "Personne suivie (Référence vers Personnes, obligatoire) : son prénom, son emoji et sa couleur viennent de Personnes." }, { id: "ESPECE", type: "Text", description: "Espèce, pour un animal seulement (Chien, Chat...) ; vide pour une personne." }, { id: "GROUPE_SANGUIN", type: "Choice", choix: SAN.GROUPES, description: "Groupe sanguin, en Choix unique." }, { id: "ALLERGIES", type: "Text", description: "Allergies connues." }, { id: "INFOS_URGENCE", type: "Text", description: "Ce qu’il faut savoir en cas d’urgence (maladie, traitement...)." }, { id: "CONTACT_URGENCE", type: "Text", description: "Personne à prévenir en cas d’urgence." }, { id: "TEL_URGENCE", type: "Text", description: "Téléphone de la personne à prévenir." }, { id: "MEDECIN", type: "Ref:@PROS", description: "Médecin traitant ou vétérinaire (Référence vers Professionnels de santé)." }, { id: "MUTUELLE", type: "Text", description: "Mutuelle et numéro d’adhérent." }, { id: "IDENTIFICATION", type: "Text", description: "Numéro de puce ou de tatouage, pour un animal." }, { id: "NOTES", type: "Text", description: "Notes libres." }, { id: "NAISSANCE", type: "Date", formule: SAN.FORMULES.NAISSANCE, description: "Formule : date de naissance, lue dans Personnes (une seule date pour tous les widgets)." }, { id: "AGE", type: "Int", formule: SAN.FORMULES.AGE, description: "Formule : âge en années, avec DATEDIF." }, { id: "AGE_TEXTE", type: "Text", formule: SAN.FORMULES.AGE_TEXTE, description: "Formule : âge affiché, en mois avant 2 ans, en années ensuite." }, { id: "NB_RDV", type: "Int", formule: SAN.FORMULES.NB_RDV, description: "Formule : nombre de rendez-vous de la personne (CONTAINS dans la Référence multiple QUI)." }, { id: "PROCHAIN_RDV", type: "Date", formule: SAN.FORMULES.PROCHAIN_RDV, description: "Formule : date du prochain rendez-vous à venir." }, { id: "VACCINS_A_FAIRE", type: "Int", formule: SAN.FORMULES.VACCINS_A_FAIRE, description: "Formule : nombre de rappels de vaccin en retard ou bientôt dus." }, { id: "RESTE_A_CHARGE_AN", type: "Numeric", options: SAN.EURO, formule: SAN.FORMULES.RESTE_A_CHARGE_AN, description: "Formule : reste à charge de l’année en cours, partagé entre les personnes d’un même rendez-vous." }] }, RDV: { cle: "RDV", id: "Rendez_vous_sante", label: "📅 Rendez-vous santé", nom: "Rendez-vous santé", signature: ["QUOI", "DATE", "QUI"], description: "Les rendez-vous de santé : une ligne par rendez-vous, avec les personnes concernées, son coût et ses remboursements.", colonnes: [{ id: "QUOI", type: "Text", description: "Motif du rendez-vous." }, { id: "DATE", type: "Date", description: "Date du rendez-vous." }, { id: "HEURE", type: "Text", description: "Heure, en texte libre." }, { id: "QUI", type: "RefList:@PERSONNES", description: "Personnes concernées, animaux compris (Référence multiple vers Personnes)." }, { id: "PRO", type: "Ref:@PROS", description: "Professionnel consulté (Référence vers Professionnels de santé)." }, { id: "NOTE", type: "Text", description: "Note libre : ce qui a été dit, à faire ensuite..." }, { id: "DOCUMENTS", type: "RefList:@DOCUMENTS", description: "Ordonnance, compte rendu, feuille de soins (Référence multiple vers Documents)." }, { id: "MONTANT", type: "Numeric", options: SAN.EURO, description: "Montant payé, en euros." }, { id: "REMB_SECU", type: "Numeric", options: SAN.EURO, description: "Remboursement de la Sécurité sociale, en euros." }, { id: "REMB_MUTUELLE", type: "Numeric", options: SAN.EURO, description: "Remboursement de la mutuelle, en euros." }, { id: "SANS_REMBOURSEMENT", type: "Bool", description: "Coché si aucun remboursement n’est attendu." }, { id: "NOMS", type: "Text", formule: SAN.FORMULES.NOMS, description: "Formule : prénoms des personnes du rendez-vous, lus dans Personnes, séparés par des virgules." }, { id: "NB_PERSONNES", type: "Int", formule: SAN.FORMULES.NB_PERSONNES, description: "Formule : nombre de personnes du rendez-vous." }, { id: "A_VENIR", type: "Bool", formule: SAN.FORMULES.A_VENIR, description: "Formule : coché si le rendez-vous est aujourd’hui ou plus tard." }, { id: "RESTE_A_CHARGE", type: "Numeric", options: SAN.EURO, formule: SAN.FORMULES.RESTE_A_CHARGE, description: "Formule : MONTANT moins les remboursements de la Sécurité sociale et de la mutuelle." }, { id: "REMBOURSEMENT", type: "Choice", choix: SAN.REMB, formule: SAN.FORMULES.REMBOURSEMENT, description: "Formule : En attente, Remboursé ou Rien à attendre (Choix unique)." }] }, VACCINS: { cle: "VACCINS", id: "Vaccins", label: "💉 Vaccins", nom: "Vaccins", signature: ["VACCIN", "RAPPEL", "LOT"], description: "Les vaccins : une ligne par injection, avec la date du rappel et une alerte quand il approche.", colonnes: [{ id: "PERSONNE", type: "Ref:@PERSONNES", description: "Personne vaccinée, ou animal (Référence vers Personnes)." }, { id: "VACCIN", type: "Text", description: "Nom du vaccin." }, { id: "DATE", type: "Date", description: "Date de l’injection, vide pour un vaccin prévu." }, { id: "RAPPEL", type: "Date", description: "Date du prochain rappel." }, { id: "LOT", type: "Text", description: "Numéro de lot." }, { id: "PRO", type: "Ref:@PROS", description: "Professionnel qui a vacciné (Référence vers Professionnels de santé)." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "EST_DERNIER", type: "Bool", formule: SAN.FORMULES.EST_DERNIER, description: "Formule : coché pour l’injection la plus récente de ce vaccin pour cette personne." }, { id: "ALERTE", type: "Choice", choix: SAN.ALERTES, formule: SAN.FORMULES.ALERTE, description: "Formule : En retard, Bientôt (60 jours), Prévu ou À jour (Choix unique), sur la dernière injection seulement." }] }, MESURES: { cle: "MESURES", id: "Mesures", label: "📏 Mesures", nom: "Mesures", signature: ["DATE", "POIDS", "TAILLE"], description: "Les mesures de croissance : une ligne par pesée ou mesure, pour la courbe.", colonnes: [{ id: "PERSONNE", type: "Ref:@PERSONNES", description: "Personne mesurée, ou animal (Référence vers Personnes)." }, { id: "DATE", type: "Date", description: "Date de la mesure." }, { id: "POIDS", type: "Numeric", options: { decimals: 1, maxDecimals: 3 }, description: "Poids, en kilos." }, { id: "TAILLE", type: "Numeric", options: { decimals: 0, maxDecimals: 1 }, description: "Taille, en centimètres." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "AGE_MOIS", type: "Int", formule: SAN.FORMULES.AGE_MOIS, description: "Formule : âge en mois à la date de la mesure, avec DATEDIF et la date de naissance de Personnes." }] }, TRAITEMENTS: { cle: "TRAITEMENTS", id: "Traitements", label: "💊 Traitements", nom: "Traitements", signature: ["TRAITEMENT", "POSOLOGIE", "FIN"], description: "Les traitements : une ligne par médicament ou soin, avec ses dates et son ordonnance.", colonnes: [{ id: "PERSONNE", type: "Ref:@PERSONNES", description: "Personne traitée, ou animal (Référence vers Personnes)." }, { id: "TRAITEMENT", type: "Text", description: "Nom du médicament ou du soin." }, { id: "POSOLOGIE", type: "Text", description: "Comment le prendre." }, { id: "DEBUT", type: "Date", description: "Premier jour du traitement." }, { id: "FIN", type: "Date", description: "Dernier jour du traitement, vide pour un traitement au long cours." }, { id: "ORDONNANCE", type: "RefList:@DOCUMENTS", description: "Ordonnance (Référence multiple vers Documents)." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "EN_COURS", type: "Bool", formule: SAN.FORMULES.EN_COURS, description: "Formule : coché si aujourd’hui est entre DEBUT et FIN." }, { id: "JOURS_RESTANTS", type: "Int", formule: SAN.FORMULES.JOURS_RESTANTS, description: "Formule : nombre de jours d’ici FIN." }] } };
+SAN.ORDRE = ["PROS", "FICHES_SANTE", "RDV", "VACCINS", "MESURES", "TRAITEMENTS"];
 SAN.defsWidget = function() {
   return SAN.ORDRE.map(function(c) {
     return SAN.DEFS[c];
   });
 };
+SAN.ANCIENNES_DESCRIPTIONS = { RDV: { NOMS: "Formule : noms des patients, séparés par des virgules." }, FICHES_SANTE: {}, VACCINS: { EST_DERNIER: "Formule : coché pour l’injection la plus récente de ce vaccin pour ce patient." }, MESURES: { AGE_MOIS: "Formule : âge du patient en mois à la date de la mesure, avec DATEDIF." } };
+SAN.ANCIENNES_TABLES = { RDV: "Les rendez-vous de santé : une ligne par rendez-vous, avec ses patients, son coût et ses remboursements." };
 SAN.j = function(sec) {
   return sec === null || sec === void 0 || sec === "" || isNaN(Number(sec)) ? null : Math.round(Number(sec) / 86400);
 };
@@ -6408,6 +6495,13 @@ SAN.ids = function(v) {
 SAN.patient = function(id) {
   return SAN.parId(SAN.d.patients, Number(id) || 0);
 };
+SAN.personne = function(id) {
+  return SAN.parId(SAN.d.personnes, Number(id) || 0);
+};
+SAN.nom = function(id) {
+  var p = SAN.personne(id);
+  return p ? p.PRENOM || "Sans nom" : "";
+};
 SAN.pro = function(id) {
   return SAN.parId(SAN.d.pros, Number(id) || 0);
 };
@@ -6418,11 +6512,11 @@ SAN.lire = function(s) {
   var v = MGP.lireMontant(String(s || "").replace(/€/g, ""));
   return v === null ? null : Math.abs(v);
 };
-SAN.emoji = function(p) {
-  return p && (p.EMOJI || SAN.EMOJI_ESPECE[p.ESPECE]) || "🙂";
-};
 SAN.estAnimal = function(p) {
-  return p && p.ESPECE && p.ESPECE !== "Humain";
+  return !!(p && (p.TYPE === "Animal" || p.ESPECE));
+};
+SAN.emoji = function(p) {
+  return p && (p.EMOJI || (SAN.estAnimal(p) ? SAN.EMOJI_ESPECE[p.ESPECE] || "🐾" : "")) || "🙂";
 };
 SAN.pilAlerte = function(a) {
   var c = SAN.ALERTES.filter(function(x) {
@@ -6437,6 +6531,12 @@ SAN.rdvDe = function(pid) {
 };
 SAN.prive = function() {
   return '<p class="prive" id="note-prive"><span aria-hidden="true">🔒</span><span><b>Données personnelles.</b> Elles restent dans votre document Grist : ne le partagez pas par un lien public. Les personnes invitées voient tout ce que leur rôle permet ; pour limiter, utilisez les règles d’accès du document. Ce carnet range ce que vous notez, il ne donne aucun conseil médical.</span></p>';
+};
+SAN.cle = function(s) {
+  return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+};
+SAN.vide = function(v) {
+  return v === null || v === void 0 || v === "" || v === 0 || v === false || Array.isArray(v) && v.length <= 1;
 };
 SAN.charger = async function() {
   await MGP.g.chargerMeta();
@@ -6453,9 +6553,7 @@ SAN.charger = async function() {
       MGP.g.registre[cle] = t.tableId;
     }
   });
-  SAN.d.patients = (await MGP.g.lire(MGP.g.idTable("PATIENTS"))).sort(function(a, b) {
-    return (a.ESPECE === "Humain" ? 0 : 1) - (b.ESPECE === "Humain" ? 0 : 1) || String(a.NOM).localeCompare(String(b.NOM), "fr");
-  });
+  SAN.d.fiches = await MGP.g.lire(MGP.g.idTable("FICHES_SANTE"));
   SAN.d.pros = await MGP.g.lire(MGP.g.idTable("PROS"));
   SAN.d.rdv = await MGP.g.lire(MGP.g.idTable("RDV"));
   SAN.d.vaccins = await MGP.g.lire(MGP.g.idTable("VACCINS"));
@@ -6463,17 +6561,51 @@ SAN.charger = async function() {
   SAN.d.traitements = await MGP.g.lire(MGP.g.idTable("TRAITEMENTS"));
   SAN.d.documents = MGP.g.idTable("DOCUMENTS") ? await MGP.g.lire(MGP.g.idTable("DOCUMENTS")) : [];
   SAN.d.personnes = MGP.g.idTable("PERSONNES") ? await MGP.g.lire(MGP.g.idTable("PERSONNES")) : [];
+  SAN.construireSuivis();
   if (SAN.pm && !SAN.patient(SAN.pm)) {
     SAN.pm = 0;
   }
   if (!SAN.pm) {
     var enfant = SAN.d.patients.filter(function(p) {
       return SAN.d.mesures.some(function(m) {
-        return Number(m.PATIENT) === p.id;
+        return Number(m.PERSONNE) === p.id;
       });
     })[0];
     SAN.pm = enfant ? enfant.id : SAN.d.patients[0] ? SAN.d.patients[0].id : 0;
   }
+};
+SAN.construireSuivis = function() {
+  var vus = {};
+  SAN.d.patients = SAN.d.fiches.map(function(f) {
+    var p = SAN.personne(f.PERSONNE);
+    if (!p || vus[p.id]) {
+      return null;
+    }
+    vus[p.id] = true;
+    var o = {};
+    Object.keys(f).forEach(function(k) {
+      o[k] = f[k];
+    });
+    o.id = p.id;
+    o.fiche = f.id;
+    o.NOM = p.PRENOM || "Sans nom";
+    o.EMOJI = p.EMOJI || "";
+    o.COULEUR = p.COULEUR || "";
+    o.TYPE = p.TYPE || "";
+    if (!o.NAISSANCE && p.NAISSANCE) {
+      o.NAISSANCE = p.NAISSANCE;
+    }
+    return o;
+  }).filter(Boolean).sort(function(a, b) {
+    return (SAN.estAnimal(a) ? 1 : 0) - (SAN.estAnimal(b) ? 1 : 0) || String(a.NOM).localeCompare(String(b.NOM), "fr");
+  });
+};
+SAN.nonSuivies = function() {
+  return SAN.d.personnes.filter(function(p) {
+    return !SAN.patient(p.id);
+  }).sort(function(a, b) {
+    return (a.TYPE === "Animal" ? 1 : 0) - (b.TYPE === "Animal" ? 1 : 0) || String(a.PRENOM).localeCompare(String(b.PRENOM), "fr");
+  });
 };
 SAN.installe = function() {
   return ["PERSONNES", "CATEGORIES", "DOCUMENTS", "TECH"].every(function(cle) {
@@ -6492,10 +6624,677 @@ SAN.ecrire = async function(actions, message) {
     MGP.annoncer(message, "ok");
   }
 };
+SAN.assurerChoixAnimal = async function() {
+  try {
+    await MGP.g.chargerMeta();
+    var t = MGP.g.tableParId(MGP.g.idTable("PERSONNES"));
+    if (!t) {
+      return false;
+    }
+    var col = MGP.g.colonnesDe(t.id).filter(function(c) {
+      return c.colId === "TYPE";
+    })[0];
+    if (!col || !/^Choice/.test(String(col.type))) {
+      return false;
+    }
+    var o = {};
+    try {
+      o = JSON.parse(col.widgetOptions || "{}") || {};
+    } catch (e) {
+      o = {};
+    }
+    var l = (o.choices || []).slice(), opts = o.choiceOptions || {};
+    if (l.indexOf(SAN.ANIMAL[0]) >= 0) {
+      return false;
+    }
+    l.push(SAN.ANIMAL[0]);
+    var hex = MGP.HEX[SAN.ANIMAL[1]];
+    opts[SAN.ANIMAL[0]] = { fillColor: hex[0], textColor: hex[1] };
+    o.choices = l;
+    o.choiceOptions = opts;
+    await MGP.g.actions([["ModifyColumn", t.tableId, "TYPE", { widgetOptions: JSON.stringify(o) }]]);
+    await MGP.g.ecrireReglage("SANTE:CHOIX_ANIMAL", true);
+    await MGP.g.chargerMeta();
+    return true;
+  } catch (e) {
+    logSecurite("choix Animal", e);
+    return false;
+  }
+};
+SAN.retirerChoixAnimalInutile = async function() {
+  try {
+    if (MGP.g.reglage("SANTE:CHOIX_ANIMAL", false) !== true) {
+      return;
+    }
+    if (SAN.d.personnes.some(function(p) {
+      return p.TYPE === SAN.ANIMAL[0];
+    })) {
+      return;
+    }
+    await MGP.g.chargerMeta();
+    var t = MGP.g.tableParId(MGP.g.idTable("PERSONNES")), col = t ? MGP.g.colonnesDe(t.id).filter(function(c) {
+      return c.colId === "TYPE";
+    })[0] : null;
+    if (!col) {
+      return;
+    }
+    var o = JSON.parse(col.widgetOptions || "{}") || {};
+    o.choices = (o.choices || []).filter(function(c) {
+      return c !== SAN.ANIMAL[0];
+    });
+    if (o.choiceOptions) {
+      delete o.choiceOptions[SAN.ANIMAL[0]];
+    }
+    await MGP.g.actions([["ModifyColumn", t.tableId, "TYPE", { widgetOptions: JSON.stringify(o) }]]);
+    await MGP.g.ecrireReglage("SANTE:CHOIX_ANIMAL", false);
+  } catch (e) {
+    logSecurite("choix Animal", e);
+  }
+};
+SAN.suivre = async function(ids) {
+  ids = ids.filter(function(id) {
+    return SAN.personne(id) && !SAN.patient(id);
+  });
+  if (!ids.length) {
+    return;
+  }
+  await SAN.ecrire([["BulkAddRecord", MGP.g.idTable("FICHES_SANTE"), ids.map(function() {
+    return null;
+  }), { PERSONNE: ids }]], ids.length === 1 ? SAN.nom(ids[0]) + " est suivi dans le carnet" : ids.length + " personnes suivies dans le carnet");
+};
+SAN.choisirASuivre = function() {
+  var l = SAN.nonSuivies();
+  if (!l.length) {
+    SAN.ajouterPersonne(false);
+    return;
+  }
+  MGP.formulaire({ titre: "Suivre quelqu’un de Personnes", champs: [{ id: "PERSONNE", lib: "Qui ?", type: "choix", choix: l.map(function(p) {
+    return [String(p.id), p.COULEUR || "", (p.EMOJI || "🙂") + " " + (p.PRENOM || "Sans nom")];
+  }), valeur: String(l[0].id), aide: "Son prénom, son emoji et sa couleur restent ceux de Personnes." }], libelleOk: "Suivre", valider: async function(v) {
+    await SAN.suivre([Number(v.PERSONNE)]);
+  } });
+};
+SAN.ajouterPersonne = function(animal) {
+  var pros = [["0", "", "Aucun"]].concat(SAN.d.pros.filter(function(x) {
+    return animal ? x.SPECIALITE === "Vétérinaire" || x.SPECIALITE === "Autre" || !x.SPECIALITE : x.SPECIALITE !== "Vétérinaire";
+  }).map(function(x) {
+    return [String(x.id), "", (SAN.EMOJI_PRO[x.SPECIALITE] || "") + " " + x.NOM];
+  }));
+  var champs = animal ? [{ id: "PRENOM", lib: "Son nom", type: "texte", valeur: "", requis: true }, { id: "ESPECE", lib: "C’est un...", type: "choix", choix: SAN.ESPECES.map(function(e) {
+    return [e, "Pêche", SAN.EMOJI_ESPECE[e] + " " + e];
+  }), valeur: "Chien" }, { id: "EMOJI", lib: "Emoji", type: "emoji", choix: SAN.EMOJIS_ANIMAUX, valeur: "🐶" }, { id: "NAISSANCE", lib: "Né le (facultatif)", type: "date", valeur: "" }, { id: "IDENTIFICATION", lib: "Identification (puce, tatouage)", type: "texte", valeur: "" }, { id: "MEDECIN", lib: "Vétérinaire", type: "choix", choix: pros, valeur: "0" }, { id: "ALLERGIES", lib: "Allergies", type: "texte", valeur: "" }] : [{ id: "PRENOM", lib: "Prénom", type: "texte", valeur: "", requis: true }, { id: "TYPE", lib: "C’est...", type: "choix", choix: SAN.TYPES_HUMAINS, valeur: "Adulte" }, { id: "EMOJI", lib: "Emoji", type: "emoji", choix: SAN.EMOJIS_HUMAINS, valeur: "🙂" }, { id: "NAISSANCE", lib: "Né le (facultatif)", type: "date", valeur: "" }, { id: "GROUPE_SANGUIN", lib: "Groupe sanguin", type: "choix", choix: SAN.GROUPES, valeur: "" }, { id: "ALLERGIES", lib: "Allergies", type: "texte", valeur: "" }, { id: "MEDECIN", lib: "Médecin traitant", type: "choix", choix: pros, valeur: "0" }];
+  MGP.formulaire({ titre: animal ? "Ajouter un animal" : "Nouvelle personne", champs, libelleOk: "Ajouter au carnet", valider: async function(v) {
+    if (animal) {
+      await SAN.assurerChoixAnimal();
+    }
+    var type = animal ? SAN.ANIMAL[0] : v.TYPE || "Adulte";
+    var per = { PRENOM: v.PRENOM, TYPE: type, FOYER: type !== "Proche", EMOJI: v.EMOJI || (animal ? "🐾" : "🙂"), COULEUR: MGP.COULEURS[SAN.d.personnes.length % 6], NAISSANCE: v.NAISSANCE };
+    var r = await MGP.g.actions([["AddRecord", MGP.g.idTable("PERSONNES"), null, per]]);
+    var fiche = { PERSONNE: r.retValues[0], MEDECIN: Number(v.MEDECIN) || 0, ALLERGIES: v.ALLERGIES || "" };
+    if (animal) {
+      fiche.ESPECE = v.ESPECE || "Autre";
+      fiche.IDENTIFICATION = v.IDENTIFICATION || "";
+    } else {
+      fiche.GROUPE_SANGUIN = v.GROUPE_SANGUIN || "";
+    }
+    await SAN.ecrire([["AddRecord", MGP.g.idTable("FICHES_SANTE"), null, fiche]], v.PRENOM + " ajouté à Personnes et au carnet");
+  } });
+};
+SAN.assurerPersonnes = async function(gens) {
+  var ids = [], crees = [], naissances = [];
+  for (var i = 0; i < gens.length; i++) {
+    var g = gens[i], animal = g[1] === SAN.ANIMAL[0];
+    var ex = SAN.d.personnes.filter(function(p) {
+      return p.PRENOM === g[0] && p.TYPE === SAN.ANIMAL[0] === animal;
+    })[0];
+    if (ex) {
+      ids.push(ex.id);
+      if (!ex.NAISSANCE && g[4]) {
+        await MGP.g.actions([["UpdateRecord", MGP.g.idTable("PERSONNES"), ex.id, { NAISSANCE: g[4] }]]);
+        naissances.push([ex.id, g[4]]);
+      }
+      continue;
+    }
+    if (animal) {
+      await SAN.assurerChoixAnimal();
+    }
+    var r = await MGP.g.actions([["AddRecord", MGP.g.idTable("PERSONNES"), null, { PRENOM: g[0], TYPE: g[1], FOYER: true, EMOJI: g[2], COULEUR: g[3], NAISSANCE: g[4] || null }]]);
+    ids.push(r.retValues[0]);
+    crees.push(r.retValues[0]);
+  }
+  return { ids, crees, naissances };
+};
+SAN.personnesUtilisees = async function(ids) {
+  await MGP.g.chargerMeta();
+  var pid = MGP.g.idTable("PERSONNES"), utilisees = {}, parTable = {};
+  MGP.g.meta.colonnes.forEach(function(c) {
+    if (c.isFormula || c.type !== "Ref:" + pid && c.type !== "RefList:" + pid) {
+      return;
+    }
+    var t = MGP.g.meta.tables.filter(function(x) {
+      return x.id === c.parentId;
+    })[0];
+    if (!t || !MGP.g.estTableUtilisateur(t) || t.tableId === pid) {
+      return;
+    }
+    (parTable[t.tableId] = parTable[t.tableId] || []).push(c.colId);
+  });
+  var tables = Object.keys(parTable);
+  for (var i = 0; i < tables.length; i++) {
+    (await MGP.g.lire(tables[i])).forEach(function(r) {
+      parTable[tables[i]].forEach(function(c) {
+        SAN.ids(Array.isArray(r[c]) ? r[c] : [r[c]]).forEach(function(id) {
+          if (ids.indexOf(id) >= 0) {
+            utilisees[id] = true;
+          }
+        });
+      });
+    });
+  }
+  return utilisees;
+};
+SAN.adopterPersonnes = async function() {
+  try {
+    await MGP.g.chargerMeta();
+    await MGP.g.chargerTech();
+    if (MGP.g.trouver(MGP.SOCLE.PERSONNES)) {
+      return false;
+    }
+    var t = MGP.g.tableParId(MGP.SOCLE.PERSONNES.id);
+    if (!t || !MGP.g.estTableUtilisateur(t)) {
+      return false;
+    }
+    var def = MGP.SOCLE.PERSONNES, cols = MGP.g.colonnesDe(t.id);
+    if (!cols.some(function(c) {
+      return SAN.cle(c.colId) === "prenom";
+    })) {
+      return false;
+    }
+    var a = [];
+    def.colonnes.forEach(function(c) {
+      var x = cols.filter(function(k) {
+        return SAN.cle(k.colId) === SAN.cle(c.id);
+      })[0];
+      if (x && x.colId !== c.id && !cols.some(function(k) {
+        return k.colId === c.id;
+      })) {
+        a.push(["RenameColumn", t.tableId, x.colId, c.id]);
+      }
+    });
+    if (a.length) {
+      await MGP.g.actions(a);
+      await MGP.g.chargerMeta();
+    }
+    var ids = MGP.g.colonnesDe(t.id).map(function(c) {
+      return c.colId;
+    }), b = [];
+    def.signature.forEach(function(s) {
+      if (ids.indexOf(s) >= 0) {
+        return;
+      }
+      var c = def.colonnes.filter(function(x) {
+        return x.id === s;
+      })[0];
+      b.push(["AddColumn", t.tableId, s, { type: MGP.g.resoudreType(c.type), isFormula: false, label: MGP.g.libelleColonne(s), untieColIdFromLabel: true }]);
+      b = b.concat(MGP.g.actionsColonne(t.tableId, c, true));
+    });
+    if (b.length) {
+      await MGP.g.actions(b);
+    }
+    MGP.g.registre.PERSONNES = t.tableId;
+    await MGP.g.chargerMeta();
+    return true;
+  } catch (e) {
+    logSecurite("adoption de Personnes", e);
+    return false;
+  }
+};
+SAN.ANCIENNES_FORMULES = { RDV: { NOMS: '", ".join(p.NOM for p in $QUI)', NB_PATIENTS: "len($QUI)" }, PROS: { PATIENTS_NOMS: '", ".join(p.NOM for p in $POUR)' }, VACCINS: { EST_DERNIER: "not [v for v in {VACCINS}.lookupRecords(PATIENT=$PATIENT, VACCIN=$VACCIN) if v.id != $id and v.DATE and (not $DATE or (v.DATE, v.id) > ($DATE, $id))]" }, MESURES: { AGE_MOIS: 'DATEDIF($PATIENT.NAISSANCE, $DATE, "M") if $DATE and $PATIENT.NAISSANCE and $DATE >= $PATIENT.NAISSANCE else None' } };
+SAN.OBSOLETES = { RDV: ["NB_PATIENTS"], PROS: ["PATIENTS_NOMS"] };
+SAN.CHAMPS_FICHE = ["GROUPE_SANGUIN", "ALLERGIES", "INFOS_URGENCE", "CONTACT_URGENCE", "TEL_URGENCE", "MEDECIN", "MUTUELLE", "IDENTIFICATION", "NOTES"];
+SAN.CONNUS_PATIENTS = ["NOM", "EMOJI", "ESPECE", "PERSONNE", "NAISSANCE", "COULEUR", "AGE", "AGE_TEXTE", "NB_RDV", "PROCHAIN_RDV", "VACCINS_A_FAIRE", "RESTE_A_CHARGE_AN", "manualSort"].concat(SAN.CHAMPS_FICHE).concat(MGP.CHAMPS_SUIVI);
+SAN.tableDeRef = function(ref) {
+  return MGP.g.meta.tables.filter(function(x) {
+    return x.id === ref;
+  })[0] || null;
+};
+SAN.refsVers = function(tableId) {
+  var out = [];
+  MGP.g.meta.colonnes.forEach(function(c) {
+    var m = /^(Ref|RefList):(\w+)$/.exec(String(c.type || ""));
+    if (c.isFormula || !m || m[2] !== tableId) {
+      return;
+    }
+    var t = SAN.tableDeRef(c.parentId);
+    if (!t || !MGP.g.estTableUtilisateur(t) || t.tableId === tableId) {
+      return;
+    }
+    out.push({ table: t.tableId, col: c.colId, liste: m[1] === "RefList" });
+  });
+  return out;
+};
+SAN.ancienneTable = function() {
+  if (!MGP.g.meta) {
+    return null;
+  }
+  var id = MGP.g.registre && MGP.g.registre.PATIENTS, t = id ? MGP.g.tableParId(id) : null;
+  if (!t) {
+    var c = MGP.g.tableParId("Patients");
+    if (c && SAN.refsVers(c.tableId).length) {
+      t = c;
+    }
+  }
+  if (!t || t.tableId === MGP.g.idTable("PERSONNES") || t.tableId === MGP.g.idTable("FICHES_SANTE")) {
+    return null;
+  }
+  return MGP.g.colonnesDe(t.id).some(function(c2) {
+    return SAN.cle(c2.colId) === "nom";
+  }) ? t : null;
+};
+SAN.aMigrer = function() {
+  return !!SAN.ancienneTable();
+};
+SAN.memesIds = function(a, b) {
+  return JSON.stringify(SAN.ids(a)) === JSON.stringify(SAN.ids(b));
+};
+SAN.migrer = async function(installe) {
+  await MGP.g.chargerMeta();
+  await MGP.g.chargerTech();
+  ["PERSONNES", "DOCUMENTS"].forEach(function(cle) {
+    var t = MGP.g.trouver(MGP.SOCLE[cle]);
+    if (t) {
+      MGP.g.registre[cle] = t.tableId;
+    }
+  });
+  var anc = SAN.ancienneTable();
+  if (!anc || MGP.g.acces !== "full") {
+    return null;
+  }
+  var A = anc.tableId, T = function(k) {
+    return MGP.g.idTable(k);
+  };
+  var etat = MGP.g.reglage("SANTE:MIGRATION", null);
+  if (!etat || typeof etat !== "object") {
+    etat = {};
+  }
+  var carte = etat.carte || {}, creees = etat.creees || [];
+  await SAN.adopterPersonnes();
+  var prosLa = !!(MGP.g.registre.PROS && MGP.g.tableParId(MGP.g.registre.PROS));
+  var defF = Object.assign({}, SAN.DEFS.FICHES_SANTE, { colonnes: SAN.DEFS.FICHES_SANTE.colonnes.filter(function(c) {
+    return !c.formule && (c.id !== "MEDECIN" || prosLa);
+  }) });
+  await MGP.g.creerTables(MGP.g.defsSocle().concat([defF]));
+  await MGP.g.chargerMeta();
+  var PERS = T("PERSONNES"), FI = T("FICHES_SANTE");
+  var colsA = MGP.g.colonnesDe(anc.id), parCle = {};
+  colsA.forEach(function(c) {
+    parCle[SAN.cle(c.colId)] = c.colId;
+  });
+  var val = function(r, id) {
+    var c = parCle[SAN.cle(id)];
+    return c ? r[c] : null;
+  };
+  var animalA = function(r) {
+    var e = String(val(r, "ESPECE") || "").trim();
+    return !!e && SAN.cle(e) !== "humain";
+  };
+  var anciens = await MGP.g.lire(A), pers = await MGP.g.lire(PERS);
+  var utilisee = {};
+  Object.keys(carte).forEach(function(k) {
+    if (SAN.parId(pers, carte[k])) {
+      utilisee[carte[k]] = true;
+    } else {
+      delete carte[k];
+    }
+  });
+  var aCreer = [], majP = [];
+  anciens.forEach(function(r) {
+    if (carte[r.id]) {
+      return;
+    }
+    var animal = animalA(r), nom = String(val(r, "NOM") || "").trim(), lien = Number(val(r, "PERSONNE")) || 0, x2 = 0;
+    if (lien && SAN.parId(pers, lien) && !utilisee[lien]) {
+      x2 = lien;
+    }
+    if (!x2 && nom) {
+      var m = pers.filter(function(p) {
+        return !utilisee[p.id] && SAN.cle(p.PRENOM) === SAN.cle(nom) && p.TYPE === SAN.ANIMAL[0] === animal;
+      })[0];
+      if (m) {
+        x2 = m.id;
+      }
+    }
+    if (x2) {
+      carte[r.id] = x2;
+      utilisee[x2] = true;
+    } else {
+      aCreer.push(r);
+    }
+  });
+  if (aCreer.some(animalA) || anciens.some(function(r) {
+    return animalA(r) && carte[r.id];
+  })) {
+    await SAN.assurerChoixAnimal();
+  }
+  if (aCreer.length) {
+    var age = function(r) {
+      var n = SAN.j(val(r, "NAISSANCE"));
+      return n === null ? 99 : (SAN.auj() - n) / 365.25;
+    };
+    var typeDe = function(r) {
+      return animalA(r) ? SAN.ANIMAL[0] : age(r) < 18 ? "Enfant" : "Proche";
+    };
+    var res = await MGP.g.actions([["BulkAddRecord", PERS, aCreer.map(function() {
+      return null;
+    }), { PRENOM: aCreer.map(function(r) {
+      return String(val(r, "NOM") || "").trim() || (animalA(r) ? "Animal" : "Sans nom");
+    }), TYPE: aCreer.map(typeDe), FOYER: aCreer.map(function(r) {
+      return typeDe(r) !== "Proche";
+    }), EMOJI: aCreer.map(function(r) {
+      return val(r, "EMOJI") || (animalA(r) ? SAN.EMOJI_ESPECE[val(r, "ESPECE")] || "🐾" : "🙂");
+    }), COULEUR: aCreer.map(function(r, i2) {
+      var c = val(r, "COULEUR");
+      return MGP.COULEURS.indexOf(c) >= 0 ? c : MGP.COULEURS[i2 % 6];
+    }), NAISSANCE: aCreer.map(function(r) {
+      return val(r, "NAISSANCE") || null;
+    }) }]]);
+    (res.retValues[0] || []).forEach(function(id, i2) {
+      carte[aCreer[i2].id] = id;
+      creees.push(id);
+    });
+  }
+  etat.carte = carte;
+  etat.creees = creees;
+  etat.etat = "en cours";
+  await MGP.g.ecrireReglage("SANTE:MIGRATION", etat);
+  pers = await MGP.g.lire(PERS);
+  var conflits = {};
+  anciens.forEach(function(r) {
+    var p = SAN.parId(pers, carte[r.id]), m = {};
+    if (!p) {
+      return;
+    }
+    if (!p.EMOJI && val(r, "EMOJI")) {
+      m.EMOJI = val(r, "EMOJI");
+    }
+    if (!p.COULEUR && MGP.COULEURS.indexOf(val(r, "COULEUR")) >= 0) {
+      m.COULEUR = val(r, "COULEUR");
+    }
+    if (val(r, "NAISSANCE")) {
+      if (!p.NAISSANCE) {
+        m.NAISSANCE = val(r, "NAISSANCE");
+      } else if (SAN.j(p.NAISSANCE) !== SAN.j(val(r, "NAISSANCE"))) {
+        conflits[r.id] = "Date de naissance notée dans l’ancien carnet : " + SAN.texteJour(SAN.j(val(r, "NAISSANCE"))) + ".";
+      }
+    }
+    if (Object.keys(m).length) {
+      majP.push(["UpdateRecord", PERS, p.id, m]);
+    }
+  });
+  if (majP.length) {
+    await MGP.g.actions(majP);
+  }
+  await MGP.g.chargerMeta();
+  var tFi = MGP.g.tableParId(FI), colsFi = MGP.g.colonnesDe(tFi.id).map(function(c) {
+    return c.colId;
+  });
+  var extras = colsA.filter(function(c) {
+    return !c.isFormula && c.colId !== "id" && !/^gristHelper_/.test(c.colId) && SAN.CONNUS_PATIENTS.map(SAN.cle).indexOf(SAN.cle(c.colId)) < 0;
+  });
+  var mapRef = function(v, liste) {
+    if (liste) {
+      var l = SAN.ids(v).map(function(id) {
+        return carte[id];
+      }).filter(Boolean);
+      return l.length ? ["L"].concat(l) : null;
+    }
+    return carte[Number(v)] || 0;
+  };
+  var ajoutCols = [];
+  extras.forEach(function(c) {
+    if (colsFi.indexOf(c.colId) >= 0) {
+      return;
+    }
+    var m = /^(Ref|RefList):(\w+)$/.exec(String(c.type || "")), type = m && m[2] === A ? m[1] + ":" + PERS : c.type;
+    ajoutCols.push(["AddColumn", FI, c.colId, { type, isFormula: false, label: c.label || c.colId, widgetOptions: c.widgetOptions || "" }]);
+  });
+  if (ajoutCols.length) {
+    await MGP.g.actions(ajoutCols);
+    await MGP.g.chargerMeta();
+    colsFi = MGP.g.colonnesDe(tFi.id).map(function(c) {
+      return c.colId;
+    });
+  }
+  var valeurExtra = function(r, c) {
+    var m = /^(Ref|RefList):(\w+)$/.exec(String(c.type || ""));
+    return m && m[2] === A ? mapRef(r[c.colId], m[1] === "RefList") : r[c.colId];
+  };
+  var attendu = function(r) {
+    var o2 = {};
+    SAN.CHAMPS_FICHE.forEach(function(k) {
+      var x2 = val(r, k);
+      if (!SAN.vide(x2) && colsFi.indexOf(k) >= 0) {
+        o2[k] = k === "MEDECIN" ? Number(x2) : x2;
+      }
+    });
+    if (animalA(r)) {
+      o2.ESPECE = String(val(r, "ESPECE"));
+    }
+    if (conflits[r.id]) {
+      o2.NOTES = (o2.NOTES ? o2.NOTES + "\n" : "") + conflits[r.id];
+    }
+    extras.forEach(function(c) {
+      var x2 = valeurExtra(r, c);
+      if (!SAN.vide(x2)) {
+        o2[c.colId] = x2;
+      }
+    });
+    return o2;
+  };
+  var fiches = await MGP.g.lire(FI), aj = [], mj = [];
+  anciens.forEach(function(r) {
+    var pid = carte[r.id], f = fiches.filter(function(x2) {
+      return Number(x2.PERSONNE) === pid;
+    })[0], o2 = attendu(r);
+    if (!f) {
+      o2.PERSONNE = pid;
+      aj.push(["AddRecord", FI, null, o2]);
+      return;
+    }
+    var m = {};
+    Object.keys(o2).forEach(function(k) {
+      if (SAN.vide(f[k])) {
+        m[k] = o2[k];
+      } else if (k === "NOTES" && String(f.NOTES).indexOf(o2.NOTES) < 0) {
+        m.NOTES = f.NOTES + "\n" + o2.NOTES;
+      }
+    });
+    if (Object.keys(m).length) {
+      mj.push(["UpdateRecord", FI, f.id, m]);
+    }
+  });
+  if (aj.length || mj.length) {
+    await MGP.g.actions(aj.concat(mj));
+  }
+  await MGP.g.chargerMeta();
+  var refs = SAN.refsVers(A).map(function(x2) {
+    var t = MGP.g.tableParId(x2.table), cols = MGP.g.colonnesDe(t.id), typeN = (x2.liste ? "RefList:" : "Ref:") + PERS;
+    var ok = function(n) {
+      var c = cols.filter(function(k) {
+        return k.colId === n;
+      })[0];
+      return !c || c.type === typeN && !c.isFormula;
+    };
+    var neuf = SAN.cle(x2.col) === "patient" ? "PERSONNE" : x2.col + "_PERSONNES", renommer = neuf !== "PERSONNE";
+    if (!ok(neuf)) {
+      neuf = x2.col + "_PERSONNES";
+      renommer = true;
+    }
+    return { table: x2.table, col: x2.col, liste: x2.liste, neuf, renommer, type: typeN, existe: cols.some(function(k) {
+      return k.colId === neuf;
+    }) };
+  });
+  var add = refs.filter(function(x2) {
+    return !x2.existe;
+  }).map(function(x2) {
+    return ["AddColumn", x2.table, x2.neuf, { type: x2.type, isFormula: false, label: MGP.g.libelleColonne(x2.renommer ? x2.col : x2.neuf), untieColIdFromLabel: true }];
+  });
+  if (add.length) {
+    await MGP.g.actions(add);
+  }
+  for (var i = 0; i < refs.length; i++) {
+    var x = refs[i], lignes = await MGP.g.lire(x.table), ids = [], vals = [];
+    lignes.forEach(function(r) {
+      var v = mapRef(r[x.col], x.liste);
+      if (x.liste ? !SAN.memesIds(r[x.neuf], v) : (Number(r[x.neuf]) || 0) !== v) {
+        ids.push(r.id);
+        vals.push(v);
+      }
+    });
+    if (ids.length) {
+      var o = {};
+      o[x.neuf] = vals;
+      await MGP.g.actions([["BulkUpdateRecord", x.table, ids, o]]);
+    }
+  }
+  var ecarts = [];
+  pers = await MGP.g.lire(PERS);
+  fiches = await MGP.g.lire(FI);
+  anciens.forEach(function(r) {
+    var pid = carte[r.id], f = fiches.filter(function(y2) {
+      return Number(y2.PERSONNE) === pid;
+    })[0];
+    if (!pid || !SAN.parId(pers, pid)) {
+      ecarts.push("patient " + r.id + " sans personne");
+      return;
+    }
+    if (!f) {
+      ecarts.push("patient " + r.id + " sans fiche");
+      return;
+    }
+    var o2 = attendu(r);
+    Object.keys(o2).forEach(function(k) {
+      var ok = k === "NOTES" ? String(f.NOTES || "").indexOf(o2.NOTES) >= 0 : !SAN.vide(f[k]);
+      if (!ok) {
+        ecarts.push("fiche " + pid + " : " + k);
+      }
+    });
+  });
+  for (var k2 = 0; k2 < refs.length; k2++) {
+    var y = refs[k2], ls = await MGP.g.lire(y.table);
+    ls.forEach(function(r) {
+      var v = mapRef(r[y.col], y.liste);
+      if (y.liste ? !SAN.memesIds(r[y.neuf], v) : (Number(r[y.neuf]) || 0) !== v) {
+        ecarts.push(y.table + "." + y.col + " ligne " + r.id);
+      }
+    });
+  }
+  if (ecarts.length) {
+    etat.etat = "à vérifier";
+    etat.ecarts = ecarts.slice(0, 20);
+    await MGP.g.ecrireReglage("SANTE:MIGRATION", etat);
+    logSecurite("mise à jour du carnet incomplète", ecarts.join(" ; "));
+    throw new Error("mise à jour incomplète, rien n’a été retiré (" + ecarts.length + " écart" + (ecarts.length > 1 ? "s" : "") + ")");
+  }
+  await MGP.g.chargerMeta();
+  var fin = [];
+  refs.forEach(function(x2) {
+    fin.push(["RemoveColumn", x2.table, x2.col]);
+    if (x2.renommer && x2.neuf === x2.col + "_PERSONNES") {
+      fin.push(["RenameColumn", x2.table, x2.neuf, x2.col]);
+    }
+  });
+  Object.keys(SAN.OBSOLETES).forEach(function(cle) {
+    var t = MGP.g.tableParId(T(cle));
+    if (!t) {
+      return;
+    }
+    SAN.OBSOLETES[cle].forEach(function(c) {
+      var col = MGP.g.colonnesDe(t.id).filter(function(z) {
+        return z.colId === c;
+      })[0];
+      if (col && col.isFormula && String(col.formula).replace(/\s/g, "") === MGP.g.resoudreFormule(SAN.ANCIENNES_FORMULES[cle][c]).replace(/\s/g, "")) {
+        fin.push(["RemoveColumn", t.tableId, c]);
+      }
+    });
+  });
+  fin.push(["RemoveTable", A]);
+  var lt = MGP.g.techLignes.filter(function(r) {
+    return r.CLE === "TABLE:PATIENTS";
+  })[0];
+  if (lt && MGP.g.tech) {
+    fin.push(["RemoveRecord", MGP.g.tech, lt.id]);
+  }
+  await MGP.g.actions(fin);
+  await MGP.g.chargerMeta();
+  await MGP.g.chargerTech();
+  var ex = MGP.g.reglage("EXEMPLES:" + SAN.WIDGET, null);
+  if (ex && ex.PATIENTS) {
+    fiches = await MGP.g.lire(FI);
+    var suivis = ex.PATIENTS.map(function(id) {
+      return carte[id];
+    }).filter(Boolean);
+    await MGP.g.ecrireReglage("EXEMPLES:" + SAN.WIDGET, { SUIVIS: suivis, FICHES: fiches.filter(function(f) {
+      return suivis.indexOf(Number(f.PERSONNE)) >= 0;
+    }).map(function(f) {
+      return f.id;
+    }), PERSONNES_CREEES: creees.filter(function(id) {
+      return suivis.indexOf(id) >= 0;
+    }), PROS: ex.PROS || [] });
+  }
+  if (installe) {
+    await MGP.g.creerTables(MGP.g.defsSocle().concat(SAN.defsWidget()));
+    await SAN.reposerFormules();
+  }
+  etat.etat = "fini";
+  etat.le = new Date(MGP.maintenant()).toISOString();
+  delete etat.ecarts;
+  await MGP.g.ecrireReglage("SANTE:MIGRATION", etat);
+  return { patients: anciens.length, creees: creees.length };
+};
+SAN.reposerFormules = async function() {
+  await MGP.g.chargerMeta();
+  var a = [], sections = [];
+  try {
+    sections = await MGP.g.lire("_grist_Views_section");
+  } catch (e) {
+    sections = [];
+  }
+  SAN.defsWidget().forEach(function(d) {
+    var t = MGP.g.tableParId(MGP.g.idTable(d.cle));
+    if (!t) {
+      return;
+    }
+    var cols = MGP.g.colonnesDe(t.id), anc = SAN.ANCIENNES_FORMULES[d.cle] || {}, ancD = SAN.ANCIENNES_DESCRIPTIONS[d.cle] || {};
+    d.colonnes.forEach(function(c) {
+      var col = cols.filter(function(x) {
+        return x.colId === c.id;
+      })[0];
+      if (!col) {
+        return;
+      }
+      if (c.formule && anc[c.id] && String(col.formula || "").replace(/\s/g, "") === MGP.g.resoudreFormule(anc[c.id]).replace(/\s/g, "")) {
+        a = a.concat(MGP.g.actionsColonne(t.tableId, c, false));
+      }
+      if (ancD[c.id] && col.description === ancD[c.id]) {
+        a.push(["ModifyColumn", t.tableId, c.id, { description: c.description }]);
+      }
+    });
+    var brute = sections.filter(function(s) {
+      return s.id === t.rawViewSectionRef;
+    })[0];
+    if (brute && SAN.ANCIENNES_TABLES[d.cle] && brute.description === SAN.ANCIENNES_TABLES[d.cle]) {
+      a.push(["UpdateRecord", "_grist_Views_section", brute.id, { description: d.description }]);
+    }
+  });
+  if (a.length) {
+    await MGP.g.actions(a);
+  }
+};
 SAN.exemplesPresents = function() {
   var reg = MGP.g.reglage("EXEMPLES:" + SAN.WIDGET, null);
-  return !!(reg && reg.PATIENTS && SAN.d.patients.some(function(p) {
-    return reg.PATIENTS.indexOf(p.id) >= 0;
+  return !!(reg && reg.FICHES && SAN.d.fiches.some(function(f) {
+    return reg.FICHES.indexOf(f.id) >= 0;
   }));
 };
 SAN.ajouterExemples = async function() {
@@ -6506,19 +7305,14 @@ SAN.ajouterExemples = async function() {
   var t = SAN.auj(), T = function(k) {
     return MGP.g.idTable(k);
   };
-  var pers = function(nom) {
-    var x = SAN.d.personnes.filter(function(p) {
-      return p.PRENOM === nom;
-    })[0];
-    return x ? x.id : 0;
-  };
   var rp = await MGP.g.actions([["BulkAddRecord", T("PROS"), [null, null, null, null, null], { NOM: ["Cabinet médical du quartier", "Pédiatre de la maison de santé", "Cabinet dentaire des Lilas", "Clinique vétérinaire du parc", "Pharmacie centrale"], SPECIALITE: ["Médecin traitant", "Pédiatre", "Dentiste", "Vétérinaire", "Pharmacie"], TELEPHONE: ["01 99 00 12 34", "01 99 00 23 45", "01 99 00 34 56", "01 99 00 45 67", "01 99 00 56 78"], ADRESSE: ["1 rue de la Santé", "Maison de santé, place du Marché", "8 rue des Lilas", "12 avenue du Parc", "3 place de la Mairie"] }]]);
   var PR = rp.retValues[0];
   var nais = { Lou: SAN.moisPlus(t, -14) - 3 };
-  var rpa = await MGP.g.actions([["BulkAddRecord", T("PATIENTS"), [null, null, null, null, null], { NOM: ["Moi", "Alex", "Lou", "Pistache", "Biscuit"], EMOJI: ["🌟", "🧑", "👧", "🐱", "🐶"], ESPECE: ["Humain", "Humain", "Humain", "Chat", "Chien"], PERSONNE: [pers("Moi"), pers("Alex"), pers("Lou"), 0, 0], NAISSANCE: [SAN.sec(SAN.moisPlus(t, -12 * 38 - 5)), SAN.sec(SAN.moisPlus(t, -12 * 40 - 2)), SAN.sec(nais.Lou), SAN.sec(SAN.moisPlus(t, -12 * 4 - 7)), SAN.sec(SAN.moisPlus(t, -12 * 2 - 1))], GROUPE_SANGUIN: ["A+", "O+", "Inconnu", "", ""], ALLERGIES: ["Exemple : pollens", "", "Aucune connue", "", ""], CONTACT_URGENCE: ["Alex", "Moi", "Moi ou Alex", "Moi", "Moi"], TEL_URGENCE: ["01 99 00 98 76", "01 99 00 87 65", "01 99 00 98 76", "01 99 00 98 76", "01 99 00 98 76"], MEDECIN: [PR[0], PR[0], PR[1], PR[3], PR[3]], MUTUELLE: ["Ma mutuelle", "Ma mutuelle", "Ma mutuelle", "", ""], IDENTIFICATION: ["", "", "", "Puce : 250 000 000 000 000", "Puce : 250 000 000 000 001"], COULEUR: ["Lavande", "Écume", "Menthe", "Citron", "Pêche"] }]]);
-  var P = rpa.retValues[0], moi = P[0], alex = P[1], lou = P[2], pis = P[3], bis = P[4];
-  await MGP.g.actions([["BulkUpdateRecord", T("PROS"), PR, { POUR: [["L", moi, alex], ["L", lou], ["L", moi, alex, lou], ["L", pis, bis], null] }]]);
-  var R = [["Consultation", t - 40, "09:30", [lou, moi], PR[0], "Un exemple de compte rendu : rien de particulier.", 30, 20, 10], ["Bilan des 12 mois", t - 60, "10:00", [lou], PR[1], "", 30, 20, 10], ["Détartrage", t - 20, "17:15", [alex], PR[2], "", 60, 0, 0], ["Vaccins annuels", t - 330, "18:00", [pis, bis], PR[3], "Rappels faits pour les deux.", 120, 0, 0], ["Visite de contrôle", t + 10, "11:00", [lou], PR[1], "", 0, 0, 0], ["Contrôle dentaire", t + 45, "16:30", [moi, lou], PR[2], "", 0, 0, 0], ["Consultation", t - 5, "18:30", [moi], PR[0], "", 30, 0, 0]];
+  var g = await SAN.assurerPersonnes([["Moi", "Adulte", "🌟", "Lavande", SAN.sec(SAN.moisPlus(t, -12 * 38 - 5))], ["Alex", "Adulte", "🧑", "Écume", SAN.sec(SAN.moisPlus(t, -12 * 40 - 2))], ["Lou", "Enfant", "👧", "Menthe", SAN.sec(nais.Lou)], ["Biscuit", SAN.ANIMAL[0], "🐶", "Pêche", SAN.sec(SAN.moisPlus(t, -12 * 2 - 1))]]);
+  var P = g.ids, moi = P[0], alex = P[1], lou = P[2], bis = P[3];
+  var rf = await MGP.g.actions([["BulkAddRecord", T("FICHES_SANTE"), [null, null, null, null], { PERSONNE: P, ESPECE: ["", "", "", "Chien"], GROUPE_SANGUIN: ["A+", "O+", "Inconnu", ""], ALLERGIES: ["Exemple : pollens", "", "Aucune connue", ""], CONTACT_URGENCE: ["Alex", "Moi", "Moi ou Alex", "Moi"], TEL_URGENCE: ["01 99 00 98 76", "01 99 00 87 65", "01 99 00 98 76", "01 99 00 98 76"], MEDECIN: [PR[0], PR[0], PR[1], PR[3]], MUTUELLE: ["Ma mutuelle", "Ma mutuelle", "Ma mutuelle", ""], IDENTIFICATION: ["", "", "", "Puce : 250 000 000 000 001"] }]]);
+  await MGP.g.actions([["BulkUpdateRecord", T("PROS"), PR, { POUR: [["L", moi, alex], ["L", lou], ["L", moi, alex, lou], ["L", bis], null] }]]);
+  var R = [["Consultation", t - 40, "09:30", [lou, moi], PR[0], "Un exemple de compte rendu : rien de particulier.", 30, 20, 10], ["Bilan des 12 mois", t - 60, "10:00", [lou], PR[1], "", 30, 20, 10], ["Détartrage", t - 20, "17:15", [alex], PR[2], "", 60, 0, 0], ["Vaccins annuels", t - 330, "18:00", [bis], PR[3], "Rappels faits.", 60, 0, 0], ["Visite de contrôle", t + 10, "11:00", [lou], PR[1], "", 0, 0, 0], ["Contrôle dentaire", t + 45, "16:30", [moi, lou], PR[2], "", 0, 0, 0], ["Consultation", t - 5, "18:30", [moi], PR[0], "", 30, 0, 0]];
   await MGP.g.actions([["BulkAddRecord", T("RDV"), R.map(function() {
     return null;
   }), { QUOI: R.map(function(x) {
@@ -6542,29 +7336,29 @@ SAN.ajouterExemples = async function() {
   }), SANS_REMBOURSEMENT: R.map(function(x) {
     return x[4] === PR[3];
   }) }]]);
-  var V = { PATIENT: [], VACCIN: [], DATE: [], RAPPEL: [], PRO: [] };
+  var V = { PERSONNE: [], VACCIN: [], DATE: [], RAPPEL: [], PRO: [] };
   SAN.CALENDRIER.forEach(function(c) {
     var jj = SAN.moisPlus(nais.Lou, c[0]), fait = jj <= t;
-    V.PATIENT.push(lou);
+    V.PERSONNE.push(lou);
     V.VACCIN.push(c[1]);
     V.DATE.push(fait ? SAN.sec(jj) : null);
     V.RAPPEL.push(fait ? null : SAN.sec(jj));
     V.PRO.push(PR[1]);
   });
-  [[moi, "Tétanos (rappel adulte)", t - 365 * 4, SAN.moisPlus(t, 36), PR[0]], [pis, "Typhus-coryza (rappel)", t - 330, t + 35, PR[3]], [bis, "Rage (rappel)", t - 395, t - 30, PR[3]]].forEach(function(x) {
-    V.PATIENT.push(x[0]);
+  [[moi, "Tétanos (rappel adulte)", t - 365 * 4, SAN.moisPlus(t, 36), PR[0]], [bis, "Rage (rappel)", t - 395, t - 30, PR[3]]].forEach(function(x) {
+    V.PERSONNE.push(x[0]);
     V.VACCIN.push(x[1]);
     V.DATE.push(SAN.sec(x[2]));
     V.RAPPEL.push(SAN.sec(x[3]));
     V.PRO.push(x[4]);
   });
-  await MGP.g.actions([["BulkAddRecord", T("VACCINS"), V.PATIENT.map(function() {
+  await MGP.g.actions([["BulkAddRecord", T("VACCINS"), V.PERSONNE.map(function() {
     return null;
   }), V]]);
-  var M = [[lou, 0, 3.3, 50], [lou, 1, 4.2, 54], [lou, 2, 5.1, 58], [lou, 4, 6.4, 63], [lou, 6, 7.4, 66], [lou, 9, 8.4, 71], [lou, 12, 9.2, 75], [lou, 14, 9.7, 77], [bis, -12, 18.5, null], [bis, -6, 21.2, null], [bis, 0, 22.4, null], [pis, -8, 4.1, null], [pis, 0, 4.4, null]];
+  var M = [[lou, 0, 3.3, 50], [lou, 1, 4.2, 54], [lou, 2, 5.1, 58], [lou, 4, 6.4, 63], [lou, 6, 7.4, 66], [lou, 9, 8.4, 71], [lou, 12, 9.2, 75], [lou, 14, 9.7, 77], [bis, -12, 18.5, null], [bis, -6, 21.2, null], [bis, 0, 22.4, null]];
   await MGP.g.actions([["BulkAddRecord", T("MESURES"), M.map(function() {
     return null;
-  }), { PATIENT: M.map(function(x) {
+  }), { PERSONNE: M.map(function(x) {
     return x[0];
   }), DATE: M.map(function(x) {
     return SAN.sec(x[0] === lou ? Math.min(t, SAN.moisPlus(nais.Lou, x[1])) : SAN.moisPlus(t, x[1]));
@@ -6573,17 +7367,23 @@ SAN.ajouterExemples = async function() {
   }), TAILLE: M.map(function(x) {
     return x[3];
   }) }]]);
-  await MGP.g.actions([["BulkAddRecord", T("TRAITEMENTS"), [null, null, null], { PATIENT: [moi, pis, alex], TRAITEMENT: ["Collyre (exemple)", "Vermifuge (exemple)", "Crème (exemple)"], POSOLOGIE: ["Selon l’ordonnance", "Selon le vétérinaire", "Selon l’ordonnance"], DEBUT: [SAN.sec(t - 4), SAN.sec(t), SAN.sec(t - 40)], FIN: [SAN.sec(t + 3), SAN.sec(t), SAN.sec(t - 30)] }]]);
-  await MGP.g.ecrireReglage("EXEMPLES:" + SAN.WIDGET, { PATIENTS: P, PROS: PR });
+  await MGP.g.actions([["BulkAddRecord", T("TRAITEMENTS"), [null, null, null], { PERSONNE: [moi, bis, alex], TRAITEMENT: ["Collyre (exemple)", "Vermifuge (exemple)", "Crème (exemple)"], POSOLOGIE: ["Selon l’ordonnance", "Selon le vétérinaire", "Selon l’ordonnance"], DEBUT: [SAN.sec(t - 4), SAN.sec(t), SAN.sec(t - 40)], FIN: [SAN.sec(t + 3), SAN.sec(t), SAN.sec(t - 30)] }]]);
+  await MGP.g.ecrireReglage("EXEMPLES:" + SAN.WIDGET, { SUIVIS: P, FICHES: rf.retValues[0], PERSONNES_CREEES: g.crees, NAISSANCES: g.naissances, PROS: PR });
 };
 SAN.supprimerExemples = async function() {
-  var ok = await MGP.confirmer("Supprimer les exemples ?", "Les patients d’exemple, leurs rendez-vous, vaccins, mesures et traitements, et les professionnels d’exemple sont retirés. Vos propres fiches sont conservées.", "Supprimer les exemples", true);
+  var ok = await MGP.confirmer("Supprimer les exemples ?", "Les fiches d’exemple, leurs rendez-vous, vaccins, mesures et traitements, et les professionnels d’exemple sont retirés, ainsi que les personnes créées pour eux si plus rien ne les utilise. Vos propres fiches sont conservées.", "Supprimer les exemples", true);
   if (!ok) {
     return;
   }
-  var reg = MGP.g.reglage("EXEMPLES:" + SAN.WIDGET, {}) || {}, P = (reg.PATIENTS || []).filter(function(id) {
-    return !!SAN.patient(id);
-  }), PR = (reg.PROS || []).filter(function(id) {
+  var reg = MGP.g.reglage("EXEMPLES:" + SAN.WIDGET, {}) || {}, F = (reg.FICHES || []).filter(function(id) {
+    return !!SAN.parId(SAN.d.fiches, id);
+  });
+  var P = (reg.SUIVIS || []).filter(function(id) {
+    return SAN.d.fiches.some(function(f) {
+      return F.indexOf(f.id) >= 0 && Number(f.PERSONNE) === id;
+    });
+  });
+  var PR = (reg.PROS || []).filter(function(id) {
     return !!SAN.pro(id);
   });
   var a = [], de = function(l, f) {
@@ -6615,38 +7415,67 @@ SAN.supprimerExemples = async function() {
     }
   });
   push("VACCINS", de(SAN.d.vaccins, function(v) {
-    return P.indexOf(Number(v.PATIENT)) >= 0;
+    return P.indexOf(Number(v.PERSONNE)) >= 0;
   }));
   push("MESURES", de(SAN.d.mesures, function(v) {
-    return P.indexOf(Number(v.PATIENT)) >= 0;
+    return P.indexOf(Number(v.PERSONNE)) >= 0;
   }));
   push("TRAITEMENTS", de(SAN.d.traitements, function(v) {
-    return P.indexOf(Number(v.PATIENT)) >= 0;
+    return P.indexOf(Number(v.PERSONNE)) >= 0;
   }));
-  push("PATIENTS", P);
+  push("FICHES_SANTE", F);
   push("PROS", PR.filter(function(id) {
     return !rdvGardes.some(function(r) {
       return Number(r.PRO) === id;
-    }) && !SAN.d.patients.some(function(p) {
-      return P.indexOf(p.id) < 0 && Number(p.MEDECIN) === id;
+    }) && !SAN.d.fiches.some(function(f) {
+      return F.indexOf(f.id) < 0 && Number(f.MEDECIN) === id;
     });
   }));
   await MGP.g.actions(a);
+  var creees = (reg.PERSONNES_CREEES || []).filter(function(id) {
+    return !!SAN.personne(id);
+  });
+  var utilisees = await SAN.personnesUtilisees(creees), b = [];
+  var aRetirer = creees.filter(function(id) {
+    return !utilisees[id];
+  });
+  if (aRetirer.length) {
+    b.push(["BulkRemoveRecord", MGP.g.idTable("PERSONNES"), aRetirer]);
+  }
+  (reg.NAISSANCES || []).forEach(function(x) {
+    var p = SAN.personne(x[0]);
+    if (p && aRetirer.indexOf(p.id) < 0 && p.NAISSANCE === x[1]) {
+      b.push(["UpdateRecord", MGP.g.idTable("PERSONNES"), p.id, { NAISSANCE: null }]);
+    }
+  });
+  if (b.length) {
+    await MGP.g.actions(b);
+  }
   await MGP.g.ecrireReglage("EXEMPLES:" + SAN.WIDGET, {});
   SAN.f.patient = 0;
   SAN.pm = 0;
+  await SAN.charger();
+  await SAN.retirerChoixAnimalInutile();
   await SAN.ecrire([], "Exemples supprimés");
 };
 SAN.traitementsEnCours = function(pid) {
   return SAN.d.traitements.filter(function(x) {
-    return Number(x.PATIENT) === pid && x.EN_COURS;
+    return Number(x.PERSONNE) === pid && x.EN_COURS;
   });
 };
+SAN.offreSuivre = function(libres) {
+  return '<section class="carte" id="suivre-offre" style="margin-bottom:14px"><h2>👥 Qui suivre dans le carnet ?</h2><p class="mini" style="margin:6px 0 10px">' + echapperHTML(libres.length === 1 ? "Une personne est déjà dans Personnes." : libres.length + " personnes sont déjà dans Personnes.") + ' Leur prénom, leur emoji et leur couleur sont repris tels quels ; leurs données de santé restent dans le carnet.</p><div class="choix multi" id="suivre-choix" role="group" aria-label="Personnes à suivre">' + libres.map(function(p) {
+    return '<button type="button" data-val="' + p.id + '" aria-pressed="true">' + echapperHTML((p.EMOJI || "🙂") + " " + (p.PRENOM || "Sans nom")) + "</button>";
+  }).join("") + '</div><div class="act" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:12px"><button type="button" class="btn sec" data-suivre-selection>Suivre la sélection</button><button type="button" class="btn" data-suivre-tous>' + echapperHTML("✓ Suivre tout le monde (" + libres.length + ")") + "</button></div></section>";
+};
+SAN.boutonsAjout = function() {
+  return '<button type="button" class="btn sec" data-nouvelle-personne>+ Nouvelle personne</button><button type="button" class="btn sec" data-nouvel-animal>🐾 Ajouter un animal</button>';
+};
 SAN.rendreCarnet = function() {
-  var z = document.getElementById("zone-carnet"), t = SAN.auj();
+  var z = document.getElementById("zone-carnet"), t = SAN.auj(), libres = SAN.nonSuivies();
   var html = SAN.prive();
   if (!SAN.d.patients.length) {
-    z.innerHTML = html + '<div class="carte vide"><div class="gros" aria-hidden="true">🩺</div><p><b>Qui est dans le carnet ?</b></p><p class="mini" style="margin-top:6px">Vous, vos proches, vos animaux : une fiche chacun.</p><button type="button" class="btn" data-nouveau-patient style="margin-top:12px">+ Ajouter un patient</button></div>';
+    z.innerHTML = html + (libres.length ? SAN.offreSuivre(libres) : "") + '<div class="carte vide"><div class="gros" aria-hidden="true">🩺</div><p><b>' + (libres.length ? "Ou ajoutez quelqu’un de nouveau" : "Qui est dans le carnet ?") + '</b></p><p class="mini" style="margin-top:6px">Vous, vos proches, vos animaux : une fiche chacun, rangée avec vos Personnes.</p><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:12px">' + SAN.boutonsAjout() + "</div></div>";
     return;
   }
   var bientot = SAN.d.rdv.filter(function(r) {
@@ -6672,24 +7501,26 @@ SAN.rendreCarnet = function() {
     if (p.ALLERGIES) {
       pils.push('<span class="pil t-peche">' + echapperHTML("⚠️ " + p.ALLERGIES) + "</span>");
     }
-    return '<article class="pat" data-patient="' + p.id + '"><div class="tete"><span class="av ' + MGP.classeCouleur(p.COULEUR) + '" aria-hidden="true">' + echapperHTML(SAN.emoji(p)) + '</span><div class="x"><h3>' + echapperHTML(p.NOM || "Patient") + '</h3><span class="mini">' + echapperHTML([p.ESPECE !== "Humain" ? p.ESPECE : "", p.AGE_TEXTE, med ? med.NOM : ""].filter(Boolean).join(" · ")) + "</span></div></div>" + (pils.length ? '<div class="pils">' + pils.join("") + "</div>" : '<p class="mini">Rien de prévu.</p>') + '<div class="act"><button type="button" class="btn doux" data-urgence="' + p.id + '">🆘 Fiche</button><button type="button" class="btn-icone" data-modifier-patient="' + p.id + '" aria-label="' + echapperHTML("Modifier la fiche de " + (p.NOM || "")) + '">✎</button></div></article>';
-  }).join("") + '<article class="pat" style="justify-content:center;align-items:center;text-align:center"><span style="font-size:30px" aria-hidden="true">➕</span><button type="button" class="btn sec" data-nouveau-patient>+ Un patient</button></article></div>';
+    return '<article class="pat" data-patient="' + p.id + '"><div class="tete"><span class="av ' + MGP.classeCouleur(p.COULEUR) + '" aria-hidden="true">' + echapperHTML(SAN.emoji(p)) + '</span><div class="x"><h3>' + echapperHTML(p.NOM) + '</h3><span class="mini">' + echapperHTML([SAN.estAnimal(p) ? p.ESPECE || "Animal" : "", p.AGE_TEXTE, med ? med.NOM : ""].filter(Boolean).join(" · ")) + "</span></div></div>" + (pils.length ? '<div class="pils">' + pils.join("") + "</div>" : '<p class="mini">Rien de prévu.</p>') + '<div class="act"><button type="button" class="btn doux" data-urgence="' + p.id + '">🆘 Fiche</button><button type="button" class="btn-icone" data-modifier-patient="' + p.id + '" aria-label="' + echapperHTML("Modifier la fiche de " + p.NOM) + '">✎</button></div></article>';
+  }).join("") + '<article class="pat" id="ajout-suivi" style="justify-content:center;align-items:center;text-align:center"><span style="font-size:30px" aria-hidden="true">➕</span>' + (libres.length ? '<button type="button" class="btn" data-suivre-une>' + echapperHTML("👥 Suivre quelqu’un de Personnes (" + libres.length + ")") + "</button>" : "") + '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">' + SAN.boutonsAjout() + "</div></article></div>";
   html += '<div class="zones"><section class="carte" id="bientot"><h2>📅 Les 30 prochains jours</h2>' + (bientot.length ? bientot.map(SAN.ligneRdv).join("") : '<p class="mini">Aucun rendez-vous.</p>') + '</section><section class="carte" id="vaccins-alertes"><h2>💉 Vaccins à prévoir</h2>' + (vac.length ? vac.sort(function(a, b) {
     return (a.RAPPEL || 0) - (b.RAPPEL || 0);
   }).map(function(v) {
-    var p = SAN.patient(v.PATIENT);
-    return '<div class="ligne"><span aria-hidden="true" style="font-size:22px">' + echapperHTML(SAN.emoji(p)) + '</span><span class="x"><b>' + echapperHTML(v.VACCIN || "") + '</b><br><span class="mini">' + echapperHTML((p ? p.NOM + " · " : "") + (SAN.j(v.RAPPEL) !== null ? "prévu le " + SAN.texteJour(SAN.j(v.RAPPEL)) : "")) + "</span></span>" + SAN.pilAlerte(v.ALERTE) + "</div>";
+    var p = SAN.patient(v.PERSONNE) || SAN.personne(v.PERSONNE);
+    return '<div class="ligne"><span aria-hidden="true" style="font-size:22px">' + echapperHTML(SAN.emoji(p)) + '</span><span class="x"><b>' + echapperHTML(v.VACCIN || "") + '</b><br><span class="mini">' + echapperHTML((p ? SAN.nom(v.PERSONNE) + " · " : "") + (SAN.j(v.RAPPEL) !== null ? "prévu le " + SAN.texteJour(SAN.j(v.RAPPEL)) : "")) + "</span></span>" + SAN.pilAlerte(v.ALERTE) + "</div>";
   }).join("") : '<p class="mini">Aucun rappel dans les 60 jours.</p>') + "</section></div>";
   z.innerHTML = html;
 };
 SAN.ligneRdv = function(r) {
-  var j = SAN.j(r.DATE), p = SAN.parties(j || 0), pro = SAN.pro(r.PRO), qui = SAN.ids(r.QUI).map(SAN.patient).filter(Boolean), docs = SAN.ids(r.DOCUMENTS).length;
+  var j = SAN.j(r.DATE), p = SAN.parties(j || 0), pro = SAN.pro(r.PRO), qui = SAN.ids(r.QUI).map(function(id) {
+    return SAN.patient(id) || SAN.personne(id);
+  }).filter(Boolean), docs = SAN.ids(r.DOCUMENTS).length;
   return '<div class="rdv' + (j !== null && j < SAN.auj() ? " passe" : "") + '" data-rdv="' + r.id + '"><span class="date">' + (j !== null ? "<b>" + p.j + "</b>" + echapperHTML(MOIS_COURTS[p.m - 1]) : "?") + '</span><button type="button" class="x" data-modifier-rdv="' + r.id + '"><b>' + echapperHTML((r.QUOI || "Rendez-vous") + (r.HEURE ? " · " + r.HEURE : "")) + '</b><br><span class="mini">' + echapperHTML([pro ? (SAN.EMOJI_PRO[pro.SPECIALITE] || "") + " " + pro.NOM : "", j !== null ? SAN.dans(j) : "", docs ? "📎 " + docs : ""].filter(Boolean).join(" · ")) + '</span></button><span class="droite">' + qui.map(function(x) {
-    return '<span class="pil ' + MGP.classeCouleur(x.COULEUR) + '">' + echapperHTML(SAN.emoji(x) + " " + x.NOM) + "</span>";
+    return '<span class="pil ' + MGP.classeCouleur(x.COULEUR) + '">' + echapperHTML(SAN.emoji(x) + " " + SAN.nom(x.id)) + "</span>";
   }).join("") + (r.REMBOURSEMENT === "En attente" ? '<span class="pil t-peche">💶 en attente</span>' : "") + "</span></div>";
 };
 SAN.chipsPatients = function(id, val, tous) {
-  return '<div class="choix" id="' + id + '" role="group" aria-label="Patient"' + (tous ? " data-filtre-patient" : "") + ">" + (tous ? '<button type="button" data-val="0" aria-pressed="' + (val ? "false" : "true") + '">Tout le monde</button>' : "") + SAN.d.patients.map(function(p) {
+  return '<div class="choix" id="' + id + '" role="group" aria-label="Qui"' + (tous ? " data-filtre-patient" : "") + ">" + (tous ? '<button type="button" data-val="0" aria-pressed="' + (val ? "false" : "true") + '">Tout le monde</button>' : "") + SAN.d.patients.map(function(p) {
     return '<button type="button" data-val="' + p.id + '" aria-pressed="' + (val === p.id ? "true" : "false") + '">' + echapperHTML(SAN.emoji(p) + " " + p.NOM) + "</button>";
   }).join("") + "</div>";
 };
@@ -6709,23 +7540,23 @@ SAN.rendreVaccins = function() {
   });
   z.innerHTML = '<div class="filtres">' + SAN.chipsPatients("f-patient-vac", f.patient, true) + '</div><div class="zones" id="liste-vaccins">' + pats.map(function(p) {
     var l = SAN.d.vaccins.filter(function(v) {
-      return Number(v.PATIENT) === p.id;
+      return Number(v.PERSONNE) === p.id;
     }).sort(function(a, b) {
       return (a.DATE || a.RAPPEL || 0) - (b.DATE || b.RAPPEL || 0) || a.id - b.id;
     });
     return '<section class="carte" data-vaccins="' + p.id + '"><h2>' + echapperHTML(SAN.emoji(p) + " " + p.NOM) + "</h2>" + (l.length ? l.map(function(v) {
       var d = SAN.j(v.DATE), r = SAN.j(v.RAPPEL);
       return '<div class="ligne" data-vaccin="' + v.id + '"><span class="x"><b>' + echapperHTML(v.VACCIN || "") + '</b><br><span class="mini">' + echapperHTML([d !== null ? "fait le " + SAN.texteJour(d) : "pas encore fait", r !== null ? (d !== null ? "rappel le " : "prévu le ") + SAN.texteJour(r) : ""].filter(Boolean).join(" · ")) + '</span></span><span class="act">' + SAN.pilAlerte(v.ALERTE) + (d === null ? '<button type="button" class="btn doux" data-vaccin-fait="' + v.id + '" aria-label="' + echapperHTML("Fait : " + (v.VACCIN || "")) + '">✓ Fait</button>' : "") + '<button type="button" class="btn-icone" data-modifier-vaccin="' + v.id + '" aria-label="' + echapperHTML("Modifier : " + (v.VACCIN || "")) + '">✎</button></span></div>';
-    }).join("") : '<p class="mini">Aucun vaccin noté.</p>') + '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:10px">' + (p.ESPECE === "Humain" && p.NAISSANCE && p.AGE !== null && p.AGE < 18 ? '<button type="button" class="btn sec" data-calendrier="' + p.id + '">📋 Modèle du calendrier des enfants</button>' : "") + '<button type="button" class="btn sec" data-nouveau-vaccin="' + p.id + '">+ Vaccin</button></div></section>';
+    }).join("") : '<p class="mini">Aucun vaccin noté.</p>') + '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:10px">' + (!SAN.estAnimal(p) && p.NAISSANCE && typeof p.AGE === "number" && p.AGE < 18 ? '<button type="button" class="btn sec" data-calendrier="' + p.id + '">📋 Modèle du calendrier des enfants</button>' : "") + '<button type="button" class="btn sec" data-nouveau-vaccin="' + p.id + '">+ Vaccin</button></div></section>';
   }).join("") + "</div>";
 };
 SAN.editerVaccin = function(v, pid) {
   var tid = MGP.g.idTable("VACCINS");
-  MGP.formulaire({ titre: v ? "Modifier le vaccin" : "Nouveau vaccin", champs: [{ id: "PATIENT", lib: "Pour", type: "choix", choix: SAN.d.patients.map(function(p) {
+  MGP.formulaire({ titre: v ? "Modifier le vaccin" : "Nouveau vaccin", champs: [{ id: "PERSONNE", lib: "Pour", type: "choix", choix: SAN.d.patients.map(function(p) {
     return [String(p.id), p.COULEUR || "", SAN.emoji(p) + " " + p.NOM];
-  }), valeur: String(v ? Number(v.PATIENT) : pid) }, { id: "VACCIN", lib: "Vaccin", type: "texte", valeur: v ? v.VACCIN : "", requis: true }, { id: "DATE", lib: "Fait le (vide si pas encore fait)", type: "date", valeur: v ? MGP.secVersIso(v.DATE) : MGP.secVersIso(SAN.sec(SAN.auj())) }, { id: "RAPPEL", lib: "Rappel ou prévu le", type: "date", valeur: v ? MGP.secVersIso(v.RAPPEL) : "", aide: "La date indiquée par votre médecin ou votre vétérinaire." }, { id: "LOT", lib: "Numéro de lot", type: "texte", valeur: v ? v.LOT : "" }, { id: "NOTE", lib: "Note", type: "texte", valeur: v ? v.NOTE : "" }], valider: async function(x) {
-    x.PATIENT = Number(x.PATIENT) || 0;
-    if (!x.PATIENT) {
+  }), valeur: String(v ? Number(v.PERSONNE) : pid) }, { id: "VACCIN", lib: "Vaccin", type: "texte", valeur: v ? v.VACCIN : "", requis: true }, { id: "DATE", lib: "Fait le (vide si pas encore fait)", type: "date", valeur: v ? MGP.secVersIso(v.DATE) : MGP.secVersIso(SAN.sec(SAN.auj())) }, { id: "RAPPEL", lib: "Rappel ou prévu le", type: "date", valeur: v ? MGP.secVersIso(v.RAPPEL) : "", aide: "La date indiquée par votre médecin ou votre vétérinaire." }, { id: "LOT", lib: "Numéro de lot", type: "texte", valeur: v ? v.LOT : "" }, { id: "NOTE", lib: "Note", type: "texte", valeur: v ? v.NOTE : "" }], valider: async function(x) {
+    x.PERSONNE = Number(x.PERSONNE) || 0;
+    if (!x.PERSONNE) {
       throw new Error("choisissez pour qui");
     }
     if (x.DATE !== null && x.RAPPEL !== null && x.RAPPEL <= x.DATE) {
@@ -6743,7 +7574,7 @@ SAN.vaccinFait = async function(id) {
 SAN.appliquerCalendrier = async function(pid) {
   var p = SAN.patient(pid), n = SAN.j(p.NAISSANCE), t = SAN.auj();
   var deja = SAN.d.vaccins.filter(function(v) {
-    return Number(v.PATIENT) === pid;
+    return Number(v.PERSONNE) === pid;
   }).map(function(v) {
     return String(v.VACCIN || "").toLowerCase();
   });
@@ -6760,7 +7591,7 @@ SAN.appliquerCalendrier = async function(pid) {
   }
   await SAN.ecrire([["BulkAddRecord", MGP.g.idTable("VACCINS"), l.map(function() {
     return null;
-  }), { PATIENT: l.map(function() {
+  }), { PERSONNE: l.map(function() {
     return pid;
   }), VACCIN: l.map(function(c) {
     return c[1];
@@ -6782,18 +7613,18 @@ SAN.rendreTraitements = function() {
     return (b.FIN || 0) - (a.FIN || 0);
   });
   var ligne = function(x) {
-    var p = SAN.patient(x.PATIENT), fin = SAN.j(x.FIN), deb = SAN.j(x.DEBUT);
+    var p = SAN.patient(x.PERSONNE), fin = SAN.j(x.FIN), deb = SAN.j(x.DEBUT);
     return '<div class="ligne" data-traitement="' + x.id + '"><span aria-hidden="true" style="font-size:22px">' + echapperHTML(SAN.emoji(p)) + '</span><button type="button" class="x" data-modifier-traitement="' + x.id + '"><b>' + echapperHTML(x.TRAITEMENT || "") + '</b><br><span class="mini">' + echapperHTML([p ? p.NOM : "", x.POSOLOGIE, deb !== null && deb > t ? "commence " + SAN.dans(deb) : "", fin !== null ? fin >= t ? x.JOURS_RESTANTS === 0 ? "dernier jour aujourd’hui" : "jusqu’au " + SAN.texteJour(fin) + " (" + x.JOURS_RESTANTS + " j)" : "fini le " + SAN.texteJour(fin) : "sans date de fin"].filter(Boolean).join(" · ")) + "</span></button></div>";
   };
   z.innerHTML = '<p class="mini" style="margin-bottom:10px">Un simple pense-bête : la posologie est celle de l’ordonnance ou du professionnel.</p><div class="zones"><section class="carte" id="en-cours"><h2>💊 En cours</h2>' + (enCours.length ? enCours.map(ligne).join("") : '<p class="mini">Aucun traitement en cours.</p>') + '<div style="display:flex;justify-content:flex-end;margin-top:10px"><button type="button" class="btn sec" data-nouveau-traitement>+ Traitement</button></div></section><section class="carte" id="finis"><details class="plus"><summary>' + echapperHTML("Terminés ou à venir (" + finis.length + ")") + "</summary>" + finis.map(ligne).join("") + "</details></section></div>";
 };
 SAN.editerTraitement = function(x) {
   var tid = MGP.g.idTable("TRAITEMENTS");
-  MGP.formulaire({ titre: x ? "Modifier le traitement" : "Nouveau traitement", champs: [{ id: "PATIENT", lib: "Pour", type: "choix", choix: SAN.d.patients.map(function(p) {
+  MGP.formulaire({ titre: x ? "Modifier le traitement" : "Nouveau traitement", champs: [{ id: "PERSONNE", lib: "Pour", type: "choix", choix: SAN.d.patients.map(function(p) {
     return [String(p.id), p.COULEUR || "", SAN.emoji(p) + " " + p.NOM];
-  }), valeur: String(x ? Number(x.PATIENT) : SAN.f.patient || (SAN.d.patients[0] || {}).id || "") }, { id: "TRAITEMENT", lib: "Traitement", type: "texte", valeur: x ? x.TRAITEMENT : "", requis: true }, { id: "POSOLOGIE", lib: "Comme indiqué sur l’ordonnance", type: "texte", valeur: x ? x.POSOLOGIE : "" }, { id: "DEBUT", lib: "Du", type: "date", valeur: x ? MGP.secVersIso(x.DEBUT) : MGP.secVersIso(SAN.sec(SAN.auj())) }, { id: "FIN", lib: "Au (compris)", type: "date", valeur: x ? MGP.secVersIso(x.FIN) : "" }, { id: "NOTE", lib: "Note", type: "texte", valeur: x ? x.NOTE : "" }], valider: async function(v) {
-    v.PATIENT = Number(v.PATIENT) || 0;
-    if (!v.PATIENT) {
+  }), valeur: String(x ? Number(x.PERSONNE) : SAN.f.patient || (SAN.d.patients[0] || {}).id || "") }, { id: "TRAITEMENT", lib: "Traitement", type: "texte", valeur: x ? x.TRAITEMENT : "", requis: true }, { id: "POSOLOGIE", lib: "Comme indiqué sur l’ordonnance", type: "texte", valeur: x ? x.POSOLOGIE : "" }, { id: "DEBUT", lib: "Du", type: "date", valeur: x ? MGP.secVersIso(x.DEBUT) : MGP.secVersIso(SAN.sec(SAN.auj())) }, { id: "FIN", lib: "Au (compris)", type: "date", valeur: x ? MGP.secVersIso(x.FIN) : "" }, { id: "NOTE", lib: "Note", type: "texte", valeur: x ? x.NOTE : "" }], valider: async function(v) {
+    v.PERSONNE = Number(v.PERSONNE) || 0;
+    if (!v.PERSONNE) {
       throw new Error("choisissez pour qui");
     }
     if (v.DEBUT !== null && v.FIN !== null && v.FIN < v.DEBUT) {
@@ -6842,11 +7673,11 @@ SAN.courbe = function(l, champ, cls, unite, titre) {
 SAN.rendreMesures = function() {
   var z = document.getElementById("zone-mesures"), p = SAN.patient(SAN.pm);
   if (!p) {
-    z.innerHTML = '<div class="carte vide"><p>Ajoutez d’abord un patient.</p></div>';
+    z.innerHTML = '<div class="carte vide"><p>Ajoutez d’abord quelqu’un au carnet.</p></div>';
     return;
   }
   var l = SAN.d.mesures.filter(function(m) {
-    return Number(m.PATIENT) === p.id;
+    return Number(m.PERSONNE) === p.id;
   }).sort(function(a, b) {
     return (a.DATE || 0) - (b.DATE || 0);
   }), der = l[l.length - 1];
@@ -6858,17 +7689,17 @@ SAN.rendreMesures = function() {
 };
 SAN.editerMesure = function(m) {
   var tid = MGP.g.idTable("MESURES");
-  MGP.formulaire({ titre: m ? "Modifier la mesure" : "Nouvelle mesure", champs: [{ id: "PATIENT", lib: "Pour", type: "choix", choix: SAN.d.patients.map(function(p) {
+  MGP.formulaire({ titre: m ? "Modifier la mesure" : "Nouvelle mesure", champs: [{ id: "PERSONNE", lib: "Pour", type: "choix", choix: SAN.d.patients.map(function(p) {
     return [String(p.id), p.COULEUR || "", SAN.emoji(p) + " " + p.NOM];
-  }), valeur: String(m ? Number(m.PATIENT) : SAN.pm) }, { id: "DATE", lib: "Le", type: "date", valeur: m ? MGP.secVersIso(m.DATE) : MGP.secVersIso(SAN.sec(SAN.auj())), requis: true }, { id: "POIDS", lib: "Poids (kg)", type: "nombre", valeur: m && typeof m.POIDS === "number" ? String(m.POIDS).replace(".", ",") : "" }, { id: "TAILLE", lib: "Taille (cm)", type: "nombre", valeur: m && typeof m.TAILLE === "number" ? String(m.TAILLE).replace(".", ",") : "" }], valider: async function(v) {
-    v.PATIENT = Number(v.PATIENT) || 0;
+  }), valeur: String(m ? Number(m.PERSONNE) : SAN.pm) }, { id: "DATE", lib: "Le", type: "date", valeur: m ? MGP.secVersIso(m.DATE) : MGP.secVersIso(SAN.sec(SAN.auj())), requis: true }, { id: "POIDS", lib: "Poids (kg)", type: "nombre", valeur: m && typeof m.POIDS === "number" ? String(m.POIDS).replace(".", ",") : "" }, { id: "TAILLE", lib: "Taille (cm)", type: "nombre", valeur: m && typeof m.TAILLE === "number" ? String(m.TAILLE).replace(".", ",") : "" }], valider: async function(v) {
+    v.PERSONNE = Number(v.PERSONNE) || 0;
     if (v.POIDS === null && v.TAILLE === null) {
       throw new Error("indiquez le poids ou la taille");
     }
     if (v.POIDS !== null && (v.POIDS <= 0 || v.POIDS > 500) || v.TAILLE !== null && (v.TAILLE <= 0 || v.TAILLE > 300)) {
       throw new Error("vérifiez les nombres");
     }
-    SAN.pm = v.PATIENT;
+    SAN.pm = v.PERSONNE;
     await SAN.ecrire([m ? ["UpdateRecord", tid, m.id, v] : ["AddRecord", tid, null, v]], "Mesure enregistrée");
   }, supprimer: m ? async function() {
     await SAN.ecrire([["RemoveRecord", tid, m.id]], "Mesure supprimée");
@@ -6917,7 +7748,7 @@ SAN.rendreRemb = function() {
   }).sort(function(a, b) {
     return (a.DATE || 0) - (b.DATE || 0);
   });
-  z.innerHTML = '<section class="carte" id="remb-annee"><h2>' + echapperHTML("💶 En " + an) + '</h2><table class="tab-chiffres"><tbody><tr><td>Payé</td><td>' + echapperHTML(SAN.euros(tot("MONTANT"))) + "</td></tr><tr><td>Remboursé par la Sécurité sociale</td><td>" + echapperHTML(SAN.euros(tot("REMB_SECU"))) + "</td></tr><tr><td>Remboursé par la mutuelle</td><td>" + echapperHTML(SAN.euros(tot("REMB_MUTUELLE"))) + '</td></tr><tr><th scope="row">Reste à votre charge</th><th id="reste-an">' + echapperHTML(SAN.euros(tot("RESTE_A_CHARGE"))) + '</th></tr></tbody></table><p class="mini" style="margin-top:8px">Par patient : ' + echapperHTML(SAN.d.patients.filter(function(p) {
+  z.innerHTML = '<section class="carte" id="remb-annee"><h2>' + echapperHTML("💶 En " + an) + '</h2><table class="tab-chiffres"><tbody><tr><td>Payé</td><td>' + echapperHTML(SAN.euros(tot("MONTANT"))) + "</td></tr><tr><td>Remboursé par la Sécurité sociale</td><td>" + echapperHTML(SAN.euros(tot("REMB_SECU"))) + "</td></tr><tr><td>Remboursé par la mutuelle</td><td>" + echapperHTML(SAN.euros(tot("REMB_MUTUELLE"))) + '</td></tr><tr><th scope="row">Reste à votre charge</th><th id="reste-an">' + echapperHTML(SAN.euros(tot("RESTE_A_CHARGE"))) + '</th></tr></tbody></table><p class="mini" style="margin-top:8px">Par personne : ' + echapperHTML(SAN.d.patients.filter(function(p) {
     return SAN.nombre(p.RESTE_A_CHARGE_AN);
   }).map(function(p) {
     return p.NOM + " " + SAN.euros(p.RESTE_A_CHARGE_AN);
@@ -6925,13 +7756,13 @@ SAN.rendreRemb = function() {
 };
 SAN.fiche = function(p) {
   var med = SAN.pro(p.MEDECIN), tr = SAN.traitementsEnCours(p.id), dv = SAN.d.vaccins.filter(function(v) {
-    return Number(v.PATIENT) === p.id && v.DATE;
+    return Number(v.PERSONNE) === p.id && v.DATE;
   }).sort(function(a, b) {
     return b.DATE - a.DATE;
   })[0];
-  return [["Né le", p.NAISSANCE ? SAN.texteJour(SAN.j(p.NAISSANCE)) + (p.AGE_TEXTE ? " (" + p.AGE_TEXTE + ")" : "") : ""], ["Espèce", p.ESPECE !== "Humain" ? p.ESPECE : ""], ["Groupe sanguin", p.GROUPE_SANGUIN && p.GROUPE_SANGUIN !== "Inconnu" ? p.GROUPE_SANGUIN : ""], ["Allergies", p.ALLERGIES], ["Traitements en cours", tr.map(function(x) {
+  return [["Né le", p.NAISSANCE ? SAN.texteJour(SAN.j(p.NAISSANCE)) + (p.AGE_TEXTE ? " (" + p.AGE_TEXTE + ")" : "") : ""], ["Espèce", SAN.estAnimal(p) ? p.ESPECE : ""], ["Groupe sanguin", p.GROUPE_SANGUIN && p.GROUPE_SANGUIN !== "Inconnu" ? p.GROUPE_SANGUIN : ""], ["Allergies", p.ALLERGIES], ["Traitements en cours", tr.map(function(x) {
     return x.TRAITEMENT + (x.POSOLOGIE ? " (" + x.POSOLOGIE + ")" : "");
-  }).join(" ; ")], ["À savoir", p.INFOS_URGENCE], [p.ESPECE === "Humain" ? "Médecin" : "Vétérinaire", med ? med.NOM + (med.TELEPHONE ? ", " + med.TELEPHONE : "") : ""], ["Contact d’urgence", [p.CONTACT_URGENCE, p.TEL_URGENCE].filter(Boolean).join(", ")], ["Mutuelle", p.MUTUELLE], ["Identification", p.IDENTIFICATION], ["Dernier vaccin", dv ? dv.VACCIN + ", le " + SAN.texteJour(SAN.j(dv.DATE)) : ""]].filter(function(x) {
+  }).join(" ; ")], ["À savoir", p.INFOS_URGENCE], [SAN.estAnimal(p) ? "Vétérinaire" : "Médecin", med ? med.NOM + (med.TELEPHONE ? ", " + med.TELEPHONE : "") : ""], ["Contact d’urgence", [p.CONTACT_URGENCE, p.TEL_URGENCE].filter(Boolean).join(", ")], ["Mutuelle", p.MUTUELLE], ["Identification", p.IDENTIFICATION], ["Dernier vaccin", dv ? dv.VACCIN + ", le " + SAN.texteJour(SAN.j(dv.DATE)) : ""]].filter(function(x) {
     return x[1];
   });
 };
@@ -6979,35 +7810,54 @@ SAN.telecharger = function() {
   MGP.annoncer("Fichier prêt : fiches-urgence.html", "ok");
 };
 SAN.editerPatient = function(p) {
-  var tid = MGP.g.idTable("PATIENTS");
-  MGP.formulaire({ titre: p ? "Fiche de " + (p.NOM || "") : "Nouveau patient", champs: [{ id: "NOM", lib: "Prénom ou nom", type: "texte", valeur: p ? p.NOM : "", requis: true }, { id: "ESPECE", lib: "Espèce", type: "choix", choix: SAN.ESPECES.map(function(e) {
-    return [e[0], e[1], SAN.EMOJI_ESPECE[e[0]] + " " + e[0]];
-  }), valeur: p ? p.ESPECE || "Humain" : "Humain" }, { id: "EMOJI", lib: "Emoji", type: "emoji", choix: ["🙂", "🌟", "🧑", "👩", "👨", "👧", "👦", "👶", "👵", "👴", "🐶", "🐱", "🐰", "🐦", "🐠", "🐴"], valeur: p ? p.EMOJI || "🙂" : "🙂" }, { id: "NAISSANCE", lib: "Né le", type: "date", valeur: p ? MGP.secVersIso(p.NAISSANCE) : "" }, { id: "GROUPE_SANGUIN", lib: "Groupe sanguin", type: "choix", choix: SAN.GROUPES, valeur: p ? p.GROUPE_SANGUIN || "" : "" }, { id: "ALLERGIES", lib: "Allergies", type: "texte", valeur: p ? p.ALLERGIES : "" }, { id: "INFOS_URGENCE", lib: "À savoir en cas d’urgence", type: "zone", valeur: p ? p.INFOS_URGENCE : "" }, { id: "CONTACT_URGENCE", lib: "Contact d’urgence", type: "texte", valeur: p ? p.CONTACT_URGENCE : "" }, { id: "TEL_URGENCE", lib: "Son téléphone", type: "texte", valeur: p ? p.TEL_URGENCE : "" }, { id: "MEDECIN", lib: "Médecin traitant ou vétérinaire", type: "choix", choix: [["0", "", "Aucun"]].concat(SAN.d.pros.map(function(x) {
+  if (!p) {
+    SAN.ajouterPersonne(false);
+    return;
+  }
+  var tidF = MGP.g.idTable("FICHES_SANTE"), tidP = MGP.g.idTable("PERSONNES"), animal = SAN.estAnimal(p), per = SAN.personne(p.id) || {};
+  var champs = [{ id: "PRENOM", lib: animal ? "Son nom" : "Prénom", type: "texte", valeur: per.PRENOM || "", requis: true, aide: "Le prénom, l’emoji et la date de naissance sont ceux de Personnes : les changer ici les change dans tous vos widgets." }, { id: "EMOJI", lib: "Emoji", type: "emoji", choix: animal ? SAN.EMOJIS_ANIMAUX : SAN.EMOJIS_HUMAINS, valeur: per.EMOJI || (animal ? "🐾" : "🙂") }];
+  if (animal) {
+    champs.push({ id: "ESPECE", lib: "C’est un...", type: "choix", choix: SAN.ESPECES.map(function(e) {
+      return [e, "Pêche", SAN.EMOJI_ESPECE[e] + " " + e];
+    }).concat(p.ESPECE && SAN.ESPECES.indexOf(p.ESPECE) < 0 ? [[p.ESPECE, "Pêche", "🐾 " + p.ESPECE]] : []), valeur: p.ESPECE || "Autre" });
+  }
+  champs.push({ id: "NAISSANCE", lib: "Né le", type: "date", valeur: MGP.secVersIso(per.NAISSANCE) });
+  if (!animal) {
+    champs.push({ id: "GROUPE_SANGUIN", lib: "Groupe sanguin", type: "choix", choix: SAN.GROUPES, valeur: p.GROUPE_SANGUIN || "" });
+  }
+  champs = champs.concat([{ id: "ALLERGIES", lib: "Allergies", type: "texte", valeur: p.ALLERGIES }, { id: "INFOS_URGENCE", lib: "À savoir en cas d’urgence", type: "zone", valeur: p.INFOS_URGENCE }, { id: "CONTACT_URGENCE", lib: "Contact d’urgence", type: "texte", valeur: p.CONTACT_URGENCE }, { id: "TEL_URGENCE", lib: "Son téléphone", type: "texte", valeur: p.TEL_URGENCE }, { id: "MEDECIN", lib: animal ? "Vétérinaire" : "Médecin traitant", type: "choix", choix: [["0", "", "Aucun"]].concat(SAN.d.pros.map(function(x) {
     return [String(x.id), "", (SAN.EMOJI_PRO[x.SPECIALITE] || "") + " " + x.NOM];
-  })), valeur: String(p ? Number(p.MEDECIN) || 0 : 0) }, { id: "MUTUELLE", lib: "Mutuelle", type: "texte", valeur: p ? p.MUTUELLE : "" }, { id: "IDENTIFICATION", lib: "Identification (puce, tatouage)", type: "texte", valeur: p ? p.IDENTIFICATION : "" }, { id: "PERSONNE", lib: "C’est aussi, dans Personnes", type: "choix", choix: [["0", "", "Personne"]].concat(SAN.d.personnes.map(function(x) {
-    return [String(x.id), x.COULEUR || "", (x.EMOJI || "🙂") + " " + x.PRENOM];
-  })), valeur: String(p ? Number(p.PERSONNE) || 0 : 0), aide: "Facultatif : relie la fiche à vos proches des autres widgets." }], valider: async function(v) {
-    v.MEDECIN = Number(v.MEDECIN) || 0;
-    v.PERSONNE = Number(v.PERSONNE) || 0;
-    if (!p) {
-      v.COULEUR = MGP.COULEURS[SAN.d.patients.length % 6];
-    }
-    await SAN.ecrire([p ? ["UpdateRecord", tid, p.id, v] : ["AddRecord", tid, null, v]], p ? "Fiche enregistrée" : v.NOM + " ajouté au carnet");
-  }, supprimer: p ? async function() {
+  })), valeur: String(Number(p.MEDECIN) || 0) }, { id: "MUTUELLE", lib: animal ? "Assurance" : "Mutuelle", type: "texte", valeur: p.MUTUELLE }]);
+  if (animal) {
+    champs.push({ id: "IDENTIFICATION", lib: "Identification (puce, tatouage)", type: "texte", valeur: p.IDENTIFICATION });
+  }
+  champs.push({ id: "NOTES", lib: "Notes", type: "zone", valeur: p.NOTES });
+  MGP.formulaire({ titre: "Fiche de " + p.NOM, champs, valider: async function(v) {
+    var vp = { PRENOM: v.PRENOM, EMOJI: v.EMOJI, NAISSANCE: v.NAISSANCE }, vf = {};
+    Object.keys(v).forEach(function(k) {
+      if (!(k in vp)) {
+        vf[k] = v[k];
+      }
+    });
+    vf.MEDECIN = Number(vf.MEDECIN) || 0;
+    await SAN.ecrire([["UpdateRecord", tidP, p.id, vp], ["UpdateRecord", tidF, p.fiche, vf]], "Fiche enregistrée");
+  }, supprimer: async function() {
     var n = SAN.rdvDe(p.id).length + SAN.d.vaccins.filter(function(x) {
-      return Number(x.PATIENT) === p.id;
+      return Number(x.PERSONNE) === p.id;
     }).length + SAN.d.mesures.filter(function(x) {
-      return Number(x.PATIENT) === p.id;
+      return Number(x.PERSONNE) === p.id;
+    }).length + SAN.d.traitements.filter(function(x) {
+      return Number(x.PERSONNE) === p.id;
     }).length;
     if (n) {
-      MGP.annoncer(p.NOM + " a " + n + " rendez-vous, vaccin(s) ou mesure(s) : supprimez-les d’abord, ou gardez la fiche.", "err");
+      MGP.annoncer(p.NOM + " a " + n + " rendez-vous, vaccin(s), mesure(s) ou traitement(s) : supprimez-les d’abord, ou gardez la fiche.", "err");
       return;
     }
-    var ok = await MGP.confirmer("Supprimer la fiche de " + p.NOM + " ?", "Elle n’a rien d’autre dans le carnet.", "Supprimer", true);
+    var ok = await MGP.confirmer("Retirer " + p.NOM + " du carnet ?", "Sa fiche santé est supprimée ; " + p.NOM + " reste dans Personnes, pour vos autres widgets.", "Retirer du carnet", true);
     if (ok) {
-      await SAN.ecrire([["RemoveRecord", tid, p.id]], "Fiche supprimée");
+      await SAN.ecrire([["RemoveRecord", tidF, p.fiche]], p.NOM + " n’est plus suivi dans le carnet");
     }
-  } : null });
+  } });
 };
 SAN.chips = function(id, liste, vals) {
   var v = Array.isArray(vals) ? vals.map(String) : [String(vals)];
@@ -7024,7 +7874,8 @@ SAN.majReste = function() {
 };
 SAN.ouvrirRdv = function(r) {
   if (!SAN.d.patients.length) {
-    SAN.editerPatient(null);
+    SAN.tabs.activer("carnet");
+    MGP.annoncer("Ajoutez d’abord quelqu’un au carnet", "ok");
     return;
   }
   SAN.fr = { r: r || null, docs: r ? SAN.ids(r.DOCUMENTS) : [] };
@@ -7105,7 +7956,7 @@ SAN.enregistrerRdv = async function() {
     return;
   }
   if (!qui.length) {
-    err.textContent = "Choisissez au moins un patient.";
+    err.textContent = "Choisissez au moins une personne.";
     return;
   }
   var date = MGP.isoVersSec(document.getElementById("rv-date").value);
@@ -7189,10 +8040,10 @@ SAN.clicFab = function() {
   }
 };
 SAN.rendreBandeau = function() {
-  document.getElementById("bandeau-exemples").innerHTML = SAN.exemplesPresents() ? '<div class="bandeau t-citron"><span aria-hidden="true">✨</span><span class="txt">Ce sont des exemples, sans valeur médicale : une famille, un chat et un chien. Quand vous êtes prêt, place à votre carnet.</span><button type="button" class="btn sec" id="btn-sup-exemples">Supprimer les exemples</button></div>' : "";
+  document.getElementById("bandeau-exemples").innerHTML = SAN.exemplesPresents() ? '<div class="bandeau t-citron"><span aria-hidden="true">✨</span><span class="txt">Ce sont des exemples, sans valeur médicale : une famille et son animal, rangés dans Personnes. Quand vous êtes prêt, place à votre carnet.</span><button type="button" class="btn sec" id="btn-sup-exemples">Supprimer les exemples</button></div>' : "";
 };
 SAN.cfgCapot = function() {
-  return { tables: ["RDV", "PATIENTS", "PROS", "VACCINS", "MESURES", "TRAITEMENTS"], defs: SAN.DEFS, dico: SAN.DICO, donnees: { RDV: SAN.d.rdv, PATIENTS: SAN.d.patients, PROS: SAN.d.pros, VACCINS: SAN.d.vaccins, MESURES: SAN.d.mesures, TRAITEMENTS: SAN.d.traitements } };
+  return { tables: ["RDV", "FICHES_SANTE", "PERSONNES", "PROS", "VACCINS", "MESURES", "TRAITEMENTS"], defs: SAN.DEFS, dico: SAN.DICO, donnees: { RDV: SAN.d.rdv, FICHES_SANTE: SAN.d.fiches, PERSONNES: SAN.d.personnes, PROS: SAN.d.pros, VACCINS: SAN.d.vaccins, MESURES: SAN.d.mesures, TRAITEMENTS: SAN.d.traitements } };
 };
 SAN.rendreCapot = async function() {
   MGP.capot.rendre(document.getElementById("zone-capot"), SAN.cfgCapot());
@@ -7205,21 +8056,21 @@ SAN.rendreCapot = async function() {
 SAN.exemple = function(ctx, cle, f) {
   return (ctx.donnees[cle] || []).filter(f)[0] || null;
 };
-SAN.DICO = { tables: { RDV: { emoji: "📅", nom: "Rendez-vous santé", couleur: "Écume", role: "Une ligne par rendez-vous. QUI est une Référence multiple : un même rendez-vous peut concerner plusieurs patients." }, PATIENTS: { emoji: "🩺", nom: "Patients", couleur: "Lavande", role: "Une fiche par patient, humain ou animal (ESPECE). PERSONNE relie si besoin la fiche à vos proches de la table Personnes." }, PROS: { emoji: "👩‍⚕️", nom: "Professionnels de santé", couleur: "Menthe", role: "Médecins, dentiste, vétérinaire... POUR est une Référence multiple vers les patients qu’ils suivent." }, VACCINS: { emoji: "💉", nom: "Vaccins", couleur: "Flamant", role: "Une ligne par vaccin fait ou prévu, avec la date de rappel et une alerte." }, MESURES: { emoji: "📏", nom: "Mesures", couleur: "Citron", role: "Le poids et la taille, à une date." }, TRAITEMENTS: { emoji: "💊", nom: "Traitements", couleur: "Pêche", role: "Les traitements, du début à la fin : un pense-bête." } }, champs: { RDV: { QUOI: "pour quoi.", DATE: "le jour.", HEURE: "l’heure.", QUI: "une **Référence multiple** vers Patients : un ou plusieurs patients dans la même cellule.", PRO: "une **Référence** vers Professionnels.", NOTE: "le compte rendu.", DOCUMENTS: "une **Référence multiple** vers Documents.", MONTANT: "ce qui a été payé.", REMB_SECU: "le remboursement de la Sécurité sociale.", REMB_MUTUELLE: "le remboursement de la mutuelle.", SANS_REMBOURSEMENT: "coché quand aucun remboursement n’est prévu (vétérinaire sans assurance, par exemple).", NOMS: "calculé : les noms des patients, séparés par des virgules.", NB_PATIENTS: "calculé : combien de patients.", A_VENIR: "calculé : vrai si le rendez-vous est aujourd’hui ou plus tard.", RESTE_A_CHARGE: "calculé : payé moins les remboursements.", REMBOURSEMENT: "calculé : En attente, Remboursé ou Rien à attendre." }, PATIENTS: { NOM: "le prénom.", EMOJI: "l’emoji.", ESPECE: "un **Choix unique** : Humain, Chien, Chat, Autre.", PERSONNE: "une **Référence** facultative vers Personnes.", NAISSANCE: "la date de naissance.", GROUPE_SANGUIN: "un **Choix unique**.", ALLERGIES: "les allergies connues.", INFOS_URGENCE: "ce qu’il faut savoir en cas d’urgence.", CONTACT_URGENCE: "qui prévenir.", TEL_URGENCE: "son téléphone.", MEDECIN: "une **Référence** vers le médecin traitant ou le vétérinaire.", MUTUELLE: "la mutuelle.", IDENTIFICATION: "puce ou tatouage d’un animal.", COULEUR: "la couleur.", NOTES: "des notes.", AGE: "calculé : l’âge en années.", AGE_TEXTE: "calculé : l’âge en mois avant 2 ans, sinon en années.", NB_RDV: "calculé : les rendez-vous où il figure.", PROCHAIN_RDV: "calculé : la date du prochain rendez-vous.", VACCINS_A_FAIRE: "calculé : les vaccins en retard ou bientôt.", RESTE_A_CHARGE_AN: "calculé : sa part du reste à charge cette année." }, PROS: { NOM: "le nom.", SPECIALITE: "un **Choix unique**.", TELEPHONE: "le téléphone.", ADRESSE: "l’adresse.", LIEN: "un lien pour prendre rendez-vous.", POUR: "une **Référence multiple** vers Patients.", NOTES: "des notes.", PATIENTS_NOMS: "calculé : les patients suivis.", NB_RDV: "calculé : les rendez-vous notés chez lui." }, VACCINS: { PATIENT: "une **Référence** vers Patients.", VACCIN: "le nom du vaccin.", DATE: "fait le (vide s’il est seulement prévu).", RAPPEL: "le rappel, ou la date prévue.", LOT: "le numéro de lot.", PRO: "qui l’a fait.", NOTE: "une note.", EST_DERNIER: "calculé : vrai pour le plus récent de ce vaccin.", ALERTE: "calculé : En retard, Bientôt (60 jours), Prévu ou À jour." }, MESURES: { PATIENT: "une **Référence** vers Patients.", DATE: "le jour.", POIDS: "le poids en kg.", TAILLE: "la taille en cm.", NOTE: "une note.", AGE_MOIS: "calculé : l’âge en mois à cette date." }, TRAITEMENTS: { PATIENT: "une **Référence** vers Patients.", TRAITEMENT: "le traitement.", POSOLOGIE: "comme indiqué par l’ordonnance.", DEBUT: "le premier jour.", FIN: "le dernier jour.", ORDONNANCE: "une **Référence multiple** vers Documents.", NOTE: "une note.", EN_COURS: "calculé : vrai entre le début et la fin.", JOURS_RESTANTS: "calculé : les jours qui restent." } }, formules: [{ cle: "RDV", col: "NOMS", defaut: SAN.FORMULES.NOMS, intro: "Une Référence multiple contient plusieurs lignes : on peut les parcourir une par une. Ici, on prend le nom de chaque patient du rendez-vous, et on les colle avec une virgule.", jetons: [["$QUI", "la liste des patients du rendez-vous."], ["p.NOM for p in $QUI", "pour chaque patient p de la liste, son nom."], ['", ".join(...)', "les colle, séparés par une virgule et un espace."]], exemple: function(ctx) {
+SAN.DICO = { tables: { RDV: { emoji: "📅", nom: "Rendez-vous santé", couleur: "Écume", role: "Une ligne par rendez-vous. QUI est une Référence multiple vers Personnes : un même rendez-vous peut concerner plusieurs personnes, animaux compris." }, FICHES_SANTE: { emoji: "🩺", nom: "Fiches santé", couleur: "Lavande", role: "Une fiche par personne suivie : groupe sanguin, allergies, médecin, contacts d’urgence. PERSONNE la relie à Personnes, qui garde le prénom, l’emoji, la couleur et la date de naissance." }, PERSONNES: { emoji: "👥", nom: "Personnes", couleur: "Pêche", role: "La table commune à tous vos widgets. Le carnet y lit les prénoms ; un animal y a sa ligne, de type Animal. Aucune donnée médicale n’y est écrite." }, PROS: { emoji: "👩‍⚕️", nom: "Professionnels de santé", couleur: "Menthe", role: "Médecins, dentiste, vétérinaire... POUR est une Référence multiple vers les personnes qu’ils suivent." }, VACCINS: { emoji: "💉", nom: "Vaccins", couleur: "Flamant", role: "Une ligne par vaccin fait ou prévu, avec la date de rappel et une alerte." }, MESURES: { emoji: "📏", nom: "Mesures", couleur: "Citron", role: "Le poids et la taille, à une date." }, TRAITEMENTS: { emoji: "💊", nom: "Traitements", couleur: "Pêche", role: "Les traitements, du début à la fin : un pense-bête." } }, champs: { RDV: { QUOI: "pour quoi.", DATE: "le jour.", HEURE: "l’heure.", QUI: "une **Référence multiple** vers Personnes : une ou plusieurs personnes dans la même cellule.", PRO: "une **Référence** vers Professionnels.", NOTE: "le compte rendu.", DOCUMENTS: "une **Référence multiple** vers Documents.", MONTANT: "ce qui a été payé.", REMB_SECU: "le remboursement de la Sécurité sociale.", REMB_MUTUELLE: "le remboursement de la mutuelle.", SANS_REMBOURSEMENT: "coché quand aucun remboursement n’est prévu (vétérinaire sans assurance, par exemple).", NOMS: "calculé : les prénoms, lus dans Personnes, séparés par des virgules.", NB_PERSONNES: "calculé : combien de personnes.", A_VENIR: "calculé : vrai si le rendez-vous est aujourd’hui ou plus tard.", RESTE_A_CHARGE: "calculé : payé moins les remboursements.", REMBOURSEMENT: "calculé : En attente, Remboursé ou Rien à attendre." }, FICHES_SANTE: { PERSONNE: "une **Référence** vers Personnes : la personne suivie.", ESPECE: "l’espèce, pour un animal seulement.", GROUPE_SANGUIN: "un **Choix unique**.", ALLERGIES: "les allergies connues.", INFOS_URGENCE: "ce qu’il faut savoir en cas d’urgence.", CONTACT_URGENCE: "qui prévenir.", TEL_URGENCE: "son téléphone.", MEDECIN: "une **Référence** vers le médecin traitant ou le vétérinaire.", MUTUELLE: "la mutuelle ou l’assurance.", IDENTIFICATION: "puce ou tatouage d’un animal.", NOTES: "des notes.", NAISSANCE: "calculé : la date de naissance, lue dans Personnes avec $PERSONNE.NAISSANCE.", AGE: "calculé : l’âge en années.", AGE_TEXTE: "calculé : l’âge en mois avant 2 ans, sinon en années.", NB_RDV: "calculé : les rendez-vous où la personne figure.", PROCHAIN_RDV: "calculé : la date du prochain rendez-vous.", VACCINS_A_FAIRE: "calculé : les vaccins en retard ou bientôt.", RESTE_A_CHARGE_AN: "calculé : sa part du reste à charge cette année." }, PERSONNES: { PRENOM: "le prénom, affiché partout, dans le carnet aussi.", TYPE: "un **Choix unique** : Adulte, Enfant, Proche, Ami, et Animal dès votre premier animal.", FOYER: "coché pour les personnes qui vivent sous votre toit.", NAISSANCE: "la date de naissance, lue par les Fiches santé.", EMOJI: "l’emoji, repris dans le carnet.", COULEUR: "la couleur, reprise dans le carnet.", NOTES: "des notes libres (rien de médical ici)." }, PROS: { NOM: "le nom.", SPECIALITE: "un **Choix unique**.", TELEPHONE: "le téléphone.", ADRESSE: "l’adresse.", LIEN: "un lien pour prendre rendez-vous.", POUR: "une **Référence multiple** vers Personnes.", NOTES: "des notes.", NOMS_SUIVIS: "calculé : les prénoms des personnes suivies.", NB_RDV: "calculé : les rendez-vous notés chez lui." }, VACCINS: { PERSONNE: "une **Référence** vers Personnes.", VACCIN: "le nom du vaccin.", DATE: "fait le (vide s’il est seulement prévu).", RAPPEL: "le rappel, ou la date prévue.", LOT: "le numéro de lot.", PRO: "qui l’a fait.", NOTE: "une note.", EST_DERNIER: "calculé : vrai pour le plus récent de ce vaccin.", ALERTE: "calculé : En retard, Bientôt (60 jours), Prévu ou À jour." }, MESURES: { PERSONNE: "une **Référence** vers Personnes.", DATE: "le jour.", POIDS: "le poids en kg.", TAILLE: "la taille en cm.", NOTE: "une note.", AGE_MOIS: "calculé : l’âge en mois à cette date." }, TRAITEMENTS: { PERSONNE: "une **Référence** vers Personnes.", TRAITEMENT: "le traitement.", POSOLOGIE: "comme indiqué par l’ordonnance.", DEBUT: "le premier jour.", FIN: "le dernier jour.", ORDONNANCE: "une **Référence multiple** vers Documents.", NOTE: "une note.", EN_COURS: "calculé : vrai entre le début et la fin.", JOURS_RESTANTS: "calculé : les jours qui restent." } }, formules: [{ cle: "RDV", col: "NOMS", defaut: SAN.FORMULES.NOMS, intro: "Une Référence multiple contient plusieurs lignes : on peut les parcourir une par une. Ici, on prend le prénom de chaque personne du rendez-vous, dans Personnes, et on les colle avec une virgule. Renommez quelqu’un dans Personnes : NOMS suit.", jetons: [["$QUI", "la liste des personnes du rendez-vous."], ["p.PRENOM for p in $QUI", "pour chaque personne p de la liste, son prénom."], ['", ".join(...)', "les colle, séparés par une virgule et un espace."]], exemple: function(ctx) {
   var r = SAN.exemple(ctx, "RDV", function(x) {
     return SAN.ids(x.QUI).length > 1;
   });
   return r ? (r.QUOI || "") + " : NOMS vaut **" + r.NOMS + "**" : "";
-}, defi: 'ajoutez une colonne ANIMAUX avec `len([p for p in $QUI if p.ESPECE != "Humain"])`.' }, { cle: "PATIENTS", col: "NB_RDV", defaut: SAN.FORMULES.NB_RDV, intro: "Dans l’autre sens : les rendez-vous dont la liste QUI contient ce patient. `CONTAINS` cherche dans une Référence multiple.", jetons: [["Rendez_vous_sante.lookupRecords(QUI=CONTAINS($id))", "les rendez-vous dont QUI contient le numéro de ce patient."], ["len(...)", "combien."]], exemple: function(ctx) {
-  var p = SAN.exemple(ctx, "PATIENTS", function(x) {
+}, defi: 'ajoutez une colonne ANIMAUX avec `len([p for p in $QUI if p.TYPE == "Animal"])`.' }, { cle: "FICHES_SANTE", col: "NB_RDV", defaut: SAN.FORMULES.NB_RDV, intro: "Dans l’autre sens : les rendez-vous dont la liste QUI contient la personne de la fiche. `CONTAINS` cherche dans une Référence multiple ; `$PERSONNE.id` est le numéro de la personne dans Personnes.", jetons: [["Rendez_vous_sante.lookupRecords(QUI=CONTAINS($PERSONNE.id))", "les rendez-vous dont QUI contient cette personne."], ["len(...)", "combien."]], exemple: function(ctx) {
+  var f = SAN.exemple(ctx, "FICHES_SANTE", function(x) {
     return x.NB_RDV > 1;
   });
-  return p ? p.NOM + " figure dans **" + p.NB_RDV + "** rendez-vous" : "";
-} }, { cle: "PATIENTS", col: "PROCHAIN_RDV", defaut: SAN.FORMULES.PROCHAIN_RDV, intro: "Le prochain rendez-vous : parmi ceux du patient, la plus petite date à partir d’aujourd’hui.", jetons: [["[r.DATE for r in ... if r.DATE >= TODAY()]", "les dates à venir."], ["min(..., default=None)", "la plus proche, ou rien."]], exemple: function(ctx) {
-  var p = SAN.exemple(ctx, "PATIENTS", function(x) {
+  return f ? SAN.nom(f.PERSONNE) + " figure dans **" + f.NB_RDV + "** rendez-vous" : "";
+} }, { cle: "FICHES_SANTE", col: "PROCHAIN_RDV", defaut: SAN.FORMULES.PROCHAIN_RDV, intro: "Le prochain rendez-vous : parmi ceux de la personne, la plus petite date à partir d’aujourd’hui.", jetons: [["[r.DATE for r in ... if r.DATE >= TODAY()]", "les dates à venir."], ["min(..., default=None)", "la plus proche, ou rien."]], exemple: function(ctx) {
+  var f = SAN.exemple(ctx, "FICHES_SANTE", function(x) {
     return x.PROCHAIN_RDV;
   });
-  return p ? p.NOM + " : prochain rendez-vous le **" + MGP.dateCourte(p.PROCHAIN_RDV) + "**" : "";
+  return f ? SAN.nom(f.PERSONNE) + " : prochain rendez-vous le **" + MGP.dateCourte(f.PROCHAIN_RDV) + "**" : "";
 } }, { cle: "RDV", col: "RESTE_A_CHARGE", defaut: SAN.FORMULES.RESTE_A_CHARGE, intro: "Ce qui reste à payer : le montant, moins la Sécurité sociale, moins la mutuelle. `or 0` remplace une case vide par zéro.", jetons: [["($MONTANT or 0)", "le montant, ou 0 s’il est vide."]], exemple: function(ctx) {
   var r = SAN.exemple(ctx, "RDV", function(x) {
     return x.MONTANT;
@@ -7230,7 +8081,7 @@ SAN.DICO = { tables: { RDV: { emoji: "📅", nom: "Rendez-vous santé", couleur:
     return x.ALERTE === "En retard";
   });
   return v ? v.VACCIN + " : ALERTE vaut **" + v.ALERTE + "**" : "";
-} }], extras: [{ titre: "Pourquoi une table Patients ?", paragraphes: ["Les animaux ne sont pas dans la table Personnes, commune à tous vos widgets : le carnet a sa propre table, avec l’espèce. La colonne PERSONNE relie une fiche humaine à vos proches si vous le souhaitez."] }, { titre: "Vos données de santé", paragraphes: ["Elles restent dans votre document. Ne le partagez pas par un lien public ; les personnes invitées voient ce que leur rôle permet. Les règles d’accès peuvent masquer ces tables à certains invités."] }] };
+} }], extras: [{ titre: "Pourquoi Personnes et Fiches santé ?", paragraphes: ["Le carnet s’appuie sur la table Personnes, commune à tous vos widgets : chaque rendez-vous, vaccin, mesure ou traitement pointe vers une Personne. Un prénom changé dans Personnes change partout.", "Vos animaux y ont leur ligne, de type Animal : ce choix n’apparaît que le jour où vous ajoutez votre premier animal. Les données médicales restent dans Fiches santé, une fiche par personne suivie, jamais dans Personnes."] }, { titre: "Vos données de santé", paragraphes: ["Elles restent dans votre document. Ne le partagez pas par un lien public ; les personnes invitées voient ce que leur rôle permet. Les règles d’accès peuvent masquer ces tables à certains invités."] }] };
 SAN.montrer = function(ecran) {
   if (ecran === "app") {
     setTimeout(MGP.g.afficherIndicePage, 0);
@@ -7247,7 +8098,7 @@ SAN.preparerDeballage = function() {
     return !MGP.g.trouver(MGP.SOCLE[cle]);
   }) : ["?"];
   var socle = manque.length ? " et le socle commun (Personnes, Catégories, Documents, réglages) puisqu’il n’existe pas encore" : " et réutilise vos tables Personnes et Documents";
-  document.getElementById("inst-texte").textContent = "Crée 6 tables (Patients, Professionnels de santé, Rendez-vous santé, Vaccins, Mesures, Traitements)" + socle + ". Rien d’autre n’est modifié.";
+  document.getElementById("inst-texte").textContent = "Crée 6 tables (Fiches santé, Professionnels de santé, Rendez-vous santé, Vaccins, Mesures, Traitements)" + socle + ". Le carnet suit les personnes de Personnes ; vos animaux y entrent seulement si vous en ajoutez. Rien d’autre n’est modifié.";
   var full = MGP.g.acces === "full";
   document.getElementById("inst-acces").textContent = full ? "" : "Pour installer, ce widget a besoin de l’accès complet au document (panneau de droite, « Accès complet au document »).";
   document.getElementById("btn-installer-vide").disabled = !full;
@@ -7260,7 +8111,10 @@ SAN.preparerDeballage = function() {
 SAN.installer = async function(exemples) {
   montrerLoader("Installation en cours...");
   try {
+    await SAN.adopterPersonnes();
+    await SAN.migrer(false);
     await MGP.g.installerTables(SAN.WIDGET, SAN.defsWidget(), exemples);
+    await SAN.reposerFormules();
     MGP.g.recharger();
   } catch (e) {
     masquerLoader();
@@ -7282,7 +8136,9 @@ SAN.brancher = function() {
       return !!(MGP.g.meta && SAN.installe());
     }, completer: async function() {
       montrerLoader("Votre bonus se complète...");
-      await MGP.parcours.adopter([SAN.DEFS.PATIENTS, SAN.DEFS.RDV]);
+      await SAN.adopterPersonnes();
+      await SAN.migrer(false);
+      await MGP.parcours.adopter([SAN.DEFS.RDV]);
       await SAN.installer(true);
     }, capot: function() {
       SAN.tabs.activer("capot");
@@ -7347,8 +8203,37 @@ SAN.brancher = function() {
       garder('#f-pm [data-val="' + b.dataset.val + '"]');
       return;
     }
-    if (ev.target.closest("[data-nouveau-patient]")) {
-      SAN.editerPatient(null);
+    if (ev.target.closest("[data-nouvelle-personne]")) {
+      SAN.ajouterPersonne(false);
+      return;
+    }
+    if (ev.target.closest("[data-nouvel-animal]")) {
+      SAN.ajouterPersonne(true);
+      return;
+    }
+    if (ev.target.closest("[data-suivre-une]")) {
+      SAN.choisirASuivre();
+      return;
+    }
+    if (ev.target.closest("[data-suivre-tous]")) {
+      await SAN.suivre(SAN.nonSuivies().map(function(p) {
+        return p.id;
+      }));
+      return;
+    }
+    if (ev.target.closest("[data-suivre-selection]")) {
+      var choisis = Array.prototype.slice.call(document.querySelectorAll('#suivre-choix [aria-pressed="true"]')).map(function(x) {
+        return Number(x.dataset.val);
+      });
+      if (!choisis.length) {
+        MGP.annoncer("Choisissez au moins une personne", "err");
+        return;
+      }
+      await SAN.suivre(choisis);
+      return;
+    }
+    if (b = ev.target.closest("#suivre-choix [data-val]")) {
+      b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") === "true" ? "false" : "true");
       return;
     }
     if (b = ev.target.closest("[data-modifier-patient]")) {
@@ -7461,6 +8346,20 @@ SAN.reprendre = async function() {
     await MGP.g.chargerMeta();
     await MGP.g.chargerTech();
     var etat = MGP.g.etatInstall(SAN.WIDGET);
+    if (etat && (etat.etat === "ok" || etat.etat === "tables") && SAN.aMigrer()) {
+      montrerLoader("Mise à jour du carnet...");
+      try {
+        var maj = await SAN.migrer(true);
+        if (maj) {
+          MGP.annoncer("Carnet mis à jour : " + maj.patients + " fiche" + (maj.patients > 1 ? "s" : "") + " rangée" + (maj.patients > 1 ? "s" : "") + " avec vos Personnes" + (maj.creees ? " (" + maj.creees + " ajoutée" + (maj.creees > 1 ? "s" : "") + " à Personnes)" : ""), "ok");
+        }
+      } catch (e) {
+        logSecurite("mise à jour du carnet", e);
+        MGP.annoncer("La mise à jour du carnet n’est pas terminée : " + (e && e.message ? e.message : e) + ". Vos données sont intactes.", "err");
+      }
+      await MGP.g.chargerMeta();
+      await MGP.g.chargerTech();
+    }
     if (etat && etat.etat === "tables" && SAN.installe()) {
       montrerLoader("Dernière touche...");
       await MGP.g.terminerInstall(SAN.WIDGET, SAN.NOM_PAGE, SAN.ajouterExemples, etat.exemples);
