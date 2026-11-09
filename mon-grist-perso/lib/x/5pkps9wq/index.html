@@ -2766,10 +2766,15 @@ MGP.g.demarrer = function(accesRequis) {
   });
 };
 MGP.CHAMPS_SUIVI = ["CREE_LE", "CREE_PAR", "MODIFIE_LE", "MODIFIE_PAR"];
-MGP.SOCLE = { TECH: { cle: "TECH", id: "BIBLIOTHEQUE_MON_GRIST_PERSO_", label: "⚙️ BIBLIOTHÈQUE MON GRIST PERSO ⚡", motif: "BIBLIOTHEQUE_MON_GRIST_PERSO", description: "Table technique des widgets Mon Grist perso : réglages, tables installées, bonus installés et progression. Une ligne par réglage, à ne pas modifier à la main.", signature: ["CLE", "VALEUR"], colonnes: [{ id: "CLE", type: "Text", description: "Nom du réglage (par exemple TABLE:CADEAUX, INSTALL:conges ou cadeau.jour-01). Une seule ligne par nom." }, { id: "VALEUR", type: "Text", description: "Valeur du réglage, en texte ou en JSON : l’id réel d’une table, l’état d’une installation, une date..." }] }, PERSONNES: { cle: "PERSONNES", id: "Personnes", label: "👥 Personnes", nom: "Personnes", description: "Les personnes du foyer et les proches, partagées par tous les widgets (cadeaux, congés, santé...). Une ligne par personne.", signature: ["PRENOM", "FOYER", "TYPE"], colonnes: [{ id: "PRENOM", type: "Text", description: "Prénom ou surnom de la personne, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "TYPE", type: "Choice", choix: [["Adulte", "Pêche"], ["Enfant", "Lavande"], ["Proche", "Écume"], ["Ami", "Menthe"]], description: "Lien avec vous, en Choix unique : Adulte, Enfant, Proche ou Ami." }, { id: "FOYER", type: "Bool", description: "Coché si la personne vit sous votre toit (Booléen)." }, { id: "NAISSANCE", type: "Date", description: "Date de naissance, facultative : elle sert aux anniversaires et aux âges." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la personne dans les widgets." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la personne dans les widgets (Choix unique)." }, { id: "NOTES", type: "Text", description: "Notes libres : tailles, goûts, idées..." }], affichage: "PRENOM" }, CATEGORIES: { cle: "CATEGORIES", id: "Categories", label: "🏷️ Catégories", nom: "Catégories", description: "Catégories de dépenses et de documents, partagées par tous les widgets (Alimentation, Maison, Transport...). Une ligne par catégorie.", signature: ["NOM", "EMOJI", "COULEUR"], colonnes: [{ id: "NOM", type: "Text", description: "Nom de la catégorie, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la catégorie." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la catégorie dans les widgets (Choix unique)." }], affichage: "NOM", graines: [["Alimentation", "🛒", "Menthe"], ["Maison", "🏠", "Pêche"], ["Transport", "🚗", "Écume"], ["Loisirs", "🎭", "Lavande"], ["Cadeaux", "🎁", "Flamant"], ["Abonnements", "📱", "Citron"], ["Santé", "🩺", "Écume"], ["Épargne", "🌱", "Menthe"]] }, DOCUMENTS: { cle: "DOCUMENTS", id: "Documents", label: "📎 Documents", nom: "Documents", description: "Fichiers rangés par les widgets : factures, garanties, contrats, photos. Une ligne par document, reliée aux autres tables par des colonnes de type Référence.", signature: ["FICHIER", "TITRE"], colonnes: [{ id: "TITRE", type: "Text", description: "Nom du document, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "FICHIER", type: "Attachments", description: "Le fichier lui-même (Pièce jointe) : il compte dans la taille du document Grist." }, { id: "TYPE", type: "Choice", choix: [["Facture", "Citron"], ["Garantie", "Menthe"], ["Contrat", "Lavande"], ["Photo", "Flamant"], ["Autre", "Écume"]], description: "Nature du document, en Choix unique : Facture, Garantie, Contrat, Photo... Certains widgets ajoutent leurs choix." }, { id: "PERSONNE", type: "Ref:@PERSONNES", description: "Personne concernée (Référence vers Personnes), facultative." }, { id: "CATEGORIE", type: "Ref:@CATEGORIES", description: "Catégorie du document (Référence vers Catégories), facultative." }, { id: "DATE_DOC", type: "Date", description: "Date du document (date de la facture, du contrat...)." }, { id: "NOTES", type: "Text", description: "Notes libres sur le document." }], affichage: "TITRE" } };
+MGP.FORMULES_CATEGORIES = { NOM_COMPLET: '(($PARENT.NOM or "") + " › " + ($NOM or "")) if $PARENT else ($NOM or "")', RACINE: "$PARENT.id or $id" };
+MGP.SOCLE = { TECH: { cle: "TECH", id: "BIBLIOTHEQUE_MON_GRIST_PERSO_", label: "⚙️ BIBLIOTHÈQUE MON GRIST PERSO ⚡", motif: "BIBLIOTHEQUE_MON_GRIST_PERSO", description: "Table technique des widgets Mon Grist perso : réglages, tables installées, bonus installés et progression. Une ligne par réglage, à ne pas modifier à la main.", signature: ["CLE", "VALEUR"], colonnes: [{ id: "CLE", type: "Text", description: "Nom du réglage (par exemple TABLE:CADEAUX, INSTALL:conges ou cadeau.jour-01). Une seule ligne par nom." }, { id: "VALEUR", type: "Text", description: "Valeur du réglage, en texte ou en JSON : l’id réel d’une table, l’état d’une installation, une date..." }] }, PERSONNES: { cle: "PERSONNES", id: "Personnes", label: "👥 Personnes", nom: "Personnes", description: "Les personnes du foyer et les proches, partagées par tous les widgets (cadeaux, congés, santé...). Une ligne par personne.", signature: ["PRENOM", "FOYER", "TYPE"], colonnes: [{ id: "PRENOM", type: "Text", description: "Prénom ou surnom de la personne, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "TYPE", type: "Choice", choix: [["Adulte", "Pêche"], ["Enfant", "Lavande"], ["Proche", "Écume"], ["Ami", "Menthe"]], description: "Lien avec vous, en Choix unique : Adulte, Enfant, Proche ou Ami." }, { id: "FOYER", type: "Bool", description: "Coché si la personne vit sous votre toit (Booléen)." }, { id: "NAISSANCE", type: "Date", description: "Date de naissance, facultative : elle sert aux anniversaires et aux âges." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la personne dans les widgets." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la personne dans les widgets (Choix unique)." }, { id: "NOTES", type: "Text", description: "Notes libres : tailles, goûts, idées..." }], affichage: "PRENOM" }, CATEGORIES: { cle: "CATEGORIES", id: "Categories", label: "🏷️ Catégories", nom: "Catégories", description: "Catégories de dépenses et de documents, partagées par tous les widgets (Alimentation, Maison, Transport...). Une ligne par catégorie.", signature: ["NOM", "EMOJI", "COULEUR"], colonnes: [{ id: "NOM", type: "Text", description: "Nom de la catégorie, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la catégorie." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la catégorie dans les widgets (Choix unique)." }, { id: "PARENT", type: "Ref:@CATEGORIES", description: "Catégorie parente, facultative (Référence vers cette même table) : vide pour une catégorie principale, remplie pour une sous-catégorie (Transport pour Carburant). Deux niveaux au plus : une sous-catégorie n’a pas de sous-catégorie." }, { id: "NOM_COMPLET", type: "Text", formule: MGP.FORMULES_CATEGORIES.NOM_COMPLET, description: "Formule : le nom précédé de celui de la catégorie parente (« Transport › Carburant »), ou le nom seul pour une catégorie principale." }, { id: "RACINE", type: "Ref:@CATEGORIES", formule: MGP.FORMULES_CATEGORIES.RACINE, description: "Formule : la catégorie principale (Référence) : la parente pour une sous-catégorie, elle-même sinon. Les budgets et les bilans regroupent les sous-catégories avec elle." }], affichage: "NOM", graines: [["Alimentation", "🛒", "Menthe"], ["Maison", "🏠", "Pêche"], ["Transport", "🚗", "Écume"], ["Loisirs", "🎭", "Lavande"], ["Cadeaux", "🎁", "Flamant"], ["Abonnements", "📱", "Citron"], ["Santé", "🩺", "Écume"], ["Épargne", "🌱", "Menthe"]] }, DOCUMENTS: { cle: "DOCUMENTS", id: "Documents", label: "📎 Documents", nom: "Documents", description: "Fichiers rangés par les widgets : factures, garanties, contrats, photos. Une ligne par document, reliée aux autres tables par des colonnes de type Référence.", signature: ["FICHIER", "TITRE"], colonnes: [{ id: "TITRE", type: "Text", description: "Nom du document, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "FICHIER", type: "Attachments", description: "Le fichier lui-même (Pièce jointe) : il compte dans la taille du document Grist." }, { id: "TYPE", type: "Choice", choix: [["Facture", "Citron"], ["Garantie", "Menthe"], ["Contrat", "Lavande"], ["Photo", "Flamant"], ["Autre", "Écume"]], description: "Nature du document, en Choix unique : Facture, Garantie, Contrat, Photo... Certains widgets ajoutent leurs choix." }, { id: "PERSONNE", type: "Ref:@PERSONNES", description: "Personne concernée (Référence vers Personnes), facultative." }, { id: "CATEGORIE", type: "Ref:@CATEGORIES", description: "Catégorie du document (Référence vers Catégories), facultative." }, { id: "DATE_DOC", type: "Date", description: "Date du document (date de la facture, du contrat...)." }, { id: "NOTES", type: "Text", description: "Notes libres sur le document." }], affichage: "TITRE" } };
 MGP.ORDRE_SOCLE = ["TECH", "PERSONNES", "CATEGORIES", "DOCUMENTS"];
 MGP.g.ACCENTS = { ACHETE: "ACHETÉ", AGE: "ÂGE", ANNEE: "ANNÉE", APPORTE: "APPORTÉ", APRES: "APRÈS", ARRETE: "ARRÊTÉ", ARRIVEE: "ARRIVÉE", ASSIGNE: "ASSIGNÉ", CATEGORIE: "CATÉGORIE", CATEGORIES: "CATÉGORIES", CLE: "CLÉ", CLOTURE: "CLÔTURE", COCHE: "COCHÉ", COMPETENCE: "COMPÉTENCE", COUT: "COÛT", CREDIT: "CRÉDIT", CREDITS: "CRÉDITS", CREE: "CRÉÉ", DEBALLES: "DÉBALLÉS", DEBIT: "DÉBIT", DEBITE: "DÉBITÉ", DEBUT: "DÉBUT", DECALAGE: "DÉCALAGE", DECALER: "DÉCALER", DECOMPTE: "DÉCOMPTE", DELAI: "DÉLAI", DEMENAGEUR: "DÉMÉNAGEUR", DEMENAGEMENT: "DÉMÉNAGEMENT", DEPART: "DÉPART", DEPENSE: "DÉPENSE", DEPENSES: "DÉPENSES", DEPOT: "DÉPÔT", DERNIERE: "DERNIÈRE", DETAIL: "DÉTAIL", DIFFERE: "DIFFÉRÉ", DUREE: "DURÉE", ECART: "ÉCART", ECHEANCE: "ÉCHÉANCE", ECHEANCES: "ÉCHÉANCES", ECOULE: "ÉCOULÉ", EMPRUNTE: "EMPRUNTÉ", ENERGIE: "ÉNERGIE", ENGAGE: "ENGAGÉ", ENTREE: "ENTRÉE", EPARGNE: "ÉPARGNE", EQUIPEMENT: "ÉQUIPEMENT", ESPECE: "ESPÈCE", ESTIMEE: "ESTIMÉE", ETABLISSEMENT: "ÉTABLISSEMENT", ETAGE: "ÉTAGE", ETAPE: "ÉTAPE", ETAPES: "ÉTAPES", ETAT: "ÉTAT", ETIQUETTE: "ÉTIQUETTE", ETOILES: "ÉTOILES", EVENEMENT: "ÉVÉNEMENT", EXPIRE: "EXPIRÉ", FACTUREE: "FACTURÉE", FREQUENCE: "FRÉQUENCE", IDEE: "IDÉE", INTERETS: "INTÉRÊTS", INVITE: "INVITÉ", INVITES: "INVITÉS", LIBELLE: "LIBELLÉ", LIE: "LIÉ", LIQUIDITE: "LIQUIDITÉ", MEDECIN: "MÉDECIN", METIER: "MÉTIER", MODELE: "MODÈLE", MODIFIE: "MODIFIÉ", NUMERO: "NUMÉRO", OCCUPEES: "OCCUPÉES", OPERATION: "OPÉRATION", OPERATIONS: "OPÉRATIONS", PASSE: "PASSÉ", PAYE: "PAYÉ", PAYEES: "PAYÉES", PERCU: "PERÇU", PERIODE: "PÉRIODE", PERIODICITE: "PÉRIODICITÉ", PIECE: "PIÈCE", PIECES: "PIÈCES", POINTE: "POINTÉ", PREAVIS: "PRÉAVIS", PRECEDENT: "PRÉCÉDENT", PREFIXE: "PRÉFIXE", PRELEVEMENT: "PRÉLÈVEMENT", PREMIERE: "PREMIÈRE", PRENOM: "PRÉNOM", PREPARER: "PRÉPARER", PRESENTS: "PRÉSENTS", PRET: "PRÊT", PRETE: "PRÊTE", PRETEUR: "PRÊTEUR", PRETS: "PRÊTS", PREVENU: "PRÉVENU", PREVU: "PRÉVU", PREVUE: "PRÉVUE", PREVUES: "PRÉVUES", PRIORITE: "PRIORITÉ", PROJETE: "PROJETÉ", PROPRIETAIRES: "PROPRIÉTAIRES", QTE: "QTÉ", QUANTITE: "QUANTITÉ", RECIT: "RÉCIT", RECURRENCE: "RÉCURRENCE", RECURRENCES: "RÉCURRENCES", REFERENCE: "RÉFÉRENCE", REGIMES: "RÉGIMES", REGLE: "RÈGLE", REGLES: "RÈGLES", REGULARISATION: "RÉGULARISATION", RELEVE: "RELEVÉ", RELIE: "RELIÉ", REMBOURSE: "REMBOURSÉ", REPONSE: "RÉPONSE", REPONSES: "RÉPONSES", RESA: "RÉSA", RESERVE: "RÉSERVÉ", RESERVER: "RÉSERVER", RESERVOIR: "RÉSERVOIR", RESILIATION: "RÉSILIATION", RETRO: "RÉTRO", REVISE: "RÉVISÉ", REVISION: "RÉVISION", SECU: "SÉCU", SERIE: "SÉRIE", SPECIALITE: "SPÉCIALITÉ", TACHE: "TÂCHE", TACHES: "TÂCHES", TEL: "TÉL", TELEPHONE: "TÉLÉPHONE", THEME: "THÈME", UNITE: "UNITÉ", VEHICULE: "VÉHICULE", VERSE: "VERSÉ", ELECTRICITE: "ÉLECTRICITÉ" };
+MGP.g.LIBELLES = { PARENT: "CATÉGORIE PARENTE" };
 MGP.g.libelleColonne = function(id) {
+  if (MGP.g.LIBELLES[id]) {
+    return MGP.g.LIBELLES[id];
+  }
   var l = String(id || "").split("_").filter(Boolean).map(function(w) {
     return w === "A" ? "À" : MGP.g.ACCENTS[w] || w;
   }).join(" ");
@@ -3263,6 +3268,49 @@ MGP.g.creerTables = async function(defs) {
     }
   }
   return { crees, pagesSupprimees };
+};
+MGP.nomCategorie = function(c, liste) {
+  if (!c) {
+    return "";
+  }
+  if (typeof c.NOM_COMPLET === "string" && c.NOM_COMPLET) {
+    return c.NOM_COMPLET;
+  }
+  var p = Number(c.PARENT) && liste ? liste.filter(function(x) {
+    return x.id === Number(c.PARENT);
+  })[0] : null;
+  return p && p.id !== c.id ? (p.NOM || "") + " › " + (c.NOM || "") : c.NOM || "";
+};
+MGP.categoriesRangees = function(liste) {
+  var l = liste || [], ids = l.map(function(c) {
+    return c.id;
+  });
+  var parentDe = function(c) {
+    var p = Number(c.PARENT) || 0;
+    return p && p !== c.id && ids.indexOf(p) >= 0 ? p : 0;
+  };
+  var tri = function(a, b) {
+    return String(a.NOM || "").localeCompare(String(b.NOM || ""), "fr");
+  };
+  var out = [];
+  l.filter(function(c) {
+    return !parentDe(c);
+  }).sort(tri).forEach(function(c) {
+    out.push({ c, niveau: 0, parent: null });
+    l.filter(function(s) {
+      return parentDe(s) === c.id;
+    }).sort(tri).forEach(function(s) {
+      out.push({ c: s, niveau: 1, parent: c });
+    });
+  });
+  l.forEach(function(c) {
+    if (!out.some(function(x) {
+      return x.c === c;
+    })) {
+      out.push({ c, niveau: 0, parent: null });
+    }
+  });
+  return out;
 };
 MGP.g.defsSocle = function() {
   return MGP.ORDRE_SOCLE.map(function(c) {
@@ -4151,7 +4199,10 @@ MGP.formulaire = function(def) {
     var mode = c.type === "nombre" || c.type === "montant" ? ' inputmode="decimal"' : "";
     return '<div class="champ"><label for="' + id + '">' + echapperHTML(c.lib) + (c.requis ? ' <span aria-hidden="true">*</span>' : "") + '</label><input type="' + type + '" id="' + id + '" value="' + echapperHTML(v) + '"' + mode + (c.requis ? ' required aria-required="true"' : "") + ' autocomplete="off">' + aide + "</div>";
   }).join("");
-  d.innerHTML = '<div class="poignee" aria-hidden="true"></div><form class="corps" novalidate><h2 id="dlg-form-titre">' + echapperHTML(def.titre) + "</h2>" + html + '<p class="mini erreur" role="alert" style="color:var(--flamant-f)"></p><div class="pied">' + (def.supprimer ? '<button type="button" class="btn danger" data-supprimer style="margin-right:auto">Supprimer</button>' : "") + '<button type="button" class="btn sec" data-fermer>Annuler</button><button type="submit" class="btn">' + echapperHTML(def.libelleOk || "Enregistrer") + "</button></div></form>";
+  var intro = def.intro ? [].concat(def.intro).filter(Boolean).map(function(x) {
+    return '<p class="intro" style="margin:4px 0 10px">' + echapperHTML(x) + "</p>";
+  }).join("") : "";
+  d.innerHTML = '<div class="poignee" aria-hidden="true"></div><form class="corps" novalidate><h2 id="dlg-form-titre">' + echapperHTML(def.titre) + "</h2>" + intro + html + '<p class="mini erreur" role="alert" style="color:var(--flamant-f)"></p><div class="pied">' + (def.supprimer ? '<button type="button" class="btn danger" data-supprimer style="margin-right:auto">Supprimer</button>' : "") + '<button type="button" class="btn sec" data-fermer>Annuler</button><button type="submit" class="btn' + (def.danger ? " danger" : "") + '">' + echapperHTML(def.libelleOk || "Enregistrer") + "</button></div></form>";
   d.querySelectorAll(".choix[data-champ]").forEach(function(g) {
     MGP.brancherChoix(g);
   });
@@ -4286,14 +4337,22 @@ MGP.socleUI.editerCategorie = function(c, apres) {
     if (!ok) {
       return;
     }
-    await MGP.g.actions([["RemoveRecord", tid, c.id]]);
+    var subs = (await MGP.g.lire(tid)).filter(function(x) {
+      return Number(x.PARENT) === c.id && x.id !== c.id;
+    }).map(function(x) {
+      return x.id;
+    });
+    await MGP.g.actions((subs.length ? [["BulkUpdateRecord", tid, subs, { PARENT: subs.map(function() {
+      return 0;
+    }) }]] : []).concat([["RemoveRecord", tid, c.id]]));
     MGP.annoncer("Catégorie supprimée", "ok");
     await apres();
   } : null });
 };
 MGP.socleUI.categories = function(conteneur, opts) {
-  conteneur.innerHTML = '<section class="carte"><h2>Catégories communes à tous vos widgets</h2><p class="mini" style="margin:4px 0 12px">Modifiables, utilisées par les comptes, les abonnements, les achats...</p><div class="choix">' + opts.lignes.map(function(c) {
-    return '<button type="button" class="pil ' + MGP.classeCouleur(c.COULEUR) + '" data-cat="' + c.id + '"' + (opts.lectureSeule ? " disabled" : "") + ">" + echapperHTML((c.EMOJI || "") + " " + (c.NOM || "")) + "</button>";
+  conteneur.innerHTML = '<section class="carte"><h2>Catégories communes à tous vos widgets</h2><p class="mini" style="margin:4px 0 12px">Modifiables, utilisées par les comptes, les abonnements, les achats...</p><div class="choix">' + MGP.categoriesRangees(opts.lignes).map(function(x) {
+    var c = x.c;
+    return '<button type="button" class="pil ' + MGP.classeCouleur(c.COULEUR) + '" data-cat="' + c.id + '"' + (opts.lectureSeule ? " disabled" : "") + ">" + echapperHTML((c.EMOJI || "") + " " + MGP.nomCategorie(c, opts.lignes)) + "</button>";
   }).join("") + (opts.lectureSeule ? "" : '<button type="button" class="pil t-sable" data-cat="nouveau">+ Ajouter</button>') + "</div></section>";
   if (!conteneur.dataset.branche) {
     conteneur.dataset.branche = "1";

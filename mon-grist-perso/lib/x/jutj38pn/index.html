@@ -2146,6 +2146,97 @@ details.plus summary {
   flex-wrap: wrap;
   justify-content: flex-end;
   margin-top: 10px;
+}
+.barre-detail {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+}
+.barre-detail .btn[aria-pressed=true] {
+  background: var(--ecume-f);
+  color: var(--blanc);
+}
+ul.detail-sous {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0 0 0 14px;
+  border-left: 3px solid var(--sable2);
+}
+ul.detail-sous li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+  padding: 2px 0;
+}
+ul.detail-sous li:empty {
+  display: none;
+}
+.choix.cats {
+  display: grid;
+  gap: 8px;
+}
+.choix.cats .grp-cat {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.choix.cats .grp-cat.avec-sous {
+  padding: 6px 0 6px 8px;
+  border-left: 3px solid var(--sable2);
+}
+.choix.cats .grp-cat .sous {
+  font-weight: 500;
+}
+.choix.cats .grp-cat .sous .fl {
+  color: var(--gris);
+  margin-right: 4px;
+}
+.choix.cats button[aria-pressed=true] .fl {
+  color: var(--blanc);
+}
+.liste-cats {
+  display: grid;
+  gap: 0;
+  margin: 8px 0;
+}
+.liste-cats .lc {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid var(--sable2);
+  padding: 4px 0;
+  min-width: 0;
+}
+.liste-cats .lc.sous {
+  padding-left: 26px;
+}
+.liste-cats .lc .x {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.liste-cats .lc .act {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.liste-cats .lc .fl {
+  color: var(--gris);
+}
+@media (max-width: 520px) {
+  .liste-cats .lg {
+    display: none;
+  }
+  .liste-cats .lc .act .btn {
+    min-width: 44px;
+    padding: 0 12px;
+    font-size: 20px;
+  }
 }</style>
 </head>
 <body>
@@ -2186,6 +2277,7 @@ details.plus summary {
   <header class="barre">
     <div class="titre"><h1>🏦 Mes comptes</h1><span class="marque">Mon Grist perso</span></div>
     <div class="actions">
+      <button type="button" class="btn sec" id="btn-categories" data-ouvrir-cats>🏷️ Catégories</button>
       <button type="button" class="btn sec" id="btn-exporter">Exporter</button>
       <button type="button" class="btn" id="btn-ajouter">+ Opération</button>
     </div>
@@ -2254,6 +2346,15 @@ details.plus summary {
   <div class="poignee" aria-hidden="true"></div>
   <div class="corps"><h2 id="ar-titre">Archiver les anciennes opérations ?</h2><div id="ar-corps"></div>
     <div class="pied"><button type="button" class="btn sec" data-fermer>Annuler</button><button type="button" class="btn danger" id="ar-ok">Archiver et supprimer le détail</button></div></div>
+</dialog>
+<dialog class="feuille" id="dlg-cats" aria-labelledby="cats-titre">
+  <div class="poignee" aria-hidden="true"></div>
+  <div class="corps">
+    <h2 id="cats-titre">🏷️ Catégories</h2>
+    <p class="mini" style="margin:4px 0 6px">Communes à tous vos widgets. Une sous-catégorie (Transport › Carburant) compte dans sa catégorie principale pour les budgets et le bilan ; deux niveaux au plus.</p>
+    <div id="cats-liste" class="liste-cats"></div>
+    <div class="pied"><button type="button" class="btn sec" data-fermer>Fermer</button><button type="button" class="btn" data-cat-nouvelle>+ Catégorie</button></div>
+  </div>
 </dialog>
 <div id="toasts" class="toasts"></div>
 <script>"use strict";
@@ -2872,10 +2973,15 @@ MGP.g.demarrer = function(accesRequis) {
   });
 };
 MGP.CHAMPS_SUIVI = ["CREE_LE", "CREE_PAR", "MODIFIE_LE", "MODIFIE_PAR"];
-MGP.SOCLE = { TECH: { cle: "TECH", id: "BIBLIOTHEQUE_MON_GRIST_PERSO_", label: "⚙️ BIBLIOTHÈQUE MON GRIST PERSO ⚡", motif: "BIBLIOTHEQUE_MON_GRIST_PERSO", description: "Table technique des widgets Mon Grist perso : réglages, tables installées, bonus installés et progression. Une ligne par réglage, à ne pas modifier à la main.", signature: ["CLE", "VALEUR"], colonnes: [{ id: "CLE", type: "Text", description: "Nom du réglage (par exemple TABLE:CADEAUX, INSTALL:conges ou cadeau.jour-01). Une seule ligne par nom." }, { id: "VALEUR", type: "Text", description: "Valeur du réglage, en texte ou en JSON : l’id réel d’une table, l’état d’une installation, une date..." }] }, PERSONNES: { cle: "PERSONNES", id: "Personnes", label: "👥 Personnes", nom: "Personnes", description: "Les personnes du foyer et les proches, partagées par tous les widgets (cadeaux, congés, santé...). Une ligne par personne.", signature: ["PRENOM", "FOYER", "TYPE"], colonnes: [{ id: "PRENOM", type: "Text", description: "Prénom ou surnom de la personne, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "TYPE", type: "Choice", choix: [["Adulte", "Pêche"], ["Enfant", "Lavande"], ["Proche", "Écume"], ["Ami", "Menthe"]], description: "Lien avec vous, en Choix unique : Adulte, Enfant, Proche ou Ami." }, { id: "FOYER", type: "Bool", description: "Coché si la personne vit sous votre toit (Booléen)." }, { id: "NAISSANCE", type: "Date", description: "Date de naissance, facultative : elle sert aux anniversaires et aux âges." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la personne dans les widgets." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la personne dans les widgets (Choix unique)." }, { id: "NOTES", type: "Text", description: "Notes libres : tailles, goûts, idées..." }], affichage: "PRENOM" }, CATEGORIES: { cle: "CATEGORIES", id: "Categories", label: "🏷️ Catégories", nom: "Catégories", description: "Catégories de dépenses et de documents, partagées par tous les widgets (Alimentation, Maison, Transport...). Une ligne par catégorie.", signature: ["NOM", "EMOJI", "COULEUR"], colonnes: [{ id: "NOM", type: "Text", description: "Nom de la catégorie, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la catégorie." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la catégorie dans les widgets (Choix unique)." }], affichage: "NOM", graines: [["Alimentation", "🛒", "Menthe"], ["Maison", "🏠", "Pêche"], ["Transport", "🚗", "Écume"], ["Loisirs", "🎭", "Lavande"], ["Cadeaux", "🎁", "Flamant"], ["Abonnements", "📱", "Citron"], ["Santé", "🩺", "Écume"], ["Épargne", "🌱", "Menthe"]] }, DOCUMENTS: { cle: "DOCUMENTS", id: "Documents", label: "📎 Documents", nom: "Documents", description: "Fichiers rangés par les widgets : factures, garanties, contrats, photos. Une ligne par document, reliée aux autres tables par des colonnes de type Référence.", signature: ["FICHIER", "TITRE"], colonnes: [{ id: "TITRE", type: "Text", description: "Nom du document, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "FICHIER", type: "Attachments", description: "Le fichier lui-même (Pièce jointe) : il compte dans la taille du document Grist." }, { id: "TYPE", type: "Choice", choix: [["Facture", "Citron"], ["Garantie", "Menthe"], ["Contrat", "Lavande"], ["Photo", "Flamant"], ["Autre", "Écume"]], description: "Nature du document, en Choix unique : Facture, Garantie, Contrat, Photo... Certains widgets ajoutent leurs choix." }, { id: "PERSONNE", type: "Ref:@PERSONNES", description: "Personne concernée (Référence vers Personnes), facultative." }, { id: "CATEGORIE", type: "Ref:@CATEGORIES", description: "Catégorie du document (Référence vers Catégories), facultative." }, { id: "DATE_DOC", type: "Date", description: "Date du document (date de la facture, du contrat...)." }, { id: "NOTES", type: "Text", description: "Notes libres sur le document." }], affichage: "TITRE" } };
+MGP.FORMULES_CATEGORIES = { NOM_COMPLET: '(($PARENT.NOM or "") + " › " + ($NOM or "")) if $PARENT else ($NOM or "")', RACINE: "$PARENT.id or $id" };
+MGP.SOCLE = { TECH: { cle: "TECH", id: "BIBLIOTHEQUE_MON_GRIST_PERSO_", label: "⚙️ BIBLIOTHÈQUE MON GRIST PERSO ⚡", motif: "BIBLIOTHEQUE_MON_GRIST_PERSO", description: "Table technique des widgets Mon Grist perso : réglages, tables installées, bonus installés et progression. Une ligne par réglage, à ne pas modifier à la main.", signature: ["CLE", "VALEUR"], colonnes: [{ id: "CLE", type: "Text", description: "Nom du réglage (par exemple TABLE:CADEAUX, INSTALL:conges ou cadeau.jour-01). Une seule ligne par nom." }, { id: "VALEUR", type: "Text", description: "Valeur du réglage, en texte ou en JSON : l’id réel d’une table, l’état d’une installation, une date..." }] }, PERSONNES: { cle: "PERSONNES", id: "Personnes", label: "👥 Personnes", nom: "Personnes", description: "Les personnes du foyer et les proches, partagées par tous les widgets (cadeaux, congés, santé...). Une ligne par personne.", signature: ["PRENOM", "FOYER", "TYPE"], colonnes: [{ id: "PRENOM", type: "Text", description: "Prénom ou surnom de la personne, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "TYPE", type: "Choice", choix: [["Adulte", "Pêche"], ["Enfant", "Lavande"], ["Proche", "Écume"], ["Ami", "Menthe"]], description: "Lien avec vous, en Choix unique : Adulte, Enfant, Proche ou Ami." }, { id: "FOYER", type: "Bool", description: "Coché si la personne vit sous votre toit (Booléen)." }, { id: "NAISSANCE", type: "Date", description: "Date de naissance, facultative : elle sert aux anniversaires et aux âges." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la personne dans les widgets." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la personne dans les widgets (Choix unique)." }, { id: "NOTES", type: "Text", description: "Notes libres : tailles, goûts, idées..." }], affichage: "PRENOM" }, CATEGORIES: { cle: "CATEGORIES", id: "Categories", label: "🏷️ Catégories", nom: "Catégories", description: "Catégories de dépenses et de documents, partagées par tous les widgets (Alimentation, Maison, Transport...). Une ligne par catégorie.", signature: ["NOM", "EMOJI", "COULEUR"], colonnes: [{ id: "NOM", type: "Text", description: "Nom de la catégorie, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la catégorie." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la catégorie dans les widgets (Choix unique)." }, { id: "PARENT", type: "Ref:@CATEGORIES", description: "Catégorie parente, facultative (Référence vers cette même table) : vide pour une catégorie principale, remplie pour une sous-catégorie (Transport pour Carburant). Deux niveaux au plus : une sous-catégorie n’a pas de sous-catégorie." }, { id: "NOM_COMPLET", type: "Text", formule: MGP.FORMULES_CATEGORIES.NOM_COMPLET, description: "Formule : le nom précédé de celui de la catégorie parente (« Transport › Carburant »), ou le nom seul pour une catégorie principale." }, { id: "RACINE", type: "Ref:@CATEGORIES", formule: MGP.FORMULES_CATEGORIES.RACINE, description: "Formule : la catégorie principale (Référence) : la parente pour une sous-catégorie, elle-même sinon. Les budgets et les bilans regroupent les sous-catégories avec elle." }], affichage: "NOM", graines: [["Alimentation", "🛒", "Menthe"], ["Maison", "🏠", "Pêche"], ["Transport", "🚗", "Écume"], ["Loisirs", "🎭", "Lavande"], ["Cadeaux", "🎁", "Flamant"], ["Abonnements", "📱", "Citron"], ["Santé", "🩺", "Écume"], ["Épargne", "🌱", "Menthe"]] }, DOCUMENTS: { cle: "DOCUMENTS", id: "Documents", label: "📎 Documents", nom: "Documents", description: "Fichiers rangés par les widgets : factures, garanties, contrats, photos. Une ligne par document, reliée aux autres tables par des colonnes de type Référence.", signature: ["FICHIER", "TITRE"], colonnes: [{ id: "TITRE", type: "Text", description: "Nom du document, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "FICHIER", type: "Attachments", description: "Le fichier lui-même (Pièce jointe) : il compte dans la taille du document Grist." }, { id: "TYPE", type: "Choice", choix: [["Facture", "Citron"], ["Garantie", "Menthe"], ["Contrat", "Lavande"], ["Photo", "Flamant"], ["Autre", "Écume"]], description: "Nature du document, en Choix unique : Facture, Garantie, Contrat, Photo... Certains widgets ajoutent leurs choix." }, { id: "PERSONNE", type: "Ref:@PERSONNES", description: "Personne concernée (Référence vers Personnes), facultative." }, { id: "CATEGORIE", type: "Ref:@CATEGORIES", description: "Catégorie du document (Référence vers Catégories), facultative." }, { id: "DATE_DOC", type: "Date", description: "Date du document (date de la facture, du contrat...)." }, { id: "NOTES", type: "Text", description: "Notes libres sur le document." }], affichage: "TITRE" } };
 MGP.ORDRE_SOCLE = ["TECH", "PERSONNES", "CATEGORIES", "DOCUMENTS"];
 MGP.g.ACCENTS = { ACHETE: "ACHETÉ", AGE: "ÂGE", ANNEE: "ANNÉE", APPORTE: "APPORTÉ", APRES: "APRÈS", ARRETE: "ARRÊTÉ", ARRIVEE: "ARRIVÉE", ASSIGNE: "ASSIGNÉ", CATEGORIE: "CATÉGORIE", CATEGORIES: "CATÉGORIES", CLE: "CLÉ", CLOTURE: "CLÔTURE", COCHE: "COCHÉ", COMPETENCE: "COMPÉTENCE", COUT: "COÛT", CREDIT: "CRÉDIT", CREDITS: "CRÉDITS", CREE: "CRÉÉ", DEBALLES: "DÉBALLÉS", DEBIT: "DÉBIT", DEBITE: "DÉBITÉ", DEBUT: "DÉBUT", DECALAGE: "DÉCALAGE", DECALER: "DÉCALER", DECOMPTE: "DÉCOMPTE", DELAI: "DÉLAI", DEMENAGEUR: "DÉMÉNAGEUR", DEMENAGEMENT: "DÉMÉNAGEMENT", DEPART: "DÉPART", DEPENSE: "DÉPENSE", DEPENSES: "DÉPENSES", DEPOT: "DÉPÔT", DERNIERE: "DERNIÈRE", DETAIL: "DÉTAIL", DIFFERE: "DIFFÉRÉ", DUREE: "DURÉE", ECART: "ÉCART", ECHEANCE: "ÉCHÉANCE", ECHEANCES: "ÉCHÉANCES", ECOULE: "ÉCOULÉ", EMPRUNTE: "EMPRUNTÉ", ENERGIE: "ÉNERGIE", ENGAGE: "ENGAGÉ", ENTREE: "ENTRÉE", EPARGNE: "ÉPARGNE", EQUIPEMENT: "ÉQUIPEMENT", ESPECE: "ESPÈCE", ESTIMEE: "ESTIMÉE", ETABLISSEMENT: "ÉTABLISSEMENT", ETAGE: "ÉTAGE", ETAPE: "ÉTAPE", ETAPES: "ÉTAPES", ETAT: "ÉTAT", ETIQUETTE: "ÉTIQUETTE", ETOILES: "ÉTOILES", EVENEMENT: "ÉVÉNEMENT", EXPIRE: "EXPIRÉ", FACTUREE: "FACTURÉE", FREQUENCE: "FRÉQUENCE", IDEE: "IDÉE", INTERETS: "INTÉRÊTS", INVITE: "INVITÉ", INVITES: "INVITÉS", LIBELLE: "LIBELLÉ", LIE: "LIÉ", LIQUIDITE: "LIQUIDITÉ", MEDECIN: "MÉDECIN", METIER: "MÉTIER", MODELE: "MODÈLE", MODIFIE: "MODIFIÉ", NUMERO: "NUMÉRO", OCCUPEES: "OCCUPÉES", OPERATION: "OPÉRATION", OPERATIONS: "OPÉRATIONS", PASSE: "PASSÉ", PAYE: "PAYÉ", PAYEES: "PAYÉES", PERCU: "PERÇU", PERIODE: "PÉRIODE", PERIODICITE: "PÉRIODICITÉ", PIECE: "PIÈCE", PIECES: "PIÈCES", POINTE: "POINTÉ", PREAVIS: "PRÉAVIS", PRECEDENT: "PRÉCÉDENT", PREFIXE: "PRÉFIXE", PRELEVEMENT: "PRÉLÈVEMENT", PREMIERE: "PREMIÈRE", PRENOM: "PRÉNOM", PREPARER: "PRÉPARER", PRESENTS: "PRÉSENTS", PRET: "PRÊT", PRETE: "PRÊTE", PRETEUR: "PRÊTEUR", PRETS: "PRÊTS", PREVENU: "PRÉVENU", PREVU: "PRÉVU", PREVUE: "PRÉVUE", PREVUES: "PRÉVUES", PRIORITE: "PRIORITÉ", PROJETE: "PROJETÉ", PROPRIETAIRES: "PROPRIÉTAIRES", QTE: "QTÉ", QUANTITE: "QUANTITÉ", RECIT: "RÉCIT", RECURRENCE: "RÉCURRENCE", RECURRENCES: "RÉCURRENCES", REFERENCE: "RÉFÉRENCE", REGIMES: "RÉGIMES", REGLE: "RÈGLE", REGLES: "RÈGLES", REGULARISATION: "RÉGULARISATION", RELEVE: "RELEVÉ", RELIE: "RELIÉ", REMBOURSE: "REMBOURSÉ", REPONSE: "RÉPONSE", REPONSES: "RÉPONSES", RESA: "RÉSA", RESERVE: "RÉSERVÉ", RESERVER: "RÉSERVER", RESERVOIR: "RÉSERVOIR", RESILIATION: "RÉSILIATION", RETRO: "RÉTRO", REVISE: "RÉVISÉ", REVISION: "RÉVISION", SECU: "SÉCU", SERIE: "SÉRIE", SPECIALITE: "SPÉCIALITÉ", TACHE: "TÂCHE", TACHES: "TÂCHES", TEL: "TÉL", TELEPHONE: "TÉLÉPHONE", THEME: "THÈME", UNITE: "UNITÉ", VEHICULE: "VÉHICULE", VERSE: "VERSÉ", ELECTRICITE: "ÉLECTRICITÉ" };
+MGP.g.LIBELLES = { PARENT: "CATÉGORIE PARENTE" };
 MGP.g.libelleColonne = function(id) {
+  if (MGP.g.LIBELLES[id]) {
+    return MGP.g.LIBELLES[id];
+  }
   var l = String(id || "").split("_").filter(Boolean).map(function(w) {
     return w === "A" ? "À" : MGP.g.ACCENTS[w] || w;
   }).join(" ");
@@ -3369,6 +3475,49 @@ MGP.g.creerTables = async function(defs) {
     }
   }
   return { crees, pagesSupprimees };
+};
+MGP.nomCategorie = function(c, liste) {
+  if (!c) {
+    return "";
+  }
+  if (typeof c.NOM_COMPLET === "string" && c.NOM_COMPLET) {
+    return c.NOM_COMPLET;
+  }
+  var p = Number(c.PARENT) && liste ? liste.filter(function(x) {
+    return x.id === Number(c.PARENT);
+  })[0] : null;
+  return p && p.id !== c.id ? (p.NOM || "") + " › " + (c.NOM || "") : c.NOM || "";
+};
+MGP.categoriesRangees = function(liste) {
+  var l = liste || [], ids = l.map(function(c) {
+    return c.id;
+  });
+  var parentDe = function(c) {
+    var p = Number(c.PARENT) || 0;
+    return p && p !== c.id && ids.indexOf(p) >= 0 ? p : 0;
+  };
+  var tri = function(a, b) {
+    return String(a.NOM || "").localeCompare(String(b.NOM || ""), "fr");
+  };
+  var out = [];
+  l.filter(function(c) {
+    return !parentDe(c);
+  }).sort(tri).forEach(function(c) {
+    out.push({ c, niveau: 0, parent: null });
+    l.filter(function(s) {
+      return parentDe(s) === c.id;
+    }).sort(tri).forEach(function(s) {
+      out.push({ c: s, niveau: 1, parent: c });
+    });
+  });
+  l.forEach(function(c) {
+    if (!out.some(function(x) {
+      return x.c === c;
+    })) {
+      out.push({ c, niveau: 0, parent: null });
+    }
+  });
+  return out;
 };
 MGP.g.defsSocle = function() {
   return MGP.ORDRE_SOCLE.map(function(c) {
@@ -4257,7 +4406,10 @@ MGP.formulaire = function(def) {
     var mode = c.type === "nombre" || c.type === "montant" ? ' inputmode="decimal"' : "";
     return '<div class="champ"><label for="' + id + '">' + echapperHTML(c.lib) + (c.requis ? ' <span aria-hidden="true">*</span>' : "") + '</label><input type="' + type + '" id="' + id + '" value="' + echapperHTML(v) + '"' + mode + (c.requis ? ' required aria-required="true"' : "") + ' autocomplete="off">' + aide + "</div>";
   }).join("");
-  d.innerHTML = '<div class="poignee" aria-hidden="true"></div><form class="corps" novalidate><h2 id="dlg-form-titre">' + echapperHTML(def.titre) + "</h2>" + html + '<p class="mini erreur" role="alert" style="color:var(--flamant-f)"></p><div class="pied">' + (def.supprimer ? '<button type="button" class="btn danger" data-supprimer style="margin-right:auto">Supprimer</button>' : "") + '<button type="button" class="btn sec" data-fermer>Annuler</button><button type="submit" class="btn">' + echapperHTML(def.libelleOk || "Enregistrer") + "</button></div></form>";
+  var intro = def.intro ? [].concat(def.intro).filter(Boolean).map(function(x) {
+    return '<p class="intro" style="margin:4px 0 10px">' + echapperHTML(x) + "</p>";
+  }).join("") : "";
+  d.innerHTML = '<div class="poignee" aria-hidden="true"></div><form class="corps" novalidate><h2 id="dlg-form-titre">' + echapperHTML(def.titre) + "</h2>" + intro + html + '<p class="mini erreur" role="alert" style="color:var(--flamant-f)"></p><div class="pied">' + (def.supprimer ? '<button type="button" class="btn danger" data-supprimer style="margin-right:auto">Supprimer</button>' : "") + '<button type="button" class="btn sec" data-fermer>Annuler</button><button type="submit" class="btn' + (def.danger ? " danger" : "") + '">' + echapperHTML(def.libelleOk || "Enregistrer") + "</button></div></form>";
   d.querySelectorAll(".choix[data-champ]").forEach(function(g) {
     MGP.brancherChoix(g);
   });
@@ -4392,14 +4544,22 @@ MGP.socleUI.editerCategorie = function(c, apres) {
     if (!ok) {
       return;
     }
-    await MGP.g.actions([["RemoveRecord", tid, c.id]]);
+    var subs = (await MGP.g.lire(tid)).filter(function(x) {
+      return Number(x.PARENT) === c.id && x.id !== c.id;
+    }).map(function(x) {
+      return x.id;
+    });
+    await MGP.g.actions((subs.length ? [["BulkUpdateRecord", tid, subs, { PARENT: subs.map(function() {
+      return 0;
+    }) }]] : []).concat([["RemoveRecord", tid, c.id]]));
     MGP.annoncer("Catégorie supprimée", "ok");
     await apres();
   } : null });
 };
 MGP.socleUI.categories = function(conteneur, opts) {
-  conteneur.innerHTML = '<section class="carte"><h2>Catégories communes à tous vos widgets</h2><p class="mini" style="margin:4px 0 12px">Modifiables, utilisées par les comptes, les abonnements, les achats...</p><div class="choix">' + opts.lignes.map(function(c) {
-    return '<button type="button" class="pil ' + MGP.classeCouleur(c.COULEUR) + '" data-cat="' + c.id + '"' + (opts.lectureSeule ? " disabled" : "") + ">" + echapperHTML((c.EMOJI || "") + " " + (c.NOM || "")) + "</button>";
+  conteneur.innerHTML = '<section class="carte"><h2>Catégories communes à tous vos widgets</h2><p class="mini" style="margin:4px 0 12px">Modifiables, utilisées par les comptes, les abonnements, les achats...</p><div class="choix">' + MGP.categoriesRangees(opts.lignes).map(function(x) {
+    var c = x.c;
+    return '<button type="button" class="pil ' + MGP.classeCouleur(c.COULEUR) + '" data-cat="' + c.id + '"' + (opts.lectureSeule ? " disabled" : "") + ">" + echapperHTML((c.EMOJI || "") + " " + MGP.nomCategorie(c, opts.lignes)) + "</button>";
   }).join("") + (opts.lectureSeule ? "" : '<button type="button" class="pil t-sable" data-cat="nouveau">+ Ajouter</button>') + "</div></section>";
   if (!conteneur.dataset.branche) {
     conteneur.dataset.branche = "1";
@@ -6599,9 +6759,9 @@ var CPT = { WIDGET: "comptes", NOM: "Mes comptes", NOM_PAGE: "🏦 Mes comptes",
 CPT.TYPES = [["Courant", "Écume"], ["Épargne", "Menthe"], ["Carte", "Lavande"], ["Espèces", "Citron"]];
 CPT.EMOJI_TYPE = { "Courant": "🏦", "Épargne": "🐷", "Carte": "💳", "Espèces": "👛" };
 CPT.EURO = { numMode: "currency", decimals: 2, maxDecimals: 2 };
-CPT.FORMULES = { SOLDE: 'ROUND(($SOLDE_INITIAL or 0) + SUM([t.MONTANT or 0 for t in {OPERATIONS}.lookupRecords(COMPTE=$id) if t.STATUT != "Prévue"]) + SUM({ARCHIVES}.lookupRecords(COMPTE=$id).TOTAL), 2)', SOLDE_POINTE: "ROUND(($SOLDE_INITIAL or 0) + SUM([t.MONTANT or 0 for t in {OPERATIONS}.lookupRecords(COMPTE=$id) if t.POINTE]) + SUM({ARCHIVES}.lookupRecords(COMPTE=$id).TOTAL), 2)", SOLDE_PROJETE: 'ROUND(($SOLDE or 0) + SUM([t.MONTANT or 0 for t in {OPERATIONS}.lookupRecords(COMPTE=$id) if t.STATUT == "Prévue" and t.DATE_DEBIT and t.DATE_DEBIT <= EOMONTH(TODAY(), 0)]), 2)', ECART: "ROUND(($SOLDE_BANQUE or 0) - $SOLDE_POINTE, 2) if $DATE_RAPPROCHEMENT else None", A_POINTER: 'len([t for t in {OPERATIONS}.lookupRecords(COMPTE=$id) if not t.POINTE and t.STATUT != "Prévue"])', MOIS: '$DATE.strftime("%Y-%m") if $DATE else ""', SENS: '"Virement" if $VIREMENT else ("Revenu" if ($MONTANT or 0) > 0 else "Dépense")', DATE_DEBIT: "(lambda f: DATE(f.year, f.month, min($COMPTE.JOUR_DEBIT or f.day, f.day)))(EOMONTH($DATE, (0 if DAY($DATE) <= ($COMPTE.JOUR_ARRETE or 31) else 1) + (1 if ($COMPTE.JOUR_DEBIT or 31) < ($COMPTE.JOUR_ARRETE or 31) else 0))) if $DATE and $COMPTE.DEBIT_DIFFERE and not $VIREMENT else $DATE", DEPENSE_MOIS: 'ROUND(-SUM([t.MONTANT or 0 for t in {OPERATIONS}.lookupRecords(CATEGORIE=$CATEGORIE.id) if not t.VIREMENT and t.STATUT != "Prévue" and t.MOIS == TODAY().strftime("%Y-%m")]), 2)', RESTE: "ROUND(($MONTANT_MOIS or 0) - $DEPENSE_MOIS, 2)", NB_OPERATIONS: 'len([t for t in {OPERATIONS}.all if $MOT_CLE and $MOT_CLE.upper() in (t.LIBELLE or "").upper()])', ANNEE: "int($MOIS[:4]) if $MOIS else None", NB_PREVUES: 'len([t for t in {OPERATIONS}.lookupRecords(RECURRENCE=$id) if t.STATUT == "Prévue"])', NB_TOTAL: "(YEAR($DATE_DERNIERE_ECHEANCE) - YEAR($DATE_PREMIERE_ECHEANCE)) * 12 + MONTH($DATE_DERNIERE_ECHEANCE) - MONTH($DATE_PREMIERE_ECHEANCE) + 1 if $DATE_PREMIERE_ECHEANCE and $DATE_DERNIERE_ECHEANCE else ($NB_ECHEANCES or 0)", DATE_FIN: "$DATE_DERNIERE_ECHEANCE or (DATEADD($DATE_PREMIERE_ECHEANCE, months=$NB_TOTAL - 1) if $DATE_PREMIERE_ECHEANCE and $NB_TOTAL else None)", ECHEANCES_RESTANTES: "len([k for k in range($NB_TOTAL) if DATEADD($DATE_PREMIERE_ECHEANCE, months=k) > TODAY()]) if $DATE_PREMIERE_ECHEANCE else 0", RESTE_A_PAYER: "ROUND(($MENSUALITE or 0) * $ECHEANCES_RESTANTES, 2)", PCT_ECOULE: "ROUND(100.0 * ($NB_TOTAL - $ECHEANCES_RESTANTES) / $NB_TOTAL, 1) if $NB_TOTAL else 0", EN_COURS: "$ECHEANCES_RESTANTES > 0" };
-CPT.ANCIENNES = [["COMPTES", "SOLDE", "ROUND(($SOLDE_INITIAL or 0) + SUM({OPERATIONS}.lookupRecords(COMPTE=$id).MONTANT) + SUM({ARCHIVES}.lookupRecords(COMPTE=$id).TOTAL), 2)"], ["COMPTES", "A_POINTER", "len([t for t in {OPERATIONS}.lookupRecords(COMPTE=$id) if not t.POINTE])"], ["BUDGETS_MOIS", "DEPENSE_MOIS", 'ROUND(-SUM([t.MONTANT or 0 for t in {OPERATIONS}.lookupRecords(CATEGORIE=$CATEGORIE.id) if not t.VIREMENT and t.MOIS == TODAY().strftime("%Y-%m")]), 2)']];
-CPT.SCHEMA = 3;
+CPT.FORMULES = { SOLDE: 'ROUND(($SOLDE_INITIAL or 0) + SUM([t.MONTANT or 0 for t in {OPERATIONS}.lookupRecords(COMPTE=$id) if t.STATUT != "Prévue"]) + SUM({ARCHIVES}.lookupRecords(COMPTE=$id).TOTAL), 2)', SOLDE_POINTE: "ROUND(($SOLDE_INITIAL or 0) + SUM([t.MONTANT or 0 for t in {OPERATIONS}.lookupRecords(COMPTE=$id) if t.POINTE]) + SUM({ARCHIVES}.lookupRecords(COMPTE=$id).TOTAL), 2)", SOLDE_PROJETE: 'ROUND(($SOLDE or 0) + SUM([t.MONTANT or 0 for t in {OPERATIONS}.lookupRecords(COMPTE=$id) if t.STATUT == "Prévue" and t.DATE_DEBIT and t.DATE_DEBIT <= EOMONTH(TODAY(), 0)]), 2)', ECART: "ROUND(($SOLDE_BANQUE or 0) - $SOLDE_POINTE, 2) if $DATE_RAPPROCHEMENT else None", A_POINTER: 'len([t for t in {OPERATIONS}.lookupRecords(COMPTE=$id) if not t.POINTE and t.STATUT != "Prévue"])', MOIS: '$DATE.strftime("%Y-%m") if $DATE else ""', SENS: '"Virement" if $VIREMENT else ("Revenu" if ($MONTANT or 0) > 0 else "Dépense")', DATE_DEBIT: "(lambda f: DATE(f.year, f.month, min($COMPTE.JOUR_DEBIT or f.day, f.day)))(EOMONTH($DATE, (0 if DAY($DATE) <= ($COMPTE.JOUR_ARRETE or 31) else 1) + (1 if ($COMPTE.JOUR_DEBIT or 31) < ($COMPTE.JOUR_ARRETE or 31) else 0))) if $DATE and $COMPTE.DEBIT_DIFFERE and not $VIREMENT else $DATE", DEPENSE_MOIS: 'ROUND(-SUM([t.MONTANT or 0 for c in ([$CATEGORIE] if $CATEGORIE.PARENT else {CATEGORIES}.lookupRecords(RACINE=$CATEGORIE.id)) for t in {OPERATIONS}.lookupRecords(CATEGORIE=c.id) if not t.VIREMENT and t.STATUT != "Prévue" and t.MOIS == TODAY().strftime("%Y-%m")]), 2)', RESTE: "ROUND(($MONTANT_MOIS or 0) - $DEPENSE_MOIS, 2)", NB_OPERATIONS: 'len([t for t in {OPERATIONS}.all if $MOT_CLE and $MOT_CLE.upper() in (t.LIBELLE or "").upper()])', ANNEE: "int($MOIS[:4]) if $MOIS else None", NB_PREVUES: 'len([t for t in {OPERATIONS}.lookupRecords(RECURRENCE=$id) if t.STATUT == "Prévue"])', NB_TOTAL: "(YEAR($DATE_DERNIERE_ECHEANCE) - YEAR($DATE_PREMIERE_ECHEANCE)) * 12 + MONTH($DATE_DERNIERE_ECHEANCE) - MONTH($DATE_PREMIERE_ECHEANCE) + 1 if $DATE_PREMIERE_ECHEANCE and $DATE_DERNIERE_ECHEANCE else ($NB_ECHEANCES or 0)", DATE_FIN: "$DATE_DERNIERE_ECHEANCE or (DATEADD($DATE_PREMIERE_ECHEANCE, months=$NB_TOTAL - 1) if $DATE_PREMIERE_ECHEANCE and $NB_TOTAL else None)", ECHEANCES_RESTANTES: "len([k for k in range($NB_TOTAL) if DATEADD($DATE_PREMIERE_ECHEANCE, months=k) > TODAY()]) if $DATE_PREMIERE_ECHEANCE else 0", RESTE_A_PAYER: "ROUND(($MENSUALITE or 0) * $ECHEANCES_RESTANTES, 2)", PCT_ECOULE: "ROUND(100.0 * ($NB_TOTAL - $ECHEANCES_RESTANTES) / $NB_TOTAL, 1) if $NB_TOTAL else 0", EN_COURS: "$ECHEANCES_RESTANTES > 0" };
+CPT.ANCIENNES = [["BUDGETS_MOIS", "DEPENSE_MOIS", 'ROUND(-SUM([t.MONTANT or 0 for t in {OPERATIONS}.lookupRecords(CATEGORIE=$CATEGORIE.id) if not t.VIREMENT and t.STATUT != "Prévue" and t.MOIS == TODAY().strftime("%Y-%m")]), 2)'], ["COMPTES", "SOLDE", "ROUND(($SOLDE_INITIAL or 0) + SUM({OPERATIONS}.lookupRecords(COMPTE=$id).MONTANT) + SUM({ARCHIVES}.lookupRecords(COMPTE=$id).TOTAL), 2)"], ["COMPTES", "A_POINTER", "len([t for t in {OPERATIONS}.lookupRecords(COMPTE=$id) if not t.POINTE])"], ["BUDGETS_MOIS", "DEPENSE_MOIS", 'ROUND(-SUM([t.MONTANT or 0 for t in {OPERATIONS}.lookupRecords(CATEGORIE=$CATEGORIE.id) if not t.VIREMENT and t.MOIS == TODAY().strftime("%Y-%m")]), 2)']];
+CPT.SCHEMA = 4;
 CPT.STATUTS = [["Passée", "Menthe"], ["Prévue", "Lavande"]];
 CPT.FREQUENCES = [["Mensuelle", "Écume"], ["Hebdomadaire", "Citron"], ["Trimestrielle", "Lavande"], ["Annuelle", "Pêche"]];
 CPT.TYPES_CREDIT = [["Immobilier", "Écume"], ["Auto", "Citron"], ["Travaux", "Pêche"], ["Prêt personnel", "Lavande"], ["Renouvelable", "Flamant"], ["Autre", "Menthe"]];
@@ -6690,11 +6850,67 @@ CPT.categorie = function(id) {
 CPT.norm = function(s) {
   return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
 };
+CPT.parent = function(c) {
+  var p = c && Number(c.PARENT) ? CPT.categorie(c.PARENT) : null;
+  return p && p.id !== c.id ? p : null;
+};
+CPT.racine = function(id) {
+  var c = CPT.categorie(id);
+  if (!c) {
+    return Number(id) || 0;
+  }
+  var p = CPT.parent(c);
+  return p ? CPT.parent(p) ? Number(c.RACINE) || p.id : p.id : c.id;
+};
+CPT.sousCats = function(id) {
+  return CPT.d.categories.filter(function(x) {
+    return Number(x.PARENT) === id && x.id !== id;
+  });
+};
+CPT.aDesSous = function() {
+  return CPT.d.categories.some(function(x) {
+    return !!CPT.parent(x);
+  });
+};
+CPT.nomCat = function(c) {
+  return MGP.nomCategorie(c, CPT.d.categories);
+};
+CPT.emojiCat = function(c) {
+  var p = CPT.parent(c);
+  return c && c.EMOJI || p && p.EMOJI || "";
+};
+CPT.couleurCat = function(c) {
+  var p = CPT.parent(c);
+  return c && c.COULEUR || p && p.COULEUR || "";
+};
+CPT.dansCat = function(opCat, cible) {
+  var o = Number(opCat) || 0, c = CPT.categorie(cible);
+  if (!o || !c) {
+    return false;
+  }
+  return o === c.id || !CPT.parent(c) && CPT.racine(o) === c.id;
+};
+CPT.detail = false;
+CPT.cleCat = function(id) {
+  var k = Number(id) || 0;
+  return k && !CPT.detail ? CPT.racine(k) : k;
+};
+CPT.regrouper = function(parCat) {
+  var o = {};
+  Object.keys(parCat).forEach(function(k) {
+    var g = CPT.cleCat(k);
+    o[g] = CPT.arrondi((o[g] || 0) + parCat[k]);
+  });
+  return o;
+};
 CPT.catPil = function(c, vide) {
   if (!c) {
     return '<span class="pil t-sable">' + echapperHTML(vide || "Sans catégorie") + "</span>";
   }
-  return '<span class="pil ' + MGP.classeCouleur(c.COULEUR) + '">' + echapperHTML((c.EMOJI || "") + " " + (c.NOM || "")) + "</span>";
+  return '<span class="pil ' + MGP.classeCouleur(CPT.couleurCat(c)) + '">' + echapperHTML((CPT.emojiCat(c) + " " + CPT.nomCat(c)).trim()) + "</span>";
+};
+CPT.boutonDetail = function() {
+  return CPT.aDesSous() ? '<button type="button" class="btn doux" data-detail-cats aria-pressed="' + (CPT.detail ? "true" : "false") + '">' + (CPT.detail ? "🔍 Détail des sous-catégories : affiché" : "🔍 Détail des sous-catégories") + "</button>" : "";
 };
 CPT.estPrevue = function(o) {
   return !!o && o.STATUT === "Prévue";
@@ -6764,15 +6980,17 @@ CPT.bilan = function(cle, compte) {
   r.depenses = CPT.arrondi(r.depenses);
   return r;
 };
-CPT.depenseCat = function(cat, cle) {
-  var s = 0;
+CPT.depenseCat = function(cat, cle, exacte) {
+  var s = 0, dans = function(x) {
+    return exacte ? Number(x) === cat : CPT.dansCat(x, cat);
+  };
   CPT.d.ops.forEach(function(o) {
-    if (Number(o.CATEGORIE) === cat && !o.VIREMENT && !CPT.estPrevue(o) && CPT.moisOp(o) === cle) {
+    if (dans(o.CATEGORIE) && !o.VIREMENT && !CPT.estPrevue(o) && CPT.moisOp(o) === cle) {
       s += CPT.nombre(o.MONTANT);
     }
   });
   CPT.d.archives.forEach(function(a) {
-    if (Number(a.CATEGORIE) === cat && !a.VIREMENT && a.MOIS === cle) {
+    if (dans(a.CATEGORIE) && !a.VIREMENT && a.MOIS === cle) {
       s += CPT.nombre(a.TOTAL);
     }
   });
@@ -6879,8 +7097,12 @@ CPT.aJour = function() {
 CPT.mettreANiveau = async function() {
   await MGP.g.creerTables(MGP.g.defsSocle().concat(CPT.defsWidget()));
   await MGP.g.chargerMeta();
-  var a = [], gardees = [];
+  var a = [], gardees = [], vues = {};
   CPT.ANCIENNES.forEach(function(x) {
+    var k = x[0] + "." + x[1];
+    if (vues[k]) {
+      return;
+    }
     var tid = MGP.g.idTable(x[0]), t = tid ? MGP.g.tableParId(tid) : null;
     var col = t ? MGP.g.colonnesDe(t.id).filter(function(c) {
       return c.colId === x[1];
@@ -6888,11 +7110,15 @@ CPT.mettreANiveau = async function() {
     if (!col) {
       return;
     }
+    vues[k] = true;
     var neuve = MGP.g.resoudreFormule(CPT.FORMULES[x[1]]);
     if (col.formula === neuve) {
       return;
     }
-    if (col.formula === MGP.g.resoudreFormule(x[2])) {
+    var origine = CPT.ANCIENNES.some(function(y) {
+      return y[0] === x[0] && y[1] === x[1] && col.formula === MGP.g.resoudreFormule(y[2]);
+    });
+    if (origine) {
       a.push(["ModifyColumn", tid, x[1], { formula: neuve, isFormula: true }]);
     } else {
       gardees.push(x[1]);
@@ -6981,10 +7207,34 @@ CPT.ajouterExemples = async function() {
     reg.CATEGORIES.push(rcat.retValues[0]);
     CPT.d.categories = await MGP.g.lire(MGP.g.idTable("CATEGORIES"));
   }
+  await MGP.g.chargerMeta();
+  if (CPT.aColonneParent()) {
+    var SC = [["Carburant", "⛽", "Écume", "Transport"], ["Péage", "🛣️", "Écume", "Transport"], ["Énergie", "⚡", "Pêche", "Maison"]].filter(function(x) {
+      return cat(x[3]) && !cat(x[0]);
+    });
+    if (SC.length) {
+      var rsc = await MGP.g.actions([["BulkAddRecord", MGP.g.idTable("CATEGORIES"), SC.map(function() {
+        return null;
+      }), { NOM: SC.map(function(x) {
+        return x[0];
+      }), EMOJI: SC.map(function(x) {
+        return x[1];
+      }), COULEUR: SC.map(function(x) {
+        return x[2];
+      }), PARENT: SC.map(function(x) {
+        return cat(x[3]);
+      }) }]]);
+      reg.CATEGORIES = reg.CATEGORIES.concat(rsc.retValues[0]);
+      CPT.d.categories = await MGP.g.lire(MGP.g.idTable("CATEGORIES"));
+    }
+  }
+  var catOu = function(sous, princ) {
+    return cat(sous) ? sous : princ;
+  };
   var debut = CPT.jDate(p.a, p.m - 27, 1);
   var rc = await MGP.g.actions([["BulkAddRecord", MGP.g.idTable("COMPTES"), [null, null], { NOM: ["Compte courant", "Livret d’épargne"], BANQUE: ["Ma banque", "Ma banque"], TYPE: ["Courant", "Épargne"], SOLDE_INITIAL: [1500, 5e3], DATE_INITIALE: [CPT.sec(debut), CPT.sec(debut)], COULEUR: ["Écume", "Menthe"] }]]);
   var cc = rc.retValues[0][0], liv = rc.retValues[0][1];
-  var R = [["SALAIRE", "Revenus"], ["LOYER", "Maison"], ["ELECTRICITE", "Maison"], ["ASSURANCE HABITATION", "Maison"], ["BOX INTERNET", "Abonnements"], ["MUSIQUE", "Abonnements"], ["FILMS", "Abonnements"], ["SALLE DE SPORT", "Loisirs"], ["SUPERMARCHE", "Alimentation"], ["BOULANGERIE", "Alimentation"], ["STATION", "Transport"], ["RESTAURANT", "Loisirs"], ["PHARMACIE", "Santé"], ["VIR VERS LIVRET", ""]];
+  var R = [["SALAIRE", "Revenus"], ["LOYER", "Maison"], ["ELECTRICITE", catOu("Énergie", "Maison")], ["ASSURANCE HABITATION", "Maison"], ["BOX INTERNET", "Abonnements"], ["MUSIQUE", "Abonnements"], ["FILMS", "Abonnements"], ["SALLE DE SPORT", "Loisirs"], ["SUPERMARCHE", "Alimentation"], ["BOULANGERIE", "Alimentation"], ["STATION", catOu("Carburant", "Transport")], ["PEAGE", catOu("Péage", "Transport")], ["RESTAURANT", "Loisirs"], ["PHARMACIE", "Santé"], ["VIR VERS LIVRET", ""]];
   await MGP.g.actions([["BulkAddRecord", MGP.g.idTable("REGLES"), R.map(function() {
     return null;
   }), { MOT_CLE: R.map(function(r) {
@@ -7026,7 +7276,7 @@ CPT.ajouterExemples = async function() {
     if (!complet) {
       return;
     }
-    ajout(cc, J(6), "PRLV FOURNISSEUR ELECTRICITE", -95, "Maison");
+    ajout(cc, J(6), "PRLV FOURNISSEUR ELECTRICITE", -95, catOu("Énergie", "Maison"));
     ajout(cc, J(7), "PRLV BOX INTERNET", -29.99, "Abonnements");
     ajout(cc, J(8), "PRLV MUSIQUE EN LIGNE", -10.99, "Abonnements");
     ajout(cc, J(12), "PRLV FILMS ET SERIES", -13.49, "Abonnements");
@@ -7035,8 +7285,12 @@ CPT.ajouterExemples = async function() {
     ajout(cc, J(25), "CB SUPERMARCHE DU CENTRE", -(77.85 + v * 2.5), "Alimentation");
     ajout(cc, J(4), "CB BOULANGERIE DU MARCHE", -6.4, "Alimentation");
     ajout(cc, J(14), "CB BOULANGERIE DU MARCHE", -8.1, "Alimentation");
-    ajout(cc, J(9), "CB STATION SERVICE", -(58 + v * 2), "Transport");
-    ajout(cc, J(23), "CB STATION SERVICE", -(61.5 - v), "Transport");
+    ajout(cc, J(9), "CB STATION SERVICE", -(58 + v * 2), catOu("Carburant", "Transport"));
+    if (v === 0 && k3 > -24) {
+      ajout(cc, J(23), "CB PEAGE AUTOROUTE", -(61.5 - v), catOu("Péage", "Transport"));
+    } else {
+      ajout(cc, J(23), "CB STATION SERVICE", -(61.5 - v), catOu("Carburant", "Transport"));
+    }
     ajout(cc, J(13), "CB RESTAURANT LA TABLE", -(34.5 + v * 5), "Loisirs");
     ajout(cc, J(21), "CB PHARMACIE CENTRALE", -(12.3 + v), "Santé");
     if ((p.m + k3 - 1 + 1200) % 12 === 9) {
@@ -7170,7 +7424,7 @@ CPT.rendreComptes = function() {
   CPT.d.budgets.forEach(function(bu) {
     var c = CPT.categorie(bu.CATEGORIE), dep = CPT.depenseCat(Number(bu.CATEGORIE), cle);
     if (c && CPT.nombre(bu.MONTANT_MOIS) > 0 && dep > CPT.nombre(bu.MONTANT_MOIS)) {
-      al.push('<div class="alerte-l t-flamant"><span aria-hidden="true">🎯</span><span class="t">' + echapperHTML("Budget " + c.NOM + " dépassé : " + CPT.euros(dep) + " sur " + CPT.euros(bu.MONTANT_MOIS) + ".") + '</span><button type="button" class="btn sec" data-aller="budgets">Voir</button></div>');
+      al.push('<div class="alerte-l t-flamant"><span aria-hidden="true">🎯</span><span class="t">' + echapperHTML("Budget " + CPT.nomCat(c) + " dépassé : " + CPT.euros(dep) + " sur " + CPT.euros(bu.MONTANT_MOIS) + ".") + '</span><button type="button" class="btn sec" data-aller="budgets">Voir</button></div>');
     }
   });
   var arch = CPT.aArchiver();
@@ -7323,7 +7577,7 @@ CPT.soldesCourants = function(compte) {
 };
 CPT.ligneOp = function(o, sc) {
   var c = CPT.categorie(o.CATEGORIE), cpt = CPT.compte(o.COMPTE), mt = CPT.nombre(o.MONTANT), prev = CPT.estPrevue(o);
-  var cat = o.VIREMENT ? '<span class="pil t-lavande">🔁 Virement</span>' : '<button type="button" class="pil ' + (c ? MGP.classeCouleur(c.COULEUR) : "t-sable") + '" data-ranger="' + o.id + '" aria-label="' + echapperHTML("Catégorie : " + (c ? c.NOM : "aucune") + ". Changer") + '">' + echapperHTML(c ? (c.EMOJI || "") + " " + c.NOM : "🏷️ Ranger") + "</button>";
+  var cat = o.VIREMENT ? '<span class="pil t-lavande">🔁 Virement</span>' : '<button type="button" class="pil ' + (c ? MGP.classeCouleur(CPT.couleurCat(c)) : "t-sable") + '" data-ranger="' + o.id + '" aria-label="' + echapperHTML("Catégorie : " + (c ? CPT.nomCat(c) : "aucune") + ". Changer") + '">' + echapperHTML(c ? (CPT.emojiCat(c) + " " + CPT.nomCat(c)).trim() : "🏷️ Ranger") + "</button>";
   var deb = CPT.jImpact(o), dj = CPT.j(o.DATE);
   var gauche = prev ? '<button type="button" class="valider" data-valider="' + o.id + '" aria-pressed="false" aria-label="' + echapperHTML("Prévue : " + (o.LIBELLE || "") + ". Marquer comme passée") + '" title="Marquer comme passée">🔮</button>' : '<label class="pt" for="pt-' + o.id + '"><input type="checkbox" id="pt-' + o.id + '" data-pointer="' + o.id + '"' + (o.POINTE ? " checked" : "") + ' aria-label="' + echapperHTML("Pointée : " + (o.LIBELLE || "")) + '" autocomplete="off"></label>';
   return '<div class="op' + (prev ? " prevue" : "") + '" data-op="' + o.id + '"' + (prev ? " data-prevue" : "") + ">" + gauche + '<button type="button" class="x" data-modifier-op="' + o.id + '"><b>' + echapperHTML(o.LIBELLE || "Sans libellé") + '</b><br><span class="mini">' + echapperHTML([prev ? "prévue" : "", dj !== null ? CPT.texteJour(dj) : "", deb !== null && dj !== null && deb !== dj ? "débitée le " + CPT.texteJour(deb) : "", Number(o.RECURRENCE) ? "🔁" : "", CPT.d.comptes.length > 1 && cpt ? cpt.NOM : "", o.NOTE].filter(Boolean).join(" · ")) + '</span></button><span class="droite">' + cat + '<span class="m ' + (mt > 0 ? "pos" : "") + '">' + echapperHTML(CPT.signe(mt)) + (sc && sc[o.id] !== void 0 ? '<span class="sc">' + echapperHTML("solde " + CPT.euros(sc[o.id])) + "</span>" : "") + "</span></span></div>";
@@ -7406,14 +7660,51 @@ CPT.valeur = function(id) {
   return MGP.valeurChoix(document.getElementById(id));
 };
 CPT.choixCats = function(aucune) {
-  return (aucune ? [["0", "Sable", "Aucune"]] : []).concat(CPT.d.categories.map(function(c) {
-    return [String(c.id), c.COULEUR || "", (c.EMOJI || "") + " " + (c.NOM || "")];
+  return (aucune ? [["0", "Sable", "Aucune"]] : []).concat(MGP.categoriesRangees(CPT.d.categories).map(function(x) {
+    return [String(x.c.id), CPT.couleurCat(x.c), (CPT.emojiCat(x.c) + " " + CPT.nomCat(x.c)).trim()];
   }));
 };
 CPT.listeCats = function() {
-  return [["0", "Aucune"]].concat(CPT.d.categories.map(function(c) {
-    return [String(c.id), (c.EMOJI || "") + " " + (c.NOM || "")];
+  return [["0", "Aucune"]].concat(MGP.categoriesRangees(CPT.d.categories).map(function(x) {
+    return [String(x.c.id), (CPT.emojiCat(x.c) + " " + CPT.nomCat(x.c)).trim()];
   }));
+};
+CPT.chipsCats = function(id, val, aucune) {
+  var rang = MGP.categoriesRangees(CPT.d.categories), lignes = [], seuls = [];
+  var bouton = function(c, sous) {
+    var on = String(c.id) === String(val), nom = (CPT.emojiCat(c) + " " + c.NOM).trim();
+    return '<button type="button" data-val="' + c.id + '" aria-pressed="' + (on ? "true" : "false") + '"' + (sous ? ' class="sous" aria-label="' + echapperHTML(CPT.nomCat(c)) + '"' : "") + ">" + (sous ? '<span class="fl" aria-hidden="true">↳</span>' : "") + echapperHTML(nom) + "</button>";
+  };
+  var vider = function() {
+    if (seuls.length) {
+      lignes.push('<div class="grp-cat">' + seuls.join("") + "</div>");
+      seuls = [];
+    }
+  };
+  if (aucune) {
+    seuls.push('<button type="button" data-val="0" aria-pressed="' + (String(val) === "0" ? "true" : "false") + '">Aucune</button>');
+  }
+  rang.forEach(function(x, i) {
+    if (x.niveau) {
+      return;
+    }
+    var subs = [];
+    for (var k = i + 1; k < rang.length && rang[k].niveau; k++) {
+      subs.push(rang[k].c);
+    }
+    if (!subs.length) {
+      seuls.push(bouton(x.c, false));
+      return;
+    }
+    vider();
+    lignes.push('<div class="grp-cat avec-sous" role="group" aria-label="' + echapperHTML(x.c.NOM + " et ses sous-catégories") + '">' + bouton(x.c, false) + subs.map(function(sc) {
+      return bouton(sc, true);
+    }).join("") + "</div>");
+  });
+  vider();
+  var el = document.getElementById(id);
+  el.classList.add("cats");
+  el.innerHTML = lignes.join("");
 };
 CPT.choisirStatut = function(st) {
   CPT.fo.statut = st;
@@ -7465,7 +7756,7 @@ CPT.ouvrirOp = function(o) {
   CPT.chips("op-vers", CPT.d.comptes.map(function(x) {
     return [String(x.id), x.NOM || "Compte"];
   }), String(o ? Number(o.COMPTE_LIE) || 0 : autre ? autre.id : 0));
-  CPT.chips("op-cat", CPT.listeCats(), String(o ? Number(o.CATEGORIE) || 0 : 0));
+  CPT.chipsCats("op-cat", String(o ? Number(o.CATEGORIE) || 0 : 0), true);
   document.getElementById("op-date").value = o ? MGP.secVersIso(o.DATE) : CPT.isoJ(CPT.auj());
   document.getElementById("op-libelle").value = o ? o.LIBELLE || "" : "";
   document.getElementById("op-montant").value = o ? String(Math.abs(CPT.nombre(o.MONTANT))).replace(".", ",") : "";
@@ -7565,7 +7856,7 @@ CPT.ouvrirRanger = function(o) {
   CPT.fr = { o };
   document.getElementById("rg-libelle").textContent = (o.LIBELLE || "") + " · " + CPT.signe(o.MONTANT);
   document.getElementById("rg-erreur").textContent = "";
-  CPT.chips("rg-cat", CPT.listeCats().slice(1), String(Number(o.CATEGORIE) || ""));
+  CPT.chipsCats("rg-cat", String(Number(o.CATEGORIE) || ""), false);
   document.getElementById("rg-mot").value = CPT.motCle(o.LIBELLE);
   document.getElementById("rg-regle").checked = !Number(o.CATEGORIE);
   CPT.majAideRegle();
@@ -8256,7 +8547,7 @@ CPT.rendreImport = function() {
     return '<li class="mini">' + echapperHTML("Ligne " + x.n + " : " + x.raison + " · " + String(x.brut || "").slice(0, 90)) + "</li>";
   }).join("") + '</ul><p class="mini">Les lignes de solde, de total ou d’informations n’ont pas de date et de montant : elles sont écartées.</p></details>' : "") + l.slice(0, 12).map(function(x) {
     var c = CPT.categorie(x.categorie), ok = x.etat === "nouvelle" || x.etat === "prevue";
-    return '<div class="apercu-l' + (!ok && x.etat !== "grist" ? " doublon" : "") + '"><span class="pil ' + (x.etat === "nouvelle" ? "t-menthe" : x.etat === "prevue" ? "t-lavande" : x.etat === "grist" ? "t-peche" : x.etat === "doublon" ? "t-sable" : "t-flamant") + '">' + echapperHTML(x.etat === "nouvelle" ? "nouvelle" : x.etat === "prevue" ? "prévue" : x.etat === "grist" ? "lue par Grist" : x.etat === "doublon" ? "doublon" : "illisible") + '</span><span class="x"><b>' + echapperHTML(x.libelle || "(sans libellé)") + '</b><br><span class="mini">' + echapperHTML((x.date !== null ? CPT.texteJour(x.date) : "") + (x.raison ? (x.date !== null ? " · " : "") + x.raison : "") + (x.prevue ? " · valide « " + (x.prevue.LIBELLE || "") + " » prévue le " + CPT.texteJour(CPT.j(x.prevue.DATE)) : "") + (x.virement ? " · virement" : c ? " · " + (c.EMOJI || "") + " " + c.NOM : "")) + '</span></span><span class="m ' + (CPT.nombre(x.montant) > 0 ? "pos" : "") + '">' + echapperHTML(x.montant === null ? "?" : CPT.signe(x.montant)) + "</span></div>";
+    return '<div class="apercu-l' + (!ok && x.etat !== "grist" ? " doublon" : "") + '"><span class="pil ' + (x.etat === "nouvelle" ? "t-menthe" : x.etat === "prevue" ? "t-lavande" : x.etat === "grist" ? "t-peche" : x.etat === "doublon" ? "t-sable" : "t-flamant") + '">' + echapperHTML(x.etat === "nouvelle" ? "nouvelle" : x.etat === "prevue" ? "prévue" : x.etat === "grist" ? "lue par Grist" : x.etat === "doublon" ? "doublon" : "illisible") + '</span><span class="x"><b>' + echapperHTML(x.libelle || "(sans libellé)") + '</b><br><span class="mini">' + echapperHTML((x.date !== null ? CPT.texteJour(x.date) : "") + (x.raison ? (x.date !== null ? " · " : "") + x.raison : "") + (x.prevue ? " · valide « " + (x.prevue.LIBELLE || "") + " » prévue le " + CPT.texteJour(CPT.j(x.prevue.DATE)) : "") + (x.virement ? " · virement" : c ? " · " + (CPT.emojiCat(c) + " " + CPT.nomCat(c)).trim() : "")) + '</span></span><span class="m ' + (CPT.nombre(x.montant) > 0 ? "pos" : "") + '">' + echapperHTML(x.montant === null ? "?" : CPT.signe(x.montant)) + "</span></div>";
   }).join("") + (l.length > 12 ? '<p class="mini" style="margin-top:6px">' + echapperHTML("… et " + (l.length - 12) + " autres lignes.") + "</p>" : "") + '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:12px"><button type="button" class="btn sec" id="imp-annuler">Annuler</button><button type="button" class="btn" id="imp-ok"' + (nouv.length ? "" : " disabled") + ">" + echapperHTML("Importer " + nouv.length + " opération" + (nouv.length > 1 ? "s" : "")) + "</button></div></section>";
   z.innerHTML = html;
 };
@@ -9151,10 +9442,10 @@ CPT.editerReglages = function() {
     await CPT.ecrire([], "Réglages enregistrés");
   } });
 };
-CPT.repere = function(cat, n) {
+CPT.repere = function(cat, n, exacte) {
   var cle = CPT.moisDe(CPT.auj()), s = 0;
   for (var i = 1; i <= n; i++) {
-    s += CPT.depenseCat(cat, CPT.moisPlus(cle, -i));
+    s += CPT.depenseCat(cat, CPT.moisPlus(cle, -i), exacte);
   }
   return CPT.arrondi(s / n);
 };
@@ -9167,19 +9458,19 @@ CPT.navMois = function() {
 };
 CPT.rendreBudgets = function() {
   var z = document.getElementById("zone-budgets"), cle = CPT.mois, b = CPT.bilan(cle), n = CPT.reglages().repere, vue = CPT.vueBudget;
-  var seg = '<div class="seg" role="group" aria-label="Genre de budget" id="budget-vue"><button type="button" data-vue-budget="fixes" aria-pressed="' + (vue === "fixes") + '">🎯 Plafonds fixes</button><button type="button" data-vue-budget="repere" aria-pressed="' + (vue === "repere") + '">📐 Repère automatique</button></div>';
+  var seg = '<div class="seg" role="group" aria-label="Genre de budget" id="budget-vue"><button type="button" data-vue-budget="fixes" aria-pressed="' + (vue === "fixes") + '">🎯 Plafonds fixes</button><button type="button" data-vue-budget="repere" aria-pressed="' + (vue === "repere") + '">📐 Repère automatique</button></div>' + (CPT.aDesSous() ? '<div class="barre-detail">' + CPT.boutonDetail() + '<span class="mini">' + echapperHTML(CPT.detail ? "Chaque sous-catégorie à part." : "Une sous-catégorie compte dans sa catégorie principale.") + "</span></div>" : "");
   if (vue === "repere") {
     var cats = {};
     for (var i = 1; i <= n; i++) {
       var bi = CPT.bilan(CPT.moisPlus(CPT.moisDe(CPT.auj()), -i));
       Object.keys(bi.depCat).forEach(function(k) {
         if (Number(k) && bi.depCat[k] > 0) {
-          cats[k] = true;
+          cats[CPT.cleCat(k)] = true;
         }
       });
     }
     var l = Object.keys(cats).map(Number).map(function(k) {
-      return { c: CPT.categorie(k), id: k, rep: CPT.repere(k, n), dep: CPT.depenseCat(k, cle) };
+      return { c: CPT.categorie(k), id: k, rep: CPT.repere(k, n, CPT.detail), dep: CPT.depenseCat(k, cle, CPT.detail) };
     }).filter(function(x) {
       return x.c && x.rep > 0;
     }).sort(function(x, y) {
@@ -9187,7 +9478,7 @@ CPT.rendreBudgets = function() {
     });
     z.innerHTML = CPT.navMois() + seg + '<section class="carte" id="liste-reperes"><h2>📐 Repère automatique</h2><p class="mini" style="margin:4px 0 8px">' + echapperHTML("Pour chaque catégorie, la moyenne de vos dépenses sur les " + n + " derniers mois complets, comparée à " + CPT.moisTexte(cle) + " (à 80 % : bientôt atteint). Le nombre de mois se règle dans le Prévisionnel.") + "</p>" + (l.length ? l.map(function(x) {
       var et = CPT.etatBudget(x.dep, x.rep), pct = Math.round(x.dep / x.rep * 100);
-      return '<div class="barre-cat" data-repere="' + x.id + '" data-etat="' + et + '"><div class="t"><span>' + CPT.catPil(x.c) + "</span><span><b>" + echapperHTML(CPT.euros(x.dep) + " sur " + CPT.euros(x.rep)) + '</b> <span class="pil ' + CPT.PIL_BUDGET[et] + '">' + echapperHTML(et) + "</span></span></div>" + MGP.jaugeHTML(Math.round(x.dep), Math.round(x.rep) || 1, x.c.NOM + " : " + pct + " % du repère, " + et, et === "dépassé") + "</div>";
+      return '<div class="barre-cat" data-repere="' + x.id + '" data-etat="' + et + '"><div class="t"><span>' + CPT.catPil(x.c) + "</span><span><b>" + echapperHTML(CPT.euros(x.dep) + " sur " + CPT.euros(x.rep)) + '</b> <span class="pil ' + CPT.PIL_BUDGET[et] + '">' + echapperHTML(et) + "</span></span></div>" + MGP.jaugeHTML(Math.round(x.dep), Math.round(x.rep) || 1, CPT.nomCat(x.c) + " : " + pct + " % du repère, " + et, et === "dépassé") + "</div>";
     }).join("") : '<p class="mini">Pas encore assez d’opérations passées pour un repère.</p>') + "</section>";
     return;
   }
@@ -9200,13 +9491,18 @@ CPT.rendreBudgets = function() {
   }).sort(function(a, c) {
     return c.dep / Math.max(1, CPT.nombre(c.b.MONTANT_MOIS)) - a.dep / Math.max(1, CPT.nombre(a.b.MONTANT_MOIS));
   });
-  var avecBudget = budgets.map(function(x) {
-    return Number(x.b.CATEGORIE);
+  var horsCat = {};
+  Object.keys(b.depCat).map(Number).forEach(function(k) {
+    if (!(b.depCat[k] > 0) || budgets.some(function(x) {
+      return CPT.dansCat(k, x.b.CATEGORIE);
+    })) {
+      return;
+    }
+    var g = CPT.cleCat(k);
+    horsCat[g] = CPT.arrondi((horsCat[g] || 0) + b.depCat[k]);
   });
-  var horsBudget = Object.keys(b.depCat).map(Number).filter(function(k) {
-    return b.depCat[k] > 0 && avecBudget.indexOf(k) < 0;
-  }).sort(function(x, y) {
-    return b.depCat[y] - b.depCat[x];
+  var horsBudget = Object.keys(horsCat).map(Number).sort(function(x, y) {
+    return horsCat[y] - horsCat[x];
   });
   var totB = budgets.reduce(function(s, x) {
     return s + CPT.nombre(x.b.MONTANT_MOIS);
@@ -9214,16 +9510,22 @@ CPT.rendreBudgets = function() {
     return s + x.dep;
   }, 0);
   z.innerHTML = CPT.navMois() + seg + '<section class="hero hero-c"><div class="x"><p style="margin:0">Budgets de ' + echapperHTML(CPT.moisTexte(cle)) + '</p><div class="gros" id="budget-total">' + echapperHTML(CPT.eurosRonds(totD) + " sur " + CPT.eurosRonds(totB)) + '</div><div class="jauge-l">' + MGP.jaugeHTML(Math.round(totD), Math.round(totB) || 1, "Budgets utilisés", totD > totB) + '</div></div></section><div class="zones"><section class="carte" id="liste-budgets"><h2>🎯 Par catégorie</h2>' + (budgets.length ? budgets.map(function(x) {
-    var mt = CPT.nombre(x.b.MONTANT_MOIS), pct = mt ? Math.round(x.dep / mt * 100) : 0, et = CPT.etatBudget(x.dep, mt), rep = CPT.repere(Number(x.b.CATEGORIE), n);
-    return '<div class="barre-cat" data-budget="' + x.b.id + '" data-etat="' + et + '"><div class="t"><span>' + CPT.catPil(x.c) + "</span><span><b>" + echapperHTML(CPT.euros(x.dep) + " sur " + CPT.eurosRonds(mt)) + '</b> <span class="mini">' + echapperHTML(pct + " %" + (x.dep > mt ? " · dépassé de " + CPT.euros(x.dep - mt) : " · reste " + CPT.euros(mt - x.dep))) + '</span> <span class="pil ' + CPT.PIL_BUDGET[et] + '">' + echapperHTML(et) + '</span></span><button type="button" class="btn-icone" data-modifier-budget="' + x.b.id + '" aria-label="' + echapperHTML("Modifier le budget " + x.c.NOM) + '">✎</button></div>' + MGP.jaugeHTML(Math.round(x.dep), Math.round(mt) || 1, x.c.NOM + " : " + pct + " %", x.dep > mt) + (rep > 0 ? '<p class="mini" style="margin-top:4px">' + echapperHTML("repère automatique : " + CPT.euros(rep) + " (moyenne des " + n + " derniers mois)") + "</p>" : "") + "</div>";
+    var mt = CPT.nombre(x.b.MONTANT_MOIS), pct = mt ? Math.round(x.dep / mt * 100) : 0, et = CPT.etatBudget(x.dep, mt), rep = CPT.repere(Number(x.b.CATEGORIE), n), subs = CPT.parent(x.c) ? [] : CPT.sousCats(x.c.id);
+    var detail = subs.length ? '<p class="mini" style="margin-top:4px">' + echapperHTML("sous-catégories comprises : " + subs.map(function(sc) {
+      return sc.NOM;
+    }).join(", ")) + "</p>" + (CPT.detail ? '<ul class="detail-sous" data-detail-budget="' + x.b.id + '">' + [x.c].concat(subs).map(function(sc) {
+      var d = CPT.depenseCat(sc.id, cle, true);
+      return d ? "<li><span>" + echapperHTML(sc === x.c ? sc.NOM + " (sans sous-catégorie)" : "› " + sc.NOM) + "</span><b>" + echapperHTML(CPT.euros(d)) + "</b></li>" : "";
+    }).join("") + "</ul>" : "") : "";
+    return '<div class="barre-cat" data-budget="' + x.b.id + '" data-etat="' + et + '"><div class="t"><span>' + CPT.catPil(x.c) + "</span><span><b>" + echapperHTML(CPT.euros(x.dep) + " sur " + CPT.eurosRonds(mt)) + '</b> <span class="mini">' + echapperHTML(pct + " %" + (x.dep > mt ? " · dépassé de " + CPT.euros(x.dep - mt) : " · reste " + CPT.euros(mt - x.dep))) + '</span> <span class="pil ' + CPT.PIL_BUDGET[et] + '">' + echapperHTML(et) + '</span></span><button type="button" class="btn-icone" data-modifier-budget="' + x.b.id + '" aria-label="' + echapperHTML("Modifier le budget " + CPT.nomCat(x.c)) + '">✎</button></div>' + MGP.jaugeHTML(Math.round(x.dep), Math.round(mt) || 1, CPT.nomCat(x.c) + " : " + pct + " %", x.dep > mt) + detail + (rep > 0 ? '<p class="mini" style="margin-top:4px">' + echapperHTML("repère automatique : " + CPT.euros(rep) + " (moyenne des " + n + " derniers mois)") + "</p>" : "") + "</div>";
   }).join("") : '<p class="mini" style="margin-top:6px">Aucun budget : ajoutez-en un par catégorie.</p>') + '<div style="display:flex;justify-content:flex-end;margin-top:10px"><button type="button" class="btn sec" data-nouveau-budget>+ Budget</button></div></section><section class="carte" id="hors-budget"><h2>Dépenses sans budget</h2>' + (horsBudget.length ? horsBudget.map(function(k) {
     var c = CPT.categorie(k);
-    return '<div class="ligne"><span class="x">' + CPT.catPil(c) + "</span><b>" + echapperHTML(CPT.euros(b.depCat[k])) + "</b>" + (c ? '<span class="act"><button type="button" class="btn doux" data-budget-pour="' + k + '">+ Budget</button></span>' : '<span class="act"><button type="button" class="btn doux" data-voir-sans>Ranger</button></span>') + "</div>";
+    return '<div class="ligne"><span class="x">' + CPT.catPil(c) + "</span><b>" + echapperHTML(CPT.euros(horsCat[k])) + "</b>" + (c ? '<span class="act"><button type="button" class="btn doux" data-budget-pour="' + k + '">+ Budget</button></span>' : '<span class="act"><button type="button" class="btn doux" data-voir-sans>Ranger</button></span>') + "</div>";
   }).join("") : '<p class="mini" style="margin-top:6px">Toutes les dépenses du mois ont un budget.</p>') + "</section></div>";
 };
 CPT.editerBudget = function(bu, cat) {
   var tid = MGP.g.idTable("BUDGETS_MOIS");
-  MGP.formulaire({ titre: bu ? "Modifier le budget" : "Nouveau budget", champs: [{ id: "CATEGORIE", lib: "Catégorie", type: "choix", choix: CPT.choixCats(false), valeur: String(bu ? Number(bu.CATEGORIE) : cat || "") }, { id: "MONTANT_MOIS", lib: "Par mois", type: "montant", valeur: bu ? String(bu.MONTANT_MOIS || "").replace(".", ",") : "", requis: true }], valider: async function(v) {
+  MGP.formulaire({ titre: bu ? "Modifier le budget" : "Nouveau budget", champs: [{ id: "CATEGORIE", lib: "Catégorie", type: "choix", choix: CPT.choixCats(false), valeur: String(bu ? Number(bu.CATEGORIE) : cat || ""), aide: CPT.aDesSous() ? "Le budget d’une catégorie principale compte aussi ses sous-catégories ; celui d’une sous-catégorie, elle seule." : "" }, { id: "MONTANT_MOIS", lib: "Par mois", type: "montant", valeur: bu ? String(bu.MONTANT_MOIS || "").replace(".", ",") : "", requis: true }], valider: async function(v) {
     var c = Number(v.CATEGORIE) || 0;
     if (!c) {
       throw new Error("choisissez une catégorie");
@@ -9308,25 +9610,26 @@ CPT.rendreBilan = function() {
     var k = CPT.moisPlus(cle, -i);
     mois.push({ cle: k, b: CPT.bilan(k) });
   }
-  var dep = Object.keys(b.depCat).map(Number).filter(function(k2) {
-    return k2 === 0 ? b.depCat[k2] > 0 : b.parCat[k2] < 0;
+  var parCat = CPT.regrouper(b.parCat), depCat = CPT.regrouper(b.depCat), revCat = CPT.regrouper(b.revCat);
+  var dep = Object.keys(depCat).map(Number).filter(function(k2) {
+    return k2 === 0 ? depCat[k2] > 0 : parCat[k2] < 0;
   }).map(function(k2) {
-    return { c: CPT.categorie(k2), v: k2 === 0 ? -b.depCat[k2] : b.parCat[k2] };
+    return { k: k2, c: CPT.categorie(k2), v: k2 === 0 ? -depCat[k2] : parCat[k2] };
   }).sort(function(a, c) {
     return a.v - c.v;
   });
-  var rev = Object.keys(b.revCat).map(Number).filter(function(k2) {
-    return k2 === 0 ? b.revCat[k2] > 0 : b.parCat[k2] > 0;
+  var rev = Object.keys(revCat).map(Number).filter(function(k2) {
+    return k2 === 0 ? revCat[k2] > 0 : parCat[k2] > 0;
   }).map(function(k2) {
-    return { c: CPT.categorie(k2), v: k2 === 0 ? b.revCat[k2] : b.parCat[k2] };
+    return { k: k2, c: CPT.categorie(k2), v: k2 === 0 ? revCat[k2] : parCat[k2] };
   });
   var maxD = Math.max.apply(null, dep.map(function(x) {
     return -x.v;
   }).concat([1])), rec = CPT.recurrents();
   z.innerHTML = CPT.navMois() + '<div class="kpis" style="margin:0 0 12px"><span class="pil t-menthe">' + echapperHTML("Revenus " + CPT.signe(b.revenus)) + '</span><span class="pil t-flamant">' + echapperHTML("Dépenses " + CPT.euros(b.depenses)) + '</span><span class="pil ' + (b.revenus - b.depenses >= 0 ? "t-menthe" : "t-flamant") + '">' + echapperHTML("Solde du mois " + CPT.signe(CPT.arrondi(b.revenus - b.depenses))) + "</span>" + (b.virements || b.nb ? '<span class="pil t-lavande">🔁 virements entre comptes exclus</span>' : "") + '</div><div class="zones"><section class="carte" id="bi-graph"><h2>📊 Les 12 derniers mois</h2><div class="legende" aria-hidden="true"><span><i style="background:var(--menthe-f)"></i>revenus</span><span><i style="background:var(--flamant)"></i>dépenses</span></div>' + CPT.graphiqueSVG(mois) + '<details class="plus"><summary>Voir les chiffres</summary><table class="tab-chiffres"><thead><tr><th scope="col">Mois</th><th scope="col">Revenus</th><th scope="col">Dépenses</th><th scope="col">Solde</th></tr></thead><tbody>' + mois.map(function(x) {
     return "<tr><td>" + echapperHTML(CPT.moisTexte(x.cle)) + "</td><td>" + echapperHTML(CPT.euros(x.b.revenus)) + "</td><td>" + echapperHTML(CPT.euros(x.b.depenses)) + "</td><td>" + echapperHTML(CPT.signe(CPT.arrondi(x.b.revenus - x.b.depenses))) + "</td></tr>";
-  }).join("") + '</tbody></table></details></section><section class="carte" id="bi-cats"><h2>🏷️ ' + echapperHTML(CPT.moisTexte(cle) + " par catégorie") + "</h2>" + (dep.length ? dep.map(function(x) {
-    return '<div class="barre-cat"><div class="t"><span>' + CPT.catPil(x.c) + "</span><b>" + echapperHTML(CPT.euros(-x.v)) + "</b></div>" + MGP.jaugeHTML(Math.round(-x.v), Math.round(maxD), (x.c ? x.c.NOM : "Sans catégorie") + " : " + CPT.euros(-x.v)) + "</div>";
+  }).join("") + '</tbody></table></details></section><section class="carte" id="bi-cats"><h2>🏷️ ' + echapperHTML(CPT.moisTexte(cle) + " par catégorie") + "</h2>" + (CPT.aDesSous() ? '<div class="barre-detail">' + CPT.boutonDetail() + "</div>" : "") + (dep.length ? dep.map(function(x) {
+    return '<div class="barre-cat" data-bilan-cat="' + x.k + '"><div class="t"><span>' + CPT.catPil(x.c) + "</span><b>" + echapperHTML(CPT.euros(-x.v)) + "</b></div>" + MGP.jaugeHTML(Math.round(-x.v), Math.round(maxD), (x.c ? CPT.nomCat(x.c) : "Sans catégorie") + " : " + CPT.euros(-x.v)) + "</div>";
   }).join("") : '<p class="mini">Aucune dépense ce mois-ci.</p>') + (rev.length ? '<p class="gras" style="margin-top:10px">Revenus</p>' + rev.map(function(x) {
     return '<div class="ligne"><span class="x">' + CPT.catPil(x.c) + '</span><b class="pos">' + echapperHTML(CPT.signe(x.v)) + "</b></div>";
   }).join("") : "") + '</section><section class="carte" id="bi-recurrents"><h2>🔁 Paiements qui reviennent</h2><p class="mini" style="margin:4px 0 6px">' + echapperHTML(CPT.d.abonnements ? "Rapprochés de vos abonnements (Mes abonnements)." : "Installez Mes abonnements pour les y relier.") + "</p>" + (rec.length ? rec.map(function(r) {
@@ -9498,6 +9801,286 @@ CPT.archiver = async function() {
   }
   masquerLoader();
 };
+CPT.CHAMPS_CAT_MC = [["OPERATIONS", "opération", "opérations"], ["BUDGETS_MOIS", "budget", "budgets"], ["REGLES", "règle", "règles"], ["RECURRENCES", "récurrence", "récurrences"], ["CREDITS", "crédit", "crédits"], ["ARCHIVES", "ligne d’archive", "lignes d’archive"]];
+CPT.pluriel = function(n, un, plusieurs) {
+  return n + " " + (n > 1 ? plusieurs : un);
+};
+CPT.usagesMC = function(id) {
+  var d = { OPERATIONS: CPT.d.ops, BUDGETS_MOIS: CPT.d.budgets, REGLES: CPT.d.regles, RECURRENCES: CPT.d.recurrences, CREDITS: CPT.d.credits, ARCHIVES: CPT.d.archives };
+  return CPT.CHAMPS_CAT_MC.map(function(x) {
+    return { cle: x[0], n: (d[x[0]] || []).filter(function(r) {
+      return Number(r.CATEGORIE) === id;
+    }).length, txt: [x[1], x[2]] };
+  }).filter(function(x) {
+    return x.n;
+  });
+};
+CPT.texteUsagesMC = function(l) {
+  return l.map(function(x) {
+    return CPT.pluriel(x.n, x.txt[0], x.txt[1]);
+  }).join(" · ");
+};
+CPT.colonnesRefCats = async function() {
+  await MGP.g.chargerMeta();
+  var tc = MGP.g.idTable("CATEGORIES"), tCat = MGP.g.tableParId(tc), out = [];
+  if (!tCat) {
+    return out;
+  }
+  var sections = [];
+  try {
+    sections = await MGP.g.lire("_grist_Views_section");
+  } catch (e) {
+    logSecurite("sections", e);
+  }
+  var nosTables = CPT.ORDRE.map(function(k) {
+    return MGP.g.idTable(k);
+  }).filter(Boolean);
+  MGP.g.meta.colonnes.forEach(function(c) {
+    var liste = c.type === "RefList:" + tc;
+    if (c.parentId === tCat.id || c.type !== "Ref:" + tc && !liste || c.isFormula && c.formula) {
+      return;
+    }
+    var t = MGP.g.meta.tables.filter(function(x) {
+      return x.id === c.parentId;
+    })[0];
+    if (!t || !MGP.g.estTableUtilisateur(t)) {
+      return;
+    }
+    var brute = sections.filter(function(s) {
+      return s.id === t.rawViewSectionRef;
+    })[0];
+    out.push({ tableId: t.tableId, colId: c.colId, liste, nom: brute && String(brute.title || "").trim() || t.tableId.replace(/_/g, " "), nous: nosTables.indexOf(t.tableId) >= 0 });
+  });
+  return out;
+};
+CPT.idsListe = function(v) {
+  return Array.isArray(v) ? v.slice(v[0] === "L" ? 1 : 0).map(Number) : [];
+};
+CPT.usagesCat = async function(id) {
+  var cols = await CPT.colonnesRefCats(), cache = {}, out = [];
+  for (var i = 0; i < cols.length; i++) {
+    var c = cols[i];
+    if (!cache[c.tableId]) {
+      try {
+        cache[c.tableId] = await MGP.g.lire(c.tableId);
+      } catch (e) {
+        cache[c.tableId] = [];
+        logSecurite("lecture de " + c.tableId, e);
+      }
+    }
+    var l = cache[c.tableId].filter(function(r) {
+      return c.liste ? CPT.idsListe(r[c.colId]).indexOf(id) >= 0 : Number(r[c.colId]) === id;
+    });
+    if (l.length) {
+      out.push(Object.assign({ lignes: l }, c));
+    }
+  }
+  return out;
+};
+CPT.texteAutres = function(us) {
+  var parTable = {};
+  us.filter(function(u) {
+    return !u.nous;
+  }).forEach(function(u) {
+    var p = parTable[u.tableId] = parTable[u.tableId] || { nom: u.nom, ids: {} };
+    u.lignes.forEach(function(r) {
+      p.ids[r.id] = true;
+    });
+  });
+  return Object.keys(parTable).map(function(k) {
+    var n = Object.keys(parTable[k].ids).length;
+    return parTable[k].nom + " : " + CPT.pluriel(n, "ligne", "lignes");
+  }).join(", ");
+};
+CPT.aColonneParent = function() {
+  var t = MGP.g.tableParId(MGP.g.idTable("CATEGORIES"));
+  return !!t && MGP.g.colonnesDe(t.id).some(function(c) {
+    return c.colId === "PARENT";
+  });
+};
+CPT.ouvrirCats = function() {
+  CPT.rendreCats();
+  MGP.ouvrir(document.getElementById("dlg-cats"), "#cats-liste button");
+};
+CPT.rendreCats = function() {
+  var z = document.getElementById("cats-liste"), rang = MGP.categoriesRangees(CPT.d.categories), parent = CPT.aColonneParent();
+  z.innerHTML = rang.length ? rang.map(function(x) {
+    var c = x.c, u = CPT.texteUsagesMC(CPT.usagesMC(c.id)), nom = CPT.nomCat(c);
+    var pil = x.niveau ? '<span class="pil ' + MGP.classeCouleur(CPT.couleurCat(c)) + '">' + echapperHTML((CPT.emojiCat(c) + " " + c.NOM).trim()) + "</span>" : CPT.catPil(c);
+    return '<div class="lc' + (x.niveau ? " sous" : "") + '" data-lc="' + c.id + '"><span class="x">' + (x.niveau ? '<span class="fl" aria-hidden="true">↳ </span>' : "") + pil + '<br><span class="mini">' + echapperHTML((x.niveau ? "sous-catégorie de " + (x.parent ? x.parent.NOM : "?") + (u ? " · " : "") : "") + (u || (x.niveau ? "" : "pas utilisée dans Mes comptes"))) + '</span></span><span class="act">' + (!x.niveau && parent ? '<button type="button" class="btn doux" data-cat-sous="' + c.id + '" aria-label="' + echapperHTML("Ajouter une sous-catégorie à " + nom) + '">+<span class="lg"> Sous-catégorie</span></button>' : "") + '<button type="button" class="btn-icone" data-cat-modifier="' + c.id + '" aria-label="' + echapperHTML("Modifier ou supprimer " + nom) + '">✎</button></span></div>';
+  }).join("") : '<p class="mini">Aucune catégorie pour l’instant.</p>';
+};
+CPT.editerCat = function(c, parentId) {
+  var tid = MGP.g.idTable("CATEGORIES"), aParent = CPT.aColonneParent(), subs = c ? CPT.sousCats(c.id) : [], p0 = c ? CPT.parent(c) ? CPT.parent(c).id : 0 : Number(parentId) || 0, pa = CPT.categorie(p0);
+  var tops = CPT.d.categories.filter(function(x) {
+    return !CPT.parent(x) && (!c || x.id !== c.id);
+  }).sort(function(a, b) {
+    return String(a.NOM || "").localeCompare(String(b.NOM || ""), "fr");
+  });
+  var champs = [{ id: "NOM", lib: "Nom", type: "texte", valeur: c ? c.NOM : "", requis: true }, { id: "EMOJI", lib: "Emoji", type: "texte", valeur: c ? c.EMOJI || "" : pa && pa.EMOJI || "🏷️", aide: "Un seul emoji, par exemple ⛽ ou 🎁." }, { id: "COULEUR", lib: "Couleur", type: "choix", choix: MGP.COULEURS.map(function(x) {
+    return [x, x];
+  }), valeur: c ? c.COULEUR || "Écume" : pa && pa.COULEUR || "Écume" }];
+  if (aParent) {
+    champs.push(subs.length ? { id: "PARENT", lib: "Catégorie parente", type: "choix", choix: [["0", "Sable", "Aucune : catégorie principale"]], valeur: "0", aide: "Elle a des sous-catégories (" + subs.map(function(x) {
+      return x.NOM;
+    }).join(", ") + ") : elle reste une catégorie principale, deux niveaux au plus." } : { id: "PARENT", lib: "Catégorie parente", type: "choix", choix: [["0", "Sable", "Aucune : catégorie principale"]].concat(tops.map(function(x) {
+      return [String(x.id), x.COULEUR || "", ((x.EMOJI || "") + " " + x.NOM).trim()];
+    })), valeur: String(p0), aide: "Choisir une parente en fait une sous-catégorie, comptée avec elle dans les budgets et le bilan. Deux niveaux au plus : une sous-catégorie n’a pas de sous-catégorie." });
+  }
+  MGP.formulaire({ titre: c ? "Modifier la catégorie" : pa ? "Nouvelle sous-catégorie de " + pa.NOM : "Nouvelle catégorie", champs, valider: async function(v) {
+    var rec = { NOM: String(v.NOM || "").trim(), EMOJI: String(v.EMOJI || "").trim(), COULEUR: v.COULEUR || "Écume" }, par = aParent ? Number(v.PARENT) || 0 : 0;
+    if (!rec.NOM) {
+      throw new Error("indiquez le nom");
+    }
+    if (par) {
+      var pc = CPT.categorie(par);
+      if (!pc || par === (c && c.id)) {
+        throw new Error("choisissez une autre catégorie parente");
+      }
+      if (CPT.parent(pc)) {
+        throw new Error("« " + CPT.nomCat(pc) + " » est déjà une sous-catégorie : deux niveaux au plus");
+      }
+      if (subs.length) {
+        throw new Error("elle a des sous-catégories : elle reste une catégorie principale");
+      }
+    }
+    var double = CPT.d.categories.filter(function(x) {
+      return (!c || x.id !== c.id) && CPT.norm(x.NOM) === CPT.norm(rec.NOM) && (CPT.parent(x) ? CPT.parent(x).id : 0) === par;
+    })[0];
+    if (double) {
+      throw new Error("« " + CPT.nomCat(double) + " » existe déjà");
+    }
+    if (aParent) {
+      rec.PARENT = par;
+    }
+    if (c) {
+      if (rec.NOM !== c.NOM) {
+        var autres = CPT.texteAutres(await CPT.usagesCat(c.id));
+        if (autres) {
+          var ok = await MGP.confirmer("Renommer « " + c.NOM + " » en « " + rec.NOM + " » ?", "D’autres widgets utilisent aussi cette catégorie (" + autres + ") : le nouveau nom s’y affichera aussi.", "Renommer");
+          if (!ok) {
+            MGP.annoncer("Renommage annulé : rien n’a changé", "ok");
+            return;
+          }
+        }
+      }
+      await CPT.ecrire([["UpdateRecord", tid, c.id, rec]], "Catégorie " + rec.NOM + " enregistrée");
+    } else {
+      await CPT.ecrire([["AddRecord", tid, null, rec]], (par ? "Sous-catégorie " : "Catégorie ") + rec.NOM + " ajoutée");
+    }
+    CPT.focusCat(c ? c.id : null);
+  }, supprimer: c ? function() {
+    return CPT.supprimerCat(c);
+  } : null });
+};
+CPT.focusCat = function(id) {
+  var dlg = document.getElementById("dlg-cats");
+  if (!dlg || !dlg.open) {
+    return;
+  }
+  setTimeout(function() {
+    var b = id && dlg.querySelector('[data-cat-modifier="' + id + '"]') || dlg.querySelector("[data-cat-nouvelle]");
+    if (b) {
+      b.focus();
+    }
+  }, 30);
+};
+CPT.actionsSupprimerCat = function(c, dest, us) {
+  var a = [], tBud = MGP.g.idTable("BUDGETS_MOIS"), tReg = MGP.g.idTable("REGLES"), budDest = dest ? CPT.d.budgets.filter(function(b) {
+    return Number(b.CATEGORIE) === dest;
+  })[0] : null, ajout = 0;
+  us.forEach(function(u) {
+    if (u.tableId === tBud && u.colId === "CATEGORIE") {
+      u.lignes.forEach(function(b) {
+        if (!dest) {
+          a.push(["RemoveRecord", tBud, b.id]);
+        } else if (budDest) {
+          ajout += CPT.nombre(b.MONTANT_MOIS);
+          a.push(["RemoveRecord", tBud, b.id]);
+        } else {
+          a.push(["UpdateRecord", tBud, b.id, { CATEGORIE: dest }]);
+          budDest = b;
+        }
+      });
+      return;
+    }
+    if (u.tableId === tReg && u.colId === "CATEGORIE" && !dest) {
+      a.push(["BulkRemoveRecord", tReg, u.lignes.map(function(r) {
+        return r.id;
+      })]);
+      return;
+    }
+    if (u.liste) {
+      u.lignes.forEach(function(r) {
+        var l = CPT.idsListe(r[u.colId]).filter(function(x) {
+          return x !== c.id;
+        });
+        if (dest && l.indexOf(dest) < 0) {
+          l.push(dest);
+        }
+        var maj = {};
+        maj[u.colId] = ["L"].concat(l);
+        a.push(["UpdateRecord", u.tableId, r.id, maj]);
+      });
+      return;
+    }
+    var vals = {};
+    vals[u.colId] = u.lignes.map(function() {
+      return dest;
+    });
+    a.push(["BulkUpdateRecord", u.tableId, u.lignes.map(function(r) {
+      return r.id;
+    }), vals]);
+  });
+  if (ajout && budDest) {
+    a.push(["UpdateRecord", tBud, budDest.id, { MONTANT_MOIS: CPT.arrondi(CPT.nombre(budDest.MONTANT_MOIS) + ajout) }]);
+  }
+  var subs = CPT.sousCats(c.id);
+  if (subs.length) {
+    a.push(["BulkUpdateRecord", MGP.g.idTable("CATEGORIES"), subs.map(function(x) {
+      return x.id;
+    }), { PARENT: subs.map(function() {
+      return 0;
+    }) }]);
+  }
+  a.push(["RemoveRecord", MGP.g.idTable("CATEGORIES"), c.id]);
+  return a;
+};
+CPT.supprimerCat = async function(c) {
+  var us = await CPT.usagesCat(c.id), subs = CPT.sousCats(c.id), mc = CPT.texteUsagesMC(CPT.usagesMC(c.id)), autres = CPT.texteAutres(us), nom = CPT.nomCat(c);
+  if (!us.length) {
+    var ok = await MGP.confirmer("Supprimer « " + nom + " » ?", "Aucune ligne ne l’utilise." + (subs.length ? " Ses sous-catégories (" + subs.map(function(x) {
+      return x.NOM;
+    }).join(", ") + ") deviennent des catégories principales." : ""), "Supprimer", true);
+    if (ok) {
+      await CPT.ecrire(CPT.actionsSupprimerCat(c, 0, []), "Catégorie " + c.NOM + " supprimée");
+      CPT.focusCat(null);
+    }
+    return;
+  }
+  var dests = CPT.choixCats(false).filter(function(x) {
+    return Number(x[0]) !== c.id;
+  });
+  MGP.formulaire({ titre: "Supprimer « " + nom + " » ?", intro: [mc ? "Dans Mes comptes : " + mc + "." : "", autres ? "Dans d’autres widgets : " + autres + "." : "", subs.length ? "Ses sous-catégories (" + subs.map(function(x) {
+    return x.NOM;
+  }).join(", ") + ") deviennent des catégories principales." : ""], champs: [{ id: "DEST", lib: "Où ranger ce qui l’utilise ?", type: "choix", choix: [["0", "Sable", "Laisser sans catégorie"]].concat(dests), valeur: "", aide: "Tout ce qui l’utilise va dans la catégorie choisie ; si elle a déjà un budget, les deux plafonds s’additionnent. Sans catégorie : ses budgets et ses règles sont supprimés (ils ne serviraient plus), les opérations, récurrences et crédits restent, sans catégorie." }], libelleOk: "Supprimer la catégorie", danger: true, valider: async function(v) {
+    if (v.DEST === null || v.DEST === void 0 || v.DEST === "") {
+      throw new Error("choisissez où ranger ce qui l’utilise");
+    }
+    var dest = Number(v.DEST) || 0, dc = CPT.categorie(dest);
+    var frais = await CPT.usagesCat(c.id);
+    await CPT.ecrire(CPT.actionsSupprimerCat(c, dest, frais), "Catégorie " + c.NOM + " supprimée" + (dc ? " : tout est rangé dans " + CPT.nomCat(dc) : " : ce qui l’utilisait est sans catégorie"));
+    CPT.focusCat(dc ? dc.id : null);
+  } });
+};
+CPT.rendreCarteCats = function() {
+  var z = document.getElementById("zone-socle"), rang = MGP.categoriesRangees(CPT.d.categories), ns = rang.filter(function(x) {
+    return x.niveau;
+  }).length;
+  z.innerHTML = '<section class="carte" id="carte-cats"><h2>🏷️ Catégories</h2><p class="mini" style="margin:4px 0 10px">' + echapperHTML(CPT.pluriel(rang.length - ns, "catégorie principale", "catégories principales") + (ns ? " et " + CPT.pluriel(ns, "sous-catégorie", "sous-catégories") : "") + ", communes à tous vos widgets (comptes, abonnements, achats...).") + '</p><div class="choix" style="margin-bottom:10px">' + rang.map(function(x) {
+    return CPT.catPil(x.c);
+  }).join("") + '</div><div style="display:flex;justify-content:flex-end"><button type="button" class="btn sec" data-ouvrir-cats>🏷️ Gérer les catégories</button></div></section>';
+};
 CPT.FAB = { comptes: "Nouvelle opération", operations: "Nouvelle opération", prevision: "Nouvelle récurrence", credits: "Nouveau crédit", budgets: "Nouveau budget", regles: "Nouvelle règle" };
 CPT.rendre = function() {
   CPT.rendreBandeau();
@@ -9525,10 +10108,11 @@ CPT.rendre = function() {
   }
   if (o === "regles") {
     CPT.rendreRegles();
-    MGP.socleUI.categories(document.getElementById("zone-socle"), { lignes: CPT.d.categories, apres: async function() {
-      await CPT.charger();
-      CPT.rendre();
-    } });
+    CPT.rendreCarteCats();
+  }
+  var dc = document.getElementById("dlg-cats");
+  if (dc && dc.open) {
+    CPT.rendreCats();
   }
   if (o === "capot") {
     CPT.rendreCapot();
@@ -9565,7 +10149,7 @@ CPT.exporter = function() {
     return o.MONTANT;
   } }, { titre: "Catégorie", val: function(o) {
     var c = CPT.categorie(o.CATEGORIE);
-    return o.VIREMENT ? "Virement" : c ? c.NOM : "";
+    return o.VIREMENT ? "Virement" : c ? CPT.nomCat(c) : "";
   } }, { titre: "Pointée", val: function(o) {
     return o.POINTE ? "oui" : "";
   } }, { titre: "Note", val: function(o) {
@@ -9588,7 +10172,7 @@ CPT.rendreCapot = async function() {
 CPT.exemple = function(ctx, cle, f) {
   return (ctx.donnees[cle] || []).filter(f)[0] || null;
 };
-CPT.DICO = { tables: { OPERATIONS: { emoji: "💳", nom: "Opérations", couleur: "Citron", role: "Une ligne par opération, passée ou prévue : le compte, la date, le libellé, le montant (négatif quand l’argent sort), la catégorie. Un virement entre vos comptes fait deux lignes." }, COMPTES: { emoji: "🏦", nom: "Comptes", couleur: "Écume", role: "Vos comptes avec leur solde de départ, la base de tout ; les trois soldes (réel, pointé, projeté) et l’écart avec la banque sont des formules." }, RECURRENCES: { emoji: "🔁", nom: "Récurrences", couleur: "Lavande", role: "Les opérations qui reviennent : le widget en crée les opérations prévues, 12 mois à l’avance." }, CREDITS: { emoji: "🏦", nom: "Crédits", couleur: "Pêche", role: "Vos crédits : la mensualité prélevée et les dates ; chacun pilote une récurrence." }, REGLES: { emoji: "🪄", nom: "Règles de catégorie", couleur: "Lavande", role: "Un mot-clé du libellé et la catégorie qui va avec, appliqués à l’import." }, BUDGETS_MOIS: { emoji: "🎯", nom: "Budgets", couleur: "Menthe", role: "Un budget mensuel par catégorie ; la dépense du mois en cours est une formule." }, ARCHIVES: { emoji: "🗄️", nom: "Archives des comptes", couleur: "Pêche", role: "Les opérations anciennes résumées : une ligne par compte, mois et catégorie, avec le total et le nombre d’opérations." }, CATEGORIES: { emoji: "🏷️", nom: "Catégories", couleur: "Flamant", role: "Les catégories communes à tous vos widgets." } }, champs: { OPERATIONS: { COMPTE: "une **Référence** vers Comptes.", DATE: "la date de l’opération.", LIBELLE: "le libellé de la banque.", MONTANT: "le montant : négatif pour une dépense, positif pour un revenu.", CATEGORIE: "une **Référence** vers Catégories.", VIREMENT: "coché pour un virement entre vos comptes : ni dépense ni revenu.", COMPTE_LIE: "pour un virement, l’autre compte.", POINTE: "coché quand l’opération figure sur le relevé de la banque.", NOTE: "une note.", SOURCE: "saisie à la main, le fichier importé, ou « récurrence ».", STATUT: "un **Choix unique** : Passée (dans le solde réel) ou Prévue (seulement dans le prévisionnel) ; vide compte comme Passée.", RECURRENCE: "une **Référence** vers la récurrence qui l’a créée.", MOIS: "calculé : le mois, « 2026-12 », pour grouper.", SENS: "calculé : Dépense, Revenu ou Virement.", DATE_DEBIT: "calculé : le jour où l’argent quitte la banque (la date, ou le débit d’une carte à débit différé)." }, COMPTES: { NOM: "le nom.", BANQUE: "la banque (le modèle de colonnes de l’import est gardé pour elle).", TYPE: "un **Choix unique** : Courant, Épargne, Carte, Espèces.", SOLDE_INITIAL: "le solde de départ.", DATE_INITIALE: "la date de ce solde.", SOLDE_BANQUE: "le solde affiché par la banque, tapé pour le rapprochement.", DATE_RAPPROCHEMENT: "la date de ce solde ; vide tant que le compte n’a pas été rapproché.", COULEUR: "la couleur de la carte.", NOTES: "vos notes.", DEBIT_DIFFERE: "coché pour une carte à débit différé.", JOUR_ARRETE: "le jour d’arrêté de la carte.", JOUR_DEBIT: "le jour où la carte est débitée.", COMPTE_DEBITE: "une **Référence** vers le compte débité.", SOLDE: "calculé : le solde réel, solde de départ plus les opérations passées, plus les archives.", SOLDE_POINTE: "calculé : la même chose avec seulement les opérations pointées.", SOLDE_PROJETE: "calculé : le solde réel plus les opérations prévues jusqu’à la fin du mois.", ECART: "calculé : le solde de la banque moins le solde pointé.", A_POINTER: "calculé : les opérations passées pas encore pointées." }, RECURRENCES: { NOM: "le nom, repris comme libellé.", MONTANT: "négatif pour une dépense, positif pour un revenu.", COMPTE: "une **Référence** vers Comptes.", CATEGORIE: "une **Référence** vers Catégories.", FREQUENCE: "un **Choix unique** : Hebdomadaire, Mensuelle, Trimestrielle, Annuelle.", JOUR: "le jour du mois, ou de la semaine (1 lundi).", DATE_DEBUT: "le départ.", DATE_FIN: "la fin, facultative.", DECALER_WEEKEND: "coché : samedi et dimanche passent au lundi.", SOURCE: "l’origine, texte libre (« Crédit : ... »).", CREDIT: "une **Référence** vers le crédit qui la pilote.", NB_PREVUES: "calculé : les opérations encore prévues." }, CREDITS: { NOM: "le nom du crédit.", TYPE: "un **Choix unique** : Immobilier, Auto, Travaux...", COMPTE: "le compte prélevé.", CATEGORIE: "la catégorie des échéances.", MENSUALITE: "le montant réellement prélevé, assurance comprise.", JOUR_PRELEVEMENT: "le jour du prélèvement.", DATE_PREMIERE_ECHEANCE: "la première échéance.", DATE_DERNIERE_ECHEANCE: "la dernière échéance, si vous la connaissez.", NB_ECHEANCES: "sinon, le nombre d’échéances.", MONTANT_EMPRUNTE: "pour information.", TAUX: "pour information.", CAPITAL_RESTANT_SAISI: "lu sur la banque, pour information.", DATE_CAPITAL: "la date de cette lecture.", SOURCE_LOGEMENT_ID: "la ligne de Coût de mon logement reprise.", NOTE: "une note.", NB_TOTAL: "calculé : le nombre d’échéances.", DATE_FIN: "calculé : la dernière échéance.", ECHEANCES_RESTANTES: "calculé : les échéances après aujourd’hui.", RESTE_A_PAYER: "calculé : mensualité fois échéances restantes.", PCT_ECOULE: "calculé : la part des échéances passées.", EN_COURS: "calculé : coché tant qu’il reste une échéance." }, REGLES: { MOT_CLE: "le mot cherché dans le libellé.", CATEGORIE: "la catégorie donnée.", VIREMENT: "coché : l’opération est un virement entre vos comptes.", ORDRE: "la plus petite passe en premier.", NB_OPERATIONS: "calculé : les opérations dont le libellé contient le mot-clé." }, BUDGETS_MOIS: { CATEGORIE: "une **Référence** vers Catégories.", MONTANT_MOIS: "le budget par mois.", DEPENSE_MOIS: "calculé : la dépense nette du mois en cours dans la catégorie.", RESTE: "calculé : le budget moins la dépense." }, ARCHIVES: { COMPTE: "le compte.", MOIS: "le mois.", CATEGORIE: "la catégorie.", VIREMENT: "coché pour les virements.", TOTAL: "la somme des montants archivés.", NB: "le nombre d’opérations archivées.", ANNEE: "calculé : l’année du mois." } }, formules: [{ cle: "COMPTES", col: "SOLDE", defaut: CPT.FORMULES.SOLDE, intro: "Le solde réel : le solde de départ, plus les opérations passées du compte, plus les lignes archivées. Les opérations prévues n’y sont pas ; archiver ne change pas le solde.", jetons: [['[t.MONTANT or 0 for t in Operations.lookupRecords(COMPTE=$id) if t.STATUT != "Prévue"]', "les montants des opérations du compte qui ne sont pas prévues (un statut vide compte comme passée)."], ["SUM(...)", "les additionne."], ["Archives_des_comptes...TOTAL", "les résumés des opérations archivées."]], exemple: function(ctx) {
+CPT.DICO = { tables: { OPERATIONS: { emoji: "💳", nom: "Opérations", couleur: "Citron", role: "Une ligne par opération, passée ou prévue : le compte, la date, le libellé, le montant (négatif quand l’argent sort), la catégorie. Un virement entre vos comptes fait deux lignes." }, COMPTES: { emoji: "🏦", nom: "Comptes", couleur: "Écume", role: "Vos comptes avec leur solde de départ, la base de tout ; les trois soldes (réel, pointé, projeté) et l’écart avec la banque sont des formules." }, RECURRENCES: { emoji: "🔁", nom: "Récurrences", couleur: "Lavande", role: "Les opérations qui reviennent : le widget en crée les opérations prévues, 12 mois à l’avance." }, CREDITS: { emoji: "🏦", nom: "Crédits", couleur: "Pêche", role: "Vos crédits : la mensualité prélevée et les dates ; chacun pilote une récurrence." }, REGLES: { emoji: "🪄", nom: "Règles de catégorie", couleur: "Lavande", role: "Un mot-clé du libellé et la catégorie qui va avec, appliqués à l’import." }, BUDGETS_MOIS: { emoji: "🎯", nom: "Budgets", couleur: "Menthe", role: "Un budget mensuel par catégorie ; la dépense du mois en cours est une formule." }, ARCHIVES: { emoji: "🗄️", nom: "Archives des comptes", couleur: "Pêche", role: "Les opérations anciennes résumées : une ligne par compte, mois et catégorie, avec le total et le nombre d’opérations." }, CATEGORIES: { emoji: "🏷️", nom: "Catégories", couleur: "Flamant", role: "Les catégories communes à tous vos widgets ; une sous-catégorie pointe vers sa catégorie principale (PARENT)." } }, champs: { OPERATIONS: { COMPTE: "une **Référence** vers Comptes.", DATE: "la date de l’opération.", LIBELLE: "le libellé de la banque.", MONTANT: "le montant : négatif pour une dépense, positif pour un revenu.", CATEGORIE: "une **Référence** vers Catégories.", VIREMENT: "coché pour un virement entre vos comptes : ni dépense ni revenu.", COMPTE_LIE: "pour un virement, l’autre compte.", POINTE: "coché quand l’opération figure sur le relevé de la banque.", NOTE: "une note.", SOURCE: "saisie à la main, le fichier importé, ou « récurrence ».", STATUT: "un **Choix unique** : Passée (dans le solde réel) ou Prévue (seulement dans le prévisionnel) ; vide compte comme Passée.", RECURRENCE: "une **Référence** vers la récurrence qui l’a créée.", MOIS: "calculé : le mois, « 2026-12 », pour grouper.", SENS: "calculé : Dépense, Revenu ou Virement.", DATE_DEBIT: "calculé : le jour où l’argent quitte la banque (la date, ou le débit d’une carte à débit différé)." }, COMPTES: { NOM: "le nom.", BANQUE: "la banque (le modèle de colonnes de l’import est gardé pour elle).", TYPE: "un **Choix unique** : Courant, Épargne, Carte, Espèces.", SOLDE_INITIAL: "le solde de départ.", DATE_INITIALE: "la date de ce solde.", SOLDE_BANQUE: "le solde affiché par la banque, tapé pour le rapprochement.", DATE_RAPPROCHEMENT: "la date de ce solde ; vide tant que le compte n’a pas été rapproché.", COULEUR: "la couleur de la carte.", NOTES: "vos notes.", DEBIT_DIFFERE: "coché pour une carte à débit différé.", JOUR_ARRETE: "le jour d’arrêté de la carte.", JOUR_DEBIT: "le jour où la carte est débitée.", COMPTE_DEBITE: "une **Référence** vers le compte débité.", SOLDE: "calculé : le solde réel, solde de départ plus les opérations passées, plus les archives.", SOLDE_POINTE: "calculé : la même chose avec seulement les opérations pointées.", SOLDE_PROJETE: "calculé : le solde réel plus les opérations prévues jusqu’à la fin du mois.", ECART: "calculé : le solde de la banque moins le solde pointé.", A_POINTER: "calculé : les opérations passées pas encore pointées." }, RECURRENCES: { NOM: "le nom, repris comme libellé.", MONTANT: "négatif pour une dépense, positif pour un revenu.", COMPTE: "une **Référence** vers Comptes.", CATEGORIE: "une **Référence** vers Catégories.", FREQUENCE: "un **Choix unique** : Hebdomadaire, Mensuelle, Trimestrielle, Annuelle.", JOUR: "le jour du mois, ou de la semaine (1 lundi).", DATE_DEBUT: "le départ.", DATE_FIN: "la fin, facultative.", DECALER_WEEKEND: "coché : samedi et dimanche passent au lundi.", SOURCE: "l’origine, texte libre (« Crédit : ... »).", CREDIT: "une **Référence** vers le crédit qui la pilote.", NB_PREVUES: "calculé : les opérations encore prévues." }, CREDITS: { NOM: "le nom du crédit.", TYPE: "un **Choix unique** : Immobilier, Auto, Travaux...", COMPTE: "le compte prélevé.", CATEGORIE: "la catégorie des échéances.", MENSUALITE: "le montant réellement prélevé, assurance comprise.", JOUR_PRELEVEMENT: "le jour du prélèvement.", DATE_PREMIERE_ECHEANCE: "la première échéance.", DATE_DERNIERE_ECHEANCE: "la dernière échéance, si vous la connaissez.", NB_ECHEANCES: "sinon, le nombre d’échéances.", MONTANT_EMPRUNTE: "pour information.", TAUX: "pour information.", CAPITAL_RESTANT_SAISI: "lu sur la banque, pour information.", DATE_CAPITAL: "la date de cette lecture.", SOURCE_LOGEMENT_ID: "la ligne de Coût de mon logement reprise.", NOTE: "une note.", NB_TOTAL: "calculé : le nombre d’échéances.", DATE_FIN: "calculé : la dernière échéance.", ECHEANCES_RESTANTES: "calculé : les échéances après aujourd’hui.", RESTE_A_PAYER: "calculé : mensualité fois échéances restantes.", PCT_ECOULE: "calculé : la part des échéances passées.", EN_COURS: "calculé : coché tant qu’il reste une échéance." }, REGLES: { MOT_CLE: "le mot cherché dans le libellé.", CATEGORIE: "la catégorie donnée.", VIREMENT: "coché : l’opération est un virement entre vos comptes.", ORDRE: "la plus petite passe en premier.", NB_OPERATIONS: "calculé : les opérations dont le libellé contient le mot-clé." }, BUDGETS_MOIS: { CATEGORIE: "une **Référence** vers Catégories : une catégorie principale (ses sous-catégories comprises) ou une sous-catégorie.", MONTANT_MOIS: "le budget par mois.", DEPENSE_MOIS: "calculé : la dépense nette du mois en cours dans la catégorie (et ses sous-catégories pour une principale).", RESTE: "calculé : le budget moins la dépense." }, CATEGORIES: { NOM: "le nom.", EMOJI: "un emoji.", COULEUR: "un **Choix unique** : la couleur pastel.", PARENT: "une **Référence** vers la table elle-même : la catégorie principale d’une sous-catégorie ; vide pour une principale. Son libellé est « CATÉGORIE PARENTE ».", NOM_COMPLET: "calculé : « Transport › Carburant », ou le nom seul.", RACINE: "calculé : une **Référence** vers la catégorie principale (la parente, ou elle-même)." }, ARCHIVES: { COMPTE: "le compte.", MOIS: "le mois.", CATEGORIE: "la catégorie.", VIREMENT: "coché pour les virements.", TOTAL: "la somme des montants archivés.", NB: "le nombre d’opérations archivées.", ANNEE: "calculé : l’année du mois." } }, formules: [{ cle: "COMPTES", col: "SOLDE", defaut: CPT.FORMULES.SOLDE, intro: "Le solde réel : le solde de départ, plus les opérations passées du compte, plus les lignes archivées. Les opérations prévues n’y sont pas ; archiver ne change pas le solde.", jetons: [['[t.MONTANT or 0 for t in Operations.lookupRecords(COMPTE=$id) if t.STATUT != "Prévue"]', "les montants des opérations du compte qui ne sont pas prévues (un statut vide compte comme passée)."], ["SUM(...)", "les additionne."], ["Archives_des_comptes...TOTAL", "les résumés des opérations archivées."]], exemple: function(ctx) {
   var c = CPT.exemple(ctx, "COMPTES", function(x) {
     return typeof x.SOLDE === "number";
   });
@@ -9618,7 +10202,7 @@ CPT.DICO = { tables: { OPERATIONS: { emoji: "💳", nom: "Opérations", couleur:
     return typeof x.RESTE_A_PAYER === "number";
   });
   return c ? c.NOM + " : **" + CPT.euros(c.RESTE_A_PAYER) + "** sur " + c.ECHEANCES_RESTANTES + " échéances" : "";
-} }, { cle: "BUDGETS_MOIS", col: "DEPENSE_MOIS", defaut: CPT.FORMULES.DEPENSE_MOIS, intro: "La dépense nette du mois en cours dans la catégorie : les opérations passées de la catégorie, hors virements, du même mois qu’aujourd’hui ; le signe moins la rend positive.", jetons: [["lookupRecords(CATEGORIE=$CATEGORIE.id)", "les opérations de la catégorie du budget."], ["if not t.VIREMENT", "les virements entre vos comptes ne sont pas des dépenses."], ['t.STATUT != "Prévue"', "une dépense prévue n’est pas encore faite."], ['t.MOIS == TODAY().strftime("%Y-%m")', "seulement le mois en cours."], ["ROUND(-SUM(...), 2)", "une dépense de -45,30 compte pour 45,30."]], exemple: function(ctx) {
+} }, { cle: "BUDGETS_MOIS", col: "DEPENSE_MOIS", defaut: CPT.FORMULES.DEPENSE_MOIS, intro: "La dépense nette du mois en cours dans la catégorie : les opérations passées de la catégorie, hors virements, du même mois qu’aujourd’hui ; le signe moins la rend positive. Le budget d’une catégorie principale compte aussi ses sous-catégories ; celui d’une sous-catégorie, elle seule.", jetons: [["[$CATEGORIE] if $CATEGORIE.PARENT", "un budget sur une sous-catégorie (elle a une parente) : elle seule."], ["Categories.lookupRecords(RACINE=$CATEGORIE.id)", "sinon, toutes les catégories dont la principale est celle du budget : elle-même et ses sous-catégories."], ["for c in ... for t in Operations.lookupRecords(CATEGORIE=c.id)", "les opérations de chacune de ces catégories."], ["if not t.VIREMENT", "les virements entre vos comptes ne sont pas des dépenses."], ['t.STATUT != "Prévue"', "une dépense prévue n’est pas encore faite."], ['t.MOIS == TODAY().strftime("%Y-%m")', "seulement le mois en cours."], ["ROUND(-SUM(...), 2)", "une dépense de -45,30 compte pour 45,30."]], exemple: function(ctx) {
   var b = CPT.exemple(ctx, "BUDGETS_MOIS", function(x) {
     return x.DEPENSE_MOIS;
   });
@@ -9626,12 +10210,19 @@ CPT.DICO = { tables: { OPERATIONS: { emoji: "💳", nom: "Opérations", couleur:
     return x.id === Number(b.CATEGORIE);
   })[0] : null;
   return b && c ? c.NOM + " : **" + CPT.euros(b.DEPENSE_MOIS) + "** sur " + CPT.euros(b.MONTANT_MOIS) : "";
+} }, { cle: "CATEGORIES", col: "RACINE", defaut: MGP.FORMULES_CATEGORIES.RACINE, intro: "La catégorie principale d’une catégorie : sa parente si elle en a une, elle-même sinon. C’est une formule de type Référence : elle renvoie un numéro de ligne de la même table. Les budgets et les bilans regroupent par RACINE.", jetons: [["$PARENT.id", "le numéro de la catégorie parente ; 0 quand PARENT est vide."], ["or $id", "quand il vaut 0, le numéro de la ligne elle-même."]], exemple: function(ctx) {
+  var l = ctx.donnees.CATEGORIES || [], c = l.filter(function(x) {
+    return Number(x.PARENT);
+  })[0], r = c ? l.filter(function(x) {
+    return x.id === Number(c.RACINE);
+  })[0] : null;
+  return c && r ? c.NOM + " : RACINE vaut **" + r.NOM + "** (NOM_COMPLET : " + (c.NOM_COMPLET || c.NOM) + ")" : "";
 } }, { cle: "REGLES", col: "NB_OPERATIONS", defaut: CPT.FORMULES.NB_OPERATIONS, intro: "Combien d’opérations une règle concerne : celles dont le libellé contient le mot-clé, sans tenir compte des majuscules.", jetons: [["Operations.all", "toutes les lignes de la table."], ['$MOT_CLE.upper() in (t.LIBELLE or "").upper()', "`in` teste si un texte en contient un autre ; `.upper()` met tout en majuscules."]], exemple: function(ctx) {
   var r = CPT.exemple(ctx, "REGLES", function(x) {
     return x.NB_OPERATIONS;
   });
   return r ? "« " + r.MOT_CLE + " » concerne **" + r.NB_OPERATIONS + "** opérations" : "";
-} }], extras: [{ titre: "Prévue ou passée : trois soldes", paragraphes: ["Une opération **passée** est faite : elle compte dans le solde réel (SOLDE). Une opération **prévue** est à venir : elle ne compte que dans le prévisionnel et dans SOLDE_PROJETE. Les opérations d’avant la version 1.2.0 ont un STATUT vide : elles comptent comme passées.", "Trois soldes, donc : le **solde réel** (départ plus opérations passées), le **solde pointé** (départ plus opérations vues sur le relevé, pour le rapprochement avec la banque) et le **solde projeté** (réel plus prévues jusqu’à la fin du mois). Le bouton 🔮 d’une opération prévue la marque comme passée.", "Le prévisionnel part du solde de départ de chaque compte, ajoute les opérations à leur date de débit, et compare le point le plus bas de chaque mois au seuil de découvert : rouge en dessous, orange entre le seuil et le seuil plus le coussin, vert au-dessus. Le reste à dépenser du mois : solde réel des comptes (épargne à part), moins les dépenses prévues jusqu’à la fin du mois, moins le coussin. Seuil, coussin et nombre de mois sont dans la table technique (COMPTES:PREVISION)."] }, { titre: "Les récurrences et l’import", paragraphes: ["Une récurrence crée ses opérations prévues 12 mois à l’avance (jamais dans le passé), et le widget complète à chaque ouverture. Un samedi ou un dimanche passe au lundi si DECALER_WEEKEND est coché. Modifier une récurrence demande une date d’effet : seules les opérations prévues à partir de cette date sont refaites ; les passées ne bougent jamais. Supprimer une récurrence garde ses opérations passées.", "À l’import d’un relevé, une ligne qui ressemble à une opération prévue (même compte, même sens, montant à 1 € ou 5 % près, date à 5 jours près) la valide : l’opération prévue devient passée avec la date, le montant et le libellé de la banque, sans doublon."] }, { titre: "Les crédits", paragraphes: ["Vous saisissez la mensualité réellement prélevée (assurance et frais compris), le jour du prélèvement et la première échéance, puis la dernière échéance ou le nombre d’échéances. Le crédit crée sa récurrence (SOURCE « Crédit : ... ») : ses échéances arrivent dans le prévisionnel sans double saisie.", "Aucun calcul d’amortissement : le montant emprunté, le taux et le capital restant lu sur la banque sont pour information. Un remboursement anticipé est enregistré comme une opération ; vous indiquez la nouvelle dernière échéance ou la nouvelle mensualité données par la banque, et seules les échéances prévues suivantes sont refaites."] }, { titre: "Les virements entre vos comptes", paragraphes: ["Un virement du compte courant vers le livret fait deux lignes : -200 sur l’un, +200 sur l’autre, toutes deux cochées VIREMENT. Chaque solde est juste, et le bilan ne les compte ni en dépense ni en revenu."] }, { titre: "Le forfait gratuit et les archives", paragraphes: ["Sur l’abonnement gratuit de Grist, un document peut contenir 5 000 lignes. Archiver remplace les opérations de plus de 24 mois par une ligne par mois, compte et catégorie : les totaux restent, le détail part.", 'Dans une formule, on retrouve les totaux d’un mois archivé avec `SUM(Archives_des_comptes.lookupRecords(MOIS="2024-03").TOTAL)`.'] }] };
+} }], extras: [{ titre: "Prévue ou passée : trois soldes", paragraphes: ["Une opération **passée** est faite : elle compte dans le solde réel (SOLDE). Une opération **prévue** est à venir : elle ne compte que dans le prévisionnel et dans SOLDE_PROJETE. Les opérations d’avant la version 1.2.0 ont un STATUT vide : elles comptent comme passées.", "Trois soldes, donc : le **solde réel** (départ plus opérations passées), le **solde pointé** (départ plus opérations vues sur le relevé, pour le rapprochement avec la banque) et le **solde projeté** (réel plus prévues jusqu’à la fin du mois). Le bouton 🔮 d’une opération prévue la marque comme passée.", "Le prévisionnel part du solde de départ de chaque compte, ajoute les opérations à leur date de débit, et compare le point le plus bas de chaque mois au seuil de découvert : rouge en dessous, orange entre le seuil et le seuil plus le coussin, vert au-dessus. Le reste à dépenser du mois : solde réel des comptes (épargne à part), moins les dépenses prévues jusqu’à la fin du mois, moins le coussin. Seuil, coussin et nombre de mois sont dans la table technique (COMPTES:PREVISION)."] }, { titre: "Les récurrences et l’import", paragraphes: ["Une récurrence crée ses opérations prévues 12 mois à l’avance (jamais dans le passé), et le widget complète à chaque ouverture. Un samedi ou un dimanche passe au lundi si DECALER_WEEKEND est coché. Modifier une récurrence demande une date d’effet : seules les opérations prévues à partir de cette date sont refaites ; les passées ne bougent jamais. Supprimer une récurrence garde ses opérations passées.", "À l’import d’un relevé, une ligne qui ressemble à une opération prévue (même compte, même sens, montant à 1 € ou 5 % près, date à 5 jours près) la valide : l’opération prévue devient passée avec la date, le montant et le libellé de la banque, sans doublon."] }, { titre: "Les crédits", paragraphes: ["Vous saisissez la mensualité réellement prélevée (assurance et frais compris), le jour du prélèvement et la première échéance, puis la dernière échéance ou le nombre d’échéances. Le crédit crée sa récurrence (SOURCE « Crédit : ... ») : ses échéances arrivent dans le prévisionnel sans double saisie.", "Aucun calcul d’amortissement : le montant emprunté, le taux et le capital restant lu sur la banque sont pour information. Un remboursement anticipé est enregistré comme une opération ; vous indiquez la nouvelle dernière échéance ou la nouvelle mensualité données par la banque, et seules les échéances prévues suivantes sont refaites."] }, { titre: "Catégories et sous-catégories", paragraphes: ["Une sous-catégorie est une ligne de la table Catégories dont la colonne **PARENT** (affichée « CATÉGORIE PARENTE ») pointe vers une autre ligne de la même table : c’est une Référence vers sa propre table, comme un arbre à deux étages. PARENT vide : catégorie principale. Deux niveaux au plus : l’écran 🏷️ Catégories ne propose comme parente qu’une catégorie principale.", "Deux formules en découlent : **NOM_COMPLET** (« Transport › Carburant ») et **RACINE**, la catégorie principale. Les budgets, le bilan et le repère regroupent par RACINE : un plein rangé dans Carburant compte dans Transport. Le bouton « Détail des sous-catégories » les montre à part. Un budget peut viser Transport (tout compris) ou Carburant seul.", "Supprimer une catégorie demande où ranger ce qui l’utilise : la table est partagée, d’autres widgets (abonnements, achats, documents) peuvent y pointer ; le widget les compte avant de renommer ou de supprimer, et les déplace avec le reste : aucune ligne ne pointe vers une catégorie disparue."] }, { titre: "Les virements entre vos comptes", paragraphes: ["Un virement du compte courant vers le livret fait deux lignes : -200 sur l’un, +200 sur l’autre, toutes deux cochées VIREMENT. Chaque solde est juste, et le bilan ne les compte ni en dépense ni en revenu."] }, { titre: "Le forfait gratuit et les archives", paragraphes: ["Sur l’abonnement gratuit de Grist, un document peut contenir 5 000 lignes. Archiver remplace les opérations de plus de 24 mois par une ligne par mois, compte et catégorie : les totaux restent, le détail part.", 'Dans une formule, on retrouve les totaux d’un mois archivé avec `SUM(Archives_des_comptes.lookupRecords(MOIS="2024-03").TOTAL)`.'] }] };
 CPT.montrer = function(ecran) {
   if (ecran === "app") {
     setTimeout(MGP.g.afficherIndicePage, 0);
@@ -9718,6 +10309,32 @@ CPT.brancher = function() {
     var b, x;
     if (ev.target.closest("#btn-sup-exemples")) {
       CPT.supprimerExemples();
+      return;
+    }
+    if (ev.target.closest("[data-ouvrir-cats]")) {
+      CPT.ouvrirCats();
+      return;
+    }
+    if (ev.target.closest("[data-cat-nouvelle]")) {
+      CPT.editerCat(null, 0);
+      return;
+    }
+    if (b = ev.target.closest("[data-cat-sous]")) {
+      CPT.editerCat(null, Number(b.dataset.catSous));
+      return;
+    }
+    if (b = ev.target.closest("[data-cat-modifier]")) {
+      CPT.editerCat(CPT.categorie(b.dataset.catModifier));
+      return;
+    }
+    if (ev.target.closest("[data-detail-cats]")) {
+      CPT.detail = !CPT.detail;
+      CPT.rendre();
+      x = document.querySelector("#p-" + CPT.onglet + " [data-detail-cats]");
+      if (x) {
+        x.focus();
+      }
+      MGP.annoncer(CPT.detail ? "Sous-catégories affichées à part" : "Sous-catégories comptées dans leur catégorie principale", "sr");
       return;
     }
     if (b = ev.target.closest("[data-aller]")) {
@@ -10056,7 +10673,7 @@ CPT.reprendre = async function() {
         montrerLoader("Mise à niveau de Mes comptes...");
         try {
           var mn = await CPT.mettreANiveau();
-          MGP.annoncer("Mes comptes passe au budget prévisionnel : rien n’a été perdu" + (mn.gardees.length ? " (vos formules modifiées sont gardées : " + mn.gardees.join(", ") + ")" : "") + ".", "ok");
+          MGP.annoncer("Mes comptes est mis à jour (budget prévisionnel, sous-catégories) : rien n’a été perdu" + (mn.gardees.length ? " (vos formules modifiées sont gardées : " + mn.gardees.join(", ") + ")" : "") + ".", "ok");
         } catch (e) {
           logSecurite("mise à niveau", e);
           MGP.annoncer("Mise à niveau incomplète : ouvrez Sous le capot, « Vérifier l’installation ».", "err");
