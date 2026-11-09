@@ -2050,7 +2050,7 @@ details.plus summary {
         <li><span class="t-menthe" aria-hidden="true">💰</span><div><b>Avoirs et dettes au même endroit</b><br><span class="mini">comptes, livrets, assurance-vie, maison, voiture... et les crédits en face</span></div></li>
         <li><span class="t-ecume" aria-hidden="true">📅</span><div><b>Le relevé du mois en deux minutes</b><br><span class="mini">les valeurs du mois dernier sont déjà là : on corrige ce qui a changé</span></div></li>
         <li><span class="t-lavande" aria-hidden="true">📈</span><div><b>Des graphiques qui parlent</b><br><span class="mini">la courbe du net, la répartition par type, l’écart sur un an</span></div></li>
-        <li><span class="t-peche" aria-hidden="true">🔗</span><div><b>Relié à vos autres widgets</b><br><span class="mini">les soldes de Mes comptes, le crédit de Coût de mon logement, sans rien recopier</span></div></li>
+        <li><span class="t-peche" aria-hidden="true">🔗</span><div><b>Relié à vos autres widgets</b><br><span class="mini">les soldes et les crédits de Mes comptes, le crédit de Coût de mon logement, sans rien recopier</span></div></li>
       </ul>
       <div id="parcours-deballage"></div>
       <section class="carte inst">
@@ -2131,7 +2131,7 @@ details.plus summary {
     <h2 id="de-titre">Nouvelle dette</h2>
     <div class="champ"><label for="de-nom">Nom <span aria-hidden="true">*</span></label><input type="text" id="de-nom" autocomplete="off" required aria-required="true" placeholder="Crédit de la maison, prêt de la voiture..."></div>
     <div class="champ"><span class="lib" id="de-type-l">Type</span><div class="choix" id="de-type" role="group" aria-labelledby="de-type-l"></div></div>
-    <div class="champ"><label for="de-capital">Capital restant dû (€) <span aria-hidden="true">*</span></label><input type="text" id="de-capital" inputmode="decimal" autocomplete="off" required aria-required="true"><p class="aide">Il figure sur le tableau d’amortissement ou dans l’espace de votre banque.</p></div>
+    <div class="champ"><label for="de-capital">Capital restant dû (€) <span aria-hidden="true">*</span></label><input type="text" id="de-capital" inputmode="decimal" autocomplete="off" required aria-required="true"><p class="aide" id="de-capital-aide">Il figure sur le tableau d’amortissement ou dans l’espace de votre banque.</p></div>
     <div class="champ"><label for="de-mens">Mensualité (€)</label><input type="text" id="de-mens" inputmode="decimal" autocomplete="off"></div>
     <div class="champ"><label for="de-taux">Taux (%)</label><input type="text" id="de-taux" inputmode="decimal" autocomplete="off"></div>
     <div class="champ"><label for="de-fin">Dernière échéance</label><input type="date" id="de-fin" autocomplete="off"></div>
@@ -2139,6 +2139,7 @@ details.plus summary {
     <div class="champ"><span class="lib" id="de-pers-l">Qui rembourse ?</span><div class="choix multi" id="de-pers" role="group" aria-labelledby="de-pers-l"></div><p class="aide"><button type="button" class="btn lien" data-nouvelle-personne="de-pers">+ Ajouter une personne</button></p></div>
     <div class="champ"><label for="de-avoir">Elle finance</label><select id="de-avoir" autocomplete="off"></select><p class="aide">La maison du crédit immobilier, par exemple : sa valeur nette s’affiche.</p></div>
     <div class="champ" id="de-logement-c" hidden><label for="de-logement">Lié à un logement de Coût de mon logement</label><select id="de-logement" autocomplete="off"></select></div>
+    <div class="champ" id="de-credit-c" hidden><label for="de-credit">Lié à un crédit de Mes comptes</label><select id="de-credit" autocomplete="off"></select><p class="aide">Son capital restant est lu dans Mes comptes : rien n’est recopié.</p></div>
     <div class="champ"><label for="de-notes">Notes</label><textarea id="de-notes" autocomplete="off"></textarea></div>
     <div class="champ" id="de-clos-c" hidden><label style="display:flex;gap:10px;align-items:center;min-height:44px;font-weight:700"><input type="checkbox" id="de-clos" style="width:22px;height:22px" autocomplete="off"> Remboursée</label><p class="aide">Elle sort des totaux ; son historique reste dans les graphiques.</p></div>
     <p class="mini" id="de-erreur" role="alert" style="color:var(--flamant-f)"></p>
@@ -2769,7 +2770,7 @@ MGP.CHAMPS_SUIVI = ["CREE_LE", "CREE_PAR", "MODIFIE_LE", "MODIFIE_PAR"];
 MGP.FORMULES_CATEGORIES = { NOM_COMPLET: '(($PARENT.NOM or "") + " › " + ($NOM or "")) if $PARENT else ($NOM or "")', RACINE: "$PARENT.id or $id" };
 MGP.SOCLE = { TECH: { cle: "TECH", id: "BIBLIOTHEQUE_MON_GRIST_PERSO_", label: "⚙️ BIBLIOTHÈQUE MON GRIST PERSO ⚡", motif: "BIBLIOTHEQUE_MON_GRIST_PERSO", description: "Table technique des widgets Mon Grist perso : réglages, tables installées, bonus installés et progression. Une ligne par réglage, à ne pas modifier à la main.", signature: ["CLE", "VALEUR"], colonnes: [{ id: "CLE", type: "Text", description: "Nom du réglage (par exemple TABLE:CADEAUX, INSTALL:conges ou cadeau.jour-01). Une seule ligne par nom." }, { id: "VALEUR", type: "Text", description: "Valeur du réglage, en texte ou en JSON : l’id réel d’une table, l’état d’une installation, une date..." }] }, PERSONNES: { cle: "PERSONNES", id: "Personnes", label: "👥 Personnes", nom: "Personnes", description: "Les personnes du foyer et les proches, partagées par tous les widgets (cadeaux, congés, santé...). Une ligne par personne.", signature: ["PRENOM", "FOYER", "TYPE"], colonnes: [{ id: "PRENOM", type: "Text", description: "Prénom ou surnom de la personne, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "TYPE", type: "Choice", choix: [["Adulte", "Pêche"], ["Enfant", "Lavande"], ["Proche", "Écume"], ["Ami", "Menthe"]], description: "Lien avec vous, en Choix unique : Adulte, Enfant, Proche ou Ami." }, { id: "FOYER", type: "Bool", description: "Coché si la personne vit sous votre toit (Booléen)." }, { id: "NAISSANCE", type: "Date", description: "Date de naissance, facultative : elle sert aux anniversaires et aux âges." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la personne dans les widgets." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la personne dans les widgets (Choix unique)." }, { id: "NOTES", type: "Text", description: "Notes libres : tailles, goûts, idées..." }], affichage: "PRENOM" }, CATEGORIES: { cle: "CATEGORIES", id: "Categories", label: "🏷️ Catégories", nom: "Catégories", description: "Catégories de dépenses et de documents, partagées par tous les widgets (Alimentation, Maison, Transport...). Une ligne par catégorie.", signature: ["NOM", "EMOJI", "COULEUR"], colonnes: [{ id: "NOM", type: "Text", description: "Nom de la catégorie, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "EMOJI", type: "Text", description: "Un emoji qui représente la catégorie." }, { id: "COULEUR", type: "Choice", choix: [["Écume", "Écume"], ["Flamant", "Flamant"], ["Citron", "Citron"], ["Pêche", "Pêche"], ["Lavande", "Lavande"], ["Menthe", "Menthe"]], description: "Couleur pastel de la catégorie dans les widgets (Choix unique)." }, { id: "PARENT", type: "Ref:@CATEGORIES", description: "Catégorie parente, facultative (Référence vers cette même table) : vide pour une catégorie principale, remplie pour une sous-catégorie (Transport pour Carburant). Deux niveaux au plus : une sous-catégorie n’a pas de sous-catégorie." }, { id: "NOM_COMPLET", type: "Text", formule: MGP.FORMULES_CATEGORIES.NOM_COMPLET, description: "Formule : le nom précédé de celui de la catégorie parente (« Transport › Carburant »), ou le nom seul pour une catégorie principale." }, { id: "RACINE", type: "Ref:@CATEGORIES", formule: MGP.FORMULES_CATEGORIES.RACINE, description: "Formule : la catégorie principale (Référence) : la parente pour une sous-catégorie, elle-même sinon. Les budgets et les bilans regroupent les sous-catégories avec elle." }], affichage: "NOM", graines: [["Alimentation", "🛒", "Menthe"], ["Maison", "🏠", "Pêche"], ["Transport", "🚗", "Écume"], ["Loisirs", "🎭", "Lavande"], ["Cadeaux", "🎁", "Flamant"], ["Abonnements", "📱", "Citron"], ["Santé", "🩺", "Écume"], ["Épargne", "🌱", "Menthe"]] }, DOCUMENTS: { cle: "DOCUMENTS", id: "Documents", label: "📎 Documents", nom: "Documents", description: "Fichiers rangés par les widgets : factures, garanties, contrats, photos. Une ligne par document, reliée aux autres tables par des colonnes de type Référence.", signature: ["FICHIER", "TITRE"], colonnes: [{ id: "TITRE", type: "Text", description: "Nom du document, affiché par les colonnes de type Référence qui pointent vers cette table." }, { id: "FICHIER", type: "Attachments", description: "Le fichier lui-même (Pièce jointe) : il compte dans la taille du document Grist." }, { id: "TYPE", type: "Choice", choix: [["Facture", "Citron"], ["Garantie", "Menthe"], ["Contrat", "Lavande"], ["Photo", "Flamant"], ["Autre", "Écume"]], description: "Nature du document, en Choix unique : Facture, Garantie, Contrat, Photo... Certains widgets ajoutent leurs choix." }, { id: "PERSONNE", type: "Ref:@PERSONNES", description: "Personne concernée (Référence vers Personnes), facultative." }, { id: "CATEGORIE", type: "Ref:@CATEGORIES", description: "Catégorie du document (Référence vers Catégories), facultative." }, { id: "DATE_DOC", type: "Date", description: "Date du document (date de la facture, du contrat...)." }, { id: "NOTES", type: "Text", description: "Notes libres sur le document." }], affichage: "TITRE" } };
 MGP.ORDRE_SOCLE = ["TECH", "PERSONNES", "CATEGORIES", "DOCUMENTS"];
-MGP.g.ACCENTS = { ACHETE: "ACHETÉ", AGE: "ÂGE", ANNEE: "ANNÉE", APPORTE: "APPORTÉ", APRES: "APRÈS", ARRETE: "ARRÊTÉ", ARRIVEE: "ARRIVÉE", ASSIGNE: "ASSIGNÉ", CATEGORIE: "CATÉGORIE", CATEGORIES: "CATÉGORIES", CLE: "CLÉ", CLOTURE: "CLÔTURE", COCHE: "COCHÉ", COMPETENCE: "COMPÉTENCE", COUT: "COÛT", CREDIT: "CRÉDIT", CREDITS: "CRÉDITS", CREE: "CRÉÉ", DEBALLES: "DÉBALLÉS", DEBIT: "DÉBIT", DEBITE: "DÉBITÉ", DEBUT: "DÉBUT", DECALAGE: "DÉCALAGE", DECALER: "DÉCALER", DECOMPTE: "DÉCOMPTE", DELAI: "DÉLAI", DEMENAGEUR: "DÉMÉNAGEUR", DEMENAGEMENT: "DÉMÉNAGEMENT", DEPART: "DÉPART", DEPENSE: "DÉPENSE", DEPENSES: "DÉPENSES", DEPOT: "DÉPÔT", DERNIERE: "DERNIÈRE", DETAIL: "DÉTAIL", DIFFERE: "DIFFÉRÉ", DUREE: "DURÉE", ECART: "ÉCART", ECHEANCE: "ÉCHÉANCE", ECHEANCES: "ÉCHÉANCES", ECOULE: "ÉCOULÉ", EMPRUNTE: "EMPRUNTÉ", ENERGIE: "ÉNERGIE", ENGAGE: "ENGAGÉ", ENTREE: "ENTRÉE", EPARGNE: "ÉPARGNE", EQUIPEMENT: "ÉQUIPEMENT", ESPECE: "ESPÈCE", ESTIMEE: "ESTIMÉE", ETABLISSEMENT: "ÉTABLISSEMENT", ETAGE: "ÉTAGE", ETAPE: "ÉTAPE", ETAPES: "ÉTAPES", ETAT: "ÉTAT", ETIQUETTE: "ÉTIQUETTE", ETOILES: "ÉTOILES", EVENEMENT: "ÉVÉNEMENT", EXPIRE: "EXPIRÉ", FACTUREE: "FACTURÉE", FREQUENCE: "FRÉQUENCE", IDEE: "IDÉE", INTERETS: "INTÉRÊTS", INVITE: "INVITÉ", INVITES: "INVITÉS", LIBELLE: "LIBELLÉ", LIE: "LIÉ", LIQUIDITE: "LIQUIDITÉ", MEDECIN: "MÉDECIN", METIER: "MÉTIER", MODELE: "MODÈLE", MODIFIE: "MODIFIÉ", NUMERO: "NUMÉRO", OCCUPEES: "OCCUPÉES", OPERATION: "OPÉRATION", OPERATIONS: "OPÉRATIONS", PASSE: "PASSÉ", PAYE: "PAYÉ", PAYEES: "PAYÉES", PERCU: "PERÇU", PERIODE: "PÉRIODE", PERIODICITE: "PÉRIODICITÉ", PIECE: "PIÈCE", PIECES: "PIÈCES", POINTE: "POINTÉ", PREAVIS: "PRÉAVIS", PRECEDENT: "PRÉCÉDENT", PREFIXE: "PRÉFIXE", PRELEVEMENT: "PRÉLÈVEMENT", PREMIERE: "PREMIÈRE", PRENOM: "PRÉNOM", PREPARER: "PRÉPARER", PRESENTS: "PRÉSENTS", PRET: "PRÊT", PRETE: "PRÊTE", PRETEUR: "PRÊTEUR", PRETS: "PRÊTS", PREVENU: "PRÉVENU", PREVU: "PRÉVU", PREVUE: "PRÉVUE", PREVUES: "PRÉVUES", PRIORITE: "PRIORITÉ", PROJETE: "PROJETÉ", PROPRIETAIRES: "PROPRIÉTAIRES", QTE: "QTÉ", QUANTITE: "QUANTITÉ", RECIT: "RÉCIT", RECURRENCE: "RÉCURRENCE", RECURRENCES: "RÉCURRENCES", REFERENCE: "RÉFÉRENCE", REGIMES: "RÉGIMES", REGLE: "RÈGLE", REGLES: "RÈGLES", REGULARISATION: "RÉGULARISATION", RELEVE: "RELEVÉ", RELIE: "RELIÉ", REMBOURSE: "REMBOURSÉ", REPONSE: "RÉPONSE", REPONSES: "RÉPONSES", RESA: "RÉSA", RESERVE: "RÉSERVÉ", RESERVER: "RÉSERVER", RESERVOIR: "RÉSERVOIR", RESILIATION: "RÉSILIATION", RETRO: "RÉTRO", REVISE: "RÉVISÉ", REVISION: "RÉVISION", SECU: "SÉCU", SERIE: "SÉRIE", SPECIALITE: "SPÉCIALITÉ", TACHE: "TÂCHE", TACHES: "TÂCHES", TEL: "TÉL", TELEPHONE: "TÉLÉPHONE", THEME: "THÈME", UNITE: "UNITÉ", VEHICULE: "VÉHICULE", VERSE: "VERSÉ", ELECTRICITE: "ÉLECTRICITÉ" };
+MGP.g.ACCENTS = { ACHETE: "ACHETÉ", AGE: "ÂGE", ANNEE: "ANNÉE", APPORTE: "APPORTÉ", APRES: "APRÈS", ARRETE: "ARRÊTÉ", ARRIVEE: "ARRIVÉE", ASSIGNE: "ASSIGNÉ", CATEGORIE: "CATÉGORIE", CATEGORIES: "CATÉGORIES", CLE: "CLÉ", CLOTURE: "CLÔTURE", COCHE: "COCHÉ", COMPETENCE: "COMPÉTENCE", COUT: "COÛT", CREDIT: "CRÉDIT", CREDITS: "CRÉDITS", CREE: "CRÉÉ", DEBALLES: "DÉBALLÉS", DEBIT: "DÉBIT", DEBITE: "DÉBITÉ", DEBUT: "DÉBUT", DECALAGE: "DÉCALAGE", DECALER: "DÉCALER", DECOMPTE: "DÉCOMPTE", DELAI: "DÉLAI", DEMENAGEUR: "DÉMÉNAGEUR", DEMENAGEMENT: "DÉMÉNAGEMENT", DEPART: "DÉPART", DEPENSE: "DÉPENSE", DEPENSES: "DÉPENSES", DEPOT: "DÉPÔT", DERNIERE: "DERNIÈRE", DETAIL: "DÉTAIL", DIFFERE: "DIFFÉRÉ", DUREE: "DURÉE", ECART: "ÉCART", ECHEANCE: "ÉCHÉANCE", ECHEANCES: "ÉCHÉANCES", ECOULE: "ÉCOULÉ", EMPRUNTE: "EMPRUNTÉ", ENERGIE: "ÉNERGIE", ENGAGE: "ENGAGÉ", ENTREE: "ENTRÉE", EPARGNE: "ÉPARGNE", EQUIPEMENT: "ÉQUIPEMENT", ESPECE: "ESPÈCE", ESTIME: "ESTIMÉ", ESTIMEE: "ESTIMÉE", ETABLISSEMENT: "ÉTABLISSEMENT", ETAGE: "ÉTAGE", ETAPE: "ÉTAPE", ETAPES: "ÉTAPES", ETAT: "ÉTAT", ETIQUETTE: "ÉTIQUETTE", ETOILES: "ÉTOILES", EVENEMENT: "ÉVÉNEMENT", EXPIRE: "EXPIRÉ", FACTUREE: "FACTURÉE", FREQUENCE: "FRÉQUENCE", IDEE: "IDÉE", INTERETS: "INTÉRÊTS", INVITE: "INVITÉ", INVITES: "INVITÉS", LIBELLE: "LIBELLÉ", LIE: "LIÉ", LIQUIDITE: "LIQUIDITÉ", MEDECIN: "MÉDECIN", METIER: "MÉTIER", MODELE: "MODÈLE", MODIFIE: "MODIFIÉ", NUMERO: "NUMÉRO", OCCUPEES: "OCCUPÉES", OPERATION: "OPÉRATION", OPERATIONS: "OPÉRATIONS", PASSE: "PASSÉ", PAYE: "PAYÉ", PAYEES: "PAYÉES", PERCU: "PERÇU", PERIODE: "PÉRIODE", PERIODICITE: "PÉRIODICITÉ", PIECE: "PIÈCE", PIECES: "PIÈCES", POINTE: "POINTÉ", PREAVIS: "PRÉAVIS", PRECEDENT: "PRÉCÉDENT", PREFIXE: "PRÉFIXE", PRELEVEMENT: "PRÉLÈVEMENT", PREMIERE: "PREMIÈRE", PRENOM: "PRÉNOM", PREPARER: "PRÉPARER", PRESENTS: "PRÉSENTS", PRET: "PRÊT", PRETE: "PRÊTE", PRETEUR: "PRÊTEUR", PRETS: "PRÊTS", PREVENU: "PRÉVENU", PREVU: "PRÉVU", PREVUE: "PRÉVUE", PREVUES: "PRÉVUES", PRIORITE: "PRIORITÉ", PROJETE: "PROJETÉ", PROPRIETAIRES: "PROPRIÉTAIRES", QTE: "QTÉ", QUANTITE: "QUANTITÉ", RECIT: "RÉCIT", RECURRENCE: "RÉCURRENCE", RECURRENCES: "RÉCURRENCES", REFERENCE: "RÉFÉRENCE", REGIMES: "RÉGIMES", REGLE: "RÈGLE", REGLES: "RÈGLES", REGULARISATION: "RÉGULARISATION", RELEVE: "RELEVÉ", RELIE: "RELIÉ", REMBOURSE: "REMBOURSÉ", REPONSE: "RÉPONSE", REPONSES: "RÉPONSES", RESA: "RÉSA", RESERVE: "RÉSERVÉ", RESERVER: "RÉSERVER", RESERVOIR: "RÉSERVOIR", RESILIATION: "RÉSILIATION", RETRO: "RÉTRO", REVISE: "RÉVISÉ", REVISION: "RÉVISION", SECU: "SÉCU", SERIE: "SÉRIE", SPECIALITE: "SPÉCIALITÉ", TACHE: "TÂCHE", TACHES: "TÂCHES", TEL: "TÉL", TELEPHONE: "TÉLÉPHONE", THEME: "THÈME", UNITE: "UNITÉ", VEHICULE: "VÉHICULE", VERSE: "VERSÉ", ELECTRICITE: "ÉLECTRICITÉ" };
 MGP.g.LIBELLES = { PARENT: "CATÉGORIE PARENTE" };
 MGP.g.libelleColonne = function(id) {
   if (MGP.g.LIBELLES[id]) {
@@ -6548,7 +6549,7 @@ MGP.parcours = MGP.parcours || {};
   };
 })(MGP.parcours);
 MGP.parcours.CONTENU = { "carte": 13, "id": "patrimoine", "titre": "Graphiques", "competence": "graphiques", "surprise": { "genre": "widget", "nom": "Mon patrimoine", "widget": "patrimoine", "texte": "Tous vos comptes et biens réunis, leur répartition et leur évolution, mois après mois." }, "widget": "patrimoine", "niveau": "pratique", "niveauNom": "Pratique", "contrat": { "note": "Tables du widget Mon patrimoine (src/widgets/patrimoine) : la mission construit Avoirs et un graphique ; le widget l’adopte (MGP.parcours.adopter) puis le complète. Signature : NOM, TYPE, MONTANT.", "tables": [{ "id": "Avoirs", "colonnes": { "NOM": "Text", "TYPE": "Choice (Compte courant, Épargne, Placement, Immobilier, Autre)", "MONTANT": "Numeric" } }], "vues": [{ "table": "Avoirs", "genre": "chart" }] }, "objectif": "Faire parler vos chiffres avec un graphique.", "durees": { "lecon": 10, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "Une vue Graphique", "paragraphes": ["Un graphique est une vue comme une autre : **Ajouter une vue à la page**, **Graphique**, puis la table. Dans le panneau de droite, on choisit le **Type de graphique** (Graphique en barres, Diagramme circulaire, Graphique en courbes...), l'**Axe horizontal** et la ou les **Séries**."] }, { "titre": "Grouper avant de dessiner", "paragraphes": ["Pour un total par catégorie, le plus propre est de dessiner une **table récapitulative**, groupée par cette catégorie (carte 17) ; le graphique additionne aussi les valeurs identiques de l'axe horizontal."] }, { "titre": "Un graphique qui suit la sélection", "paragraphes": ["Relié à un tableau par « Sélectionner par » (carte 10), le graphique montre la ligne choisie : l'évolution d'un seul compte, par exemple."] }], "mission": { "titre": "Votre patrimoine en un coup d’œil", "intro": "Le cœur du widget Mon patrimoine : vos avoirs et leur répartition dessinée.", "etapes": ["Créez une table **Avoirs** avec NOM (Texte), TYPE (Choix unique : Compte courant, Épargne, Placement, Immobilier, Autre) et MONTANT (Numérique).", "Ajoutez au moins trois avoirs.", "Ajoutez une vue **Graphique** de la table Avoirs : **Ajouter** > **Ajouter une vue à la page** > **Graphique** > Avoirs > **Ajouter à la Page**. Dans le panneau de droite, choisissez par exemple **Diagramme circulaire**, TYPE en **Axe horizontal** et MONTANT en **Séries**."], "verifications": [{ "type": "table", "table": "Avoirs" }, { "type": "choix", "table": "Avoirs", "colonne": "TYPE", "choix": ["Compte courant", "Épargne", "Placement", "Immobilier", "Autre"] }, { "type": "colonne", "table": "Avoirs", "colonne": "MONTANT", "typeCol": ["Numeric", "Int"] }, { "type": "lignes", "table": "Avoirs", "min": 3 }, { "type": "vue", "table": "Avoirs", "genre": "chart" }] }, "questions": [{ "type": "paires", "competence": "graphiques", "question": "Reliez chaque question au graphique qui y répond le mieux.", "paires": [["Quelle part pour chaque type ?", "Diagramme circulaire"], ["Comment ça évolue mois après mois ?", "Graphique en courbes"], ["Quel poste est le plus gros ?", "Graphique en barres"]], "explication": "Une part : diagramme circulaire ; une évolution : graphique en courbes ; une comparaison : graphique en barres.", "aide": "https://support.getgrist.com/widget-chart/" }, { "type": "qcm", "competence": "graphiques", "question": "Comment ajoute-t-on un graphique ?", "choix": ["Ajouter > Ajouter une vue à la page > Graphique", "Clic droit sur une colonne > Graphique", "En exportant vers un tableur"], "bonne": 0, "explication": "Un graphique est une vue de page, branché sur une table.", "aide": "https://support.getgrist.com/widget-chart/" }, { "type": "qcm", "competence": "graphiques", "question": "Vous modifiez un MONTANT dans la table. Le graphique ?", "choix": ["Se met à jour tout seul", "Doit être recréé", "Se met à jour le lendemain"], "bonne": 0, "explication": "Le graphique lit la table en direct.", "aide": "https://support.getgrist.com/widget-chart/" }, { "type": "multiple", "competence": "graphiques", "question": "Que règle-t-on dans le panneau d'un graphique ?", "choix": ["Le type de graphique", "L'axe horizontal", "Les séries", "Le type des colonnes de la table"], "bonnes": [0, 1, 2], "explication": "Le type des colonnes se règle dans le panneau de chaque colonne, pas du graphique.", "aide": "https://support.getgrist.com/widget-chart/" }, { "type": "ordre", "competence": "graphiques", "question": "Remettez dans l'ordre pour un diagramme circulaire par type.", "etapes": ["Ajouter une vue Graphique de la table Avoirs", "Choisir le type Diagramme circulaire", "Mettre TYPE en axe horizontal", "Mettre MONTANT en série"], "explication": "Le graphique additionne les montants qui partagent le même TYPE.", "aide": "https://support.getgrist.com/widget-chart/" }] };
-var PAT = { WIDGET: "patrimoine", NOM: "Mon patrimoine", NOM_PAGE: "💰 Mon patrimoine", d: { avoirs: [], dettes: [], valeurs: [], bilans: [], personnes: [], comptes: null, comptesId: null, logements: null, logementsId: null, colCapital: null }, onglet: "bord", releve: { mois: null }, fa: { a: null }, fd: { d: null } };
+var PAT = { WIDGET: "patrimoine", NOM: "Mon patrimoine", NOM_PAGE: "💰 Mon patrimoine", d: { avoirs: [], dettes: [], valeurs: [], bilans: [], personnes: [], comptes: null, comptesId: null, logements: null, logementsId: null, colCapital: null, credits: null, creditsId: null, creditsImmo: null }, onglet: "bord", releve: { mois: null }, fa: { a: null }, fd: { d: null } };
 PAT.TYPES = [["Compte courant", "Écume", "🏦", "#16B378"], ["Épargne", "Menthe", "🌱", "#007548"], ["Placement", "Lavande", "📈", "#3B82F6"], ["Immobilier", "Pêche", "🏠", "#F9AE41"], ["Autre", "Citron", "💎", "#929299"]];
 PAT.HEX_DETTE = "#D0021B";
 PAT.CATEGORIES = [["Compte courant", "Compte courant", "Disponible", "🏦"], ["Livret réglementé", "Épargne", "Disponible", "🌱"], ["Épargne logement", "Épargne", "Bloqué", "🏡"], ["Assurance-vie", "Placement", "Sous quelques jours", "🛡️"], ["PEA ou compte-titres", "Placement", "Sous quelques jours", "📈"], ["Épargne retraite", "Placement", "Bloqué", "🧓"], ["Résidence principale", "Immobilier", "Bloqué", "🏠"], ["Autre bien immobilier", "Immobilier", "Bloqué", "🏘️"], ["Véhicule", "Autre", "Sous quelques jours", "🚗"], ["Objet de valeur", "Autre", "Sous quelques jours", "💍"], ["Autre", "Autre", "Sous quelques jours", "💎"]];
@@ -6568,7 +6569,7 @@ PAT.DEFS = { AVOIRS: { cle: "AVOIRS", id: "Avoirs", label: "💰 Avoirs", nom: "
   })[0] || PAT.TYPES[4])[1]];
 }), description: "Catégorie précise, en Choix unique (Livret réglementé, Assurance-vie...)." }, { id: "PROPRIETAIRES", type: "RefList:@PERSONNES", description: "Propriétaires de l’avoir (Référence multiple vers Personnes)." }, { id: "ETABLISSEMENT", type: "Text", description: "Banque ou établissement qui le tient." }, { id: "DATE_VALEUR", type: "Date", description: "Date de la dernière mise à jour de la valeur." }, { id: "COMPTE_ID", type: "Int", description: "Numéro de ligne du compte associé (table Comptes), écrit par le widget." }, { id: "CLOTURE", type: "Bool", description: "Coché pour un avoir clôturé ou vendu." }, { id: "NOTES", type: "Text", description: "Notes libres." }, { id: "MONTANT_AN_PASSE", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.MONTANT_AN_PASSE, description: "Formule : valeur enregistrée il y a 12 mois dans Valeurs du patrimoine." }, { id: "VARIATION_AN", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.VARIATION_AN_A, description: "Formule : MONTANT moins MONTANT_AN_PASSE, l’évolution sur un an." }, { id: "PART", type: "Numeric", formule: PAT.FORMULES.PART, description: "Formule : part de l’avoir dans le total des avoirs non clôturés, en pourcentage." }, { id: "PAR_PERSONNE", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.PAR_PERSONNE, description: "Formule : MONTANT divisé par le nombre de propriétaires." }] }, DETTES_PATRIMOINE: { cle: "DETTES_PATRIMOINE", id: "Dettes", label: "🧾 Dettes", nom: "Dettes", signature: ["NOM", "TYPE", "CAPITAL_RESTANT"], affichage: "NOM", description: "Ce que vous devez : une ligne par crédit ou dette, avec le capital restant, ce qu’il reste à payer et ce qui a été remboursé en un an.", colonnes: [{ id: "NOM", type: "Text", description: "Nom de la dette." }, { id: "TYPE", type: "Choice", choix: PAT.TYPES_DETTE.map(function(t) {
   return [t[0], t[1]];
-}), description: "Genre de dette, en Choix unique (Crédit immobilier, Prêt entre proches...)." }, { id: "CAPITAL_RESTANT", type: "Numeric", options: PAT.EURO, description: "Capital restant dû, en euros." }, { id: "MENSUALITE", type: "Numeric", options: PAT.EURO, description: "Mensualité, en euros." }, { id: "TAUX", type: "Numeric", options: { decimals: 2, maxDecimals: 2 }, description: "Taux annuel, en pourcentage." }, { id: "FIN", type: "Date", description: "Date de la dernière échéance." }, { id: "PRETEUR", type: "Text", description: "Banque ou personne qui a prêté." }, { id: "PERSONNES", type: "RefList:@PERSONNES", description: "Personnes qui doivent cette somme (Référence multiple vers Personnes)." }, { id: "AVOIR", type: "Ref:@AVOIRS", description: "Avoir financé par cette dette, par exemple le logement (Référence vers Avoirs)." }, { id: "DATE_VALEUR", type: "Date", description: "Date de la dernière mise à jour du capital restant." }, { id: "LOGEMENT_ID", type: "Int", description: "Numéro de ligne du crédit associé dans Crédits immobiliers, écrit par le widget." }, { id: "CLOTURE", type: "Bool", description: "Coché pour une dette remboursée." }, { id: "NOTES", type: "Text", description: "Notes libres." }, { id: "MOIS_RESTANTS", type: "Int", formule: PAT.FORMULES.MOIS_RESTANTS, description: "Formule : nombre de mois d’ici FIN, avec DATEDIF." }, { id: "RESTE_A_PAYER", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.RESTE_A_PAYER, description: "Formule : MENSUALITE multipliée par MOIS_RESTANTS." }, { id: "CAPITAL_AN_PASSE", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.CAPITAL_AN_PASSE, description: "Formule : capital restant enregistré il y a 12 mois dans Valeurs du patrimoine." }, { id: "REMBOURSE_AN", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.REMBOURSE_AN, description: "Formule : CAPITAL_AN_PASSE moins CAPITAL_RESTANT, ce qui a été remboursé en un an." }] }, VALEURS_PATRIMOINE: { cle: "VALEURS_PATRIMOINE", id: "Valeurs_du_patrimoine", label: "📅 Valeurs du patrimoine", nom: "Valeurs du patrimoine", signature: ["MOIS", "MONTANT", "AVOIR", "DETTE"], description: "L’historique : une ligne par avoir ou dette et par mois, avec sa valeur ce mois-là.", colonnes: [{ id: "MOIS", type: "Date", description: "Premier jour du mois de la valeur." }, { id: "AVOIR", type: "Ref:@AVOIRS", description: "Avoir concerné (Référence vers Avoirs), vide pour une dette." }, { id: "DETTE", type: "Ref:@DETTES_PATRIMOINE", description: "Dette concernée (Référence vers Dettes), vide pour un avoir." }, { id: "MONTANT", type: "Numeric", options: PAT.EURO, description: "Valeur ce mois-là, en euros." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "LIBELLE", type: "Text", formule: PAT.FORMULES.LIBELLE, description: "Formule : nom de l’avoir ou de la dette." }, { id: "TYPE", type: "Text", formule: PAT.FORMULES.TYPE_V, description: "Formule : type de l’avoir, ou Dette." }, { id: "VALEUR_NETTE", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.VALEUR_NETTE, description: "Formule : MONTANT en positif pour un avoir, en négatif pour une dette." }, { id: "ANNEE", type: "Int", formule: PAT.FORMULES.ANNEE, description: "Formule : année de MOIS." }] }, BILANS_PATRIMOINE: { cle: "BILANS_PATRIMOINE", id: "Bilans_du_patrimoine", label: "📈 Bilans du patrimoine", nom: "Bilans du patrimoine", signature: ["MOIS", "AVOIRS", "DETTES", "NET"], description: "Les bilans mensuels : une ligne par mois, avec le total des avoirs, des dettes et le patrimoine net.", colonnes: [{ id: "MOIS", type: "Date", description: "Premier jour du mois du bilan." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "AVOIRS", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.AVOIRS_B, description: "Formule : somme des valeurs des avoirs ce mois-là." }, { id: "DETTES", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.DETTES_B, description: "Formule : somme des valeurs des dettes ce mois-là." }, { id: "NET", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.NET, description: "Formule : AVOIRS moins DETTES, le patrimoine net." }, { id: "NET_AN_PASSE", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.NET_AN_PASSE, description: "Formule : patrimoine net du bilan 12 mois plus tôt." }, { id: "VARIATION_AN", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.VARIATION_AN_B, description: "Formule : NET moins NET_AN_PASSE, l’évolution sur un an." }, { id: "MOIS_TEXTE", type: "Text", formule: PAT.FORMULES.MOIS_TEXTE, description: "Formule : MOIS au format AAAA-MM." }] } };
+}), description: "Genre de dette, en Choix unique (Crédit immobilier, Prêt entre proches...)." }, { id: "CAPITAL_RESTANT", type: "Numeric", options: PAT.EURO, description: "Capital restant dû, en euros." }, { id: "MENSUALITE", type: "Numeric", options: PAT.EURO, description: "Mensualité, en euros." }, { id: "TAUX", type: "Numeric", options: { decimals: 2, maxDecimals: 2 }, description: "Taux annuel, en pourcentage." }, { id: "FIN", type: "Date", description: "Date de la dernière échéance." }, { id: "PRETEUR", type: "Text", description: "Banque ou personne qui a prêté." }, { id: "PERSONNES", type: "RefList:@PERSONNES", description: "Personnes qui doivent cette somme (Référence multiple vers Personnes)." }, { id: "AVOIR", type: "Ref:@AVOIRS", description: "Avoir financé par cette dette, par exemple le logement (Référence vers Avoirs)." }, { id: "DATE_VALEUR", type: "Date", description: "Date de la dernière mise à jour du capital restant." }, { id: "LOGEMENT_ID", type: "Int", description: "Numéro de ligne du logement associé dans Logements (Coût de mon logement), écrit par le widget ; son capital restant y est lu." }, { id: "CLOTURE", type: "Bool", description: "Coché pour une dette remboursée." }, { id: "NOTES", type: "Text", description: "Notes libres." }, { id: "CREDIT_ID", type: "Int", description: "Numéro de ligne du crédit associé dans Crédits (Mes comptes), écrit par le widget ; son capital restant y est lu. 0 sinon." }, { id: "CAPITAL_ESTIME", type: "Text", description: "Vide quand CAPITAL_RESTANT est un vrai capital (tapé ou lu) ; sinon la façon dont il a été estimé à partir de Mes comptes (montant emprunté × part des échéances restantes, ou reste à payer, intérêts compris)." }, { id: "MOIS_RESTANTS", type: "Int", formule: PAT.FORMULES.MOIS_RESTANTS, description: "Formule : nombre de mois d’ici FIN, avec DATEDIF." }, { id: "RESTE_A_PAYER", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.RESTE_A_PAYER, description: "Formule : MENSUALITE multipliée par MOIS_RESTANTS." }, { id: "CAPITAL_AN_PASSE", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.CAPITAL_AN_PASSE, description: "Formule : capital restant enregistré il y a 12 mois dans Valeurs du patrimoine." }, { id: "REMBOURSE_AN", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.REMBOURSE_AN, description: "Formule : CAPITAL_AN_PASSE moins CAPITAL_RESTANT, ce qui a été remboursé en un an." }] }, VALEURS_PATRIMOINE: { cle: "VALEURS_PATRIMOINE", id: "Valeurs_du_patrimoine", label: "📅 Valeurs du patrimoine", nom: "Valeurs du patrimoine", signature: ["MOIS", "MONTANT", "AVOIR", "DETTE"], description: "L’historique : une ligne par avoir ou dette et par mois, avec sa valeur ce mois-là.", colonnes: [{ id: "MOIS", type: "Date", description: "Premier jour du mois de la valeur." }, { id: "AVOIR", type: "Ref:@AVOIRS", description: "Avoir concerné (Référence vers Avoirs), vide pour une dette." }, { id: "DETTE", type: "Ref:@DETTES_PATRIMOINE", description: "Dette concernée (Référence vers Dettes), vide pour un avoir." }, { id: "MONTANT", type: "Numeric", options: PAT.EURO, description: "Valeur ce mois-là, en euros." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "LIBELLE", type: "Text", formule: PAT.FORMULES.LIBELLE, description: "Formule : nom de l’avoir ou de la dette." }, { id: "TYPE", type: "Text", formule: PAT.FORMULES.TYPE_V, description: "Formule : type de l’avoir, ou Dette." }, { id: "VALEUR_NETTE", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.VALEUR_NETTE, description: "Formule : MONTANT en positif pour un avoir, en négatif pour une dette." }, { id: "ANNEE", type: "Int", formule: PAT.FORMULES.ANNEE, description: "Formule : année de MOIS." }] }, BILANS_PATRIMOINE: { cle: "BILANS_PATRIMOINE", id: "Bilans_du_patrimoine", label: "📈 Bilans du patrimoine", nom: "Bilans du patrimoine", signature: ["MOIS", "AVOIRS", "DETTES", "NET"], description: "Les bilans mensuels : une ligne par mois, avec le total des avoirs, des dettes et le patrimoine net.", colonnes: [{ id: "MOIS", type: "Date", description: "Premier jour du mois du bilan." }, { id: "NOTE", type: "Text", description: "Note libre." }, { id: "AVOIRS", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.AVOIRS_B, description: "Formule : somme des valeurs des avoirs ce mois-là." }, { id: "DETTES", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.DETTES_B, description: "Formule : somme des valeurs des dettes ce mois-là." }, { id: "NET", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.NET, description: "Formule : AVOIRS moins DETTES, le patrimoine net." }, { id: "NET_AN_PASSE", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.NET_AN_PASSE, description: "Formule : patrimoine net du bilan 12 mois plus tôt." }, { id: "VARIATION_AN", type: "Numeric", options: PAT.EURO, formule: PAT.FORMULES.VARIATION_AN_B, description: "Formule : NET moins NET_AN_PASSE, l’évolution sur un an." }, { id: "MOIS_TEXTE", type: "Text", formule: PAT.FORMULES.MOIS_TEXTE, description: "Formule : MOIS au format AAAA-MM." }] } };
 PAT.ORDRE = ["AVOIRS", "DETTES_PATRIMOINE", "VALEURS_PATRIMOINE", "BILANS_PATRIMOINE"];
 PAT.defsWidget = function() {
   return PAT.ORDRE.map(function(c) {
@@ -6576,6 +6577,12 @@ PAT.defsWidget = function() {
   });
 };
 PAT.DEF_COMPTES = { cle: "COMPTES", id: "Comptes", signature: ["NOM", "SOLDE_INITIAL", "BANQUE"] };
+PAT.DEF_CREDITS = { cle: "CREDITS", id: "Credits", signature: ["NOM", "MENSUALITE", "DATE_PREMIERE_ECHEANCE"] };
+PAT.DEF_CREDITS_IMMO = { cle: "CREDITS_IMMO", id: "Credits_immobiliers", signature: ["LOGEMENT", "MONTANT_EMPRUNTE", "TAUX"] };
+PAT.TYPE_CREDIT = { "Immobilier": "Crédit immobilier", "Auto": "Crédit à la consommation", "Travaux": "Crédit à la consommation", "Prêt personnel": "Crédit à la consommation", "Renouvelable": "Crédit à la consommation", "Autre": "Autre" };
+PAT.EST_EMPRUNT = "estimation : montant emprunté × part des échéances restantes";
+PAT.EST_RESTE = "reste à payer, intérêts compris";
+PAT.COLS_V11 = ["CREDIT_ID", "CAPITAL_ESTIME"];
 PAT.TYPE_COMPTE = { "Courant": ["Compte courant", "Compte courant"], "Épargne": ["Épargne", "Livret réglementé"], "Carte": ["Compte courant", "Compte courant"], "Espèces": ["Autre", "Autre"] };
 PAT.nombre = function(v) {
   return typeof v === "number" && !isNaN(v) ? v : 0;
@@ -6731,6 +6738,35 @@ PAT.charger = async function() {
       logSecurite("lecture des logements", e);
     }
   }
+  var tcr = MGP.g.trouver(PAT.DEF_CREDITS), tci = MGP.g.trouver(PAT.DEF_CREDITS_IMMO);
+  PAT.d.creditsId = tcr ? tcr.tableId : null;
+  PAT.d.credits = null;
+  PAT.d.creditsImmo = null;
+  if (tcr) {
+    try {
+      PAT.d.credits = await MGP.g.lire(tcr.tableId);
+    } catch (e) {
+      logSecurite("lecture des crédits", e);
+    }
+  }
+  if (tci) {
+    try {
+      PAT.d.creditsImmo = await MGP.g.lire(tci.tableId);
+    } catch (e) {
+      logSecurite("lecture des crédits immobiliers", e);
+    }
+  }
+};
+PAT.aJour = function() {
+  var t = MGP.g.trouver(PAT.DEFS.DETTES_PATRIMOINE), ids = t ? MGP.g.colonnesDe(t.id).map(function(c) {
+    return c.colId;
+  }) : [];
+  return PAT.COLS_V11.every(function(c) {
+    return ids.indexOf(c) >= 0;
+  });
+};
+PAT.mettreANiveau = async function() {
+  await MGP.g.creerTables(MGP.g.defsSocle().concat(PAT.defsWidget()));
 };
 PAT.trouverLogements = function() {
   var tables = MGP.g.meta.tables.filter(MGP.g.estTableUtilisateur), reg = MGP.g.registre.LOGEMENTS;
@@ -6798,6 +6834,35 @@ PAT.capitalLogement = function(l) {
   var v = l[PAT.d.colCapital];
   return typeof v === "number" && !isNaN(v) ? Math.round(v * 100) / 100 : null;
 };
+PAT.creditDe = function(x) {
+  return x && Number(x.CREDIT_ID) && PAT.d.credits ? PAT.parId(PAT.d.credits, x.CREDIT_ID) : null;
+};
+PAT.arr = function(n) {
+  return Math.round(n * 100) / 100;
+};
+PAT.valeurCredit = function(c) {
+  if (!c) {
+    return null;
+  }
+  if (PAT.nombre(c.CAPITAL_RESTANT_SAISI) > 0) {
+    return { v: PAT.arr(c.CAPITAL_RESTANT_SAISI), est: "" };
+  }
+  var nb = PAT.nombre(c.NB_TOTAL), rest = PAT.nombre(c.ECHEANCES_RESTANTES);
+  if (PAT.nombre(c.MONTANT_EMPRUNTE) > 0 && nb > 0) {
+    return { v: PAT.arr(c.MONTANT_EMPRUNTE * rest / nb), est: PAT.EST_EMPRUNT };
+  }
+  if (PAT.nombre(c.RESTE_A_PAYER) > 0) {
+    return { v: PAT.arr(c.RESTE_A_PAYER), est: PAT.EST_RESTE };
+  }
+  return null;
+};
+PAT.logementDuCredit = function(c) {
+  if (!c || !Number(c.SOURCE_LOGEMENT_ID) || !PAT.d.creditsImmo) {
+    return 0;
+  }
+  var x = PAT.parId(PAT.d.creditsImmo, c.SOURCE_LOGEMENT_ID);
+  return x ? Number(x.LOGEMENT) || 0 : 0;
+};
 PAT.source = function(genre, x) {
   if (genre === "avoir") {
     var c = PAT.compteDe(x);
@@ -6810,7 +6875,11 @@ PAT.source = function(genre, x) {
   if (cap !== null) {
     return { v: cap, de: "Coût de mon logement" };
   }
-  return { v: typeof x.CAPITAL_RESTANT === "number" ? x.CAPITAL_RESTANT : null, de: "" };
+  var vc = PAT.valeurCredit(PAT.creditDe(x));
+  if (vc) {
+    return { v: vc.v, de: "Mes comptes", est: vc.est };
+  }
+  return { v: typeof x.CAPITAL_RESTANT === "number" ? x.CAPITAL_RESTANT : null, de: "", est: x.CAPITAL_ESTIME || "" };
 };
 PAT.actionsValeurs = function(liste, mois) {
   var a = [], tv = MGP.g.idTable("VALEURS_PATRIMOINE"), cur = PAT.moisCourant(), auj = PAT.aujSec();
@@ -6832,7 +6901,12 @@ PAT.actionsValeurs = function(liste, mois) {
       var champV = x.genre === "avoir" ? "MONTANT" : "CAPITAL_RESTANT", maj = {};
       maj[champV] = x.montant;
       maj.DATE_VALEUR = mois === cur ? auj : mois;
-      if (ligne[champV] !== maj[champV] || ligne.DATE_VALEUR !== maj.DATE_VALEUR) {
+      if (x.genre === "dette" && (x.estime !== void 0 || ligne.CAPITAL_ESTIME && x.montant !== ligne.CAPITAL_RESTANT)) {
+        maj.CAPITAL_ESTIME = x.estime || "";
+      }
+      if (Object.keys(maj).some(function(k) {
+        return (ligne[k] || "") !== maj[k] && ligne[k] !== maj[k];
+      })) {
         a.push(["UpdateRecord", MGP.g.idTable(x.genre === "avoir" ? "AVOIRS" : "DETTES_PATRIMOINE"), x.id, maj]);
       }
     }
@@ -7233,9 +7307,9 @@ PAT.rendreAvoirs = function() {
   }).join("") + '<div class="ligne-p" style="font-weight:800"><span class="x" style="flex:1">Total des avoirs</span><span class="m" id="total-avoirs">' + echapperHTML(PAT.euros(tot)) + '</span></div><div style="display:flex;justify-content:flex-end;margin-top:10px"><button type="button" class="btn sec" data-nouvel-avoir>+ Avoir</button></div></section>' + (clos.length ? '<details class="plus carte" style="margin-top:14px"><summary>' + echapperHTML(clos.length + " avoir" + (clos.length > 1 ? "s" : "") + " que vous n’avez plus") + "</summary>" + clos.map(PAT.ligneAvoir).join("") + "</details>" : "");
 };
 PAT.ligneDette = function(x) {
-  var ti = PAT.detteInfo(x.TYPE), a = Number(x.AVOIR) ? PAT.avoir(x.AVOIR) : null, lo = PAT.logementDe(x);
-  var mini = [x.TYPE, x.PRETEUR, PAT.prenoms(x.PERSONNES), x.MENSUALITE ? PAT.euros(x.MENSUALITE) + " par mois" : "", x.MOIS_RESTANTS ? x.MOIS_RESTANTS + " mois restants" : "", lo ? "🔗 Coût de mon logement" : ""].filter(Boolean).join(" · ");
-  return '<div class="ligne-p" data-dette="' + x.id + '"><span class="em ' + MGP.classeCouleur(ti[1]) + '" aria-hidden="true">' + echapperHTML(ti[2]) + '</span><button type="button" class="x" data-modifier-dette="' + x.id + '"><b>' + echapperHTML(x.NOM || "Sans nom") + "</b>" + (mini ? '<br><span class="mini">' + echapperHTML(mini) + "</span>" : "") + (a ? '<br><span class="mini">' + echapperHTML("finance " + (a.NOM || "") + " : valeur nette " + PAT.euros(PAT.nombre(a.MONTANT) - PAT.nombre(x.CAPITAL_RESTANT))) + "</span>" : "") + '</button><span class="droite">' + (typeof x.REMBOURSE_AN === "number" && x.REMBOURSE_AN > 0 ? '<span class="pil t-menthe" title="remboursé sur un an">' + echapperHTML(PAT.euros(x.REMBOURSE_AN) + " remboursés en un an") + "</span>" : "") + '<span class="m">' + echapperHTML(typeof x.CAPITAL_RESTANT === "number" ? PAT.euros(x.CAPITAL_RESTANT) : "-") + "</span></span></div>";
+  var ti = PAT.detteInfo(x.TYPE), a = Number(x.AVOIR) ? PAT.avoir(x.AVOIR) : null, lo = PAT.logementDe(x), cr = PAT.creditDe(x);
+  var mini = [x.TYPE, x.PRETEUR, PAT.prenoms(x.PERSONNES), x.MENSUALITE ? PAT.euros(x.MENSUALITE) + " par mois" : "", x.MOIS_RESTANTS ? x.MOIS_RESTANTS + " mois restants" : "", lo ? "🔗 Coût de mon logement" : "", cr ? "🔗 Mes comptes" : ""].filter(Boolean).join(" · ");
+  return '<div class="ligne-p" data-dette="' + x.id + '"><span class="em ' + MGP.classeCouleur(ti[1]) + '" aria-hidden="true">' + echapperHTML(ti[2]) + '</span><button type="button" class="x" data-modifier-dette="' + x.id + '"><b>' + echapperHTML(x.NOM || "Sans nom") + "</b>" + (mini ? '<br><span class="mini">' + echapperHTML(mini) + "</span>" : "") + (a ? '<br><span class="mini">' + echapperHTML("finance " + (a.NOM || "") + " : valeur nette " + PAT.euros(PAT.nombre(a.MONTANT) - PAT.nombre(x.CAPITAL_RESTANT))) + "</span>" : "") + (x.CAPITAL_ESTIME ? '<br><span class="mini est-dette" style="color:var(--peche-f)">' + echapperHTML("≈ capital estimé (" + x.CAPITAL_ESTIME + ") : tapez le vrai capital restant dû dès que vous l’avez") + "</span>" : "") + '</button><span class="droite">' + (x.CAPITAL_ESTIME ? '<span class="pil t-citron">estimation</span>' : "") + (typeof x.REMBOURSE_AN === "number" && x.REMBOURSE_AN > 0 ? '<span class="pil t-menthe" title="remboursé sur un an">' + echapperHTML(PAT.euros(x.REMBOURSE_AN) + " remboursés en un an") + "</span>" : "") + '<span class="m">' + echapperHTML(typeof x.CAPITAL_RESTANT === "number" ? (x.CAPITAL_ESTIME ? "≈ " : "") + PAT.euros(x.CAPITAL_RESTANT) : "-") + "</span></span></div>";
 };
 PAT.rendreDettes = function() {
   var z = document.getElementById("zone-dettes"), act = PAT.dettesActives(), clos = PAT.d.dettes.filter(function(x) {
@@ -7251,11 +7325,11 @@ PAT.rendreDettes = function() {
 PAT.preRemplir = function(genre, x, mois) {
   var s = PAT.valeurMois(genre, x.id, mois);
   if (s) {
-    return { v: s.MONTANT, fait: true, de: "" };
+    return { v: s.MONTANT, fait: true, de: "", est: genre === "dette" && mois === PAT.moisCourant() && x.CAPITAL_ESTIME && s.MONTANT === x.CAPITAL_RESTANT ? x.CAPITAL_ESTIME : "" };
   }
   if (mois === PAT.moisCourant()) {
     var src = PAT.source(genre, x);
-    return { v: src.v, fait: false, de: src.de };
+    return { v: src.v, fait: false, de: src.de, est: src.est || "" };
   }
   var avant = PAT.valeursDe(genre, x.id).filter(function(v) {
     return v.MOIS < mois;
@@ -7280,7 +7354,7 @@ PAT.rendreReleve = function() {
   var ligne = function(genre, x) {
     var p = PAT.preRemplir(genre, x, m), id = "rv-" + (genre === "avoir" ? "a" : "d") + "-" + x.id;
     var emo = genre === "avoir" ? PAT.emojiAvoir(x) : PAT.detteInfo(x.TYPE)[2];
-    return '<div class="rv' + (p.fait ? " fait" : "") + '"><label for="' + id + '">' + echapperHTML(emo + " " + (x.NOM || "Sans nom")) + '</label><input type="text" id="' + id + '" inputmode="decimal" data-rv="' + genre + '" data-id="' + x.id + '" value="' + echapperHTML(PAT.versSaisie(p.v)) + '" autocomplete="off">' + (p.fait || p.de ? '<span class="aide">' + echapperHTML(p.fait ? "✓ déjà noté pour ce mois" : "lu dans " + p.de) + "</span>" : "") + "</div>";
+    return '<div class="rv' + (p.fait ? " fait" : "") + '"><label for="' + id + '">' + echapperHTML(emo + " " + (x.NOM || "Sans nom")) + '</label><input type="text" id="' + id + '" inputmode="decimal" data-rv="' + genre + '" data-id="' + x.id + '" value="' + echapperHTML(PAT.versSaisie(p.v)) + '"' + (p.est ? ' data-est="' + echapperHTML(p.est) + '" data-src="' + echapperHTML(String(p.v)) + '"' : "") + ' autocomplete="off">' + (p.fait || p.de || p.est ? '<span class="aide">' + echapperHTML(p.fait ? "✓ déjà noté pour ce mois" + (p.est ? " (" + p.est + ")" : "") : (p.de ? "lu dans " + p.de : "") + (p.est ? (p.de ? " : " : "") + p.est + ", à corriger si vous connaissez le vrai capital" : "")) + "</span>" : "") + "</div>";
   };
   var ser = PAT.serie().slice().reverse();
   z.innerHTML = '<div class="zones"><section class="carte" id="releve"><div class="releve-tete"><button type="button" class="btn-icone" data-mois="-1" aria-label="Mois précédent">‹</button><h2 id="releve-mois">' + echapperHTML(PAT.moisTexte(m)) + '</h2><button type="button" class="btn-icone" data-mois="1" aria-label="Mois suivant"' + (m >= cur ? " disabled" : "") + '>›</button></div><p class="mini">Les valeurs connues sont déjà là : corrigez seulement ce qui a changé. Une case vide n’est pas enregistrée.</p>' + (av.length ? '<h3 style="margin-top:12px;font-size:16px">💰 Avoirs</h3>' + av.map(function(a) {
@@ -7304,7 +7378,11 @@ PAT.lireReleve = function() {
       erreur = erreur || el;
       return;
     }
-    l.push({ genre: el.dataset.rv, id: Number(el.dataset.id), montant: v });
+    var x = { genre: el.dataset.rv, id: Number(el.dataset.id), montant: v };
+    if (el.dataset.est && v === Number(el.dataset.src)) {
+      x.estime = el.dataset.est;
+    }
+    l.push(x);
   });
   return { liste: l, erreur };
 };
@@ -7427,7 +7505,10 @@ PAT.rendreRepartition = function() {
   }).join("") + '<tr><th scope="row">Total</th><th></th><th>100 %</th><th>' + echapperHTML(PAT.euros(tot)) + "</th></tr></tbody></table></div></section></div>";
 };
 PAT.passerelles = function() {
-  var r = { nouveaux: [], ecarts: [], credits: [], ecartsCredit: [] };
+  var r = { nouveaux: [], ecarts: [], credits: [], ecartsCredit: [], creditsComptes: [], ecartsComptes: [] };
+  var logViaComptes = PAT.d.dettes.map(function(x) {
+    return PAT.logementDuCredit(PAT.creditDe(x));
+  }).filter(Boolean);
   if (PAT.d.comptes) {
     r.nouveaux = PAT.d.comptes.filter(function(c) {
       return !PAT.d.avoirs.some(function(a) {
@@ -7443,11 +7524,28 @@ PAT.passerelles = function() {
     r.credits = PAT.d.logements.filter(function(l) {
       return l.STATUT === "Propriétaire" && PAT.capitalLogement(l) > 0 && !PAT.d.dettes.some(function(x) {
         return Number(x.LOGEMENT_ID) === l.id;
-      });
+      }) && logViaComptes.indexOf(l.id) < 0;
     });
     r.ecartsCredit = PAT.dettesActives().filter(function(x) {
       var c = PAT.capitalLogement(PAT.logementDe(x));
       return c !== null && Math.abs(c - PAT.nombre(x.CAPITAL_RESTANT)) >= 0.01;
+    });
+  }
+  if (PAT.d.credits) {
+    r.creditsComptes = PAT.d.credits.filter(function(c) {
+      var lo = PAT.logementDuCredit(c), v = PAT.valeurCredit(c);
+      return !PAT.d.dettes.some(function(x) {
+        return Number(x.CREDIT_ID) === c.id;
+      }) && !(Number(c.SOURCE_DETTE_ID) && PAT.dette(c.SOURCE_DETTE_ID)) && !(lo && PAT.d.dettes.some(function(x) {
+        return Number(x.LOGEMENT_ID) === lo;
+      })) && v && v.v > 0;
+    });
+    r.ecartsComptes = PAT.dettesActives().filter(function(x) {
+      if (PAT.capitalLogement(PAT.logementDe(x)) !== null) {
+        return false;
+      }
+      var v = PAT.valeurCredit(PAT.creditDe(x));
+      return v && !(v.est && !x.CAPITAL_ESTIME) && (Math.abs(v.v - PAT.nombre(x.CAPITAL_RESTANT)) >= 0.01 || (v.est || "") !== (x.CAPITAL_ESTIME || ""));
     });
   }
   return r;
@@ -7474,6 +7572,18 @@ PAT.rendreBandeaux = function() {
   }
   if (p.ecartsCredit.length) {
     h += '<div class="passerelle t-peche" id="pass-capital"><span aria-hidden="true">🔄</span><span class="txt">Le capital restant a changé dans Coût de mon logement.</span><button type="button" class="btn sec" data-maj-credits>Mettre à jour</button></div>';
+  }
+  if (p.creditsComptes.length) {
+    var n = p.creditsComptes.length, un = n === 1;
+    h += '<div class="passerelle t-lavande" id="pass-credits-comptes"><span aria-hidden="true">🏦</span><span class="txt">' + echapperHTML("Mes comptes suit " + n + (un ? " crédit qui n’est pas" : " crédits qui ne sont pas") + " dans vos dettes : " + (un ? "l’ajouter ?" : "les ajouter ?")) + '<br><span class="mini">' + echapperHTML(p.creditsComptes.map(function(c) {
+      var v = PAT.valeurCredit(c);
+      return "« " + (c.NOM || "Crédit") + " » : " + (v.est ? "≈ " + PAT.euros(v.v) + " (" + v.est + ")" : PAT.euros(v.v) + " (capital restant saisi)");
+    }).join(" ; ")) + '</span></span><button type="button" class="btn sec" data-ajouter-credits-comptes>' + (un ? "L’ajouter" : "Les ajouter") + "</button></div>";
+  }
+  if (p.ecartsComptes.length) {
+    h += '<div class="passerelle t-peche" id="pass-capital-comptes"><span aria-hidden="true">🔄</span><span class="txt">' + echapperHTML("Le capital restant a changé dans Mes comptes (" + p.ecartsComptes.map(function(x) {
+      return x.NOM;
+    }).join(", ") + ").") + '</span><button type="button" class="btn sec" data-maj-credits-comptes>Mettre à jour</button></div>';
   }
   if (PAT.exemplesPresents()) {
     h += '<div class="bandeau t-citron" id="bandeau-exemples"><span aria-hidden="true">✨</span><span class="txt">Ce sont des exemples pour découvrir le widget : un foyer, cinq avoirs, deux dettes et deux ans de relevés. Quand vous êtes prêt, place à vos chiffres.</span><button type="button" class="btn sec" id="btn-sup-exemples">Supprimer les exemples</button></div>';
@@ -7542,6 +7652,63 @@ PAT.ajouterCredits = async function() {
   await PAT.ecrire(PAT.actionsValeurs(r.retValues[0].map(function(id) {
     return { genre: "dette", id, montant: PAT.dette(id).CAPITAL_RESTANT };
   }), PAT.moisCourant()), "Crédit ajouté : son capital est lu dans Coût de mon logement");
+};
+PAT.ajouterCreditsComptes = async function() {
+  var l = PAT.passerelles().creditsComptes;
+  if (!l.length) {
+    return;
+  }
+  var vals = l.map(PAT.valeurCredit), auj = PAT.aujSec();
+  var r = await MGP.g.actions([["BulkAddRecord", MGP.g.idTable("DETTES_PATRIMOINE"), l.map(function() {
+    return null;
+  }), { NOM: l.map(function(c) {
+    return c.NOM || "Crédit";
+  }), TYPE: l.map(function(c) {
+    return PAT.TYPE_CREDIT[c.TYPE] || "Autre";
+  }), CREDIT_ID: l.map(function(c) {
+    return c.id;
+  }), CAPITAL_RESTANT: vals.map(function(v) {
+    return v.v;
+  }), CAPITAL_ESTIME: vals.map(function(v) {
+    return v.est;
+  }), DATE_VALEUR: l.map(function() {
+    return auj;
+  }), MENSUALITE: l.map(function(c) {
+    return PAT.nombre(c.MENSUALITE) || null;
+  }), TAUX: l.map(function(c) {
+    return PAT.nombre(c.TAUX) || null;
+  }), FIN: l.map(function(c) {
+    return c.DATE_FIN || c.DATE_DERNIERE_ECHEANCE || null;
+  }) }]]);
+  var ids = r.retValues[0];
+  try {
+    var tc = MGP.g.tableParId(PAT.d.creditsId);
+    if (tc && MGP.g.colonnesDe(tc.id).some(function(c) {
+      return c.colId === "SOURCE_DETTE_ID";
+    })) {
+      await MGP.g.actions([["BulkUpdateRecord", PAT.d.creditsId, l.map(function(c) {
+        return c.id;
+      }), { SOURCE_DETTE_ID: ids }]]);
+    }
+  } catch (e) {
+    logSecurite("lien noté dans Mes comptes", e);
+  }
+  await PAT.charger();
+  var est = vals.filter(function(v) {
+    return v.est;
+  }).length;
+  await PAT.ecrire(PAT.actionsValeurs(ids.map(function(id, i) {
+    return { genre: "dette", id, montant: vals[i].v, estime: vals[i].est };
+  }), PAT.moisCourant()), ids.length + (ids.length > 1 ? " crédits ajoutés" : " crédit ajouté") + " depuis Mes comptes" + (est ? " (" + est + " capital estimé : à corriger dès que vous avez le vrai)" : ""));
+};
+PAT.majCreditsComptes = async function() {
+  var l = PAT.passerelles().ecartsComptes.map(function(x) {
+    var v = PAT.valeurCredit(PAT.creditDe(x));
+    return { genre: "dette", id: x.id, montant: v.v, estime: v.est };
+  });
+  if (l.length) {
+    await PAT.ecrire(PAT.actionsValeurs(l, PAT.moisCourant()), "Capital restant mis à jour depuis Mes comptes");
+  }
 };
 PAT.majCredits = async function() {
   var l = PAT.passerelles().ecartsCredit.map(function(x) {
@@ -7703,6 +7870,14 @@ PAT.ouvrirDette = function(x) {
       return '<option value="' + l.id + '"' + (x && Number(x.LOGEMENT_ID) === l.id ? " selected" : "") + ">" + echapperHTML(l.NOM || "Logement") + "</option>";
     }).join("");
   }
+  var cc = document.getElementById("de-credit-c");
+  cc.hidden = !PAT.d.credits;
+  if (!cc.hidden) {
+    document.getElementById("de-credit").innerHTML = '<option value="">Aucun</option>' + PAT.d.credits.map(function(c) {
+      return '<option value="' + c.id + '"' + (x && Number(x.CREDIT_ID) === c.id ? " selected" : "") + ">" + echapperHTML(c.NOM || "Crédit") + "</option>";
+    }).join("");
+  }
+  document.getElementById("de-capital-aide").textContent = x && x.CAPITAL_ESTIME ? "Ce capital est une estimation (" + x.CAPITAL_ESTIME + ") : remplacez-le par celui de votre banque, il ne sera plus écrasé par une estimation." : "Il figure sur le tableau d’amortissement ou dans l’espace de votre banque.";
   MGP.ouvrir(document.getElementById("dlg-dette"), "#de-nom");
 };
 PAT.enregistrerDette = async function() {
@@ -7728,7 +7903,9 @@ PAT.enregistrerDette = async function() {
     return;
   }
   var pers = PAT.valeursMulti("de-pers"), lo = document.getElementById("de-logement-c").hidden ? x ? x.LOGEMENT_ID || null : null : Number(document.getElementById("de-logement").value) || null;
-  var rec = { NOM: nom, TYPE: PAT.valeur("de-type") || "Autre", CAPITAL_RESTANT: cap, MENSUALITE: PAT.lire(document.getElementById("de-mens").value), TAUX: PAT.lire(document.getElementById("de-taux").value), FIN: MGP.isoVersSec(document.getElementById("de-fin").value), PRETEUR: document.getElementById("de-preteur").value.trim(), PERSONNES: pers.length ? ["L"].concat(pers) : null, AVOIR: Number(document.getElementById("de-avoir").value) || 0, LOGEMENT_ID: lo, NOTES: document.getElementById("de-notes").value.trim(), CLOTURE: x ? document.getElementById("de-clos").checked : false };
+  var cr = document.getElementById("de-credit-c").hidden ? x ? Number(x.CREDIT_ID) || 0 : 0 : Number(document.getElementById("de-credit").value) || 0;
+  var rec = { NOM: nom, TYPE: PAT.valeur("de-type") || "Autre", CAPITAL_RESTANT: cap, MENSUALITE: PAT.lire(document.getElementById("de-mens").value), TAUX: PAT.lire(document.getElementById("de-taux").value), FIN: MGP.isoVersSec(document.getElementById("de-fin").value), PRETEUR: document.getElementById("de-preteur").value.trim(), PERSONNES: pers.length ? ["L"].concat(pers) : null, AVOIR: Number(document.getElementById("de-avoir").value) || 0, LOGEMENT_ID: lo, CREDIT_ID: cr, NOTES: document.getElementById("de-notes").value.trim(), CLOTURE: x ? document.getElementById("de-clos").checked : false };
+  rec.CAPITAL_ESTIME = x && x.CAPITAL_ESTIME && cap === x.CAPITAL_RESTANT ? x.CAPITAL_ESTIME : "";
   var tid = MGP.g.idTable("DETTES_PATRIMOINE"), cur = PAT.moisCourant(), b = document.getElementById("de-ok");
   b.disabled = true;
   try {
@@ -7938,7 +8115,7 @@ PAT.rendreCapot = async function() {
 PAT.exemple = function(ctx, cle, f) {
   return (ctx.donnees[cle] || []).filter(f).slice(-1)[0] || null;
 };
-PAT.DICO = { tables: { AVOIRS: { emoji: "💰", nom: "Avoirs", couleur: "Menthe", role: "Ce que vous possédez, avec sa valeur d’aujourd’hui (MONTANT), son type, sa liquidité et ses propriétaires. La part de chacun et l’écart sur un an sont des formules." }, VALEURS_PATRIMOINE: { emoji: "📅", nom: "Valeurs du patrimoine", couleur: "Écume", role: "Une ligne par avoir ou dette et par mois : l’historique qui fait les graphiques. Le relevé du mois y écrit." }, BILANS_PATRIMOINE: { emoji: "📈", nom: "Bilans du patrimoine", couleur: "Lavande", role: "Une ligne par mois. Les totaux (avoirs, dettes, net) sont des formules qui additionnent les valeurs du mois : la table rêvée pour un graphique en courbe." }, DETTES_PATRIMOINE: { emoji: "🧾", nom: "Dettes", couleur: "Flamant", role: "Ce que vous devez : le capital restant dû, la mensualité, la fin. Une dette peut financer un avoir (le crédit de la maison)." }, PERSONNES: { emoji: "👥", nom: "Personnes", couleur: "Pêche", role: "La table commune à tous vos widgets : les propriétaires des avoirs et ceux qui remboursent les dettes." } }, champs: { AVOIRS: { NOM: "le nom de l’avoir.", TYPE: "un **Choix unique** : Compte courant, Épargne, Placement, Immobilier, Autre. Il fait les parts du diagramme circulaire.", MONTANT: "la valeur d’aujourd’hui, mise à jour par le relevé du mois.", LIQUIDITE: "un **Choix unique** : Disponible, Sous quelques jours, Bloqué.", CATEGORIE: "un **Choix unique** plus fin : Livret réglementé, Assurance-vie...", PROPRIETAIRES: "une **Référence multiple** vers Personnes.", ETABLISSEMENT: "la banque, l’assureur ou le lieu.", DATE_VALEUR: "le jour de la dernière valeur.", COMPTE_ID: "le numéro de la ligne liée dans Mes comptes (le solde y est lu).", CLOTURE: "coché quand vous ne l’avez plus.", NOTES: "vos notes.", MONTANT_AN_PASSE: "calculé : la valeur notée il y a 12 mois.", VARIATION_AN: "calculé : l’écart avec il y a 12 mois.", PART: "calculé : sa part dans le total, en %.", PAR_PERSONNE: "calculé : la valeur divisée entre ses propriétaires." }, VALEURS_PATRIMOINE: { MOIS: "le premier jour du mois relevé.", AVOIR: "une **Référence** vers Avoirs (ou vide pour une dette).", DETTE: "une **Référence** vers Dettes (ou vide pour un avoir).", MONTANT: "la valeur ce mois-là.", NOTE: "une note.", LIBELLE: "calculé : le nom de l’avoir ou de la dette.", TYPE: "calculé : le type de l’avoir, ou « Dette ».", VALEUR_NETTE: "calculé : le montant, en négatif pour une dette.", ANNEE: "calculé : l’année, pour grouper." }, BILANS_PATRIMOINE: { MOIS: "le premier jour du mois.", NOTE: "une note sur le mois.", AVOIRS: "calculé : le total des avoirs du mois.", DETTES: "calculé : le total des dettes du mois.", NET: "calculé : avoirs moins dettes.", NET_AN_PASSE: "calculé : le net du même mois l’an dernier.", VARIATION_AN: "calculé : l’écart sur un an.", MOIS_TEXTE: "calculé : « 2026-11 », pour un axe lisible." }, DETTES_PATRIMOINE: { NOM: "le nom de la dette.", TYPE: "un **Choix unique** : Crédit immobilier, Crédit à la consommation, Prêt étudiant...", CAPITAL_RESTANT: "ce qu’il reste à rembourser, hors intérêts.", MENSUALITE: "la mensualité.", TAUX: "le taux, en %.", FIN: "la dernière échéance.", PRETEUR: "qui a prêté.", PERSONNES: "une **Référence multiple** vers Personnes.", AVOIR: "une **Référence** vers l’avoir financé.", DATE_VALEUR: "le jour de la dernière valeur.", LOGEMENT_ID: "le numéro de la ligne liée dans Coût de mon logement.", CLOTURE: "coché quand elle est remboursée.", NOTES: "vos notes.", MOIS_RESTANTS: "calculé : les mois jusqu’à la fin.", RESTE_A_PAYER: "calculé : mensualité fois mois restants (une estimation).", CAPITAL_AN_PASSE: "calculé : le capital noté il y a 12 mois.", REMBOURSE_AN: "calculé : le capital remboursé en un an." } }, formules: [{ cle: "BILANS_PATRIMOINE", col: "AVOIRS", defaut: PAT.FORMULES.AVOIRS_B, intro: "Le total des avoirs d’un mois : on cherche toutes les valeurs du même mois, on garde celles d’un avoir, on additionne. C’est cette table de totaux que le graphique en courbe dessine.", jetons: [["lookupRecords(MOIS=$MOIS)", "toutes les lignes de Valeurs du même mois."], ["for v in ... if v.AVOIR", "pour chaque valeur, seulement celles d’un avoir."], ["SUM(...)", "additionner."]], exemple: function(ctx) {
+PAT.DICO = { tables: { AVOIRS: { emoji: "💰", nom: "Avoirs", couleur: "Menthe", role: "Ce que vous possédez, avec sa valeur d’aujourd’hui (MONTANT), son type, sa liquidité et ses propriétaires. La part de chacun et l’écart sur un an sont des formules." }, VALEURS_PATRIMOINE: { emoji: "📅", nom: "Valeurs du patrimoine", couleur: "Écume", role: "Une ligne par avoir ou dette et par mois : l’historique qui fait les graphiques. Le relevé du mois y écrit." }, BILANS_PATRIMOINE: { emoji: "📈", nom: "Bilans du patrimoine", couleur: "Lavande", role: "Une ligne par mois. Les totaux (avoirs, dettes, net) sont des formules qui additionnent les valeurs du mois : la table rêvée pour un graphique en courbe." }, DETTES_PATRIMOINE: { emoji: "🧾", nom: "Dettes", couleur: "Flamant", role: "Ce que vous devez : le capital restant dû, la mensualité, la fin. Une dette peut financer un avoir (le crédit de la maison)." }, PERSONNES: { emoji: "👥", nom: "Personnes", couleur: "Pêche", role: "La table commune à tous vos widgets : les propriétaires des avoirs et ceux qui remboursent les dettes." } }, champs: { AVOIRS: { NOM: "le nom de l’avoir.", TYPE: "un **Choix unique** : Compte courant, Épargne, Placement, Immobilier, Autre. Il fait les parts du diagramme circulaire.", MONTANT: "la valeur d’aujourd’hui, mise à jour par le relevé du mois.", LIQUIDITE: "un **Choix unique** : Disponible, Sous quelques jours, Bloqué.", CATEGORIE: "un **Choix unique** plus fin : Livret réglementé, Assurance-vie...", PROPRIETAIRES: "une **Référence multiple** vers Personnes.", ETABLISSEMENT: "la banque, l’assureur ou le lieu.", DATE_VALEUR: "le jour de la dernière valeur.", COMPTE_ID: "le numéro de la ligne liée dans Mes comptes (le solde y est lu).", CLOTURE: "coché quand vous ne l’avez plus.", NOTES: "vos notes.", MONTANT_AN_PASSE: "calculé : la valeur notée il y a 12 mois.", VARIATION_AN: "calculé : l’écart avec il y a 12 mois.", PART: "calculé : sa part dans le total, en %.", PAR_PERSONNE: "calculé : la valeur divisée entre ses propriétaires." }, VALEURS_PATRIMOINE: { MOIS: "le premier jour du mois relevé.", AVOIR: "une **Référence** vers Avoirs (ou vide pour une dette).", DETTE: "une **Référence** vers Dettes (ou vide pour un avoir).", MONTANT: "la valeur ce mois-là.", NOTE: "une note.", LIBELLE: "calculé : le nom de l’avoir ou de la dette.", TYPE: "calculé : le type de l’avoir, ou « Dette ».", VALEUR_NETTE: "calculé : le montant, en négatif pour une dette.", ANNEE: "calculé : l’année, pour grouper." }, BILANS_PATRIMOINE: { MOIS: "le premier jour du mois.", NOTE: "une note sur le mois.", AVOIRS: "calculé : le total des avoirs du mois.", DETTES: "calculé : le total des dettes du mois.", NET: "calculé : avoirs moins dettes.", NET_AN_PASSE: "calculé : le net du même mois l’an dernier.", VARIATION_AN: "calculé : l’écart sur un an.", MOIS_TEXTE: "calculé : « 2026-11 », pour un axe lisible." }, DETTES_PATRIMOINE: { NOM: "le nom de la dette.", TYPE: "un **Choix unique** : Crédit immobilier, Crédit à la consommation, Prêt étudiant...", CAPITAL_RESTANT: "ce qu’il reste à rembourser, hors intérêts.", MENSUALITE: "la mensualité.", TAUX: "le taux, en %.", FIN: "la dernière échéance.", PRETEUR: "qui a prêté.", PERSONNES: "une **Référence multiple** vers Personnes.", AVOIR: "une **Référence** vers l’avoir financé.", DATE_VALEUR: "le jour de la dernière valeur.", LOGEMENT_ID: "le numéro de la ligne liée dans Coût de mon logement.", CLOTURE: "coché quand elle est remboursée.", NOTES: "vos notes.", CREDIT_ID: "le numéro de la ligne liée dans les Crédits de Mes comptes (son capital y est lu).", CAPITAL_ESTIME: "vide pour un vrai capital ; sinon comment il a été estimé depuis Mes comptes (montant emprunté × part des échéances restantes, ou reste à payer, intérêts compris).", MOIS_RESTANTS: "calculé : les mois jusqu’à la fin.", RESTE_A_PAYER: "calculé : mensualité fois mois restants (une estimation).", CAPITAL_AN_PASSE: "calculé : le capital noté il y a 12 mois.", REMBOURSE_AN: "calculé : le capital remboursé en un an." } }, formules: [{ cle: "BILANS_PATRIMOINE", col: "AVOIRS", defaut: PAT.FORMULES.AVOIRS_B, intro: "Le total des avoirs d’un mois : on cherche toutes les valeurs du même mois, on garde celles d’un avoir, on additionne. C’est cette table de totaux que le graphique en courbe dessine.", jetons: [["lookupRecords(MOIS=$MOIS)", "toutes les lignes de Valeurs du même mois."], ["for v in ... if v.AVOIR", "pour chaque valeur, seulement celles d’un avoir."], ["SUM(...)", "additionner."]], exemple: function(ctx) {
   var b = PAT.exemple(ctx, "BILANS_PATRIMOINE", function(x) {
     return typeof x.AVOIRS === "number";
   });
@@ -7963,7 +8140,7 @@ PAT.DICO = { tables: { AVOIRS: { emoji: "💰", nom: "Avoirs", couleur: "Menthe"
     return Number(x.DETTE) && typeof x.VALEUR_NETTE === "number";
   });
   return v ? (v.LIBELLE || "Une dette") + " : VALEUR_NETTE vaut **" + PAT.euros(v.VALEUR_NETTE) + "**" : "";
-} }], extras: [{ titre: "Pourquoi une table de bilans ?", paragraphes: ["Un graphique de Grist dessine les lignes d’une table. Pour une courbe du patrimoine net, il faut une ligne par mois : c’est la table Bilans, dont les totaux sont des formules. Une **table récapitulative** de Valeurs groupée par MOIS ferait le même travail (carte 17)."] }, { titre: "Le relevé du mois", paragraphes: ["Chaque valeur notée devient une ligne de Valeurs (le mois, l’avoir ou la dette, le montant). La valeur d’aujourd’hui (MONTANT) suit la plus récente. Rien n’est jamais effacé : un avoir vendu se coche « Je ne l’ai plus » et garde son histoire."] }] };
+} }], extras: [{ titre: "Pourquoi une table de bilans ?", paragraphes: ["Un graphique de Grist dessine les lignes d’une table. Pour une courbe du patrimoine net, il faut une ligne par mois : c’est la table Bilans, dont les totaux sont des formules. Une **table récapitulative** de Valeurs groupée par MOIS ferait le même travail (carte 17)."] }, { titre: "Les passerelles, sans doublon", paragraphes: ["Une dette peut être liée à un logement de Coût de mon logement (LOGEMENT_ID) ou à un crédit de Mes comptes (CREDIT_ID) : seul le numéro de la ligne est gardé, le capital est relu à chaque ouverture et un bandeau propose la mise à jour quand il change.", "Mes comptes ne connaît pas toujours le capital restant dû. S’il n’a pas été tapé (CAPITAL_RESTANT_SAISI), le widget l’estime : le montant emprunté multiplié par la part des échéances qui restent, ou à défaut le reste à payer, **intérêts compris** (donc plus que le vrai capital). CAPITAL_ESTIME le dit, et le widget l’affiche avec « ≈ ». Une estimation ne remplace jamais un capital que vous avez tapé.", "Un crédit de Mes comptes repris de Coût de mon logement (SOURCE_LOGEMENT_ID) n’est pas proposé si son logement est déjà dans vos dettes, et inversement : rien n’est compté deux fois."] }, { titre: "Le relevé du mois", paragraphes: ["Chaque valeur notée devient une ligne de Valeurs (le mois, l’avoir ou la dette, le montant). La valeur d’aujourd’hui (MONTANT) suit la plus récente. Rien n’est jamais effacé : un avoir vendu se coche « Je ne l’ai plus » et garde son histoire."] }] };
 PAT.montrer = function(ecran) {
   if (ecran === "app") {
     setTimeout(MGP.g.afficherIndicePage, 0);
@@ -8127,6 +8304,14 @@ PAT.brancher = function() {
       PAT.majCredits();
       return;
     }
+    if (ev.target.closest("[data-ajouter-credits-comptes]")) {
+      PAT.ajouterCreditsComptes();
+      return;
+    }
+    if (ev.target.closest("[data-maj-credits-comptes]")) {
+      PAT.majCreditsComptes();
+      return;
+    }
     if (b = ev.target.closest("#av-pers [data-val], #de-pers [data-val]")) {
       b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") === "true" ? "false" : "true");
       return;
@@ -8215,6 +8400,16 @@ PAT.reprendre = async function() {
       }
     } else if (etat && etat.etat === "ok" && PAT.installe()) {
       await MGP.g.marquerCadeau();
+      if (!PAT.aJour() && MGP.g.acces === "full") {
+        montrerLoader("Mise à niveau de Mon patrimoine...");
+        try {
+          await PAT.mettreANiveau();
+          MGP.annoncer("Mon patrimoine est mis à jour (lien avec les crédits de Mes comptes) : rien n’a été perdu.", "ok");
+        } catch (e) {
+          logSecurite("mise à niveau", e);
+          MGP.annoncer("Mise à niveau incomplète : ouvrez Sous le capot, « Vérifier l’installation ».", "err");
+        }
+      }
       await PAT.charger();
       PAT.montrer("app");
       PAT.rendre();
