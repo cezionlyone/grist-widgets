@@ -4799,8 +4799,13 @@ MGP.parcours = MGP.parcours || {};
     var vues = m.vues.map(function(v) {
       return v.id;
     });
+    var ids = [t.id].concat(m.tables.filter(function(x) {
+      return x.summarySourceTable === t.id;
+    }).map(function(x) {
+      return x.id;
+    }));
     var ok = m.sections.some(function(s) {
-      return s.tableRef === t.id && s.parentKey === c.genre && s.parentId && vues.indexOf(s.parentId) >= 0;
+      return ids.indexOf(s.tableRef) >= 0 && s.parentKey === c.genre && s.parentId && vues.indexOf(s.parentId) >= 0;
     });
     return ok ? { ok: true } : { ok: false, detail: "Aucune vue « " + (P.GENRES_VUE[c.genre] || c.genre) + " » de « " + c.table + " » dans les pages." };
   }, indices: function(c) {
