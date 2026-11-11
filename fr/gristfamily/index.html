@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.0.0
+  Version     : 1.1.0
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -51,6 +51,7 @@
 
   HISTORIQUE
   ----------
+  1.1.0 - 11/11/2026 - madeXcé - Une seule table par défaut (parents et conjoints en colonnes) ; 💞 UNIONS ⚡ facultative ; étape 1 réécrite.
   1.0.0 - 11/11/2026 - madeXcé - Première version.
 
   DÉPENDANCES
@@ -508,7 +509,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.0.0</span>
+    <span class="bandeau__version">v1.1.0</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -544,7 +545,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.0.0';
+var VERSION = '1.1.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -1401,7 +1402,12 @@ function affichageParDefaut() {
 function completerConfig(cfg) {
   cfg.tables = cfg.tables || {};
   cfg.cols = cfg.cols || idsParDefaut(CHAMPS_PERS);
-  if (!cfg.cols.parents) { cfg.cols.parents = COL_PARENTS.id; }
+  /* Deux façons de relier les personnes : « colonnes » (une seule table,
+     colonnes PARENT 1, PARENT 2, CONJOINTS) ou « unions » (table des
+     unions, pour noter mariages et dates). Les arbres créés avant ce
+     choix sont en « unions ». */
+  cfg.liens = cfg.liens || 'unions';
+  if (cfg.liens === 'unions' && !cfg.cols.parents) { cfg.cols.parents = COL_PARENTS.id; }
   cfg.colsUnions = cfg.colsUnions || idsParDefaut(CHAMPS_UNIONS);
   cfg.colsCousins = cfg.colsCousins || idsParDefaut(CHAMPS_COUSINS);
   var def = affichageParDefaut();
@@ -1421,7 +1427,26 @@ function verifierTablesConfig(cfg) {
     var relu = tid.toUpperCase().replace(/_+$/, '') === base.replace(/_+$/, '') ? trouverTableModele(base) : null;
     cfg.tables[k] = relu || null;
   });
-  return !!(cfg.tables.pers && cfg.tables.unions);
+  return !!(cfg.tables.pers && (cfg.liens === 'colonnes' || cfg.tables.unions));
+}
+
+function modeColonnes() { return !!(etat.config && etat.config.liens === 'colonnes'); }
+function idsRefListe(v) { v = valeurCellule(v); if (Array.isArray(v) && v[0] === 'L') { return v.slice(1).filter(function (x) { return typeof x === 'number' && x > 0; }); } return typeof v === 'number' && v > 0 ? [v] : []; }
+
+/* Mode « colonnes » : les unions n'existent pas en table, elles sont
+   reconstituées en mémoire à partir des parents et des conjoints. */
+function unionVirtuelle(d, a, b) {
+  var x = Math.min(a || 0, b || 0);
+  var y = Math.max(a || 0, b || 0);
+  if (!x && y) { x = y; y = 0; }
+  var cle = x + '-' + y;
+  if (d.cleUnion[cle]) { return d.cleUnion[cle]; }
+  d.prochainId = (d.prochainId || 0) + 1;
+  var id = d.prochainId;
+  d.cleUnion[cle] = id;
+  d.U[id] = { id: id, a: x, b: y, type: '', debut: null, fin: null, separes: false, notes: '', virtuelle: true };
+  [x, y].forEach(function (z) { if (z) { (d.unionsDe[z] = d.unionsDe[z] || []).push(id); } });
+  return id;
 }
 
 /* === SECTION : LECTURE DES DONNÉES === */
@@ -1433,7 +1458,8 @@ function nombreCellule(v) { v = valeurCellule(v); return typeof v === 'number' &
 async function chargerDonnees() {
   var cfg = etat.config;
   var dp = await lireTable(cfg.tables.pers);
-  var du = await lireTable(cfg.tables.unions);
+  var colonnes = cfg.liens === 'colonnes';
+  var du = colonnes ? {} : await lireTable(cfg.tables.unions);
   var dc = null;
   if (cfg.affichage.cousins && cfg.tables.cousins && etat.meta.tables[cfg.tables.cousins]) {
     try { dc = await lireTable(cfg.tables.cousins); } catch (e) { logSecurite('WARNING', 'Cousins ADN illisibles', e); }
@@ -1456,7 +1482,14 @@ async function chargerDonnees() {
       else if (ch.genre === 'pj') { p[ch.cle] = idsPJ(v); }
       else { p[ch.cle] = texteCellule(v).trim(); }
     });
-    p.parents = idRef(col(dp, cols.parents, i));
+    if (colonnes) {
+      p.p1 = idRef(col(dp, cols.parent1, i));
+      p.p2 = idRef(col(dp, cols.parent2, i));
+      p.conjoints = idsRefListe(col(dp, cols.conjoints, i));
+      p.parents = 0;
+    } else {
+      p.parents = idRef(col(dp, cols.parents, i));
+    }
     p.creeLe = nombreCellule(col(dp, 'CREE_LE', i));
     p.creePar = texteCellule(col(dp, 'CREE_PAR', i));
     p.modifieLe = nombreCellule(col(dp, 'MODIFIE_LE', i));
@@ -1476,6 +1509,21 @@ async function chargerDonnees() {
   }
   var unionsDe = {};
   var enfantsDe = {};
+  if (colonnes) {
+    var dv = { U: U, unionsDe: unionsDe, cleUnion: {}, prochainId: 0 };
+    ordre.forEach(function (pid) {
+      var pp = P[pid];
+      var a1 = P[pp.p1] ? pp.p1 : 0;
+      var a2 = P[pp.p2] && pp.p2 !== a1 ? pp.p2 : 0;
+      if (a1 || a2) { pp.parents = unionVirtuelle(dv, a1, a2); }
+    });
+    ordre.forEach(function (pid) {
+      P[pid].conjoints.forEach(function (c) { if (P[c] && c !== pid) { unionVirtuelle(dv, pid, c); } });
+    });
+    etat.cleUnion = dv.cleUnion;
+    etat.prochainUnion = dv.prochainId;
+    unionsDe = {};
+  }
   Object.keys(U).forEach(function (k) {
     var un = U[k];
     [un.a, un.b].forEach(function (x) { if (x) { (unionsDe[x] = unionsDe[x] || []).push(un.id); } });
@@ -1728,6 +1776,14 @@ function versColonnesPers(v) {
   var cols = etat.config.cols;
   var o = {};
   Object.keys(v).forEach(function (cle) {
+    if (cle === 'parents' && modeColonnes()) {
+      var uv = unionDe(v.parents);
+      var e1 = cols.parent1 && infoColonne(etat.config.tables.pers, cols.parent1);
+      var e2 = cols.parent2 && infoColonne(etat.config.tables.pers, cols.parent2);
+      if (e1) { o[cols.parent1] = uv ? uv.a || 0 : 0; }
+      if (e2) { o[cols.parent2] = uv ? uv.b || 0 : 0; }
+      return;
+    }
     var colId = cle === 'parents' ? cols.parents : cols[cle];
     if (!colId || !infoColonne(etat.config.tables.pers, colId)) { return; }
     var ch = infoChampPers(cle);
@@ -1763,12 +1819,41 @@ async function modifierPersonne(id, v) {
   await agir([['UpdateRecord', etat.config.tables.pers, id, versColonnesPers(v)]]);
 }
 
+/* Mode « colonnes » : une union avec deux personnes s'écrit dans la
+   colonne CONJOINTS ; une union sans conjoint n'existe qu'en mémoire,
+   le temps de rattacher un enfant. */
 async function ajouterUnion(v) {
+  if (modeColonnes()) {
+    var d = etat.donnees;
+    var dv = { U: d.U, unionsDe: d.unionsDe, cleUnion: etat.cleUnion || {}, prochainId: etat.prochainUnion || 0 };
+    var id = unionVirtuelle(dv, v.a || 0, v.b || 0);
+    etat.cleUnion = dv.cleUnion; etat.prochainUnion = dv.prochainId;
+    if (v.a && v.b) { await lierConjoints(v.a, v.b, true); }
+    return id;
+  }
   var r = await agir([['AddRecord', etat.config.tables.unions, null, versColonnesUnion(v)]]);
   return r && r.retValues ? r.retValues[0] : null;
 }
 
+async function lierConjoints(a, b, lier) {
+  var cid = etat.config.cols.conjoints;
+  if (!cid || !infoColonne(etat.config.tables.pers, cid)) { return; }
+  var p = pers(a);
+  var l = (p.conjoints || []).filter(function (x) { return x !== b; });
+  if (lier) { l.push(b); }
+  var actions = [];
+  var x = {}; x[cid] = ['L'].concat(l); actions.push(['UpdateRecord', etat.config.tables.pers, a, x]);
+  if (!lier) {
+    var q = pers(b);
+    if (q && (q.conjoints || []).indexOf(a) !== -1) {
+      var y = {}; y[cid] = ['L'].concat(q.conjoints.filter(function (z) { return z !== a; })); actions.push(['UpdateRecord', etat.config.tables.pers, b, y]);
+    }
+  }
+  await agir(actions);
+}
+
 async function modifierUnion(id, v) {
+  if (modeColonnes()) { return; }
   await agir([['UpdateRecord', etat.config.tables.unions, id, versColonnesUnion(v)]]);
 }
 
@@ -2936,7 +3021,7 @@ function ouvrirFormPersonne(o) {
     var opts = unions.map(function (uid) { var cj = conjointDans(uid, o.de); return { valeur: 'u' + uid, libelle: cj ? 'Avec ' + nomComplet(pers(cj)) : 'Autre parent inconnu' }; });
     if (!unions.some(function (uid) { return !conjointDans(uid, o.de); })) { opts.push({ valeur: 'inconnu', libelle: 'Autre parent inconnu' }); }
     zoneLien = champ('Autre parent', liste('fAutreParent', opts, opts.length ? opts[0].valeur : 'inconnu'), {});
-  } else if (o.mode === 'conjoint') {
+  } else if (o.mode === 'conjoint' && !modeColonnes()) {
     zoneLien = creer('div', { classe: 'grille2' }, [
       champ('Type d’union', liste('fTypeUnion', CHOIX_UNION.map(function (s) { return { valeur: s, libelle: s }; }), 'Mariage'), {}),
       champ('Date de l’union', saisie('fDebutUnion', '', { max: 40 }), { facultatif: true }),
@@ -2992,7 +3077,7 @@ async function validerFormPersonne(o, etatForm, btn) {
     if (document.getElementById('fFiliation')) { v.filiation = val('fFiliation'); }
   }
   var debutUnion = null;
-  if (o.mode === 'conjoint') { var du = lireDateChamp('fDebutUnion'); if (!du) { return; } debutUnion = du.date; }
+  if (o.mode === 'conjoint' && !modeColonnes()) { var du = lireDateChamp('fDebutUnion'); if (!du) { return; } debutUnion = du.date; }
   btn.disabled = true;
   afficherLoader('Enregistrement…');
   try {
@@ -3032,7 +3117,14 @@ async function relier(o, cible, opt) {
   var de = pers(o.de);
   var cu = etat.config.colsUnions;
   if (o.mode === 'seule' || !de) { return; }
-  if (o.mode === 'parent') {
+  if (o.mode === 'parent' && modeColonnes()) {
+    var cp = etat.config.cols;
+    var xp = {};
+    if (!pers(de.p1)) { xp[cp.parent1] = cible; }
+    else if (!pers(de.p2)) { xp[cp.parent2] = cible; }
+    else { afficherErreur('Deux parents sont déjà indiqués pour ' + nomComplet(de) + '.'); throw new Error('LIEN'); }
+    await agir([['UpdateRecord', etat.config.tables.pers, de.id, xp]]);
+  } else if (o.mode === 'parent') {
     var u = unionDe(de.parents);
     if (!u) {
       var nu = await ajouterUnion({ a: cible });
@@ -3063,6 +3155,10 @@ async function relier(o, cible, opt) {
     await lierParents(cible, uid);
   } else if (o.mode === 'fratrie') {
     var uf = de.parents;
+    if (!uf && modeColonnes()) {
+      afficherErreur('Indiquez d’abord un parent de ' + nomComplet(de) + ' : ses frères et sœurs seront rattachés à ce parent.');
+      throw new Error('LIEN');
+    }
     if (!uf) {
       uf = await ajouterUnion({});
       await modifierPersonne(de.id, { parents: uf });
@@ -3088,7 +3184,18 @@ async function supprimerPersonne(pid) {
   if (!ok) { return; }
   var cu = etat.config.colsUnions;
   var actions = [];
-  unionsPersonne(pid).forEach(function (uid) {
+  if (modeColonnes()) {
+    var cc = etat.config.cols;
+    etat.donnees.ordre.forEach(function (q) {
+      if (q === pid) { return; }
+      var pq = pers(q);
+      var x = {};
+      if (pq.p1 === pid && cc.parent1) { x[cc.parent1] = 0; }
+      if (pq.p2 === pid && cc.parent2) { x[cc.parent2] = 0; }
+      if (cc.conjoints && infoColonne(etat.config.tables.pers, cc.conjoints) && pq.conjoints.indexOf(pid) !== -1) { x[cc.conjoints] = ['L'].concat(pq.conjoints.filter(function (z) { return z !== pid; })); }
+      if (Object.keys(x).length) { actions.push(['UpdateRecord', etat.config.tables.pers, q, x]); }
+    });
+  } else unionsPersonne(pid).forEach(function (uid) {
     var u = unionDe(uid);
     var autre = conjointDans(uid, pid);
     if (!autre && !enfantsUnion(uid).length) { actions.push(['RemoveRecord', etat.config.tables.unions, uid]); return; }
@@ -3121,7 +3228,27 @@ async function supprimerPersonne(pid) {
 }
 
 /* === SECTION : MODIFIER UNE UNION === */
+function ouvrirFormUnionColonnes(uid) {
+  var u = unionDe(uid);
+  var noms = [u.a, u.b].filter(function (x) { return x; }).map(function (x) { return nomComplet(pers(x)); }).join(' et ');
+  var enf = enfantsUnion(uid);
+  var corps = [creer('p', { texte: 'Cet arbre n’a pas de table des unions : le type d’union et les dates ne sont pas notés. Vous pouvez seulement défaire ce lien.', attrs: { style: 'margin:0' } })];
+  var supprimer = bouton('Défaire ce lien', 'danger', 'supprimer', async function () {
+    var ok = await confirmerAction('Défaire ce lien ?', enf.length ? 'Les ' + pluriel(enf.length, 'enfant', 'enfants') + ' restent dans l’arbre, mais ne seront plus rattachés à ces parents.' : 'Les deux personnes restent dans l’arbre.', 'Défaire');
+    if (!ok) { return; }
+    var cc = etat.config.cols;
+    var actions = enf.map(function (e) { var x = {}; if (cc.parent1) { x[cc.parent1] = 0; } if (cc.parent2) { x[cc.parent2] = 0; } return ['UpdateRecord', etat.config.tables.pers, e, x]; });
+    try {
+      if (actions.length) { await agir(actions); }
+      if (u.a && u.b) { await lierConjoints(u.a, u.b, false); }
+      fermerModale(); await apresEcriture('Lien défait.');
+    } catch (e) { afficherErreur(messageEchec(e, 'L’opération a échoué.'), e); }
+  }, { classe: 'gauche' });
+  ouvrirModale({ titre: 'Union', sousTitre: noms, corps: corps, pied: [supprimer, bouton('Fermer', 'p', null, fermerModale)] });
+}
+
 function ouvrirFormUnion(uid) {
+  if (modeColonnes()) { ouvrirFormUnionColonnes(uid); return; }
   var u = unionDe(uid);
   var noms = [u.a, u.b].filter(function (x) { return x; }).map(function (x) { return nomComplet(pers(x)); }).join(' et ');
   var corps = [creer('div', { classe: 'grille2' }, [
@@ -3965,6 +4092,30 @@ function proposerColonne(tid, ch, prises) {
   return meilleur || '';
 }
 
+/* Colonnes de liens du mode « colonnes » : deux parents et les conjoints,
+   dans la table des personnes elle-même. */
+var LIENS_COLONNES = [
+  { cle: 'parent1', id: 'PARENT_1', label: 'PARENT 1', nom: 'Premier parent', liste: false, indices: ['parent 1', 'pere', 'father', 'parent1'] },
+  { cle: 'parent2', id: 'PARENT_2', label: 'PARENT 2', nom: 'Second parent', liste: false, indices: ['parent 2', 'mere', 'mother', 'parent2'] },
+  { cle: 'conjoints', id: 'CONJOINTS', label: 'CONJOINTS', nom: 'Conjoints', liste: true, indices: ['conjoint', 'epou', 'mari', 'spouse', 'partenaire'] }
+];
+function typeLien(l, tid) { return (l.liste ? 'RefList:' : 'Ref:') + tid; }
+function colonnesLien(tid, l) { return colonnesDe(tid).filter(function (c) { return !c.formule && (c.type === 'Ref:' + tid || c.type === 'RefList:' + tid) && (l.liste || c.type === 'Ref:' + tid); }); }
+function proposerLien(tid, l, prises) {
+  var cand = colonnesLien(tid, l).filter(function (c) { return prises.indexOf(c.colId) === -1; });
+  var r = '';
+  cand.forEach(function (c) { var t = normaliser(c.label + ' ' + c.colId.replace(/_/g, ' ')); l.indices.forEach(function (m) { if (!r && t.indexOf(m) !== -1) { r = c.colId; } }); });
+  return r;
+}
+/* Mode des tables Gristfamily déjà présentes : « colonnes » ou « unions »
+   (tables créées par une version précédente). */
+function modeTablesModele() {
+  var tp = trouverTableModele(ID_PERS);
+  if (!tp) { return null; }
+  if (infoColonne(tp, 'PARENT_1')) { return 'colonnes'; }
+  return infoColonne(tp, COL_PARENTS.id) && trouverTableModele(ID_UNIONS) ? 'unions' : 'colonnes';
+}
+
 function tablesPersonnesPossibles() {
   var exclues = [trouverTableModele(ID_UNIONS), trouverTableModele(ID_COUSINS), etat.biblio];
   return Object.keys(etat.meta.tables).filter(function (tid) { return !estTableExclue(tid) && !etat.meta.tables[tid].resume && exclues.indexOf(tid) === -1; })
@@ -3978,10 +4129,10 @@ async function demarrerAssistant(cfg) {
   var modele = trouverTableModele(ID_PERS);
   var b;
   if (cfg) {
-    b = { nom: cfg.nom, source: cfg.source || 'modele', tablePers: cfg.tables.pers, cols: JSON.parse(JSON.stringify(cfg.cols)),
+    b = { nom: cfg.nom, source: cfg.source || 'modele', liens: cfg.liens || 'unions', tablePers: cfg.tables.pers, cols: JSON.parse(JSON.stringify(cfg.cols)),
       affichage: JSON.parse(JSON.stringify(cfg.affichage)), centre: { mode: 'existante', id: cfg.centre || 0, prenom: '', nom: '' } };
   } else {
-    b = { nom: etat.arbres.length ? '' : 'Ma famille', source: modele ? 'modele' : '', tablePers: modele || '', cols: idsParDefaut(CHAMPS_PERS),
+    b = { nom: etat.arbres.length ? '' : 'Ma famille', source: modele ? 'modele' : '', liens: modeTablesModele() || 'colonnes', tablePers: modele || '', cols: idsParDefaut(CHAMPS_PERS),
       affichage: affichageParDefaut(), centre: { mode: 'nouvelle', id: 0, prenom: '', nom: '' } };
     b.cols.parents = COL_PARENTS.id;
   }
@@ -4021,7 +4172,7 @@ function allerEtape(n) {
 function signalerEtape() {
   var b = etat.assistant.b;
   if (!b.nom.trim()) { marquerInvalide('aNom', 'Donnez un nom à l’arbre.'); return; }
-  if (!b.source) { afficherErreur('Choisissez comment commencer : partir de zéro ou utiliser une de vos tables.'); return; }
+  if (!b.source) { afficherErreur('Indiquez où sont les personnes de cet arbre.'); return; }
   if (b.source === 'existant' && !b.tablePers) { marquerInvalide('aTable', 'Choisissez la table de vos personnes.'); }
 }
 
@@ -4083,15 +4234,17 @@ function etapeGeneral(z) {
     var modele = trouverTableModele(ID_PERS);
     var nbModele = 0;
     if (modele) { var cs = colonnesDe(modele); nbModele = cs.length; }
-    z.appendChild(creer('h3', { texte: 'Comment commencer ?', attrs: { style: 'margin:0;font-size:1rem' } }));
+    z.appendChild(creer('h3', { texte: 'Où sont les personnes de cet arbre ?', attrs: { style: 'margin:0;font-size:1rem' } }));
+    if (modele) { z.appendChild(alerte('info', 'Gristfamily a trouvé sa table 👤 PERSONNES ⚡ dans ce document, déjà utilisée par un autre arbre ou créée plus tôt.')); }
     var tuiles = creer('div', { classe: 'tuiles' });
+    var choisirModele = function () { b.source = 'modele'; b.tablePers = modele || ''; b.liens = modeTablesModele() || 'colonnes'; b.cols = idsParDefaut(CHAMPS_PERS); rendre(); };
     if (modele) {
-      tuiles.appendChild(tuile('Utiliser les tables de la famille', 'Les tables 👤 PERSONNES ⚡ et 💞 UNIONS ⚡ existent déjà dans ce document : ce nouvel arbre les partage avec les autres.', b.source === 'modele', function () { b.source = 'modele'; b.tablePers = modele; b.cols = idsParDefaut(CHAMPS_PERS); b.cols.parents = COL_PARENTS.id; rendre(); }));
+      tuiles.appendChild(tuile('Réutiliser la table 👤 PERSONNES ⚡', 'Les personnes déjà saisies sont reprises dans ce nouvel arbre. Rien n’est recréé.', b.source === 'modele', choisirModele));
     } else {
-      tuiles.appendChild(tuile('Partir de zéro', 'Le widget crée les tables des personnes et des unions, puis vous ajoutez votre famille depuis l’arbre.', b.source === 'modele', function () { b.source = 'modele'; b.tablePers = ''; b.cols = idsParDefaut(CHAMPS_PERS); b.cols.parents = COL_PARENTS.id; rendre(); }));
+      tuiles.appendChild(tuile('Je pars de zéro', 'Le widget crée une seule table, 👤 PERSONNES ⚡. Vous ajoutez ensuite votre famille depuis l’arbre.', b.source === 'modele', choisirModele));
     }
     var possibles = tablesPersonnesPossibles().filter(function (t) { return t !== modele; });
-    tuiles.appendChild(tuile('J’ai déjà une table de personnes', possibles.length ? 'Reliez ses colonnes au widget : vos données restent où elles sont, les informations qui manquent sont ajoutées.' : 'Aucune autre table dans ce document.', b.source === 'existant', function () { b.source = 'existant'; b.tablePers = ''; rendre(); }, !possibles.length));
+    tuiles.appendChild(tuile('J’ai déjà mes données', possibles.length ? 'Une de vos tables contient déjà vos personnes : vous indiquez ses colonnes. Rien n’est créé sans votre accord.' : 'Aucune autre table dans ce document.', b.source === 'existant', function () { b.source = 'existant'; b.tablePers = ''; b.liens = 'colonnes'; rendre(); }, !possibles.length));
     z.appendChild(tuiles);
     void nbModele;
   } else {
@@ -4145,35 +4298,42 @@ function etapeTables(z) {
   var b = a.b;
   if (b.source === 'existant') {
     if (a.mode === 'parametres') {
-      z.appendChild(creer('p', { texte: 'Table des personnes : « ' + libelleTable(b.tablePers) + ' ». La table des unions est 💞 UNIONS ⚡.' }));
+      z.appendChild(creer('p', { texte: 'Table des personnes : « ' + libelleTable(b.tablePers) + ' ».' + (b.liens === 'unions' ? ' La table des unions est 💞 UNIONS ⚡.' : ' Les parents et les conjoints sont dans cette même table.') }));
       return;
     }
     var possibles = tablesPersonnesPossibles().filter(function (t) { return t !== trouverTableModele(ID_PERS); });
     var sel = liste('aTable', possibles.map(function (t) { return { valeur: t, libelle: libelleTable(t) + ' (' + pluriel(colonnesDe(t).length, 'colonne', 'colonnes') + ')' }; }), b.tablePers, { vide: 'Choisir une table' });
     sel.addEventListener('change', function () {
       b.tablePers = sel.value;
-      b.cols = { parents: COL_PARENTS.id };
+      b.cols = {};
       var prises = [];
       CHAMPS_PERS.forEach(function (ch) { var c = b.tablePers ? proposerColonne(b.tablePers, ch, prises) : ''; b.cols[ch.cle] = c; if (c) { prises.push(c); } });
+      LIENS_COLONNES.forEach(function (l) { var c = b.tablePers ? proposerLien(b.tablePers, l, prises) : ''; b.cols[l.cle] = c; if (c) { prises.push(c); } });
       rendre();
     });
     z.appendChild(creer('div', { attrs: { style: 'max-width:28rem' } }, [champ('Table de vos personnes', sel, { obligatoire: true, indice: 'Une ligne par personne.' })]));
-    z.appendChild(alerte('info', 'Le widget ajoute à cette table les informations qui manquent (à l’étape suivante, vous choisissez lesquelles existent déjà) et une colonne PARENTS. Aucune colonne n’est modifiée ni supprimée. Les unions sont rangées dans la table 💞 UNIONS ⚡.'));
+    z.appendChild(alerte('info', 'Aucune table n’est créée. À l’étape suivante, vous indiquez quelle colonne contient chaque information. Seules les colonnes qui manquent sont ajoutées à votre table, et le récapitulatif les liste avant que rien ne soit écrit. Aucune colonne existante n’est modifiée ni supprimée.'));
     return;
   }
   var pers = trouverTableModele(ID_PERS);
   var unions = trouverTableModele(ID_UNIONS);
-  var carteTable = function (titre, existe, cols) {
+  var existe = modeTablesModele();
+  var carteTable = function (titre, ex, cols) {
     return creer('div', { classe: 'bloc', attrs: { style: 'flex:1 1 16rem' } }, [
-      creer('h3', {}, [titre, ' ', badge(existe ? 'Déjà dans le document' : 'Sera créée', existe ? 'br-b' : 'br-centre')]),
+      creer('h3', {}, [titre, ' ', badge(ex ? 'Déjà dans le document' : 'Sera créée', ex ? 'br-b' : 'br-centre')]),
       creer('p', { classe: 'indice', texte: cols, attrs: { style: 'margin:0' } })
     ]);
   };
-  z.appendChild(creer('p', { texte: 'Un arbre a besoin de deux tables : les personnes, et les unions qui relient deux personnes et portent leurs enfants. C’est ce qui permet les familles recomposées, les remariages et les demi-frères et sœurs.', attrs: { style: 'margin:0;max-width:44rem' } }));
-  z.appendChild(creer('div', { attrs: { style: 'display:flex;flex-wrap:wrap;gap:1rem' } }, [
-    carteTable('👤 PERSONNES ⚡', !!pers, 'Prénom, nom, nom de naissance, sexe (facultatif), photo, naissance, lieu de vie, décès, parents, filiation, profession, notes.'),
-    carteTable('💞 UNIONS ⚡', !!unions, 'Les deux personnes, type d’union (mariage, PACS, union libre...), début, fin, séparés, notes.')
-  ]));
+  var cartes = [carteTable('👤 PERSONNES ⚡', !!pers, 'Prénom, nom, nom de naissance, sexe (facultatif), photo, naissance, lieu de vie, décès, ' + (b.liens === 'unions' ? 'parents (union)' : 'parent 1, parent 2, conjoints') + ', filiation, profession, notes.')];
+  if (b.liens === 'unions') { cartes.push(carteTable('💞 UNIONS ⚡', !!unions, 'Les couples : les deux personnes, type d’union (mariage, PACS, union libre...), début, fin, séparés, notes. Les enfants sont rattachés à une union.')); }
+  z.appendChild(creer('p', { texte: b.liens === 'unions' ? 'Cet arbre utilise deux tables : les personnes, et les unions qui notent les couples et leurs dates.' : 'Une seule table suffit : chaque personne indique ses deux parents et ses conjoints. Remariages, demi-frères et demi-sœurs se déduisent tout seuls.', attrs: { style: 'margin:0;max-width:44rem' } }));
+  z.appendChild(creer('div', { attrs: { style: 'display:flex;flex-wrap:wrap;gap:1rem' } }, cartes));
+  if (!existe) {
+    z.appendChild(caseACocher('aUnions', 'Noter aussi le détail des unions (mariage, PACS, dates, séparation)', b.liens === 'unions', function (v) { b.liens = v ? 'unions' : 'colonnes'; rendre(); },
+      '(ajoute une seconde table, 💞 UNIONS ⚡ ; inutile si vous voulez seulement l’arbre)'));
+  } else if (existe === 'unions') {
+    z.appendChild(creer('p', { classe: 'indice', texte: 'Ces tables viennent d’une version précédente du widget, qui créait toujours 💞 UNIONS ⚡. Si elles sont vides et que vous ne voulez qu’une table, supprimez-les dans « Données source », puis relancez la création.', attrs: { style: 'margin:0;max-width:44rem' } }));
+  }
   z.appendChild(creer('p', { classe: 'indice', texte: 'Les pages créées avec les tables sont retirées : le widget est fait pour tout saisir. Les tables restent visibles dans « Données source ».', attrs: { style: 'margin:0' } }));
 }
 
@@ -4195,7 +4355,18 @@ function etapeLiens(z) {
     grille.appendChild(creer('label', { classe: 'etiq', texte: ch.nom, attrs: { 'for': 'map_' + ch.cle } }));
     grille.appendChild(dejaCree ? creer('span', { classe: 'indice', texte: 'Colonne ' + b.cols[ch.cle] }) : sel);
   });
+  if (b.liens === 'colonnes') {
+    LIENS_COLONNES.forEach(function (l) {
+      var opts = colonnesLien(b.tablePers, l).map(function (c) { return { valeur: c.colId, libelle: c.label }; });
+      var dejaCree = a.mode === 'parametres' && b.cols[l.cle] && !opts.some(function (o) { return o.valeur === b.cols[l.cle]; });
+      var sel = liste('map_' + l.cle, opts, b.cols[l.cle] || '', { vide: 'Créer la colonne ' + l.label });
+      sel.addEventListener('change', function () { b.cols[l.cle] = sel.value; changement(); });
+      grille.appendChild(creer('label', { classe: 'etiq', texte: l.nom, attrs: { 'for': 'map_' + l.cle } }));
+      grille.appendChild(dejaCree ? creer('span', { classe: 'indice', texte: 'Colonne ' + b.cols[l.cle] }) : sel);
+    });
+  }
   z.appendChild(grille);
+  if (b.liens === 'colonnes') { z.appendChild(creer('p', { classe: 'indice', texte: 'Parents et conjoints : colonnes de type Référence vers « ' + libelleTable(b.tablePers) + ' » elle-même. Une colonne de texte (« Martin Jean ») ne peut pas servir de lien.', attrs: { style: 'margin:0;max-width:44rem' } })); }
 }
 
 /* Étape 4 : cartes, avec aperçu. */
@@ -4301,11 +4472,15 @@ function etapeRecap(z) {
   var unions = trouverTableModele(ID_UNIONS);
   lignes.push('Arbre « ' + b.nom.trim() + ' », dans un nouvel onglet.');
   if (b.source === 'modele') {
-    lignes.push(pers ? 'Tables 👤 PERSONNES ⚡ et 💞 UNIONS ⚡ du document réutilisées : leurs données restent.' : 'Création des tables 👤 PERSONNES ⚡ et 💞 UNIONS ⚡.');
+    if (b.liens === 'unions') {
+      lignes.push(pers ? 'Tables 👤 PERSONNES ⚡ et 💞 UNIONS ⚡ du document réutilisées : leurs données restent.' : 'Création des tables 👤 PERSONNES ⚡ et 💞 UNIONS ⚡.');
+    } else {
+      lignes.push(pers ? 'Table 👤 PERSONNES ⚡ du document réutilisée : ses données restent. Aucune table créée.' : 'Création d’une seule table : 👤 PERSONNES ⚡.');
+    }
   } else {
-    var aCreer = CHAMPS_PERS.filter(function (ch) { return !b.cols[ch.cle]; }).map(function (ch) { return ch.label; });
-    lignes.push('Table « ' + libelleTable(b.tablePers) + ' » : ' + (aCreer.length ? 'ajout des colonnes ' + aCreer.join(', ') + ' et PARENTS.' : 'ajout de la colonne PARENTS.'));
-    lignes.push(unions ? 'Table 💞 UNIONS ⚡ réutilisée si elle relie cette table, sinon une table des unions est créée.' : 'Création de la table 💞 UNIONS ⚡.');
+    var aCreer = CHAMPS_PERS.filter(function (ch) { return !b.cols[ch.cle]; }).map(function (ch) { return ch.label; })
+      .concat(LIENS_COLONNES.filter(function (l) { return !b.cols[l.cle]; }).map(function (l) { return l.label; }));
+    lignes.push('Table « ' + libelleTable(b.tablePers) + ' » : ' + (aCreer.length ? 'ajout des colonnes ' + aCreer.join(', ') + '.' : 'aucune colonne ajoutée.') + ' Aucune table créée.');
   }
   if (b.affichage.cousins) { lignes.push(trouverTableModele(ID_COUSINS) ? 'Table 🧬 COUSINS ADN ⚡ réutilisée.' : 'Création de la table 🧬 COUSINS ADN ⚡.'); }
   if (b.centre.prenom.trim() || b.centre.nom.trim()) { lignes.push('Ajout de ' + (b.centre.prenom + ' ' + b.centre.nom).trim() + ', au centre de l’arbre.'); }
@@ -4319,6 +4494,29 @@ function defPersonnes(idUnions) {
   return { id: ID_PERS, libelle: LABEL_PERS, colonnes: CHAMPS_PERS.map(function (c) { return { id: c.id, type: c.type, label: c.label, choix: c.choix }; })
     .concat([{ id: COL_PARENTS.id, type: 'Ref:' + idUnions, label: COL_PARENTS.label }, { id: COL_NOM_COMPLET.id, type: 'Text', label: COL_NOM_COMPLET.label, formula: COL_NOM_COMPLET.formula, calculee: true }])
     .concat(COLONNES_META) };
+}
+
+function defPersonnesSeule() {
+  return { id: ID_PERS, libelle: LABEL_PERS, colonnes: CHAMPS_PERS.map(function (c) { return { id: c.id, type: c.type, label: c.label, choix: c.choix }; })
+    .concat([{ id: COL_NOM_COMPLET.id, type: 'Text', label: COL_NOM_COMPLET.label, formula: COL_NOM_COMPLET.formula, calculee: true }])
+    .concat(COLONNES_META) };
+}
+
+/* Colonnes de liens (parents, conjoints) : reprises si choisies, sinon
+   ajoutées. Renvoie { parent1, parent2, conjoints } -> identifiants. */
+async function completerLiens(tPers, choisies) {
+  var res = {};
+  await chargerMeta();
+  var affichage = infoColonne(tPers, 'NOM_COMPLET') ? 'NOM_COMPLET' : (choisies && choisies.nom) || 'NOM';
+  for (var i = 0; i < LIENS_COLONNES.length; i++) {
+    var l = LIENS_COLONNES[i];
+    var voulu = choisies ? choisies[l.cle] : (infoColonne(tPers, l.id) ? l.id : '');
+    if (voulu && infoColonne(tPers, voulu)) { res[l.cle] = voulu; continue; }
+    afficherLoader('Ajout de la colonne ' + l.label + '…');
+    res[l.cle] = await ajouterColonne(tPers, colonneLibre(tPers, l.id), typeLien(l, tPers), l.label);
+    await poserAffichageRef(tPers, res[l.cle], tPers, affichage);
+  }
+  return res;
 }
 
 function defUnions(idPers, avecCouple) {
@@ -4370,7 +4568,18 @@ async function creerArbre() {
     await chargerMeta();
     var tPers, tUnions;
     var cols;
-    if (b.source === 'modele') {
+    if (b.source === 'modele' && b.liens === 'colonnes') {
+      tPers = trouverTableModele(ID_PERS);
+      if (!tPers) {
+        tPers = (await creerTables([defPersonnesSeule()]))[0];
+      }
+      await chargerMeta();
+      await completerColonnes(tPers, defPersonnesSeule().colonnes);
+      await completerLiens(tPers, null);
+      cols = idsParDefaut(CHAMPS_PERS);
+      LIENS_COLONNES.forEach(function (l) { cols[l.cle] = l.id; });
+      tUnions = null;
+    } else if (b.source === 'modele') {
       tPers = trouverTableModele(ID_PERS);
       tUnions = trouverTableModele(ID_UNIONS);
       if (!tPers && !tUnions) {
@@ -4392,7 +4601,7 @@ async function creerArbre() {
       cols.parents = COL_PARENTS.id;
     } else {
       tPers = b.tablePers;
-      cols = { parents: '' };
+      cols = {};
       for (var i = 0; i < CHAMPS_PERS.length; i++) {
         var ch = CHAMPS_PERS[i];
         if (b.cols[ch.cle]) { cols[ch.cle] = b.cols[ch.cle]; continue; }
@@ -4400,6 +4609,12 @@ async function creerArbre() {
         cols[ch.cle] = await ajouterColonne(tPers, colonneLibre(tPers, ch.id), ch.type, ch.label, ch.choix);
         await chargerMeta();
       }
+      if (b.liens === 'colonnes') {
+        var lc = await completerLiens(tPers, b.cols);
+        Object.keys(lc).forEach(function (k) { cols[k] = lc[k]; });
+        tUnions = null;
+      } else {
+      cols.parents = '';
       tUnions = trouverTableModele(ID_UNIONS);
       var refA = tUnions ? infoColonne(tUnions, 'PERSONNE_A') : null;
       if (!tUnions || !refA || refA.type !== 'Ref:' + tPers) {
@@ -4413,11 +4628,12 @@ async function creerArbre() {
       cols.parents = parents ? parents.colId : await ajouterColonne(tPers, colonneLibre(tPers, COL_PARENTS.id), 'Ref:' + tUnions, COL_PARENTS.label);
       await poserAffichageRef(tUnions, 'PERSONNE_A', tPers, cols.nom);
       await poserAffichageRef(tUnions, 'PERSONNE_B', tPers, cols.nom);
+      }
     }
     await chargerMeta();
     var tCousins = null;
     if (b.affichage.cousins) { afficherLoader('Préparation des cousins ADN…'); tCousins = await assurerCousins(tPers); }
-    var cfg = completerConfig({ cle: 'ARBRE:' + Date.now().toString(36), nom: b.nom.trim(), cree: Date.now(), source: b.source,
+    var cfg = completerConfig({ cle: 'ARBRE:' + Date.now().toString(36), nom: b.nom.trim(), cree: Date.now(), source: b.source, liens: b.liens,
       tables: { pers: tPers, unions: tUnions, cousins: tCousins }, cols: cols, affichage: b.affichage, centre: 0 });
     etat.config = cfg;
     if (b.centre.prenom.trim() || b.centre.nom.trim()) {
@@ -4461,6 +4677,11 @@ async function sauvegarderParametres() {
         b.cols[ch.cle] = cfg.cols[ch.cle];
         await chargerMeta();
       }
+      if (cfg.liens === 'colonnes') {
+        var lc = await completerLiens(cfg.tables.pers, b.cols);
+        Object.keys(lc).forEach(function (k) { cfg.cols[k] = lc[k]; b.cols[k] = lc[k]; });
+        masquerLoader();
+      }
     }
     if (cfg.affichage.cousins && (!cfg.tables.cousins || !etat.meta.tables[cfg.tables.cousins])) {
       await chargerMeta();
@@ -4484,7 +4705,7 @@ async function sauvegarderParametres() {
    téléphone) : on peut lire l'aide en se servant de l'arbre. */
 var AIDE = {
   quoi: [
-    ['p', 'Gristfamily dessine votre arbre généalogique à partir de deux tables : les personnes et les unions. Une union relie deux personnes et porte leurs enfants : familles recomposées, remariages, demi-frères et sœurs se saisissent naturellement.'],
+    ['p', 'Gristfamily dessine votre arbre à partir d’une seule table de personnes : chacune indique ses deux parents et ses conjoints. Familles recomposées, remariages, demi-frères et sœurs se déduisent tout seuls. Une seconde table, 💞 UNIONS ⚡, n’est créée que si vous voulez noter le détail des unions (mariage, dates, séparation).'],
     ['h', 'Les vues'],
     ['li', ['Arbre : la personne au centre, ses ascendants au-dessus, ses descendants en dessous, sa fratrie à côté.',
       'Ascendance : l’éventail des ancêtres, jusqu’à six générations.',
