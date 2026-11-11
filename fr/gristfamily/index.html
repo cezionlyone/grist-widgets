@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.2.0
+  Version     : 1.2.1
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -51,6 +51,7 @@
 
   HISTORIQUE
   ----------
+  1.2.1 - 11/11/2026 - madeXcé - Noms et informations des cartes affichés en entier sur plusieurs lignes (plus de « … ») ; cartes de l'arbre agrandies (220 x 100).
   1.2.0 - 11/11/2026 - madeXcé - Table de l'arbre renommée 👪 GÉNÉALOGIE ⚡, reconnue à ses colonnes de liens (jamais une table PERSONNES d'un autre usage) ; étape 1 à deux choix.
   1.1.0 - 11/11/2026 - madeXcé - Une seule table par défaut (parents et conjoints en colonnes) ; 💞 UNIONS ⚡ facultative ; étape 1 réécrite.
   1.0.0 - 11/11/2026 - madeXcé - Première version.
@@ -169,7 +170,7 @@
   --voile: rgba(38, 38, 51, .5);
   --r-s: 4px; --r-m: 6px; --r-l: 10px;
   --police: -apple-system, BlinkMacSystemFont, "Segoe UI", "Liberation Sans", Helvetica, Arial, sans-serif;
-  --carte-l: 184px; --carte-h: 68px;
+  --carte-l: 220px; --carte-h: 100px;
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
@@ -301,8 +302,8 @@ textarea.saisie { resize: vertical; }
 .carte--double { border-style: dashed; }
 .carte--trouve { box-shadow: 0 0 0 4px var(--orange); }
 .carte__txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
-.carte__nom { font-weight: 600; font-size: .8125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.carte__info { font-size: .75rem; color: var(--gris); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.carte__nom { font-weight: 600; font-size: .8125rem; overflow: hidden; white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; }
+.carte__info { font-size: .75rem; color: var(--gris); overflow: hidden; white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; }
 .avatar { flex: none; width: 2.5rem; height: 2.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .8125rem; overflow: hidden; background: var(--sable2); color: #44444F; }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
 .avatar--carre { border-radius: var(--r-m); }
@@ -510,7 +511,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.2.0</span>
+    <span class="bandeau__version">v1.2.1</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -546,7 +547,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.2.0';
+var VERSION = '1.2.1';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -2110,7 +2111,7 @@ window.addEventListener('resize', function () {
    ses descendants et leurs conjoints en dessous. Une personne déjà placée
    qui réapparaît (mariage entre cousins...) est dessinée en pointillés,
    sans répéter sa descendance. */
-var DIM = { L: 184, H: 68, GX: 24, GC: 40, GY: 78, MARGE: 80 };
+var DIM = { L: 220, H: 100, GX: 24, GC: 40, GY: 78, MARGE: 80 };
 
 function construireBloc(pid, d, D, vus) {
   vus[pid] = true;
