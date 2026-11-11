@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.1.0
+  Version     : 1.2.0
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -51,6 +51,7 @@
 
   HISTORIQUE
   ----------
+  1.2.0 - 11/11/2026 - madeXcé - Table de l'arbre renommée 👪 GÉNÉALOGIE ⚡, reconnue à ses colonnes de liens (jamais une table PERSONNES d'un autre usage) ; étape 1 à deux choix.
   1.1.0 - 11/11/2026 - madeXcé - Une seule table par défaut (parents et conjoints en colonnes) ; 💞 UNIONS ⚡ facultative ; étape 1 réécrite.
   1.0.0 - 11/11/2026 - madeXcé - Première version.
 
@@ -509,7 +510,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.1.0</span>
+    <span class="bandeau__version">v1.2.0</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -545,7 +546,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.1.0';
+var VERSION = '1.2.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -554,8 +555,8 @@ var EXT_PHOTOS = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
 var ID_BIBLIO = 'BIBLIOTHEQUE_D_ARBRES_';
 var LABEL_BIBLIO = '🌳 BIBLIOTHÈQUE D’ARBRES ⚡';
-var ID_PERS = 'PERSONNES_';
-var LABEL_PERS = '👤 PERSONNES ⚡';
+var ID_PERS = 'GENEALOGIE_';
+var LABEL_PERS = '👪 GÉNÉALOGIE ⚡';
 var ID_UNIONS = 'UNIONS_';
 var LABEL_UNIONS = '💞 UNIONS ⚡';
 var ID_COUSINS = 'COUSINS_ADN_';
@@ -4109,8 +4110,17 @@ function proposerLien(tid, l, prises) {
 }
 /* Mode des tables Gristfamily déjà présentes : « colonnes » ou « unions »
    (tables créées par une version précédente). */
+/* La table de l'arbre se reconnaît à son nom ET à ses colonnes de liens :
+   une table d'un autre usage (liste de cadeaux, contacts...) n'est
+   jamais prise pour celle du widget. */
+function tableGenealogie() {
+  var t = trouverTableModele(ID_PERS);
+  if (!t) { return null; }
+  return infoColonne(t, 'PARENT_1') || infoColonne(t, COL_PARENTS.id) ? t : null;
+}
+
 function modeTablesModele() {
-  var tp = trouverTableModele(ID_PERS);
+  var tp = tableGenealogie();
   if (!tp) { return null; }
   if (infoColonne(tp, 'PARENT_1')) { return 'colonnes'; }
   return infoColonne(tp, COL_PARENTS.id) && trouverTableModele(ID_UNIONS) ? 'unions' : 'colonnes';
@@ -4126,7 +4136,7 @@ async function demarrerAssistant(cfg) {
   afficherLoader('Préparation…');
   try { await chargerMeta(); } catch (e) { masquerLoader(); afficherErreur('Le document n’a pas pu être lu.', e); return; }
   masquerLoader();
-  var modele = trouverTableModele(ID_PERS);
+  var modele = tableGenealogie();
   var b;
   if (cfg) {
     b = { nom: cfg.nom, source: cfg.source || 'modele', liens: cfg.liens || 'unions', tablePers: cfg.tables.pers, cols: JSON.parse(JSON.stringify(cfg.cols)),
@@ -4231,20 +4241,19 @@ function etapeGeneral(z) {
   nom.addEventListener('input', function () { b.nom = nom.value; changement(); });
   z.appendChild(creer('div', { attrs: { style: 'max-width:28rem' } }, [champ('Nom de l’arbre', nom, { obligatoire: true, indice: 'Il apparaît dans l’onglet.' })]));
   if (a.mode === 'creation') {
-    var modele = trouverTableModele(ID_PERS);
+    var modele = tableGenealogie();
     var nbModele = 0;
     if (modele) { var cs = colonnesDe(modele); nbModele = cs.length; }
-    z.appendChild(creer('h3', { texte: 'Où sont les personnes de cet arbre ?', attrs: { style: 'margin:0;font-size:1rem' } }));
-    if (modele) { z.appendChild(alerte('info', 'Gristfamily a trouvé sa table 👤 PERSONNES ⚡ dans ce document, déjà utilisée par un autre arbre ou créée plus tôt.')); }
+    z.appendChild(creer('h3', { texte: 'Vos données', attrs: { style: 'margin:0;font-size:1rem' } }));
     var tuiles = creer('div', { classe: 'tuiles' });
     var choisirModele = function () { b.source = 'modele'; b.tablePers = modele || ''; b.liens = modeTablesModele() || 'colonnes'; b.cols = idsParDefaut(CHAMPS_PERS); rendre(); };
     if (modele) {
-      tuiles.appendChild(tuile('Réutiliser la table 👤 PERSONNES ⚡', 'Les personnes déjà saisies sont reprises dans ce nouvel arbre. Rien n’est recréé.', b.source === 'modele', choisirModele));
+      tuiles.appendChild(tuile('Reprendre ma généalogie', 'La table 👪 GÉNÉALOGIE ⚡ d’un autre arbre existe déjà : ce nouvel arbre la reprend. Rien n’est créé.', b.source === 'modele', choisirModele));
     } else {
-      tuiles.appendChild(tuile('Je pars de zéro', 'Le widget crée une seule table, 👤 PERSONNES ⚡. Vous ajoutez ensuite votre famille depuis l’arbre.', b.source === 'modele', choisirModele));
+      tuiles.appendChild(tuile('Je n’ai pas encore de données', 'Le widget crée une seule table, 👪 GÉNÉALOGIE ⚡. Vous ajoutez ensuite votre famille depuis l’arbre.', b.source === 'modele', choisirModele));
     }
     var possibles = tablesPersonnesPossibles().filter(function (t) { return t !== modele; });
-    tuiles.appendChild(tuile('J’ai déjà mes données', possibles.length ? 'Une de vos tables contient déjà vos personnes : vous indiquez ses colonnes. Rien n’est créé sans votre accord.' : 'Aucune autre table dans ce document.', b.source === 'existant', function () { b.source = 'existant'; b.tablePers = ''; b.liens = 'colonnes'; rendre(); }, !possibles.length));
+    tuiles.appendChild(tuile('J’ai déjà mes données', possibles.length ? 'Vous choisissez la table qui contient votre famille et vous fléchez ses colonnes. Aucune table n’est créée.' : 'Aucune autre table dans ce document.', b.source === 'existant', function () { b.source = 'existant'; b.tablePers = ''; b.liens = 'colonnes'; rendre(); }, !possibles.length));
     z.appendChild(tuiles);
     void nbModele;
   } else {
@@ -4301,7 +4310,7 @@ function etapeTables(z) {
       z.appendChild(creer('p', { texte: 'Table des personnes : « ' + libelleTable(b.tablePers) + ' ».' + (b.liens === 'unions' ? ' La table des unions est 💞 UNIONS ⚡.' : ' Les parents et les conjoints sont dans cette même table.') }));
       return;
     }
-    var possibles = tablesPersonnesPossibles().filter(function (t) { return t !== trouverTableModele(ID_PERS); });
+    var possibles = tablesPersonnesPossibles().filter(function (t) { return t !== tableGenealogie(); });
     var sel = liste('aTable', possibles.map(function (t) { return { valeur: t, libelle: libelleTable(t) + ' (' + pluriel(colonnesDe(t).length, 'colonne', 'colonnes') + ')' }; }), b.tablePers, { vide: 'Choisir une table' });
     sel.addEventListener('change', function () {
       b.tablePers = sel.value;
@@ -4315,7 +4324,7 @@ function etapeTables(z) {
     z.appendChild(alerte('info', 'Aucune table n’est créée. À l’étape suivante, vous indiquez quelle colonne contient chaque information. Seules les colonnes qui manquent sont ajoutées à votre table, et le récapitulatif les liste avant que rien ne soit écrit. Aucune colonne existante n’est modifiée ni supprimée.'));
     return;
   }
-  var pers = trouverTableModele(ID_PERS);
+  var pers = tableGenealogie();
   var unions = trouverTableModele(ID_UNIONS);
   var existe = modeTablesModele();
   var carteTable = function (titre, ex, cols) {
@@ -4324,7 +4333,7 @@ function etapeTables(z) {
       creer('p', { classe: 'indice', texte: cols, attrs: { style: 'margin:0' } })
     ]);
   };
-  var cartes = [carteTable('👤 PERSONNES ⚡', !!pers, 'Prénom, nom, nom de naissance, sexe (facultatif), photo, naissance, lieu de vie, décès, ' + (b.liens === 'unions' ? 'parents (union)' : 'parent 1, parent 2, conjoints') + ', filiation, profession, notes.')];
+  var cartes = [carteTable(LABEL_PERS, !!pers, 'Prénom, nom, nom de naissance, sexe (facultatif), photo, naissance, lieu de vie, décès, ' + (b.liens === 'unions' ? 'parents (union)' : 'parent 1, parent 2, conjoints') + ', filiation, profession, notes.')];
   if (b.liens === 'unions') { cartes.push(carteTable('💞 UNIONS ⚡', !!unions, 'Les couples : les deux personnes, type d’union (mariage, PACS, union libre...), début, fin, séparés, notes. Les enfants sont rattachés à une union.')); }
   z.appendChild(creer('p', { texte: b.liens === 'unions' ? 'Cet arbre utilise deux tables : les personnes, et les unions qui notent les couples et leurs dates.' : 'Une seule table suffit : chaque personne indique ses deux parents et ses conjoints. Remariages, demi-frères et demi-sœurs se déduisent tout seuls.', attrs: { style: 'margin:0;max-width:44rem' } }));
   z.appendChild(creer('div', { attrs: { style: 'display:flex;flex-wrap:wrap;gap:1rem' } }, cartes));
@@ -4425,7 +4434,7 @@ function etapeAffichage(z) {
   z.appendChild(creer('div', { classe: 'grille2', attrs: { style: 'max-width:36rem' } }, [champ('Ascendants affichés', sA), champ('Descendants affichés', sD)]));
   z.appendChild(caseACocher('aFratrie', 'Montrer les frères et sœurs de la personne au centre', aff.fratrie, function (v) { aff.fratrie = v; changement(); }));
   /* Personne au centre */
-  var tid = b.source === 'existant' ? b.tablePers : trouverTableModele(ID_PERS);
+  var tid = b.source === 'existant' ? b.tablePers : tableGenealogie();
   var personnes = [];
   if (tid && a.mode === 'parametres' && etat.donnees) { personnes = optionsPersonnes([]); }
   z.appendChild(creer('h3', { texte: 'Personne au centre de l’arbre', attrs: { style: 'margin:.5rem 0 0;font-size:1rem' } }));
@@ -4468,14 +4477,14 @@ function etapeRecap(z) {
     z.appendChild(creer('p', { texte: 'Les paramètres sont enregistrés automatiquement. Revenez à l’arbre quand vous voulez.', attrs: { style: 'margin:0' } }));
     return;
   }
-  var pers = trouverTableModele(ID_PERS);
+  var pers = tableGenealogie();
   var unions = trouverTableModele(ID_UNIONS);
   lignes.push('Arbre « ' + b.nom.trim() + ' », dans un nouvel onglet.');
   if (b.source === 'modele') {
     if (b.liens === 'unions') {
-      lignes.push(pers ? 'Tables 👤 PERSONNES ⚡ et 💞 UNIONS ⚡ du document réutilisées : leurs données restent.' : 'Création des tables 👤 PERSONNES ⚡ et 💞 UNIONS ⚡.');
+      lignes.push(pers ? 'Tables ' + LABEL_PERS + ' et 💞 UNIONS ⚡ du document réutilisées : leurs données restent.' : 'Création des tables ' + LABEL_PERS + ' et 💞 UNIONS ⚡.');
     } else {
-      lignes.push(pers ? 'Table 👤 PERSONNES ⚡ du document réutilisée : ses données restent. Aucune table créée.' : 'Création d’une seule table : 👤 PERSONNES ⚡.');
+      lignes.push(pers ? 'Table ' + LABEL_PERS + ' du document réutilisée : ses données restent. Aucune table créée.' : 'Création d’une seule table : ' + LABEL_PERS + '.');
     }
   } else {
     var aCreer = CHAMPS_PERS.filter(function (ch) { return !b.cols[ch.cle]; }).map(function (ch) { return ch.label; })
@@ -4569,7 +4578,7 @@ async function creerArbre() {
     var tPers, tUnions;
     var cols;
     if (b.source === 'modele' && b.liens === 'colonnes') {
-      tPers = trouverTableModele(ID_PERS);
+      tPers = tableGenealogie();
       if (!tPers) {
         tPers = (await creerTables([defPersonnesSeule()]))[0];
       }
@@ -4580,10 +4589,13 @@ async function creerArbre() {
       LIENS_COLONNES.forEach(function (l) { cols[l.cle] = l.id; });
       tUnions = null;
     } else if (b.source === 'modele') {
-      tPers = trouverTableModele(ID_PERS);
+      tPers = tableGenealogie();
       tUnions = trouverTableModele(ID_UNIONS);
-      if (!tPers && !tUnions) {
-        var ids = await creerTables([defPersonnes(ID_UNIONS), defUnions(ID_PERS, true)]);
+      if (!tPers) {
+        var dU = defUnions(ID_PERS, true);
+        dU.id = idTableLibre(ID_UNIONS);
+        var dP = defPersonnes(dU.id);
+        var ids = await creerTables([dP, dU]);
         tPers = ids[0]; tUnions = ids[1];
         await poserAffichageRef(tUnions, 'PERSONNE_A', tPers, 'NOM_COMPLET');
         await poserAffichageRef(tUnions, 'PERSONNE_B', tPers, 'NOM_COMPLET');
@@ -4591,8 +4603,6 @@ async function creerArbre() {
       } else if (tPers && !tUnions) {
         tUnions = (await creerTables([defUnions(tPers, !!infoColonne(tPers, 'NOM_COMPLET'))]))[0];
         await completerColonnes(tPers, [{ id: COL_PARENTS.id, type: 'Ref:' + tUnions, label: COL_PARENTS.label }]);
-      } else if (!tPers && tUnions) {
-        throw new Error('Table des unions sans table des personnes');
       }
       await chargerMeta();
       await completerColonnes(tPers, defPersonnes(tUnions).colonnes);
