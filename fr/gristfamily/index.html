@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.3.0
+  Version     : 1.3.1
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -51,6 +51,7 @@
 
   HISTORIQUE
   ----------
+  1.3.1 - 11/11/2026 - madeXcé - Frères et sœurs placés juste à côté de la personne, sur la même rangée, au lieu de l'autre bout de l'arbre ; leurs enfants se rangent à côté, sans chevauchement.
   1.3.0 - 11/11/2026 - madeXcé - Frères et sœurs dessinés avec conjoints et enfants ; liste : oncles, tantes, neveux, cousins nommés (plus de « Non reliée ») ; personne au centre reprise si elle existe déjà ; colonnes de cousins existantes (export MyHeritage) reconnues, sans doublons PAYS2, AGE2.
   1.2.1 - 11/11/2026 - madeXcé - Noms et informations des cartes affichés en entier sur plusieurs lignes (plus de « … ») ; cartes de l'arbre agrandies (220 x 100).
   1.2.0 - 11/11/2026 - madeXcé - Table de l'arbre renommée 👪 GÉNÉALOGIE ⚡, reconnue à ses colonnes de liens (jamais une table PERSONNES d'un autre usage) ; étape 1 à deux choix.
@@ -512,7 +513,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.3.0</span>
+    <span class="bandeau__version">v1.3.1</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -548,7 +549,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.3.0';
+var VERSION = '1.3.1';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -2224,10 +2225,10 @@ function mesurerBloc(bloc) {
   return bloc.w;
 }
 
-function placerBloc(bloc, gauche, g, sortie) {
+function placerBloc(bloc, gauche, g, sortie, opt) {
   var y = g * (DIM.H + DIM.GY);
   var rangee = largeurRangee(bloc);
-  var x0 = gauche + (bloc.w - rangee) / 2;
+  var x0 = opt && opt.x0 != null ? opt.x0 : gauche + (bloc.w - rangee) / 2;
   sortie.noeuds.push({ pid: bloc.pid, x: x0, y: y, dup: !!bloc.dup });
   if (bloc.dup) { return { cx: x0 + DIM.L / 2 }; }
   var ancres = {};
@@ -2247,7 +2248,7 @@ function placerBloc(bloc, gauche, g, sortie) {
       ancres[pt.uid] = [px + DIM.L / 2, y + DIM.H];
     }
   });
-  var xe = gauche + (bloc.w - bloc.wEnfants) / 2;
+  var xe = opt && opt.xe != null ? opt.xe : gauche + (bloc.w - bloc.wEnfants) / 2;
   var premier = true;
   bloc.groupes.forEach(function (gr) {
     if (!gr.enfants.length) { return; }
@@ -2351,21 +2352,29 @@ function calculerDisposition(centre) {
   /* Chaque frère ou sœur avec ses conjoints et ses enfants (neveux, nièces). */
   var blocsFreres = {};
   freres.forEach(function (f) { var bf = construireBloc(f, 0, D, vus); mesurerBloc(bf); blocsFreres[f] = bf; });
-  var avant = [];
-  var apres = [];
-  var vuCentre = false;
-  (p.parents ? enfantsUnion(p.parents) : [centre]).forEach(function (x) {
-    if (x === centre) { vuCentre = true; return; }
-    if (freres.indexOf(x) === -1) { return; }
-    (vuCentre ? apres : avant).push(x);
-  });
-  var x = 0;
+  /* Le centre est posé en premier ; ses frères et sœurs viennent juste à sa
+     gauche, sur la même rangée (côté opposé à son conjoint). Leurs enfants
+     se rangent à gauche de ceux du centre, sans chevauchement. */
   var centres = [];
-  avant.forEach(function (f) { var rf = placerBloc(blocsFreres[f], x, 0, sortie); centres.push({ x: rf.cx, pid: f }); x += blocsFreres[f].w + DIM.GX; });
-  var r = placerBloc(bloc, x, 0, sortie);
+  var r = placerBloc(bloc, 0, 0, sortie);
   centres.push({ x: r.cx, pid: centre });
-  x += bloc.w + DIM.GX;
-  apres.forEach(function (f) { var rf = placerBloc(blocsFreres[f], x, 0, sortie); centres.push({ x: rf.cx, pid: f }); x += blocsFreres[f].w + DIM.GX; });
+  var rangeeC = largeurRangee(bloc);
+  var curRang = (bloc.w - rangeeC) / 2 - DIM.GX;
+  var curEnf = (bloc.w - bloc.wEnfants) / 2 - DIM.GX * 2;
+  var ordre = (p.parents ? enfantsUnion(p.parents) : [centre]).filter(function (x) { return freres.indexOf(x) !== -1; });
+  ordre.slice().reverse().forEach(function (f) {
+    var bf = blocsFreres[f];
+    var x0f = curRang - largeurRangee(bf);
+    var opt = { x0: x0f };
+    if (bf.wEnfants) {
+      var xef = Math.min(curEnf - bf.wEnfants, x0f + largeurRangee(bf) / 2 - bf.wEnfants / 2);
+      opt.xe = xef;
+      curEnf = xef - DIM.GX * 2;
+    }
+    var rf = placerBloc(bf, 0, 0, sortie, opt);
+    centres.push({ x: rf.cx, pid: f });
+    curRang = x0f - DIM.GX;
+  });
   if (p.parents) {
     var cs = centres.map(function (c) { return c.x; });
     var cx = (Math.min.apply(null, cs) + Math.max.apply(null, cs)) / 2;
