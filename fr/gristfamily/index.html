@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.3.1
+  Version     : 1.3.2
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -51,6 +51,7 @@
 
   HISTORIQUE
   ----------
+  1.3.2 - 11/11/2026 - madeXcé - Oncles, tantes et leurs familles (conjoints, enfants) dessinés à côté de leur frère ou sœur ancêtre, sans chevauchement.
   1.3.1 - 11/11/2026 - madeXcé - Frères et sœurs placés juste à côté de la personne, sur la même rangée, au lieu de l'autre bout de l'arbre ; leurs enfants se rangent à côté, sans chevauchement.
   1.3.0 - 11/11/2026 - madeXcé - Frères et sœurs dessinés avec conjoints et enfants ; liste : oncles, tantes, neveux, cousins nommés (plus de « Non reliée ») ; personne au centre reprise si elle existe déjà ; colonnes de cousins existantes (export MyHeritage) reconnues, sans doublons PAYS2, AGE2.
   1.2.1 - 11/11/2026 - madeXcé - Noms et informations des cartes affichés en entier sur plusieurs lignes (plus de « … ») ; cartes de l'arbre agrandies (220 x 100).
@@ -513,7 +514,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.3.1</span>
+    <span class="bandeau__version">v1.3.2</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -549,7 +550,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.3.1';
+var VERSION = '1.3.2';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -2322,6 +2323,10 @@ function placerCouple(uid, k, A, cx, vus, sortie) {
       if (anc) {
         var yMilieu = y - DIM.GY / 2;
         sortie.traits.push({ pts: [[anc[0], anc[1]], [anc[0], yMilieu], [px + DIM.L / 2, yMilieu], [px + DIM.L / 2, y]], adopte: p.filiation === 'Adoption' });
+        /* Frères et sœurs de cet ancêtre (oncles, tantes...) : placés après coup. */
+        if (sortie.pending && etat.config.affichage.fratrie !== false) {
+          sortie.pending.push({ pid: pid, px: px, y: y, anc: anc, yMilieu: yMilieu, cote: i === 0 ? -1 : 1 });
+        }
       }
     }
     g += w;
@@ -2340,7 +2345,7 @@ function calculerDisposition(centre) {
   var aff = etat.config.affichage;
   var A = Math.max(0, Math.min(8, aff.ascendants | 0));
   var D = Math.max(0, Math.min(8, aff.descendants | 0));
-  var sortie = { noeuds: [], traits: [], coeurs: [] };
+  var sortie = { noeuds: [], traits: [], coeurs: [], pending: [] };
   if (!centre) { return sortie; }
   var vus = {};
   var p = pers(centre);
@@ -2381,6 +2386,37 @@ function calculerDisposition(centre) {
     var anc = A > 0 ? placerCouple(p.parents, 1, A, cx, vus, sortie) : null;
     if (anc || centres.length > 1) { relierEnfants(anc, centres, -DIM.GY / 2, 0, sortie); }
   }
+  /* Oncles, tantes et leurs familles : à côté de leur frère ou sœur ancêtre, le plus
+     près possible, en s'écartant vers l'extérieur tant qu'une carte gêne. */
+  sortie.pending.forEach(function (it) {
+    var pp = pers(it.pid);
+    if (!pp || !pp.parents) { return; }
+    var sibs = enfantsUnion(pp.parents).filter(function (x) { return x !== it.pid && !vus[x]; });
+    var cur = it.cote > 0 ? it.px + DIM.L + DIM.GX : it.px - DIM.GX;
+    var g = Math.round(it.y / (DIM.H + DIM.GY));
+    sibs.forEach(function (f) {
+      var bf = construireBloc(f, 0, 1, vus);
+      mesurerBloc(bf);
+      var rw = largeurRangee(bf);
+      var x0 = it.cote > 0 ? cur : cur - rw;
+      var tmp = null;
+      var rf = null;
+      for (var essai = 0; essai < 60; essai++) {
+        tmp = { noeuds: [], traits: [], coeurs: [] };
+        rf = placerBloc(bf, x0 - (bf.w - rw) / 2, g, tmp, { x0: x0 });
+        var gene = tmp.noeuds.some(function (a) {
+          return sortie.noeuds.some(function (b) { return a.y === b.y && Math.abs(a.x - b.x) < DIM.L + DIM.GX / 2; });
+        });
+        if (!gene) { break; }
+        x0 += it.cote * (DIM.L + DIM.GX);
+      }
+      tmp.noeuds.forEach(function (n) { sortie.noeuds.push(n); });
+      tmp.traits.forEach(function (t) { sortie.traits.push(t); });
+      tmp.coeurs.forEach(function (c) { sortie.coeurs.push(c); });
+      sortie.traits.push({ pts: [[it.anc[0], it.anc[1]], [it.anc[0], it.yMilieu], [rf.cx, it.yMilieu], [rf.cx, it.y]], adopte: pers(f) && pers(f).filiation === 'Adoption' });
+      cur = it.cote > 0 ? Math.max(x0 + rw, x0 + bf.w) + DIM.GX : Math.min(x0, x0 + (rw - bf.w) / 2) - DIM.GX;
+    });
+  });
   /* Recadrage : tout en coordonnées positives, avec une marge. */
   var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   sortie.noeuds.forEach(function (n) { minX = Math.min(minX, n.x); minY = Math.min(minY, n.y); maxX = Math.max(maxX, n.x + DIM.L); maxY = Math.max(maxY, n.y + DIM.H); });
