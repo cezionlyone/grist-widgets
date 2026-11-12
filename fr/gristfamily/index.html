@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.6.0
+  Version     : 1.6.1
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -51,6 +51,7 @@
 
   HISTORIQUE
   ----------
+  1.6.1 - 12/11/2026 - madeXcé - Cartes des cousins ADN : âge affiché ; textes jamais tronqués (cartes de l'arbre et des cousins s'agrandissent si besoin).
   1.6.0 - 12/11/2026 - madeXcé - Cousins ADN : carte des cousins affichée par défaut (une pile de cartes par lieu : nom, ADN partagé, parenté), bascule vers le tableau.
   1.5.1 - 12/11/2026 - madeXcé - Âge affiché (au décès ou actuel) sur les cartes de l'arbre, la carte du monde et la liste ; carte du monde plus haute, zoom plus fin.
   1.5.0 - 12/11/2026 - madeXcé - Nouveau moteur de disposition : chaque personne n'a plus qu'une seule carte, rangée par génération, les familles restent d'un seul tenant et les croisements de traits sont limités.
@@ -300,8 +301,8 @@ textarea.saisie { resize: vertical; }
 .liens .adopte { stroke-dasharray: 6 5; }
 .liens .coeur { fill: var(--vert); stroke: none; }
 .liens .coeur--separe { fill: var(--trait-fort); }
-.noeud { position: absolute; width: var(--carte-l); height: var(--carte-h); }
-.carte { width: 100%; height: 100%; display: flex; align-items: center; gap: .625rem; padding: 0 .625rem 0 .75rem; background: var(--blanc); border: 1px solid var(--trait); border-radius: var(--r-l);
+.noeud { position: absolute; width: var(--carte-l); min-height: var(--carte-h); display: flex; }
+.carte { width: 100%; min-height: var(--carte-h); display: flex; align-items: center; gap: .625rem; padding: .5rem .625rem .5rem .75rem; background: var(--blanc); border: 1px solid var(--trait); border-radius: var(--r-l);
   box-shadow: var(--ombre); text-align: left; cursor: pointer; }
 .carte:hover { border-color: var(--trait-fort); }
 .carte--mort { background: #F4F4F6; }
@@ -310,8 +311,8 @@ textarea.saisie { resize: vertical; }
 .carte--double { border-style: dashed; }
 .carte--trouve { box-shadow: 0 0 0 4px var(--orange); }
 .carte__txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
-.carte__nom { font-weight: 600; font-size: .8125rem; overflow: hidden; white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; }
-.carte__info { font-size: .75rem; color: var(--gris); overflow: hidden; white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; }
+.carte__nom { font-weight: 600; font-size: .8125rem; white-space: normal; overflow-wrap: anywhere; }
+.carte__info { font-size: .75rem; color: var(--gris); white-space: normal; overflow-wrap: anywhere; }
 .avatar { flex: none; width: 2.5rem; height: 2.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .8125rem; overflow: hidden; background: var(--sable2); color: #44444F; }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
 .avatar--carre { border-radius: var(--r-m); }
@@ -357,14 +358,14 @@ table.tableau { width: 100%; border-collapse: collapse; }
 .compteurs { display: flex; flex-wrap: wrap; gap: .375rem; }
 .cousin-icone { background: none; border: 0; overflow: visible; }
 .cousin-icone:hover { z-index: 10000 !important; }
-.cousin-pile { width: 200px; pointer-events: auto; display: flex; flex-direction: column; gap: 4px; }
+.cousin-pile { width: 230px; pointer-events: auto; display: flex; flex-direction: column; gap: 4px; }
 .cousin-pile__lieu { font-size: .6875rem; font-weight: 700; color: #4B1F78; text-shadow: 0 0 3px #fff, 0 0 3px #fff; text-align: center; }
 .cousin-carte { display: flex; flex-direction: column; gap: 1px; text-align: left; width: 100%; padding: 3px 8px; background: #fff; border: 1px solid #D8CCE6; border-left: 4px solid #6B2FA0; border-radius: 8px; cursor: pointer; font: inherit; box-shadow: 0 1px 4px rgba(0,0,0,.18); }
 .cousin-carte--proche { border-left-color: #C2410C; }
 .cousin-carte--elargie { border-left-color: #6B2FA0; }
 .cousin-carte--eloignee { border-left-color: #8A8AA0; }
-.cousin-carte__nom { font-size: .8125rem; font-weight: 600; color: #1D1D2B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cousin-carte__info { font-size: .6875rem; color: #55556A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cousin-carte__nom { font-size: .8125rem; font-weight: 600; color: #1D1D2B; white-space: normal; overflow-wrap: anywhere; }
+.cousin-carte__info { font-size: .6875rem; color: #55556A; white-space: normal; overflow-wrap: anywhere; }
 .cousin-pile__plus { align-self: center; font: inherit; font-size: .75rem; padding: 2px 10px; border-radius: 999px; border: 1px solid #D8CCE6; background: #fff; cursor: pointer; color: #4B1F78; }
 .puce-filtre { display: inline-flex; align-items: center; gap: .375rem; min-height: 2rem; padding: 0 .75rem; border-radius: 999px; border: 1px solid var(--trait); background: var(--blanc); cursor: pointer; font-size: .8125rem; }
 .puce-filtre[aria-pressed="true"] { background: var(--mauve); border-color: var(--mauve-f); color: var(--mauve-f); font-weight: 600; }
@@ -530,7 +531,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.6.0</span>
+    <span class="bandeau__version">v1.6.1</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -566,7 +567,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.6.0';
+var VERSION = '1.6.1';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -4357,9 +4358,9 @@ function dessinerCarteCousins(boite, statut, enregistrer, filtrer) {
   var carteCousin = function (c) {
     var nom = (c.prenom + ' ' + c.nom).trim() || 'Sans nom';
     var parente = c.relation || estimerParente(c.cm);
-    var el = creer('button', { classe: 'cousin-carte cousin-carte--' + cercleADN(c.cm), attrs: { title: nom + (parente ? ' : ' + parente : '') } }, [
+    var el = creer('button', { classe: 'cousin-carte cousin-carte--' + cercleADN(c.cm) }, [
       creer('span', { classe: 'cousin-carte__nom', texte: nom }),
-      creer('span', { classe: 'cousin-carte__info', texte: [c.cm ? formaterNombre(c.cm, 0) + ' cM' : '', parente || c.branche || ''].filter(function (x) { return x; }).join(' · ') || ' ' })
+      creer('span', { classe: 'cousin-carte__info', texte: [c.age, c.cm ? formaterNombre(c.cm, 0) + ' cM' : '', parente || c.branche || ''].filter(function (x) { return x; }).join(' · ') || ' ' })
     ]);
     el.addEventListener('click', function (e) { e.stopPropagation(); if (etat.peutModifier) { ouvrirFormCousin(c); } });
     return el;
@@ -4398,7 +4399,7 @@ function dessinerCarteCousins(boite, statut, enregistrer, filtrer) {
         remplir();
         L.DomEvent.disableClickPropagation(pile);
         L.DomEvent.disableScrollPropagation(pile);
-        L.marker([g.lat, g.lon], { icon: L.divIcon({ html: pile, className: 'cousin-icone', iconSize: [200, 0], iconAnchor: [100, -10] }), keyboard: false }).addTo(couche);
+        L.marker([g.lat, g.lon], { icon: L.divIcon({ html: pile, className: 'cousin-icone', iconSize: [230, 0], iconAnchor: [115, -10] }), keyboard: false }).addTo(couche);
         points.push([g.lat, g.lon]);
       });
       if (points.length && cadrer) { carte.fitBounds(points, { padding: [60, 60], maxZoom: 7 }); cadrer = false; }
