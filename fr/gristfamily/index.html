@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.11.1
+  Version     : 1.12.0
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.12.0 - 13/11/2026 - madeXcé - Arbre plus lisible : plus d'espace entre deux familles, cadre léger autour de chaque fratrie, surbrillance de la lignée au clic sur une personne (le reste s'estompe) et mention « conjoint(e) de ... » sur les cartes des personnes entrées par mariage.
   1.11.1 - 12/11/2026 - madeXcé - Correction : les portraits illustrés ne s'affichaient pas (chargement différé retiré).
   1.11.0 - 12/11/2026 - madeXcé - Portraits illustrés : colonne PHOTO_URL (ajoutée toute seule) pour afficher une image par adresse https dans l'avatar quand il n'y a pas de vraie photo.
   1.10.0 - 12/11/2026 - madeXcé - Liseré bleu (homme) et rose (femme) sur les cartes, croix † à côté du nom des personnes décédées, légende complétée et option dans les réglages.
@@ -322,6 +323,14 @@ textarea.saisie { resize: vertical; }
 .carte.carte--h { border-left: 6px solid #4C84D8; }
 .carte.carte--f { border-left: 6px solid #D9608E; }
 .carte--mort .carte__nom::after { content: " \2020"; color: var(--gris); font-weight: 400; }
+.cadre-fratrie { position: absolute; background: rgba(76, 132, 216, .06); border: 1px dashed #B8C6DD; border-radius: 14px; pointer-events: none; }
+.carte__allie { font-style: italic; }
+.monde--focus .noeud { opacity: .28; transition: opacity .15s; }
+.monde--focus .noeud.noeud--vif { opacity: 1; }
+.monde--focus .liens path { opacity: .12; }
+.monde--focus .liens path.vif { opacity: 1; stroke: var(--vert-f); stroke-width: 3; }
+.monde--focus .liens path.coeur.vif { stroke: none; }
+.monde--focus .cadre-fratrie { opacity: .3; }
 .legende__sexe { display: inline-block; width: .25rem; height: .875rem; border-radius: 2px; vertical-align: -2px; margin-right: .375rem; }
 .carte--trouve { box-shadow: 0 0 0 4px var(--orange); }
 .carte__txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
@@ -556,7 +565,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.11.1</span>
+    <span class="bandeau__version">v1.12.0</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -592,7 +601,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.11.1';
+var VERSION = '1.12.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -2597,7 +2606,7 @@ function calculerDisposition(centre) {
       enfants, sans jamais faire se chevaucher deux cartes.
    5. Les traits sont tracés à partir des positions finales. */
 function calculerDispositionGraphe(garder) {
-  var sortie = { noeuds: [], traits: [], coeurs: [] };
+  var sortie = { noeuds: [], traits: [], coeurs: [], fratries: [] };
   var d = etat.donnees;
   var ids = d.ordre.filter(function (id) { return d.P[id] && (!garder || garder[id]); });
   var dedans = {};
@@ -2902,7 +2911,7 @@ function calculerDispositionGraphe(garder) {
     rangees[g].forEach(function (u, i) {
       if (i) {
         var v = rangees[g][i - 1];
-        ecart[u] = memeFamille(u, v) ? DIM.GX : DIM.GX * 3;
+        ecart[u] = memeFamille(u, v) ? DIM.GX : DIM.GX * 5;
         x += ecart[u];
       }
       X[u] = x;
@@ -3012,14 +3021,14 @@ function calculerDispositionGraphe(garder) {
           var ym = Y(a) + DIM.H / 2;
           var xa = centreP(a) + DIM.L / 2;
           var xb = centreP(b) - DIM.L / 2;
-          sortie.traits.push({ pts: [[xa, ym], [xb, ym]] });
+          sortie.traits.push({ pts: [[xa, ym], [xb, ym]], uid: uid });
           sortie.coeurs.push({ x: (xa + xb) / 2, y: ym, separe: u.separes, uid: uid });
           ancres[uid] = [(xa + xb) / 2, ym];
         } else {
           var ya = Y(a);
           var yb = Y(b);
           var hy = Math.min(ya, yb) - 12 - (Object.keys(ancres).length % 3) * 6;
-          sortie.traits.push({ pts: [[centreP(a) - 30, ya], [centreP(a) - 30, hy], [centreP(b) + 30, hy], [centreP(b) + 30, yb]] });
+          sortie.traits.push({ pts: [[centreP(a) - 30, ya], [centreP(a) - 30, hy], [centreP(b) + 30, hy], [centreP(b) + 30, yb]], uid: uid });
           sortie.coeurs.push({ x: (centreP(a) + centreP(b)) / 2, y: hy, separe: u.separes, uid: uid });
           var en = enfantsDeU(uid);
           var mx = 0;
@@ -3052,11 +3061,12 @@ function calculerDispositionGraphe(garder) {
     l.forEach(function (b) {
       var yb = base + (nv > 1 ? (b.voie - (nv - 1) / 2) * Math.min(12, (DIM.GY - 24) / (nv - 1)) : 0);
       var a = ancres[b.uid];
-      sortie.traits.push({ pts: [[a[0], a[1]], [a[0], yb]] });
-      if (b.max > b.min) { sortie.traits.push({ pts: [[b.min, yb], [b.max, yb]] }); }
+      sortie.traits.push({ pts: [[a[0], a[1]], [a[0], yb]], uid: b.uid });
+      if (b.max > b.min) { sortie.traits.push({ pts: [[b.min, yb], [b.max, yb]], uid: b.uid }); }
+      sortie.fratries.push({ uid: b.uid, enf: b.enf.slice() });
       b.enf.forEach(function (e) {
         var p = pers(e);
-        sortie.traits.push({ pts: [[centreP(e), yb], [centreP(e), Y(e)]], adopte: p && p.filiation === 'Adoption' });
+        sortie.traits.push({ pts: [[centreP(e), yb], [centreP(e), Y(e)]], adopte: p && p.filiation === 'Adoption', uid: b.uid });
       });
     });
   });
@@ -3105,6 +3115,9 @@ function rendreArbre(zone, garderCamera) {
   var vue = creer('div', { classe: 'vue-arbre', id: 'vueArbre', attrs: { tabindex: '0', role: 'region',
     'aria-label': 'Arbre centré sur ' + nomComplet(pers(centre)) + '. Flèches pour se déplacer, plus et moins pour zoomer, zéro pour tout voir.' } });
   var monde = creer('div', { classe: 'monde', id: 'monde', attrs: { style: 'width:' + disp.largeur + 'px;height:' + disp.hauteur + 'px' } });
+  cadresFratries(disp).forEach(function (c) {
+    monde.appendChild(creer('div', { classe: 'cadre-fratrie', attrs: { style: 'left:' + Math.round(c.x) + 'px;top:' + Math.round(c.y) + 'px;width:' + Math.round(c.w) + 'px;height:' + Math.round(c.h) + 'px', title: c.titre, 'aria-hidden': 'true' } }));
+  });
   monde.appendChild(dessinerLiens(disp));
   disp.noeuds.forEach(function (n) { monde.appendChild(noeudCarte(n, centre, br)); });
   vue.appendChild(monde);
@@ -3127,6 +3140,7 @@ function rendreArbre(zone, garderCamera) {
   vue.appendChild(legendeArbre(br));
   zone.appendChild(vue);
   brancherNavigation(vue, monde);
+  appliquerSurbrillance();
   var cam = etat.cam[etat.cleArbre];
   if (garderCamera && cam) { appliquerCamera(); }
   else { requestAnimationFrame(function () { centrerSur(centre, false); }); }
@@ -3155,6 +3169,29 @@ function legendeArbre(br) {
   return l;
 }
 
+/* Cadre léger autour des enfants d'un même couple (leur fratrie), quand ils
+   se suivent sur la rangée : on voit d'un coup d'oeil qui est le frère ou la
+   sœur de qui. Aucun cadre si une autre carte s'est glissée au milieu. */
+function cadresFratries(disp) {
+  var pos = {};
+  disp.noeuds.forEach(function (n) { pos[n.pid] = n; });
+  var cadres = [];
+  (disp.fratries || []).forEach(function (fr) {
+    var l = fr.enf.map(function (e) { return pos[e]; }).filter(function (n) { return n; });
+    if (l.length < 2) { return; }
+    var y = l[0].y;
+    if (l.some(function (n) { return n.y !== y; })) { return; }
+    var x0 = Math.min.apply(null, l.map(function (n) { return n.x; }));
+    var x1 = Math.max.apply(null, l.map(function (n) { return n.x + DIM.L; }));
+    var gene = disp.noeuds.some(function (n) { return n.y === y && fr.enf.indexOf(n.pid) === -1 && n.x + DIM.L > x0 && n.x < x1; });
+    if (gene) { return; }
+    var u = unionDe(fr.uid);
+    var noms = u ? [u.a, u.b].filter(function (x) { return x && pers(x); }).map(function (x) { return pers(x).prenom || nomComplet(pers(x)); }).join(' et ') : '';
+    cadres.push({ x: x0 - 10, y: y - 10, w: x1 - x0 + 20, h: DIM.H + 20, titre: 'Enfants de ' + noms });
+  });
+  return cadres;
+}
+
 function dessinerLiens(disp) {
   var ns = 'http://www.w3.org/2000/svg';
   var svg = document.createElementNS(ns, 'svg');
@@ -3166,11 +3203,13 @@ function dessinerLiens(disp) {
     var p = document.createElementNS(ns, 'path');
     p.setAttribute('d', t.pts.map(function (q, i) { return (i ? 'L' : 'M') + Math.round(q[0]) + ' ' + Math.round(q[1]); }).join(' '));
     if (t.adopte) { p.setAttribute('class', 'adopte'); }
+    if (t.uid) { p.setAttribute('data-uid', t.uid); }
     svg.appendChild(p);
   });
   disp.coeurs.forEach(function (c) {
     var p = document.createElementNS(ns, 'path');
     p.setAttribute('class', 'coeur' + (c.separe ? ' coeur--separe' : ''));
+    if (c.uid) { p.setAttribute('data-uid', c.uid); }
     p.setAttribute('transform', 'translate(' + (c.x - 8) + ' ' + (c.y - 7) + ') scale(0.8)');
     p.setAttribute('d', 'M10 18 C10 18 0 11.5 0 5.5 C0 2.5 2.4 0 5.2 0 C7.2 0 8.9 1.2 10 3 C11.1 1.2 12.8 0 14.8 0 C17.6 0 20 2.5 20 5.5 C20 11.5 10 18 10 18 Z');
     svg.appendChild(p);
@@ -3208,11 +3247,17 @@ function noeudCarte(n, centre, br) {
   var aff = etat.config.affichage.carte;
   var nom = nomComplet(p);
   var sous = aff.nomNaissance && p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom) ? accord(p, 'né ', 'née ', 'naissance : ') + p.nomNaissance : '';
+  var infoBr = br && br.parId ? br.parId[p.id] : null;
+  var allieDe = '';
+  if (infoBr && infoBr.branche === 'allie' && n.pid !== centre) {
+    var cjs = unionsPersonne(n.pid).map(function (uid) { return conjointDans(uid, n.pid); }).filter(function (x) { return x && pers(x); });
+    if (cjs.length) { allieDe = accord(p, 'conjoint de ', 'conjointe de ', 'union avec ') + (pers(cjs[0]).prenom || nomComplet(pers(cjs[0]))); }
+  }
   var etiquette = nom + (info ? ', ' + info : '') + (n.pid === centre ? ', au centre de l’arbre' : '') + (estDecede(p) ? ', ' + accord(p, 'décédé', 'décédée', 'décès') : '') + (n.dup ? ', déjà présente ailleurs dans l’arbre' : '') + (p.verifiee ? ', vérifiée' : '') + (p.aVerifier ? ', à vérifier' : '');
   var carte = creer('button', { classe: classes.join(' '), attrs: { 'data-pid': n.pid, 'aria-label': etiquette + '. Ouvrir la fiche' },
     clic: function () { ouvrirFiche(n.pid); } }, [
     avatar(p, classeCouleur(p, br)),
-    creer('span', { classe: 'carte__txt' }, [creer('span', { classe: 'carte__nom', texte: nom }), sous ? creer('span', { classe: 'carte__info', texte: sous }) : null, info ? creer('span', { classe: 'carte__info', texte: info }) : null])
+    creer('span', { classe: 'carte__txt' }, [creer('span', { classe: 'carte__nom', texte: nom }), sous ? creer('span', { classe: 'carte__info', texte: sous }) : null, allieDe ? creer('span', { classe: 'carte__info carte__allie', texte: allieDe }) : null, info ? creer('span', { classe: 'carte__info', texte: info }) : null])
   ]);
   carte.addEventListener('dblclick', function () { etat.centreSession = n.pid; rendre(); centrerSur(n.pid, true); });
   var noeud = creer('div', { classe: 'noeud', attrs: { style: 'left:' + Math.round(n.x) + 'px;top:' + Math.round(n.y) + 'px' } }, [carte]);
@@ -3478,11 +3523,57 @@ async function envoyerPhoto(fichier) {
 }
 
 /* === SECTION : FICHE PERSONNE (volet de droite) === */
+/* Surbrillance : la personne choisie, ses ancêtres, ses descendants et leurs
+   conjoints restent nets, tout le reste s'estompe. */
+function appliquerSurbrillance() {
+  var monde = document.getElementById('monde');
+  if (!monde) { return; }
+  monde.classList.remove('monde--focus');
+  monde.querySelectorAll('.noeud--vif').forEach(function (n) { n.classList.remove('noeud--vif'); });
+  monde.querySelectorAll('.liens path.vif').forEach(function (n) { n.classList.remove('vif'); });
+  var sel = etat.selection;
+  if (!sel || !pers(sel)) { return; }
+  var pids = {};
+  var uids = {};
+  var monter = function (id, vus) {
+    if (!id || vus[id]) { return; }
+    vus[id] = true;
+    pids[id] = true;
+    var p = pers(id);
+    if (p && p.parents) {
+      uids[p.parents] = true;
+      var u = unionDe(p.parents);
+      if (u) { monter(u.a, vus); monter(u.b, vus); }
+    }
+  };
+  monter(sel, {});
+  var descendre = function (id, vus) {
+    if (!id || vus[id]) { return; }
+    vus[id] = true;
+    pids[id] = true;
+    unionsPersonne(id).forEach(function (uid) {
+      uids[uid] = true;
+      var cj = conjointDans(uid, id);
+      if (cj) { pids[cj] = true; }
+      enfantsUnion(uid).forEach(function (e) { descendre(e, vus); });
+    });
+  };
+  descendre(sel, {});
+  monde.classList.add('monde--focus');
+  monde.querySelectorAll('.carte[data-pid]').forEach(function (c) {
+    if (pids[c.getAttribute('data-pid')]) { c.parentNode.classList.add('noeud--vif'); }
+  });
+  monde.querySelectorAll('.liens path[data-uid]').forEach(function (p) {
+    if (uids[p.getAttribute('data-uid')]) { p.classList.add('vif'); }
+  });
+}
+
 function ouvrirFiche(pid) {
   etat.selection = pid;
   document.querySelectorAll('.carte--sel').forEach(function (n) { n.classList.remove('carte--sel'); });
   var c = document.querySelector('.carte[data-pid="' + pid + '"]');
   if (c) { c.classList.add('carte--sel'); }
+  appliquerSurbrillance();
   rendreFiche();
   var t = document.getElementById('ficheTitre');
   if (t) { t.focus(); }
@@ -3495,6 +3586,7 @@ function fermerFiche(silencieux) {
   f.hidden = true;
   vider(f);
   document.querySelectorAll('.carte--sel').forEach(function (n) { n.classList.remove('carte--sel'); });
+  appliquerSurbrillance();
   if (!silencieux && avant) { var c = document.querySelector('.carte[data-pid="' + avant + '"]'); if (c) { c.focus(); } }
 }
 
