@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.5.0
+  Version     : 1.5.1
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -51,6 +51,7 @@
 
   HISTORIQUE
   ----------
+  1.5.1 - 12/11/2026 - madeXcé - Âge affiché (au décès ou actuel) sur les cartes de l'arbre, la carte du monde et la liste ; carte du monde plus haute, zoom plus fin.
   1.5.0 - 12/11/2026 - madeXcé - Nouveau moteur de disposition : chaque personne n'a plus qu'une seule carte, rangée par génération, les familles restent d'un seul tenant et les croisements de traits sont limités.
   1.4.1 - 11/11/2026 - madeXcé - Arbre complet : les frères et sœurs de la branche principale sont placés à côté d'elle, du côté opposé à son conjoint.
   1.4.0 - 11/11/2026 - madeXcé - Arbre complet par défaut : toute la famille est dessinée depuis les plus anciens ancêtres, sans personne au centre ; l'ancien affichage centré reste disponible dans les réglages.
@@ -517,7 +518,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.5.0</span>
+    <span class="bandeau__version">v1.5.1</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -553,7 +554,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.5.0';
+var VERSION = '1.5.1';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -1089,6 +1090,20 @@ function ageEntre(d1, d2) {
     if (d2.m < d1.m || (d2.m === d1.m && d1.j && d2.j && d2.j < d1.j)) { age -= 1; }
   } else if (!d1.m) { return null; }
   return age >= 0 && age < 130 ? age : null;
+}
+
+/* Âge d'une personne : à son décès, ou aujourd'hui si elle est vivante.
+   Renvoie un texte (« 91 ans », « vers 91 ans » si les dates sont
+   approximatives ou sans mois), ou une chaîne vide si on ne peut pas le savoir. */
+function texteAge(p) {
+  if (!p || !p.naissance) { return ''; }
+  var fin = estDecede(p) ? p.deces : aujourdhui();
+  if (!fin) { return ''; }
+  var exact = ageEntre(p.naissance, fin);
+  var approx = !!(p.naissanceApprox || (estDecede(p) && p.decesApprox) || !p.naissance.m || !fin.m);
+  var n = exact !== null ? exact : fin.a - p.naissance.a;
+  if (n < 0 || n > 130) { return ''; }
+  return (approx ? 'vers ' : '') + n + (n > 1 ? ' ans' : ' an');
 }
 
 var _formatsNombre = {};
@@ -1807,6 +1822,8 @@ function infoCarte(p) {
     else if (n) { morceaux.push(estDecede(p) ? n + ' - ?' : n); }
     else if (d) { morceaux.push('? - ' + d); }
     else if (estDecede(p)) { morceaux.push(accord(p, 'décédé', 'décédée', 'décès')); }
+    var ag = texteAge(p);
+    if (ag && morceaux.length) { morceaux[morceaux.length - 1] += ' (' + ag + ')'; }
   }
   if (a.lieu && p.naissanceLieu) { morceaux.push(p.naissanceLieu); }
   if (a.profession && p.profession) { morceaux.push(p.profession); }
@@ -4078,7 +4095,7 @@ function rendreListe(zone) {
   var compteur = creer('p', { classe: 'indice', attrs: { 'aria-live': 'polite' } });
   var table = creer('table', { classe: 'tableau' }, [
     creer('caption', { classe: 'sr', texte: 'Personnes de l’arbre, triées par ' + f.tri }),
-    creer('thead', {}, [creer('tr', {}, [enteteTri('Nom', 'nom', f), enteteTri('Naissance', 'naissance', f), enteteTri('Décès', 'deces', f), creer('th', { texte: 'Lieu de vie', attrs: { scope: 'col' } }), enteteTri('Lien avec ' + (pers(centre).prenom || nomComplet(pers(centre))), 'generation', f), enteteTri('Branche', 'branche', f)])]),
+    creer('thead', {}, [creer('tr', {}, [enteteTri('Nom', 'nom', f), enteteTri('Naissance', 'naissance', f), enteteTri('Décès', 'deces', f), creer('th', { texte: 'Âge', attrs: { scope: 'col' } }), creer('th', { texte: 'Lieu de vie', attrs: { scope: 'col' } }), enteteTri('Lien avec ' + (pers(centre).prenom || nomComplet(pers(centre))), 'generation', f), enteteTri('Branche', 'branche', f)])]),
     tbody
   ]);
   var majCorps = function () {
@@ -4105,6 +4122,7 @@ function rendreListe(zone) {
           p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom) ? creer('div', { classe: 'indice', texte: accord(p, 'né ', 'née ', 'naissance : ') + p.nomNaissance }) : null]),
         creer('td', {}, [formaterDate(p.naissance, p.naissanceApprox), p.naissanceLieu ? creer('div', { classe: 'indice', texte: p.naissanceLieu }) : null]),
         creer('td', {}, [p.deces ? formaterDate(p.deces, p.decesApprox) : (estDecede(p) ? 'date inconnue' : ''), p.decesLieu ? creer('div', { classe: 'indice', texte: p.decesLieu }) : null]),
+        creer('td', { texte: texteAge(p) }),
         creer('td', { texte: estDecede(p) ? '' : p.residence }),
         creer('td', { texte: libelleParente(p.id, br, centre) }),
         creer('td', {}, [badge(libelleBranche(i ? i.branche : 'aucune', br.noms), classeBranche(i ? i.branche : ''))])
@@ -4558,6 +4576,13 @@ function lieuxAPlacer() {
   return Object.keys(lieux).map(function (k) { return lieux[k]; }).sort(function (a, b) { return a.nom.localeCompare(b.nom, 'fr'); });
 }
 
+/* Âge à côté d'un nom, dans les listes et les fenêtres de la carte. */
+function texteAgeApres(pid) {
+  var a = texteAge(pers(pid));
+  if (!a) { return null; }
+  return creer('span', { classe: 'indice', texte: ' (' + a + (estDecede(pers(pid)) ? ' au décès' : '') + ')' });
+}
+
 function rendreCarte(zone) {
   if (etat.carteObjet) { try { etat.carteObjet.remove(); } catch (e) { logSecurite('INFO', 'Carte non retirée', e); } etat.carteObjet = null; }
   var page = creer('div', { classe: 'page' });
@@ -4574,7 +4599,7 @@ function rendreCarte(zone) {
     ])
   ]));
   var statut = creer('p', { classe: 'indice', id: 'carteStatut', attrs: { 'aria-live': 'polite' } });
-  var boite = creer('div', { id: 'carteBoite', attrs: { style: 'height:min(62vh,640px);min-height:320px;border:1px solid #E6E6EC;border-radius:10px;overflow:hidden;background:#EEF2F4', role: 'region', 'aria-label': 'Carte des lieux. La liste des lieux, sous la carte, donne les mêmes informations.' } });
+  var boite = creer('div', { id: 'carteBoite', attrs: { style: 'height:calc(100vh - 190px);min-height:460px;border:1px solid #E6E6EC;border-radius:10px;overflow:hidden;background:#EEF2F4', role: 'region', 'aria-label': 'Carte des lieux. La liste des lieux, sous la carte, donne les mêmes informations.' } });
   page.appendChild(boite);
   page.appendChild(creer('div', { classe: 'compteurs', attrs: { style: 'margin:.5rem 0' } }, [
     creer('span', {}, [creer('span', { classe: 'pastille', attrs: { style: 'background:#007548', 'aria-hidden': 'true' } }), 'Famille']),
@@ -4590,7 +4615,7 @@ function rendreCarte(zone) {
   lieux.forEach(function (l) {
     tb.appendChild(creer('tr', {}, [
       creer('th', { texte: l.nom, attrs: { scope: 'row', style: 'font-weight:600' } }),
-      creer('td', {}, l.personnes.map(function (pid) { return creer('div', {}, [creer('button', { classe: 'lien-personne', texte: nomComplet(pers(pid)), clic: function () { ouvrirFiche(pid); } })]); })),
+      creer('td', {}, l.personnes.map(function (pid) { return creer('div', {}, [creer('button', { classe: 'lien-personne', texte: nomComplet(pers(pid)), clic: function () { ouvrirFiche(pid); } }), texteAgeApres(pid)]); })),
       avecCousins ? creer('td', {}, l.cousins.map(function (cid) { var c = etat.donnees.cousins.filter(function (x) { return x.id === cid; })[0]; return creer('div', { texte: c ? ((c.prenom + ' ' + c.nom).trim() || 'Sans nom') + (c.cm ? ' (' + formaterNombre(c.cm, 0) + ' cM)' : '') : '' }); })) : null
     ]));
   });
@@ -4607,7 +4632,7 @@ function rendreCarte(zone) {
   zone.appendChild(page);
   chargerLeaflet().then(function (L) {
     if (!boite.isConnected) { return; }
-    var carte = L.map(boite, { worldCopyJump: true, zoomControl: true }).setView([46.5, 2.5], 4);
+    var carte = L.map(boite, { worldCopyJump: true, zoomControl: true, minZoom: 2, zoomSnap: 0.5, zoomDelta: 1, wheelPxPerZoomLevel: 90 }).setView([46.5, 2.5], 4);
     etat.carteObjet = carte;
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© contributeurs OpenStreetMap' }).addTo(carte);
     var couche = L.layerGroup().addTo(carte);
@@ -4624,7 +4649,7 @@ function rendreCarte(zone) {
         var m = L.circleMarker([g.lat, g.lon], { radius: Math.min(22, 7 + Math.sqrt(nb) * 3), color: cou ? '#6B2FA0' : '#FFFFFF', weight: cou && fam ? 4 : 2,
           fillColor: fam ? '#007548' : '#6B2FA0', fillOpacity: 0.85 });
         var pop = creer('div', { attrs: { style: 'min-width:11rem' } }, [creer('strong', { texte: l.nom })]);
-        l.personnes.forEach(function (pid) { pop.appendChild(creer('div', {}, [creer('button', { classe: 'lien-personne', texte: nomComplet(pers(pid)), clic: function () { ouvrirFiche(pid); } })])); });
+        l.personnes.forEach(function (pid) { pop.appendChild(creer('div', {}, [creer('button', { classe: 'lien-personne', texte: nomComplet(pers(pid)), clic: function () { ouvrirFiche(pid); } }), texteAgeApres(pid)])); });
         l.cousins.forEach(function (cid) { var c = etat.donnees.cousins.filter(function (x) { return x.id === cid; })[0]; if (c) { pop.appendChild(creer('div', { texte: 'ADN : ' + ((c.prenom + ' ' + c.nom).trim() || 'Sans nom') + (c.cm ? ' (' + formaterNombre(c.cm, 0) + ' cM)' : '') })); } });
         m.bindPopup(pop);
         m.bindTooltip(l.nom + ' : ' + nb);
