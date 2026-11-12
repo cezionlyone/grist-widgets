@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.8.0
+  Version     : 1.8.1
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -51,6 +51,7 @@
 
   HISTORIQUE
   ----------
+  1.8.1 - 12/11/2026 - madeXcé - La recherche du bandeau trouve aussi les cousins ADN (prénom, nom, patronyme, ville, pays) et ouvre la liste filtrée.
   1.8.0 - 12/11/2026 - madeXcé - « Coller la fiche du site » lit maintenant le format réel de MyHeritage (nom, âge, pays, parenté, cM, segments, taille de l'arbre, liens, noms et lieux ancestraux, ancêtres du cousin) ; nouveaux champs dans la fiche du cousin (colonnes créées toutes seules) ; patronymes communs calculés d'après votre arbre ; lien « Voir sur le site » dans la liste.
   1.7.0 - 12/11/2026 - madeXcé - Case « Vérifiée » pour chaque personne et chaque cousin ADN (colonne VERIFIEE ajoutée toute seule), coche verte sur les cartes de l'arbre, de la carte des cousins et dans les listes ; bouton « Marquer comme vérifiée » dans la fiche.
   1.6.2 - 12/11/2026 - madeXcé - Fenêtres (ajout d'un cousin, etc.) : elles passent maintenant au-dessus des cartes géographiques au lieu d'être masquées.
@@ -540,7 +541,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.8.0</span>
+    <span class="bandeau__version">v1.8.1</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -576,7 +577,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.8.0';
+var VERSION = '1.8.1';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -2065,7 +2066,7 @@ function rendreBandeau() {
 function zoneRecherche() {
   var boite = creer('div', { classe: 'recherche', attrs: { role: 'search' } });
   var lab = creer('label', { classe: 'sr', texte: 'Rechercher une personne', attrs: { 'for': 'recherchePers' } });
-  var inp = creer('input', { classe: 'saisie', id: 'recherchePers', attrs: { type: 'search', placeholder: 'Rechercher une personne', 'aria-controls': 'suggestions', 'aria-expanded': 'false', 'aria-autocomplete': 'list' } });
+  var inp = creer('input', { classe: 'saisie', id: 'recherchePers', attrs: { type: 'search', placeholder: 'Rechercher une personne ou un cousin', 'aria-controls': 'suggestions', 'aria-expanded': 'false', 'aria-autocomplete': 'list' } });
   var ul = creer('ul', { classe: 'suggestions', id: 'suggestions', attrs: { hidden: true, 'aria-label': 'Personnes trouvées' } });
   var maj = function () {
     var q = normaliser(inp.value);
@@ -2074,12 +2075,30 @@ function zoneRecherche() {
     var trouves = etat.donnees.ordre.map(pers).filter(function (p) {
       return normaliser(nomComplet(p) + ' ' + p.nomNaissance + ' ' + p.naissanceLieu).indexOf(q) !== -1;
     }).sort(function (a, b) { return nomComplet(a).localeCompare(nomComplet(b), 'fr'); });
-    if (!trouves.length) { ul.appendChild(creer('li', { classe: 'indice', texte: 'Personne ne correspond.', attrs: { style: 'padding:.5rem .625rem' } })); }
+    var cousinsTrouves = vuesDisponibles().some(function (v) { return v.cle === 'cousins'; }) ? (etat.donnees.cousins || []).filter(function (c) {
+      return normaliser([c.prenom, c.nom, c.patronymes, c.ville, c.pays].join(' ')).indexOf(q) !== -1;
+    }) : [];
+    if (!trouves.length && !cousinsTrouves.length) { ul.appendChild(creer('li', { classe: 'indice', texte: 'Personne ne correspond.', attrs: { style: 'padding:.5rem .625rem' } })); }
     trouves.forEach(function (p) {
       var b = creer('button', { clic: function () { inp.value = ''; ul.hidden = true; allerAPersonne(p.id); } },
         [creer('span', { texte: nomComplet(p) }), creer('span', { classe: 'indice', texte: anneeAffichee(p.naissance, p.naissanceApprox) })]);
       ul.appendChild(creer('li', {}, [b]));
     });
+    if (cousinsTrouves.length) {
+      ul.appendChild(creer('li', { classe: 'indice', texte: 'Cousins ADN', attrs: { style: 'padding:.5rem .625rem .25rem', role: 'presentation' } }));
+      cousinsTrouves.slice(0, 12).forEach(function (c) {
+        var nomC = ((c.prenom || '') + ' ' + (c.nom || '')).trim();
+        var bc = creer('button', { clic: function () {
+          inp.value = ''; ul.hidden = true;
+          etat.filtreCousins.texte = nomC;
+          etat.cousinsAffichage = 'tableau';
+          etat.vue = 'cousins';
+          rendre();
+          annoncer('Cousin ADN : ' + nomC);
+        } }, [creer('span', { texte: nomC }), creer('span', { classe: 'indice', texte: [c.pays, c.cm ? formaterNombre(c.cm, 1) + ' cM' : ''].filter(Boolean).join(', ') })]);
+        ul.appendChild(creer('li', {}, [bc]));
+      });
+    }
     ul.hidden = false;
     inp.setAttribute('aria-expanded', 'true');
   };
