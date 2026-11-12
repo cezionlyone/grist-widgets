@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.8.1
+  Version     : 1.8.2
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -51,6 +51,7 @@
 
   HISTORIQUE
   ----------
+  1.8.2 - 12/11/2026 - madeXcé - Cartes des cousins : pays (et ville) avec un petit drapeau sur chaque carte, drapeau aussi sur l'étiquette du lieu et dans le tableau.
   1.8.1 - 12/11/2026 - madeXcé - La recherche du bandeau trouve aussi les cousins ADN (prénom, nom, patronyme, ville, pays) et ouvre la liste filtrée.
   1.8.0 - 12/11/2026 - madeXcé - « Coller la fiche du site » lit maintenant le format réel de MyHeritage (nom, âge, pays, parenté, cM, segments, taille de l'arbre, liens, noms et lieux ancestraux, ancêtres du cousin) ; nouveaux champs dans la fiche du cousin (colonnes créées toutes seules) ; patronymes communs calculés d'après votre arbre ; lien « Voir sur le site » dans la liste.
   1.7.0 - 12/11/2026 - madeXcé - Case « Vérifiée » pour chaque personne et chaque cousin ADN (colonne VERIFIEE ajoutée toute seule), coche verte sur les cartes de l'arbre, de la carte des cousins et dans les listes ; bouton « Marquer comme vérifiée » dans la fiche.
@@ -368,6 +369,8 @@ table.tableau { width: 100%; border-collapse: collapse; }
 .cousin-carte--proche { border-left-color: #C2410C; }
 .cousin-carte--elargie { border-left-color: #6B2FA0; }
 .cousin-carte--eloignee { border-left-color: #8A8AA0; }
+.drapeau { width: 20px; height: 15px; object-fit: cover; border: 1px solid rgba(0,0,0,.2); border-radius: 2px; flex: none; vertical-align: -2px; }
+.cousin-carte__pays { display: flex; align-items: center; gap: 5px; font-size: .6875rem; font-weight: 600; color: #4B1F78; }
 .cousin-carte__nom { font-size: .8125rem; font-weight: 600; color: #1D1D2B; white-space: normal; overflow-wrap: anywhere; }
 .cousin-carte__info { font-size: .6875rem; color: #55556A; white-space: normal; overflow-wrap: anywhere; }
 .cousin-pile__plus { align-self: center; font: inherit; font-size: .75rem; padding: 2px 10px; border-radius: 999px; border: 1px solid #D8CCE6; background: #fff; cursor: pointer; color: #4B1F78; }
@@ -541,7 +544,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.8.1</span>
+    <span class="bandeau__version">v1.8.2</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -577,7 +580,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.8.1';
+var VERSION = '1.8.2';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -1005,6 +1008,21 @@ function alerte(type, texte, nomIcone) {
 
 function badge(texte, classe) {
   return creer('span', { classe: 'badge' + (classe ? ' ' + classe : ''), texte: texte });
+}
+
+var CODES_PAYS = { 'france': 'fr','allemagne': 'de','espagne': 'es','italie': 'it','portugal': 'pt','royaume uni': 'gb','angleterre': 'gb','ecosse': 'gb','pays de galles': 'gb','irlande': 'ie','belgique': 'be','pays bas': 'nl','luxembourg': 'lu','suisse': 'ch','autriche': 'at','danemark': 'dk','suede': 'se','norvege': 'no','finlande': 'fi','islande': 'is','pologne': 'pl','hongrie': 'hu','republique tcheque': 'cz','tchequie': 'cz','slovaquie': 'sk','slovenie': 'si','croatie': 'hr','serbie': 'rs','roumanie': 'ro','bulgarie': 'bg','grece': 'gr','chypre': 'cy','malte': 'mt','estonie': 'ee','lettonie': 'lv','lituanie': 'lt','ukraine': 'ua','russie': 'ru','bielorussie': 'by','turquie': 'tr','etats unis d amerique': 'us','etats unis': 'us','usa': 'us','canada': 'ca','mexique': 'mx','bresil': 'br','argentine': 'ar','chili': 'cl','perou': 'pe','colombie': 'co','venezuela': 've','uruguay': 'uy','cuba': 'cu','australie': 'au','nouvelle zelande': 'nz','afrique du sud': 'za','maroc': 'ma','algerie': 'dz','tunisie': 'tn','egypte': 'eg','senegal': 'sn','israel': 'il','liban': 'lb','inde': 'in','chine': 'cn','japon': 'jp','coree du sud': 'kr','thailande': 'th','vietnam': 'vn','philippines': 'ph','indonesie': 'id','singapour': 'sg','madagascar': 'mg','reunion': 're','martinique': 'mq','guadeloupe': 'gp','nouvelle caledonie': 'nc','polynesie francaise': 'pf','monaco': 'mc','andorre': 'ad' };
+
+/* Petit drapeau (image du service flagcdn.com) : n'est affiché que si le pays est reconnu. */
+function codePays(pays) {
+  var k = normaliser(String(pays || '')).replace(/[^a-z0-9]+/g, ' ').trim();
+  return CODES_PAYS[k] || '';
+}
+function drapeau(pays) {
+  var code = codePays(pays);
+  if (!code) { return null; }
+  var img = creer('img', { classe: 'drapeau', attrs: { src: 'https://flagcdn.com/w40/' + code + '.png', alt: '', width: '20', height: '15', loading: 'lazy', 'aria-hidden': 'true' } });
+  img.addEventListener('error', function () { img.remove(); });
+  return img;
 }
 
 function normaliser(s) {
@@ -4389,7 +4407,7 @@ function rendreCousins(zone) {
           c.age ? creer('div', { classe: 'indice', texte: c.age }) : null,
           c.tailleArbre ? creer('div', { classe: 'indice', texte: 'Arbre de ' + pluriel(c.tailleArbre, 'personne', 'personnes') }) : null,
           c.patronymes ? creer('div', { classe: 'indice', texte: c.patronymes }) : null]),
-        creer('td', {}, [c.pays || '', c.ville ? creer('div', { classe: 'indice', texte: c.ville }) : null]),
+        creer('td', {}, [drapeau(c.pays), c.pays ? ' ' + c.pays : '', c.ville ? creer('div', { classe: 'indice', texte: c.ville }) : null]),
         creer('td', {}, [c.site || '', lienSiteCousin(c)]),
         creer('td', {}, [c.cm ? formaterNombre(c.cm, 1) + ' cM' : '', detailADN(c) ? creer('div', { classe: 'indice', texte: detailADN(c) }) : null]),
         creer('td', {}, [c.relation ? c.relation : (estim ? creer('span', { classe: 'indice', texte: 'Estimation : ' + estim }) : '')]),
@@ -4440,6 +4458,7 @@ function dessinerCarteCousins(boite, statut, enregistrer, filtrer) {
     var parente = c.relation || estimerParente(c.cm);
     var el = creer('button', { classe: 'cousin-carte cousin-carte--' + cercleADN(c.cm) }, [
       creer('span', { classe: 'cousin-carte__nom' }, [c.verifiee ? cocheVerifiee('coche-verif--ligne') : null, nom]),
+      c.pays ? creer('span', { classe: 'cousin-carte__pays' }, [drapeau(c.pays), c.pays + (c.ville ? ' · ' + c.ville : '')]) : null,
       creer('span', { classe: 'cousin-carte__info', texte: [c.age, c.cm ? formaterNombre(c.cm, 0) + ' cM' : '', parente || c.branche || ''].filter(function (x) { return x; }).join(' · ') || ' ' })
     ]);
     el.addEventListener('click', function (e) { e.stopPropagation(); if (etat.peutModifier) { ouvrirFormCousin(c); } });
@@ -4468,7 +4487,7 @@ function dessinerCarteCousins(boite, statut, enregistrer, filtrer) {
         var remplir = function () {
           vider(pile);
           var visibles = ouverts[l.cle] ? tri : tri.slice(0, 2);
-          pile.appendChild(creer('div', { classe: 'cousin-pile__lieu', texte: l.nom }));
+          pile.appendChild(creer('div', { classe: 'cousin-pile__lieu' }, [tri[0] && tri.every(function (x) { return x.pays === tri[0].pays; }) ? drapeau(tri[0].pays) : null, ' ' + l.nom]));
           visibles.forEach(function (c) { pile.appendChild(carteCousin(c)); });
           if (tri.length > 2) {
             var plus = creer('button', { classe: 'cousin-pile__plus', texte: ouverts[l.cle] ? 'Réduire' : '+ ' + (tri.length - 2) + (tri.length - 2 > 1 ? ' autres' : ' autre') });
