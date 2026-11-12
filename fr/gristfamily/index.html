@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.6.1
+  Version     : 1.6.2
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -51,6 +51,7 @@
 
   HISTORIQUE
   ----------
+  1.6.2 - 12/11/2026 - madeXcé - Fenêtres (ajout d'un cousin, etc.) : elles passent maintenant au-dessus des cartes géographiques au lieu d'être masquées.
   1.6.1 - 12/11/2026 - madeXcé - Cartes des cousins ADN : âge affiché ; textes jamais tronqués (cartes de l'arbre et des cousins s'agrandissent si besoin).
   1.6.0 - 12/11/2026 - madeXcé - Cousins ADN : carte des cousins affichée par défaut (une pile de cartes par lieu : nom, ADN partagé, parenté), bascule vers le tableau.
   1.5.1 - 12/11/2026 - madeXcé - Âge affiché (au décès ou actuel) sur les cartes de l'arbre, la carte du monde et la liste ; carte du monde plus haute, zoom plus fin.
@@ -449,7 +450,8 @@ table.tableau { width: 100%; border-collapse: collapse; }
 .question p { margin: 0 0 .5rem; }
 
 /* === Fenêtres, messages, chargement === */
-.voile { position: fixed; inset: 0; z-index: 100; background: var(--voile); display: none; align-items: center; justify-content: center; padding: 1rem; }
+.leaflet-container { isolation: isolate; }
+.voile { position: fixed; inset: 0; z-index: 100000; background: var(--voile); display: none; align-items: center; justify-content: center; padding: 1rem; }
 .voile.actif { display: flex; }
 .dialogue { width: 36rem; max-width: 100%; max-height: calc(100vh - 2rem); display: flex; flex-direction: column; background: var(--blanc); border-radius: 12px; box-shadow: var(--ombre-forte); }
 .dialogue--etroit { width: 26rem; }
@@ -459,13 +461,13 @@ table.tableau { width: 100%; border-collapse: collapse; }
 .dialogue__corps { padding: .75rem 1.5rem; overflow: auto; display: flex; flex-direction: column; gap: .875rem; }
 .dialogue__pied { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .5rem; padding: 1rem 1.5rem 1.25rem; }
 .dialogue__pied .gauche { margin-right: auto; }
-.message { position: fixed; right: 1rem; bottom: 1rem; z-index: 120; max-width: 26rem; display: none; align-items: flex-start; gap: .625rem; padding: .75rem .875rem; border-radius: var(--r-l); box-shadow: var(--ombre-forte); }
+.message { position: fixed; right: 1rem; bottom: 1rem; z-index: 100002; max-width: 26rem; display: none; align-items: flex-start; gap: .625rem; padding: .75rem .875rem; border-radius: var(--r-l); box-shadow: var(--ombre-forte); }
 .message.actif { display: flex; }
 .message--ok { background: var(--encre); color: var(--blanc); }
 .message--erreur { background: var(--flamant); color: var(--flamant-f); border: 1px solid #F2B8BC; }
 .message p { margin: 0; flex: 1; }
 .message button { border: 0; background: transparent; color: inherit; cursor: pointer; padding: 0; }
-#loader { position: fixed; inset: 0; z-index: 110; display: none; align-items: center; justify-content: center; background: rgba(255, 255, 255, .7); }
+#loader { position: fixed; inset: 0; z-index: 100001; display: none; align-items: center; justify-content: center; background: rgba(255, 255, 255, .7); }
 #loader.actif { display: flex; }
 .loader__boite { display: flex; align-items: center; gap: .75rem; padding: .875rem 1.25rem; background: var(--blanc); border-radius: var(--r-l); box-shadow: var(--ombre-forte); font-weight: 600; }
 .tourne { width: 1.25rem; height: 1.25rem; border-radius: 50%; border: 3px solid var(--ecume); border-top-color: var(--vert-f); animation: tourne .8s linear infinite; }
@@ -531,7 +533,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.6.1</span>
+    <span class="bandeau__version">v1.6.2</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -567,7 +569,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.6.1';
+var VERSION = '1.6.2';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
