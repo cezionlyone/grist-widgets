@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.9.0
+  Version     : 1.9.1
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.9.1 - 12/11/2026 - madeXcé - Les cœurs qui signalent les unions passent du vert au rouge.
   1.8.2 - 12/11/2026 - madeXcé - Cartes des cousins : pays (et ville) avec un petit drapeau sur chaque carte, drapeau aussi sur l'étiquette du lieu et dans le tableau.
   1.8.1 - 12/11/2026 - madeXcé - La recherche du bandeau trouve aussi les cousins ADN (prénom, nom, patronyme, ville, pays) et ouvre la liste filtrée.
   1.8.0 - 12/11/2026 - madeXcé - « Coller la fiche du site » lit maintenant le format réel de MyHeritage (nom, âge, pays, parenté, cM, segments, taille de l'arbre, liens, noms et lieux ancestraux, ancêtres du cousin) ; nouveaux champs dans la fiche du cousin (colonnes créées toutes seules) ; patronymes communs calculés d'après votre arbre ; lien « Voir sur le site » dans la liste.
@@ -305,7 +306,7 @@ textarea.saisie { resize: vertical; }
 .liens { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
 .liens path { fill: none; stroke: var(--trait-fort); stroke-width: 2; }
 .liens .adopte { stroke-dasharray: 6 5; }
-.liens .coeur { fill: var(--vert); stroke: none; }
+.liens .coeur { fill: #E1000F; stroke: none; }
 .liens .coeur--separe { fill: var(--trait-fort); }
 .noeud { position: absolute; width: var(--carte-l); min-height: var(--carte-h); display: flex; }
 .carte { width: 100%; min-height: var(--carte-h); display: flex; align-items: center; gap: .625rem; padding: .5rem .625rem .5rem .75rem; background: var(--blanc); border: 1px solid var(--trait); border-radius: var(--r-l);
@@ -548,7 +549,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.9.0</span>
+    <span class="bandeau__version">v1.9.1</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -584,7 +585,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.9.0';
+var VERSION = '1.9.1';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
