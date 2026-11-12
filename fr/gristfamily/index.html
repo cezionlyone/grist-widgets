@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.5.1
+  Version     : 1.6.0
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -51,6 +51,7 @@
 
   HISTORIQUE
   ----------
+  1.6.0 - 12/11/2026 - madeXcé - Cousins ADN : carte des cousins affichée par défaut (une pile de cartes par lieu : nom, ADN partagé, parenté), bascule vers le tableau.
   1.5.1 - 12/11/2026 - madeXcé - Âge affiché (au décès ou actuel) sur les cartes de l'arbre, la carte du monde et la liste ; carte du monde plus haute, zoom plus fin.
   1.5.0 - 12/11/2026 - madeXcé - Nouveau moteur de disposition : chaque personne n'a plus qu'une seule carte, rangée par génération, les familles restent d'un seul tenant et les croisements de traits sont limités.
   1.4.1 - 11/11/2026 - madeXcé - Arbre complet : les frères et sœurs de la branche principale sont placés à côté d'elle, du côté opposé à son conjoint.
@@ -354,6 +355,17 @@ table.tableau { width: 100%; border-collapse: collapse; }
 .filtres { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end; margin-bottom: 1rem; }
 .filtres .champ { flex: 1 1 12rem; max-width: 18rem; }
 .compteurs { display: flex; flex-wrap: wrap; gap: .375rem; }
+.cousin-icone { background: none; border: 0; overflow: visible; }
+.cousin-icone:hover { z-index: 10000 !important; }
+.cousin-pile { width: 200px; pointer-events: auto; display: flex; flex-direction: column; gap: 4px; }
+.cousin-pile__lieu { font-size: .6875rem; font-weight: 700; color: #4B1F78; text-shadow: 0 0 3px #fff, 0 0 3px #fff; text-align: center; }
+.cousin-carte { display: flex; flex-direction: column; gap: 1px; text-align: left; width: 100%; padding: 3px 8px; background: #fff; border: 1px solid #D8CCE6; border-left: 4px solid #6B2FA0; border-radius: 8px; cursor: pointer; font: inherit; box-shadow: 0 1px 4px rgba(0,0,0,.18); }
+.cousin-carte--proche { border-left-color: #C2410C; }
+.cousin-carte--elargie { border-left-color: #6B2FA0; }
+.cousin-carte--eloignee { border-left-color: #8A8AA0; }
+.cousin-carte__nom { font-size: .8125rem; font-weight: 600; color: #1D1D2B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cousin-carte__info { font-size: .6875rem; color: #55556A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cousin-pile__plus { align-self: center; font: inherit; font-size: .75rem; padding: 2px 10px; border-radius: 999px; border: 1px solid #D8CCE6; background: #fff; cursor: pointer; color: #4B1F78; }
 .puce-filtre { display: inline-flex; align-items: center; gap: .375rem; min-height: 2rem; padding: 0 .75rem; border-radius: 999px; border: 1px solid var(--trait); background: var(--blanc); cursor: pointer; font-size: .8125rem; }
 .puce-filtre[aria-pressed="true"] { background: var(--mauve); border-color: var(--mauve-f); color: var(--mauve-f); font-weight: 600; }
 
@@ -518,7 +530,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.5.1</span>
+    <span class="bandeau__version">v1.6.0</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -554,7 +566,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.5.1';
+var VERSION = '1.6.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -4252,6 +4264,14 @@ function rendreCousins(zone) {
     puces.appendChild(b);
   });
   page.appendChild(puces);
+  var enCarte = etat.cousinsAffichage !== 'tableau';
+  var majCarteCousins = null;
+  var bascule = creer('div', { classe: 'compteurs no-print', attrs: { role: 'group', 'aria-label': 'Présentation', style: 'margin-bottom:1rem' } });
+  [['carte', 'Sur la carte', 'globe'], ['tableau', 'En tableau', 'liste']].forEach(function (o) {
+    bascule.appendChild(creer('button', { classe: 'puce-filtre', attrs: { 'aria-pressed': (enCarte ? 'carte' : 'tableau') === o[0] ? 'true' : 'false' },
+      clic: function () { etat.cousinsAffichage = o[0]; rendre(); } }, [icone(o[2], 'ico--s'), o[1]]));
+  });
+  page.appendChild(bascule);
   var tbody = creer('tbody');
   var compteur = creer('p', { classe: 'indice', attrs: { 'aria-live': 'polite' } });
   var table = creer('table', { classe: 'tableau' }, [
@@ -4259,16 +4279,20 @@ function rendreCousins(zone) {
     creer('thead', {}, [creer('tr', {}, [enteteTri('Nom', 'nom', f), enteteTri('Pays', 'pays', f), creer('th', { texte: 'Site', attrs: { scope: 'col' } }), enteteTri('ADN partagé', 'cm', f), creer('th', { texte: 'Parenté', attrs: { scope: 'col' } }), creer('th', { texte: 'Branche', attrs: { scope: 'col' } }), creer('th', { texte: 'Piste dans l’arbre', attrs: { scope: 'col' } }), creer('th', { texte: 'Contact', attrs: { scope: 'col' } })])]),
     tbody
   ]);
-  var majCorps = function () {
-    vider(tbody);
+  var cousinsFiltres = function () {
     var q = normaliser(f.texte);
-    var l = C.filter(function (c) {
+    return C.filter(function (c) {
       if (f.pays && (c.pays || 'Pays inconnu') !== f.pays) { return false; }
       if (f.site && c.site !== f.site) { return false; }
       if (f.branche && c.branche !== f.branche) { return false; }
       if (f.cercle && cercleADN(c.cm) !== f.cercle) { return false; }
       return !q || normaliser([c.prenom, c.nom, c.patronymes, c.ville, c.pays, c.notes].join(' ')).indexOf(q) !== -1;
     });
+  };
+  var majCorps = function () {
+    if (enCarte) { if (majCarteCousins) { majCarteCousins(cousinsFiltres()); } return; }
+    vider(tbody);
+    var l = cousinsFiltres();
     var cmp = {
       nom: function (a, b) { return (a.nom + ' ' + a.prenom).localeCompare(b.nom + ' ' + b.prenom, 'fr'); },
       pays: function (a, b) { return (a.pays || '').localeCompare(b.pays || '', 'fr'); },
@@ -4296,11 +4320,109 @@ function rendreCousins(zone) {
     });
     compteur.textContent = l.length === C.length ? '' : pluriel(l.length, 'cousin affiché', 'cousins affichés') + ' sur ' + C.length + '.';
   };
+  if (enCarte) {
+    var boiteC = creer('div', { id: 'carteCousins', attrs: { style: 'height:calc(100vh - 330px);min-height:460px;border:1px solid #E6E6EC;border-radius:10px;overflow:hidden;background:#EEF2F4', role: 'region', 'aria-label': 'Carte des cousins ADN. Le tableau, avec le bouton « En tableau », donne les mêmes informations.' } });
+    var statutC = creer('p', { classe: 'indice', attrs: { 'aria-live': 'polite' } });
+    page.appendChild(boiteC);
+    page.appendChild(statutC);
+    page.appendChild(creer('p', { classe: 'indice', texte: 'Chaque cousin est placé selon sa ville et son pays. Pour situer les lieux, leurs noms (jamais ceux des personnes) sont envoyés au service de cartographie OpenStreetMap. Fonds de carte © contributeurs OpenStreetMap.' }));
+    zone.appendChild(page);
+    dessinerCarteCousins(boiteC, statutC, function (fn) { majCarteCousins = fn; }, cousinsFiltres);
+    return;
+  }
   majCorps();
   page.appendChild(compteur);
   page.appendChild(creer('div', { classe: 'tableau-conteneur' }, [table]));
   page.appendChild(creer('p', { classe: 'indice', texte: 'L’estimation de parenté vient des moyennes publiées pour l’ADN partagé (centimorgans) : c’est un ordre de grandeur, plusieurs parentés sont possibles.' }));
   zone.appendChild(page);
+}
+
+/* Carte des cousins ADN : une pile de petites cartes (nom, ADN partagé,
+   parenté) posée sur chaque lieu ; au-delà de deux, « + autres » déplie. */
+function dessinerCarteCousins(boite, statut, enregistrer, filtrer) {
+  if (etat.carteObjet) { try { etat.carteObjet.remove(); } catch (e) { logSecurite('INFO', 'Carte non retirée', e); } etat.carteObjet = null; }
+  var ouverts = {};
+  var lieuxDe = function (liste) {
+    var m = {};
+    var sans = 0;
+    liste.forEach(function (c) {
+      var nom = [c.ville, c.pays].filter(function (x) { return x; }).join(', ');
+      if (!nom) { sans++; return; }
+      var k = normaliser(nom);
+      if (!m[k]) { m[k] = { nom: nom, cle: k, personnes: [], cousins: [] }; }
+      m[k].cousins.push(c);
+    });
+    return { lieux: Object.keys(m).map(function (k) { return m[k]; }), sans: sans };
+  };
+  var carteCousin = function (c) {
+    var nom = (c.prenom + ' ' + c.nom).trim() || 'Sans nom';
+    var parente = c.relation || estimerParente(c.cm);
+    var el = creer('button', { classe: 'cousin-carte cousin-carte--' + cercleADN(c.cm), attrs: { title: nom + (parente ? ' : ' + parente : '') } }, [
+      creer('span', { classe: 'cousin-carte__nom', texte: nom }),
+      creer('span', { classe: 'cousin-carte__info', texte: [c.cm ? formaterNombre(c.cm, 0) + ' cM' : '', parente || c.branche || ''].filter(function (x) { return x; }).join(' · ') || ' ' })
+    ]);
+    el.addEventListener('click', function (e) { e.stopPropagation(); if (etat.peutModifier) { ouvrirFormCousin(c); } });
+    return el;
+  };
+  chargerLeaflet().then(function (L) {
+    if (!boite.isConnected) { return; }
+    var carte = L.map(boite, { worldCopyJump: true, zoomControl: true, minZoom: 2, zoomSnap: 0.5, zoomDelta: 1, wheelPxPerZoomLevel: 90 }).setView([46.5, 2.5], 4);
+    etat.carteObjet = carte;
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© contributeurs OpenStreetMap' }).addTo(carte);
+    var couche = L.layerGroup().addTo(carte);
+    var dernier = { lieux: [], sans: 0 };
+    var cadrer = true;
+    var placer = function () {
+      couche.clearLayers();
+      var points = [];
+      var attente = 0;
+      var introuvables = [];
+      dernier.lieux.forEach(function (l) {
+        var g = etat.lieux[l.cle];
+        if (!g) { attente++; return; }
+        if (g.introuvable) { introuvables.push(l.nom); return; }
+        L.circleMarker([g.lat, g.lon], { radius: 6, color: '#FFFFFF', weight: 2, fillColor: '#6B2FA0', fillOpacity: 1 }).addTo(couche);
+        var tri = l.cousins.slice().sort(function (a, b) { return (b.cm || 0) - (a.cm || 0); });
+        var pile = creer('div', { classe: 'cousin-pile' });
+        var remplir = function () {
+          vider(pile);
+          var visibles = ouverts[l.cle] ? tri : tri.slice(0, 2);
+          pile.appendChild(creer('div', { classe: 'cousin-pile__lieu', texte: l.nom }));
+          visibles.forEach(function (c) { pile.appendChild(carteCousin(c)); });
+          if (tri.length > 2) {
+            var plus = creer('button', { classe: 'cousin-pile__plus', texte: ouverts[l.cle] ? 'Réduire' : '+ ' + (tri.length - 2) + (tri.length - 2 > 1 ? ' autres' : ' autre') });
+            plus.addEventListener('click', function (e) { e.stopPropagation(); ouverts[l.cle] = !ouverts[l.cle]; remplir(); });
+            pile.appendChild(plus);
+          }
+        };
+        remplir();
+        L.DomEvent.disableClickPropagation(pile);
+        L.DomEvent.disableScrollPropagation(pile);
+        L.marker([g.lat, g.lon], { icon: L.divIcon({ html: pile, className: 'cousin-icone', iconSize: [200, 0], iconAnchor: [100, -10] }), keyboard: false }).addTo(couche);
+        points.push([g.lat, g.lon]);
+      });
+      if (points.length && cadrer) { carte.fitBounds(points, { padding: [60, 60], maxZoom: 7 }); cadrer = false; }
+      statut.textContent = (dernier.sans ? (dernier.sans > 1 ? dernier.sans + ' cousins sans ville ni pays ne sont pas placés. ' : '1 cousin sans ville ni pays n’est pas placé. ') : '') +
+        (attente ? 'Recherche de ' + pluriel(attente, 'lieu', 'lieux') + ' en cours… ' : '') +
+        (introuvables.length ? 'Lieux introuvables : ' + introuvables.join(' ; ') + '. Précisez-les, par exemple « Rezé, France ».' : '');
+    };
+    var maj = function (liste) {
+      dernier = lieuxDe(liste);
+      cadrer = true;
+      placer();
+      geocoderManquants(dernier.lieux, placer);
+    };
+    enregistrer(maj);
+    maj(filtrer());
+  }).catch(function (e) {
+    logSecurite('WARNING', 'Carte non chargée', e);
+    if (boite.isConnected) {
+      vider(boite);
+      boite.style.height = 'auto';
+      boite.style.minHeight = '0';
+      boite.appendChild(alerte('attention', 'La carte n’a pas pu être chargée (connexion ou blocage du navigateur). Le bouton « En tableau » affiche les mêmes cousins.'));
+    }
+  });
 }
 
 /* Cercles de parenté d'après l'ADN partagé (affichage seulement). */
@@ -4697,7 +4819,7 @@ async function geocoderManquants(lieux, rappel) {
           try { await agir([['AddRecord', etat.biblio, null, { CLE: 'LIEU:' + cle, VALEUR: JSON.stringify(res), VERSION: VERSION }]]); }
           catch (e2) { logSecurite('INFO', 'Lieu non gardé dans la bibliothèque', e2); }
         }
-        if (etat.vue === 'carte') { rappel(); }
+        if (etat.vue === 'carte' || etat.vue === 'cousins') { rappel(); }
       }
       await new Promise(function (ok) { setTimeout(ok, 1100); });
     }
