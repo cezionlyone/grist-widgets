@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.4.1
+  Version     : 1.5.0
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -51,6 +51,7 @@
 
   HISTORIQUE
   ----------
+  1.5.0 - 12/11/2026 - madeXcé - Nouveau moteur de disposition : chaque personne n'a plus qu'une seule carte, rangée par génération, les familles restent d'un seul tenant et les croisements de traits sont limités.
   1.4.1 - 11/11/2026 - madeXcé - Arbre complet : les frères et sœurs de la branche principale sont placés à côté d'elle, du côté opposé à son conjoint.
   1.4.0 - 11/11/2026 - madeXcé - Arbre complet par défaut : toute la famille est dessinée depuis les plus anciens ancêtres, sans personne au centre ; l'ancien affichage centré reste disponible dans les réglages.
   1.3.2 - 11/11/2026 - madeXcé - Oncles, tantes et leurs familles (conjoints, enfants) dessinés à côté de leur frère ou sœur ancêtre, sans chevauchement.
@@ -516,7 +517,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.4.1</span>
+    <span class="bandeau__version">v1.5.0</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -552,7 +553,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.4.1';
+var VERSION = '1.5.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -2185,7 +2186,8 @@ window.addEventListener('resize', function () {
 
 /* === SECTION : DISPOSITION DE L'ARBRE ===
    Le centre, sa fratrie à côté, ses ascendants au-dessus (en pyramide),
-   ses descendants et leurs conjoints en dessous. Une personne déjà placée
+   ses descendants et leurs conjoints en dessous (sert à choisir les
+   personnes de l'arbre centré). Une personne déjà placée
    qui réapparaît (mariage entre cousins...) est dessinée en pointillés,
    sans répéter sa descendance. */
 var DIM = { L: 220, H: 100, GX: 24, GC: 40, GY: 78, MARGE: 80 };
@@ -2199,11 +2201,7 @@ function construireBloc(pid, d, D, vus) {
     if (cj) { part = { uid: uid, pid: cj, dup: !!vus[cj] }; vus[cj] = true; bloc.partenaires.push(part); }
     var enfants = [];
     if (d < D) {
-      var lesEnfants = enfantsUnion(uid);
-      /* En arbre complet, la branche menant à la personne de référence passe en dernier :
-         ses frères et sœurs se retrouvent à côté d'elle, pas de l'autre côté de son conjoint. */
-      if (etat.cheminRef) { lesEnfants = lesEnfants.slice().sort(function (x, y) { return (etat.cheminRef[x] ? 1 : 0) - (etat.cheminRef[y] ? 1 : 0); }); }
-      lesEnfants.forEach(function (e) {
+      enfantsUnion(uid).forEach(function (e) {
         if (vus[e]) { enfants.push({ pid: e, dup: true, partenaires: [], groupes: [] }); }
         else { enfants.push(construireBloc(e, d + 1, D, vus)); }
       });
@@ -2440,40 +2438,485 @@ function calculerDisposition(centre) {
   return sortie;
 }
 
-/* Toute la famille : chaque lignée est dessinée depuis ses plus anciens
-   ancêtres connus vers leurs descendants, côte à côte. Rien n'est masqué ;
-   une personne qui apparaît dans deux lignées (conjoint et enfant d'une
-   autre famille) est redessinée en pointillés dans la seconde. */
-function calculerDispositionTout() {
+/* Disposition en générations : chaque personne n'a qu'une seule carte.
+   1. Chaque personne reçoit une génération (rangée) : les conjoints sur la
+      même rangée, les enfants sur la rangée du dessous.
+   2. Les conjoints forment une « unité » posée d'un seul tenant.
+   3. L'ordre des unités sur chaque rangée part d'un parcours de la famille
+      (frères et sœurs du côté extérieur du couple), puis il est affiné pour
+      limiter les croisements de traits.
+   4. Les positions sont ajustées pour centrer les parents au-dessus de leurs
+      enfants, sans jamais faire se chevaucher deux cartes.
+   5. Les traits sont tracés à partir des positions finales. */
+function calculerDispositionGraphe(garder) {
   var sortie = { noeuds: [], traits: [], coeurs: [] };
-  var vus = {};
-  var ids = etat.donnees.ordre.slice();
-  function aParents(id) { var q = pers(id); return !!(q && q.parents); }
-  function estRacine(id) {
-    if (vus[id] || aParents(id)) { return false; }
-    var us = unionsPersonne(id);
-    if (!us.length) { return false; }
-    return us.every(function (uid) { var cj = conjointDans(uid, id); return !cj || !aParents(cj); });
+  var d = etat.donnees;
+  var ids = d.ordre.filter(function (id) { return d.P[id] && (!garder || garder[id]); });
+  var dedans = {};
+  ids.forEach(function (id) { dedans[id] = true; });
+  var ref = idCentre();
+  if (!dedans[ref]) { ref = ids[0]; }
+
+  function membresUnion(uid) {
+    var u = unionDe(uid);
+    if (!u) { return []; }
+    var l = [];
+    [u.a, u.b].forEach(function (x) { if (x && dedans[x] && l.indexOf(x) === -1) { l.push(x); } });
+    return l;
   }
-  var blocs = [];
-  var ref = typeof idCentre === 'function' ? idCentre() : (etat.config && etat.config.centre);
-  var chemin = {};
-  (function monter(id) {
-    if (!id || chemin[id]) { return; }
-    chemin[id] = true;
-    var q = pers(id);
-    var u = q && q.parents ? unionDe(q.parents) : null;
-    if (u) { monter(u.a); monter(u.b); }
-  })(ref);
-  etat.cheminRef = chemin;
-  ids.forEach(function (id) { if (estRacine(id)) { var b = construireBloc(id, 0, 99, vus); mesurerBloc(b); blocs.push(b); } });
-  ids.forEach(function (id) { if (!vus[id]) { var b = construireBloc(id, 0, 99, vus); mesurerBloc(b); blocs.push(b); } });
-  etat.cheminRef = null;
-  var x = 0;
-  blocs.forEach(function (b) { placerBloc(b, x, 0, sortie); x += b.w + DIM.GX * 3; });
+  function parentsUnion(id) {
+    var p = pers(id);
+    return p && p.parents && membresUnion(p.parents).length ? p.parents : 0;
+  }
+  function unionsDeP(id) { return unionsPersonne(id).filter(function (uid) { return membresUnion(uid).length; }); }
+  function enfantsDeU(uid) { return enfantsUnion(uid).filter(function (x) { return dedans[x]; }).sort(comparerNaissance); }
+
+  /* 1. Générations */
+  var gen = {};
+  [ref].concat(ids).forEach(function (s) {
+    if (!s || gen[s] != null) { return; }
+    gen[s] = 0;
+    var file = [s];
+    var poser = function (y, gy) { if (y && dedans[y] && gen[y] == null) { gen[y] = gy; file.push(y); } };
+    while (file.length) {
+      var x = file.shift();
+      var g = gen[x];
+      unionsDeP(x).forEach(function (uid) { membresUnion(uid).forEach(function (y) { poser(y, g); }); });
+      var pu = parentsUnion(x);
+      if (pu) { membresUnion(pu).forEach(function (y) { poser(y, g - 1); }); }
+      unionsDeP(x).forEach(function (uid) { enfantsDeU(uid).forEach(function (y) { poser(y, g + 1); }); });
+    }
+  });
+
+  /* 2. Unités : une personne et ses conjoints de la même rangée */
+  var uniteDe = {};
+  var membres = [];
+  ids.forEach(function (id) {
+    if (uniteDe[id] != null) { return; }
+    var comp = [];
+    var pile = [id];
+    var vu = {};
+    vu[id] = true;
+    while (pile.length) {
+      var x = pile.pop();
+      comp.push(x);
+      unionsDeP(x).forEach(function (uid) {
+        membresUnion(uid).forEach(function (y) { if (!vu[y] && gen[y] === gen[id]) { vu[y] = true; pile.push(y); } });
+      });
+    }
+    var voisins = function (x) {
+      var l = [];
+      unionsDeP(x).forEach(function (uid) { membresUnion(uid).forEach(function (y) { if (y !== x && comp.indexOf(y) !== -1 && l.indexOf(y) === -1) { l.push(y); } }); });
+      return l;
+    };
+    var ordre;
+    if (comp.length === 1) { ordre = comp; }
+    else {
+      var deg = {};
+      comp.forEach(function (x) { deg[x] = voisins(x).length; });
+      var chaine = comp.every(function (x) { return deg[x] <= 2; }) && comp.some(function (x) { return deg[x] === 1; });
+      if (chaine) {
+        /* Couple ou personne entre deux conjoints : on suit la chaîne. */
+        var bouts = comp.filter(function (x) { return deg[x] === 1; });
+        var depart = bouts[0];
+        if (comp.length === 2) { var u0 = unionDe(unionsDeP(id).filter(function (uid) { return membresUnion(uid).length === 2; })[0]); if (u0 && comp.indexOf(u0.a) !== -1) { depart = u0.a; } }
+        else {
+          var milieu = comp.filter(function (x) { return deg[x] === 2; })[0];
+          var cj = [];
+          unionsDeP(milieu).forEach(function (uid) { membresUnion(uid).forEach(function (y) { if (y !== milieu && cj.indexOf(y) === -1) { cj.push(y); } }); });
+          if (cj.length && bouts.indexOf(cj[0]) !== -1) { depart = cj[0]; }
+        }
+        ordre = [depart];
+        while (ordre.length < comp.length) {
+          var suiv = voisins(ordre[ordre.length - 1]).filter(function (y) { return ordre.indexOf(y) === -1; })[0];
+          if (!suiv) { break; }
+          ordre.push(suiv);
+        }
+        comp.forEach(function (x) { if (ordre.indexOf(x) === -1) { ordre.push(x); } });
+      } else {
+        /* Cas rare (plusieurs conjoints de part et d'autre) : la personne au
+           plus grand nombre d'unions au milieu, les autres autour. */
+        var centre = comp.slice().sort(function (x, y) { return deg[y] - deg[x]; })[0];
+        var autres = comp.filter(function (x) { return x !== centre; });
+        ordre = [autres[0], centre].concat(autres.slice(1));
+      }
+    }
+    var k = membres.length;
+    membres.push(ordre);
+    ordre.forEach(function (x) { uniteDe[x] = k; });
+  });
+  var genU = membres.map(function (m) { return gen[m[0]]; });
+
+  /* 3a. Ordre de départ : parcours de la famille. Les ascendants et les
+     frères et sœurs du conjoint de gauche viennent à gauche, ceux du
+     conjoint de droite à droite ; une personne seule garde ses aînés à
+     gauche et ses cadets à droite. */
+  var rangees = {};
+  var visite = {};
+  var fait = {};
+  var emettre = function (u) { (rangees[genU[u]] = rangees[genU[u]] || []).push(u); };
+  var famille = function (x) {
+    var pu = parentsUnion(x);
+    if (!pu || fait[pu]) { return null; }
+    fait[pu] = true;
+    parcourir(uniteDe[membresUnion(pu)[0]]);
+    return enfantsDeU(pu).filter(function (y) { return y !== x; });
+  };
+  var parcourir = function (u) {
+    if (u == null || visite[u]) { return; }
+    visite[u] = true;
+    var m = membres[u];
+    var apres = [];
+    var fr = famille(m[0]);
+    if (fr) {
+      if (m.length > 1) { fr.forEach(function (y) { parcourir(uniteDe[y]); }); }
+      else {
+        fr.forEach(function (y) { if (comparerNaissance(y, m[0]) < 0) { parcourir(uniteDe[y]); } else { apres.push(y); } });
+      }
+    }
+    emettre(u);
+    m.forEach(function (x) {
+      unionsDeP(x).forEach(function (uid) {
+        if (fait[uid]) { return; }
+        fait[uid] = true;
+        enfantsDeU(uid).forEach(function (y) { parcourir(uniteDe[y]); });
+      });
+    });
+    apres.forEach(function (y) { parcourir(uniteDe[y]); });
+    m.slice(1).forEach(function (x) {
+      var f2 = famille(x);
+      if (f2) { f2.forEach(function (y) { parcourir(uniteDe[y]); }); }
+    });
+  };
+  parcourir(uniteDe[ref]);
+  ids.forEach(function (id) { parcourir(uniteDe[id]); });
+
+  var gens = Object.keys(rangees).map(Number).sort(function (a, b) { return a - b; });
+
+  /* Positions abstraites (en « places ») pour compter les croisements. */
+  var place = {};
+  var calculerPlaces = function (g) {
+    var c = 0;
+    rangees[g].forEach(function (u) { membres[u].forEach(function (x) { place[x] = c++; }); });
+  };
+  gens.forEach(calculerPlaces);
+  var unionsAvecEnfants = [];
+  var vuU = {};
+  ids.forEach(function (id) {
+    unionsDeP(id).forEach(function (uid) {
+      if (vuU[uid]) { return; }
+      vuU[uid] = true;
+      if (enfantsDeU(uid).length) { unionsAvecEnfants.push(uid); }
+    });
+  });
+  var ancrePlace = function (uid) {
+    var m = membresUnion(uid);
+    var s = 0;
+    m.forEach(function (x) { s += place[x]; });
+    return s / m.length;
+  };
+  var aretes = function (g) {
+    var l = [];
+    unionsAvecEnfants.forEach(function (uid) {
+      var m = membresUnion(uid);
+      if (gen[m[0]] !== g) { return; }
+      var a = ancrePlace(uid);
+      enfantsDeU(uid).forEach(function (e) { if (gen[e] === g + 1) { l.push([a, place[e]]); } });
+    });
+    return l;
+  };
+  var croisements = function (g) {
+    var l = aretes(g);
+    var n = 0;
+    for (var i = 0; i < l.length; i++) {
+      for (var j = i + 1; j < l.length; j++) {
+        if ((l[i][0] - l[j][0]) * (l[i][1] - l[j][1]) < 0) { n++; }
+      }
+    }
+    return n;
+  };
+  /* Une unité étrangère glissée au milieu d'une fratrie compte aussi. */
+  var intercales = function (g) {
+    var n = 0;
+    var r = rangees[g];
+    var pos = {};
+    r.forEach(function (u, i) { pos[u] = i; });
+    var fr = {};
+    r.forEach(function (u) { membres[u].forEach(function (x) { var pu = parentsUnion(x); if (pu) { (fr[pu] = fr[pu] || []).push(pos[u]); } }); });
+    Object.keys(fr).forEach(function (pu) {
+      var l = fr[pu];
+      if (l.length < 2) { return; }
+      var mi = Math.min.apply(null, l);
+      var ma = Math.max.apply(null, l);
+      for (var i = mi + 1; i < ma; i++) { if (l.indexOf(i) === -1) { n++; } }
+    });
+    return n;
+  };
+  var total = function () { var n = 0; gens.forEach(function (g) { n += croisements(g) + intercales(g); }); return n; };
+
+  /* 3b. Affinage de l'ordre (méthode des barycentres), en gardant le
+     meilleur ordre trouvé. */
+  var copier = function () { var c = {}; gens.forEach(function (g) { c[g] = rangees[g].slice(); }); return c; };
+  var meilleur = copier();
+  var meilleurN = total();
+  var bary = function (u, sens) {
+    var s = 0;
+    var n = 0;
+    membres[u].forEach(function (x) {
+      if (sens < 0) {
+        var pu = parentsUnion(x);
+        if (pu && gen[membresUnion(pu)[0]] === gen[x] - 1) { s += ancrePlace(pu); n++; }
+      } else {
+        unionsDeP(x).forEach(function (uid) {
+          enfantsDeU(uid).forEach(function (e) { if (gen[e] === gen[x] + 1) { s += place[e]; n++; } });
+        });
+      }
+    });
+    return n ? s / n : null;
+  };
+  var trier = function (g, sens) {
+    /* Les unités sans lien dans ce sens gardent leur place ; les autres
+       sont triées entre elles sur les places restantes. */
+    var r = rangees[g];
+    var cles = {};
+    var mobiles = [];
+    r.forEach(function (u, i) {
+      var b = bary(u, sens);
+      if (b != null) { cles[u] = b + i * 1e-6; mobiles.push(u); }
+    });
+    mobiles.sort(function (a, b) { return cles[a] - cles[b]; });
+    var k = 0;
+    rangees[g] = r.map(function (u) { return cles[u] != null ? mobiles[k++] : u; });
+    calculerPlaces(g);
+  };
+  for (var it = 0; it < 12 && meilleurN > 0; it++) {
+    if (it % 2 === 0) { gens.forEach(function (g) { trier(g, -1); }); }
+    else { gens.slice().reverse().forEach(function (g) { trier(g, 1); }); }
+    var n = total();
+    if (n < meilleurN) { meilleurN = n; meilleur = copier(); }
+  }
+  rangees = meilleur;
+  gens.forEach(calculerPlaces);
+  /* Retouches : chaque unité essaie toutes les places de sa rangée et
+     garde celle qui réduit les croisements et les fratries coupées. */
+  var coutLocal = function (g) { return croisements(g - 1) + croisements(g) + intercales(g); };
+  for (var passe = 0; passe < 4; passe++) {
+    var mieux = false;
+    gens.forEach(function (g) {
+      var r = rangees[g];
+      if (r.length > 60) { return; }
+      r.slice().forEach(function (u) {
+        var i0 = r.indexOf(u);
+        r.splice(i0, 1);
+        var best = i0;
+        var bestC = Infinity;
+        for (var i = 0; i <= r.length; i++) {
+          r.splice(i, 0, u);
+          calculerPlaces(g);
+          var c = coutLocal(g);
+          if (c < bestC || (c === bestC && i === i0)) { bestC = c; best = i; }
+          r.splice(i, 1);
+        }
+        r.splice(best, 0, u);
+        calculerPlaces(g);
+        if (best !== i0) { mieux = true; }
+      });
+    });
+    if (!mieux) { break; }
+  }
+
+  /* Sens des couples : chaque conjoint du côté de sa propre famille. */
+  membres.forEach(function (m, u) {
+    if (m.length < 2) { return; }
+    var cote = function (x) { var pu = parentsUnion(x); return pu && gen[membresUnion(pu)[0]] === gen[x] - 1 ? ancrePlace(pu) : null; };
+    var a = cote(m[0]);
+    var b = cote(m[m.length - 1]);
+    if (a != null && b != null && a > b) {
+      var avant = croisements(genU[u] - 1) + croisements(genU[u]);
+      m.reverse();
+      calculerPlaces(genU[u]);
+      if (croisements(genU[u] - 1) + croisements(genU[u]) > avant) { m.reverse(); calculerPlaces(genU[u]); }
+    }
+  });
+
+  /* 4. Positions horizontales */
+  var largeurU = function (u) { var n = membres[u].length; return DIM.L * n + DIM.GC * (n - 1); };
+  var decal = function (u, x) { return membres[u].indexOf(x) * (DIM.L + DIM.GC); };
+  var X = {};
+  var memeFamille = function (u, v) {
+    var pu = {};
+    membres[u].forEach(function (x) { var p = parentsUnion(x); if (p) { pu[p] = true; } });
+    return membres[v].some(function (x) { var p = parentsUnion(x); return p && pu[p]; });
+  };
+  var ecart = {};
+  gens.forEach(function (g) {
+    var x = 0;
+    rangees[g].forEach(function (u, i) {
+      if (i) {
+        var v = rangees[g][i - 1];
+        ecart[u] = memeFamille(u, v) ? DIM.GX : DIM.GX * 3;
+        x += ecart[u];
+      }
+      X[u] = x;
+      x += largeurU(u);
+    });
+  });
+  var centreP = function (x) { var u = uniteDe[x]; return X[u] + decal(u, x) + DIM.L / 2; };
+  var ancreX = function (uid) {
+    var m = membresUnion(uid);
+    var s = 0;
+    m.forEach(function (x) { s += centreP(x); });
+    return s / m.length;
+  };
+  /* Régression isotone : chaque unité au plus près de sa cible, dans
+     l'ordre de la rangée et sans chevauchement. */
+  var ajuster = function (g) {
+    var r = rangees[g];
+    var cible = [];
+    var poids = [];
+    r.forEach(function (u) {
+      var s = 0;
+      var n = 0;
+      membres[u].forEach(function (x) {
+        var pu = parentsUnion(x);
+        if (pu && gen[membresUnion(pu)[0]] === g - 1) { s += ancreX(pu) - decal(u, x) - DIM.L / 2; n++; }
+        unionsDeP(x).forEach(function (uid) {
+          var en = enfantsDeU(uid).filter(function (e) { return gen[e] === g + 1; });
+          if (!en.length) { return; }
+          var m = 0;
+          en.forEach(function (e) { m += centreP(e); });
+          m /= en.length;
+          var mu = membresUnion(uid);
+          var off = 0;
+          mu.forEach(function (y) { off += decal(u, y) + DIM.L / 2; });
+          off /= mu.length;
+          if (mu.every(function (y) { return uniteDe[y] === u; })) { s += m - off; n++; }
+        });
+      });
+      cible.push(n ? s / n : null);
+      poids.push(n ? n : 1e-6);
+    });
+    var o = [];
+    var acc = 0;
+    r.forEach(function (u, i) { if (i) { acc += largeurU(r[i - 1]) + ecart[u]; } o.push(acc); });
+    /* Une unité sans lien suit simplement ses voisines. */
+    var v = cible.map(function (c, i) { return c == null ? null : c - o[i]; });
+    var dernier = null;
+    v.forEach(function (x, i) { if (x == null) { v[i] = dernier; } else { dernier = x; } });
+    dernier = null;
+    for (var j = v.length - 1; j >= 0; j--) { if (v[j] == null) { v[j] = dernier; } else { dernier = v[j]; } }
+    v = v.map(function (x, i) { return x == null ? X[r[i]] - o[i] : x; });
+    var blocs = [];
+    r.forEach(function (u, i) {
+      blocs.push({ v: v[i], w: poids[i], n: 1 });
+      while (blocs.length > 1 && blocs[blocs.length - 2].v > blocs[blocs.length - 1].v) {
+        var b2 = blocs.pop();
+        var b1 = blocs.pop();
+        var w = b1.w + b2.w;
+        blocs.push({ v: (b1.v * b1.w + b2.v * b2.w) / w, w: w, n: b1.n + b2.n });
+      }
+    });
+    var i = 0;
+    blocs.forEach(function (b) { for (var k = 0; k < b.n; k++) { X[r[i]] = b.v + o[i]; i++; } });
+  };
+  var ajusterTout = function (n) {
+    for (var tour = 0; tour < n; tour++) {
+      gens.forEach(ajuster);
+      gens.slice().reverse().forEach(ajuster);
+    }
+  };
+  ajusterTout(30);
+  /* Un conjoint dont seuls les parents sont connus se met du côté de ses
+     parents (sa fratrie est ainsi à côté de lui). */
+  var retourne = false;
+  membres.forEach(function (m, u) {
+    if (m.length !== 2) { return; }
+    var cote = function (x) { var pu = parentsUnion(x); return pu && gen[membresUnion(pu)[0]] === gen[x] - 1 ? ancreX(pu) : null; };
+    var a = cote(m[0]);
+    var b = cote(m[1]);
+    var milieu = X[u] + largeurU(u) / 2;
+    if ((a != null && b == null && a > milieu) || (b != null && a == null && b < milieu)) { m.reverse(); retourne = true; }
+  });
+  if (retourne) { ajusterTout(15); }
+
+  /* 5. Cartes et traits */
+  var pas = DIM.H + DIM.GY;
+  var g0 = gens[0];
+  var Y = function (x) { return (gen[x] - g0) * pas; };
+  ids.forEach(function (x) { sortie.noeuds.push({ pid: x, x: centreP(x) - DIM.L / 2, y: Y(x), dup: false }); });
+
+  var barres = {};
+  var ancres = {};
+  vuU = {};
+  ids.forEach(function (id) {
+    unionsDeP(id).forEach(function (uid) {
+      if (vuU[uid]) { return; }
+      vuU[uid] = true;
+      var m = membresUnion(uid);
+      var u = unionDe(uid);
+      if (m.length === 2) {
+        var a = m[0];
+        var b = m[1];
+        if (centreP(a) > centreP(b)) { a = m[1]; b = m[0]; }
+        var ua = uniteDe[a];
+        var adjacents = ua === uniteDe[b] && membres[ua].indexOf(b) - membres[ua].indexOf(a) === 1;
+        if (adjacents) {
+          var ym = Y(a) + DIM.H / 2;
+          var xa = centreP(a) + DIM.L / 2;
+          var xb = centreP(b) - DIM.L / 2;
+          sortie.traits.push({ pts: [[xa, ym], [xb, ym]] });
+          sortie.coeurs.push({ x: (xa + xb) / 2, y: ym, separe: u.separes, uid: uid });
+          ancres[uid] = [(xa + xb) / 2, ym];
+        } else {
+          var ya = Y(a);
+          var yb = Y(b);
+          var hy = Math.min(ya, yb) - 12 - (Object.keys(ancres).length % 3) * 6;
+          sortie.traits.push({ pts: [[centreP(a) - 30, ya], [centreP(a) - 30, hy], [centreP(b) + 30, hy], [centreP(b) + 30, yb]] });
+          sortie.coeurs.push({ x: (centreP(a) + centreP(b)) / 2, y: hy, separe: u.separes, uid: uid });
+          var en = enfantsDeU(uid);
+          var mx = 0;
+          en.forEach(function (e) { mx += centreP(e); });
+          var proche = en.length && Math.abs(centreP(b) - mx / en.length) < Math.abs(centreP(a) - mx / en.length) ? b : a;
+          ancres[uid] = [centreP(proche), Y(proche) + DIM.H];
+        }
+      } else {
+        ancres[uid] = [centreP(m[0]), Y(m[0]) + DIM.H];
+      }
+      var enf = enfantsDeU(uid).filter(function (e) { return gen[e] > gen[m[0]]; });
+      if (!enf.length) { return; }
+      var gEnf = Math.min.apply(null, enf.map(function (e) { return gen[e]; }));
+      var xs = enf.map(centreP).concat([ancres[uid][0]]);
+      (barres[gEnf] = barres[gEnf] || []).push({ uid: uid, enf: enf, min: Math.min.apply(null, xs), max: Math.max.apply(null, xs) });
+    });
+  });
+  /* Barres d'enfants : sur des voies différentes quand elles se recouvrent. */
+  Object.keys(barres).forEach(function (gk) {
+    var l = barres[gk].sort(function (a, b) { return a.min - b.min; });
+    var fins = [];
+    l.forEach(function (b) {
+      var v = 0;
+      while (fins[v] != null && fins[v] > b.min - 8) { v++; }
+      fins[v] = b.max;
+      b.voie = v;
+    });
+    var nv = fins.length;
+    var base = (Number(gk) - g0) * pas - DIM.GY / 2;
+    l.forEach(function (b) {
+      var yb = base + (nv > 1 ? (b.voie - (nv - 1) / 2) * Math.min(12, (DIM.GY - 24) / (nv - 1)) : 0);
+      var a = ancres[b.uid];
+      sortie.traits.push({ pts: [[a[0], a[1]], [a[0], yb]] });
+      if (b.max > b.min) { sortie.traits.push({ pts: [[b.min, yb], [b.max, yb]] }); }
+      b.enf.forEach(function (e) {
+        var p = pers(e);
+        sortie.traits.push({ pts: [[centreP(e), yb], [centreP(e), Y(e)]], adopte: p && p.filiation === 'Adoption' });
+      });
+    });
+  });
+
+  /* Recadrage */
   var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   sortie.noeuds.forEach(function (n) { minX = Math.min(minX, n.x); minY = Math.min(minY, n.y); maxX = Math.max(maxX, n.x + DIM.L); maxY = Math.max(maxY, n.y + DIM.H); });
-  sortie.traits.forEach(function (t) { t.pts.forEach(function (q) { minY = Math.min(minY, q[1]); }); });
+  sortie.traits.forEach(function (t) { t.pts.forEach(function (q) { minY = Math.min(minY, q[1]); minX = Math.min(minX, q[0]); maxX = Math.max(maxX, q[0]); }); });
   if (!isFinite(minX)) { minX = 0; minY = 0; maxX = 0; maxY = 0; }
   var dx = DIM.MARGE - minX;
   var dy = DIM.MARGE + 40 - minY;
@@ -2482,9 +2925,8 @@ function calculerDispositionTout() {
   sortie.coeurs.forEach(function (c) { c.x += dx; c.y += dy; });
   sortie.largeur = maxX - minX + DIM.MARGE * 2;
   sortie.hauteur = maxY - minY + DIM.MARGE * 2 + 40;
-  var gens = {};
-  sortie.noeuds.forEach(function (n) { gens[n.y] = true; });
-  sortie.nbGenerations = Object.keys(gens).length;
+  sortie.nbGenerations = gens.length;
+  sortie.croisements = total();
   return sortie;
 }
 
@@ -2502,7 +2944,15 @@ function rendreArbre(zone, garderCamera) {
   var centre = idCentre();
   var br = calculerBranches(centre);
   etat.branches = br;
-  var disp = etat.config.affichage.tout !== false ? calculerDispositionTout() : calculerDisposition(centre);
+  var disp;
+  if (etat.config.affichage.tout !== false) { disp = calculerDispositionGraphe(null); }
+  else {
+    /* Arbre centré : mêmes personnes qu'avant (limites d'ascendants et de
+       descendants), mais chacune dessinée une seule fois. */
+    var garder = {};
+    calculerDisposition(centre).noeuds.forEach(function (n) { garder[n.pid] = true; });
+    disp = calculerDispositionGraphe(garder);
+  }
   etat.disposition = disp;
   var vue = creer('div', { classe: 'vue-arbre', id: 'vueArbre', attrs: { tabindex: '0', role: 'region',
     'aria-label': 'Arbre centré sur ' + nomComplet(pers(centre)) + '. Flèches pour se déplacer, plus et moins pour zoomer, zéro pour tout voir.' } });
@@ -2549,7 +2999,7 @@ function legendeArbre(br) {
     l.appendChild(creer('span', { texte: 'Couleurs par génération' }));
   }
   l.appendChild(creer('span', {}, [creer('span', { classe: 'pastille', attrs: { style: 'background:#F4F4F6', 'aria-hidden': 'true' } }), 'Personne décédée']));
-  l.appendChild(creer('span', { texte: 'Pointillés : adoption ou personne déjà placée' }));
+  l.appendChild(creer('span', { texte: 'Pointillés : adoption' }));
   return l;
 }
 
