@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.6.2
+  Version     : 1.7.0
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -51,6 +51,7 @@
 
   HISTORIQUE
   ----------
+  1.7.0 - 12/11/2026 - madeXcé - Case « Vérifiée » pour chaque personne et chaque cousin ADN (colonne VERIFIEE ajoutée toute seule), coche verte sur les cartes de l'arbre, de la carte des cousins et dans les listes ; bouton « Marquer comme vérifiée » dans la fiche.
   1.6.2 - 12/11/2026 - madeXcé - Fenêtres (ajout d'un cousin, etc.) : elles passent maintenant au-dessus des cartes géographiques au lieu d'être masquées.
   1.6.1 - 12/11/2026 - madeXcé - Cartes des cousins ADN : âge affiché ; textes jamais tronqués (cartes de l'arbre et des cousins s'agrandissent si besoin).
   1.6.0 - 12/11/2026 - madeXcé - Cousins ADN : carte des cousins affichée par défaut (une pile de cartes par lieu : nom, ADN partagé, parenté), bascule vers le tableau.
@@ -451,6 +452,11 @@ table.tableau { width: 100%; border-collapse: collapse; }
 
 /* === Fenêtres, messages, chargement === */
 .leaflet-container { isolation: isolate; }
+.coche-verif { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 1.25rem; height: 1.25rem; border-radius: 50%; background: #16A34A; color: #fff; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.coche-verif .ico { width: .75rem; height: .75rem; stroke-width: 3; }
+.coche-verif--coin { position: absolute; top: -8px; left: -8px; z-index: 2; pointer-events: none; }
+.coche-verif--ligne { margin-right: .375rem; vertical-align: middle; width: 1.0625rem; height: 1.0625rem; }
+.coche-verif--ligne .ico { width: .625rem; height: .625rem; }
 .voile { position: fixed; inset: 0; z-index: 100000; background: var(--voile); display: none; align-items: center; justify-content: center; padding: 1rem; }
 .voile.actif { display: flex; }
 .dialogue { width: 36rem; max-width: 100%; max-height: calc(100vh - 2rem); display: flex; flex-direction: column; background: var(--blanc); border-radius: 12px; box-shadow: var(--ombre-forte); }
@@ -533,7 +539,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.6.2</span>
+    <span class="bandeau__version">v1.7.0</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -569,7 +575,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.6.2';
+var VERSION = '1.7.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -627,7 +633,8 @@ var CHAMPS_PERS = [
   { cle: 'decesLieu', id: 'DECES_LIEU', label: 'DECES LIEU', type: 'Text', genre: 'texte', nom: 'Lieu de décès' },
   { cle: 'filiation', id: 'FILIATION', label: 'FILIATION', type: 'Choice', genre: 'choix', nom: 'Filiation', choix: CHOIX_FILIATION },
   { cle: 'profession', id: 'PROFESSION', label: 'PROFESSION', type: 'Text', genre: 'texte', nom: 'Profession' },
-  { cle: 'notes', id: 'NOTES', label: 'NOTES', type: 'Text', genre: 'texte', nom: 'Notes' }
+  { cle: 'notes', id: 'NOTES', label: 'NOTES', type: 'Text', genre: 'texte', nom: 'Notes' },
+  { cle: 'verifiee', id: 'VERIFIEE', label: 'VERIFIEE', type: 'Bool', genre: 'oui', nom: 'Vérifiée' }
 ];
 var COL_PARENTS = { id: 'PARENTS', label: 'PARENTS' };
 var COL_NOM_COMPLET = { id: 'NOM_COMPLET', label: 'NOM COMPLET', formula: '(($PRENOM or "") + " " + ($NOM or "")).strip()' };
@@ -662,7 +669,8 @@ var CHAMPS_COUSINS = [
   { cle: 'ancetre', id: 'ANCETRE_PROBABLE', label: 'ANCETRE PROBABLE', type: 'REF_PERS' },
   { cle: 'contact', id: 'CONTACT', label: 'CONTACT', type: 'Text' },
   { cle: 'contacte', id: 'CONTACTE', label: 'CONTACTE', type: 'Bool' },
-  { cle: 'notes', id: 'NOTES', label: 'NOTES', type: 'Text' }
+  { cle: 'notes', id: 'NOTES', label: 'NOTES', type: 'Text' },
+  { cle: 'verifiee', id: 'VERIFIEE', label: 'VERIFIEE', type: 'Bool' }
 ];
 
 var MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
@@ -2134,6 +2142,29 @@ function rendreOnglets() {
   nav.appendChild(vues);
 }
 
+/* Colonne « Vérifiée » : ajoutée toute seule aux tables des arbres créés
+   avant cette fonction (la colonne VERIFIEE est reprise si elle existe). */
+async function assurerColonnesVerifiee(cfg) {
+  try {
+    var jobs = [[cfg.tables.pers, cfg.cols], [cfg.tables.cousins, cfg.colsCousins]];
+    for (var i = 0; i < jobs.length; i++) {
+      var tid = jobs[i][0];
+      var cols = jobs[i][1];
+      if (!tid || !cols || !etat.meta || !etat.meta.tables[tid]) { continue; }
+      if (cols.verifiee && infoColonne(tid, cols.verifiee)) { continue; }
+      if (infoColonne(tid, 'VERIFIEE')) { cols.verifiee = 'VERIFIEE'; continue; }
+      if (!etat.peutModifier) { continue; }
+      cols.verifiee = await ajouterColonne(tid, colonneLibre(tid, 'VERIFIEE'), 'Bool', 'VERIFIEE');
+      await chargerMeta();
+    }
+  } catch (e) { logSecurite('WARNING', 'Colonne Vérifiée non ajoutée', e); }
+}
+
+/* Coche verte : cette fiche a été contrôlée à la main. */
+function cocheVerifiee(classe) {
+  return creer('span', { classe: 'coche-verif' + (classe ? ' ' + classe : ''), attrs: { title: 'Vérifiée', role: 'img', 'aria-label': 'Vérifiée' } }, [icone('ok', 'ico--s')]);
+}
+
 async function changerArbre(cle) {
   var cfg = etat.arbres.filter(function (a) { return a.cle === cle; })[0];
   if (!cfg) { return; }
@@ -2152,6 +2183,7 @@ async function changerArbre(cle) {
       rendreTablesIntrouvables();
       return;
     }
+    await assurerColonnesVerifiee(etat.config);
     await chargerDonnees();
     masquerLoader();
     rendre();
@@ -3083,7 +3115,7 @@ function noeudCarte(n, centre, br) {
   var aff = etat.config.affichage.carte;
   var nom = nomComplet(p);
   var sous = aff.nomNaissance && p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom) ? accord(p, 'né ', 'née ', 'naissance : ') + p.nomNaissance : '';
-  var etiquette = nom + (info ? ', ' + info : '') + (n.pid === centre ? ', au centre de l’arbre' : '') + (n.dup ? ', déjà présente ailleurs dans l’arbre' : '');
+  var etiquette = nom + (info ? ', ' + info : '') + (n.pid === centre ? ', au centre de l’arbre' : '') + (n.dup ? ', déjà présente ailleurs dans l’arbre' : '') + (p.verifiee ? ', vérifiée' : '');
   var carte = creer('button', { classe: classes.join(' '), attrs: { 'data-pid': n.pid, 'aria-label': etiquette + '. Ouvrir la fiche' },
     clic: function () { ouvrirFiche(n.pid); } }, [
     avatar(p, classeCouleur(p, br)),
@@ -3091,6 +3123,7 @@ function noeudCarte(n, centre, br) {
   ]);
   carte.addEventListener('dblclick', function () { etat.centreSession = n.pid; rendre(); centrerSur(n.pid, true); });
   var noeud = creer('div', { classe: 'noeud', attrs: { style: 'left:' + Math.round(n.x) + 'px;top:' + Math.round(n.y) + 'px' } }, [carte]);
+  if (p.verifiee) { noeud.appendChild(cocheVerifiee('coche-verif--coin')); }
   if (etat.peutModifier) {
     var plus = creer('button', { classe: 'plus', attrs: { 'aria-label': 'Ajouter un proche à ' + nom, 'aria-haspopup': 'menu', 'aria-expanded': 'false', title: 'Ajouter un proche' } }, [icone('plus', 'ico--s')]);
     plus.addEventListener('click', function (e) { e.stopPropagation(); ouvrirMenuPlus(n, plus); });
@@ -3424,6 +3457,10 @@ function rendreFiche() {
   var actions = creer('div', { classe: 'fiche__actions' }, [
     bouton('Centrer l’arbre ici', '', 'cible', function () { etat.centreSession = p.id; etat.vue = etat.vue === 'ascendance' ? 'ascendance' : 'arbre'; rendre(); centrerSur(p.id, false); }, { petit: true }),
     etat.peutModifier ? bouton('Modifier', '', 'modifier', function () { ouvrirFormPersonne({ mode: 'modifier', id: p.id }); }, { petit: true }) : null,
+    etat.peutModifier && etat.config.cols.verifiee ? bouton(p.verifiee ? 'Retirer « Vérifiée »' : 'Marquer comme vérifiée', '', 'ok', async function () {
+      try { await modifierPersonne(p.id, { verifiee: !p.verifiee }); await apresEcriture(p.verifiee ? 'Coche « Vérifiée » retirée.' : 'Fiche marquée comme vérifiée.', p.id); }
+      catch (e) { afficherErreur(messageEchec(e, 'L’enregistrement a échoué.'), e); }
+    }, { petit: true }) : null,
     etat.peutModifier ? bouton('Supprimer ' + nomComplet(p), 'ico', 'supprimer', function () { return supprimerPersonne(p.id); }, { petit: true, classe: 'btn--danger' }) : null
   ]);
   corps.appendChild(creer('div', { classe: 'fiche__id' }, [
@@ -3431,7 +3468,7 @@ function rendreFiche() {
     creer('h3', { classe: 'fiche__nom', texte: nomComplet(p) }),
     p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom) ? creer('p', { classe: 'fiche__ligne', texte: accord(p, 'Né ', 'Née ', 'Nom de naissance : ') + p.nomNaissance }) : null,
     info ? creer('div', { classe: 'compteurs', attrs: { style: 'justify-content:center' } }, [badge(libelleBranche(info.branche, br.noms), classeBranche(info.branche)), info.branche !== 'centre' && libelleParente(p.id, br, idCentre()) ? badge(libelleParente(p.id, br, idCentre()) + ' de ' + (pers(idCentre()).prenom || nomComplet(pers(idCentre())))) : null]) : null
-  ].concat(lignes.map(function (l) { return creer('p', { classe: 'fiche__ligne', texte: l }); })).concat([p.filiation === 'Adoption' ? badge(accord(p, 'Adopté', 'Adoptée', 'Adoption')) : null, actions])));
+  ].concat(lignes.map(function (l) { return creer('p', { classe: 'fiche__ligne', texte: l }); })).concat([p.filiation === 'Adoption' ? badge(accord(p, 'Adopté', 'Adoptée', 'Adoption')) : null, p.verifiee ? badge('Vérifiée', 'br-b') : null, actions])));
   /* Parents */
   var par = parentsDe(p.id);
   var u0 = unionDe(p.parents);
@@ -3672,6 +3709,7 @@ function ouvrirFormPersonne(o) {
   btnRetirer.hidden = !etatForm.photo;
   zoneNouv.appendChild(creer('div', { classe: 'plein', attrs: { style: 'display:flex;align-items:center;gap:1rem;flex-wrap:wrap' } }, [apercu, creer('div', { attrs: { style: 'display:flex;flex-direction:column;gap:.375rem' } }, [creer('span', { classe: 'etiq', texte: 'Photo' }), fichier, btnChoisir, btnRetirer])]));
   zoneNouv.appendChild(champ('Notes', saisie('fNotes', p ? p.notes : '', { multiligne: true, lignes: 3 }), { facultatif: true, plein: true }));
+  zoneNouv.appendChild(creer('div', { classe: 'plein' }, [caseACocher('fVerifiee', 'Vérifiée (données contrôlées à la main)', !!(p && p.verifiee))]));
   corps.push(zoneNouv);
   /* Précisions selon le lien */
   var zoneLien = null;
@@ -3732,7 +3770,7 @@ async function validerFormPersonne(o, etatForm, btn) {
     if (n.date && d.date && comparerDates(d.date, n.date) < 0) { marquerInvalide('fDeces', 'Le décès ne peut pas précéder la naissance.'); return; }
     v = { prenom: val('fPrenom'), nom: val('fNom'), nomNaissance: val('fNomNaissance'), sexe: val('fSexe'),
       naissance: n.date, naissanceApprox: n.approx, naissanceLieu: val('fNaissanceLieu'), residence: val('fResidence'), profession: val('fProfession'),
-      decede: decede, deces: decede ? d.date : null, decesApprox: decede ? d.approx : false, decesLieu: decede ? val('fDecesLieu') : '', notes: val('fNotes') };
+      decede: decede, deces: decede ? d.date : null, decesApprox: decede ? d.approx : false, decesLieu: decede ? val('fDecesLieu') : '', notes: val('fNotes'), verifiee: document.getElementById('fVerifiee').checked };
     if (document.getElementById('fFiliation')) { v.filiation = val('fFiliation'); }
   }
   var debutUnion = null;
@@ -4133,7 +4171,7 @@ function rendreListe(zone) {
     l.forEach(function (p) {
       var i = br.parId[p.id];
       tbody.appendChild(creer('tr', {}, [
-        creer('td', {}, [creer('button', { classe: 'lien-personne', texte: nomComplet(p), clic: function () { ouvrirFiche(p.id); } }),
+        creer('td', {}, [p.verifiee ? cocheVerifiee('coche-verif--ligne') : null, creer('button', { classe: 'lien-personne', texte: nomComplet(p), clic: function () { ouvrirFiche(p.id); } }),
           p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom) ? creer('div', { classe: 'indice', texte: accord(p, 'né ', 'née ', 'naissance : ') + p.nomNaissance }) : null]),
         creer('td', {}, [formaterDate(p.naissance, p.naissanceApprox), p.naissanceLieu ? creer('div', { classe: 'indice', texte: p.naissanceLieu }) : null]),
         creer('td', {}, [p.deces ? formaterDate(p.deces, p.decesApprox) : (estDecede(p) ? 'date inconnue' : ''), p.decesLieu ? creer('div', { classe: 'indice', texte: p.decesLieu }) : null]),
@@ -4307,7 +4345,7 @@ function rendreCousins(zone) {
       var estim = estimerParente(c.cm);
       var anc = pers(c.ancetre);
       tbody.appendChild(creer('tr', {}, [
-        creer('td', {}, [etat.peutModifier ? creer('button', { classe: 'lien-personne', texte: nom, clic: function () { ouvrirFormCousin(c); } }) : creer('strong', { texte: nom }),
+        creer('td', {}, [c.verifiee ? cocheVerifiee('coche-verif--ligne') : null, etat.peutModifier ? creer('button', { classe: 'lien-personne', texte: nom, clic: function () { ouvrirFormCousin(c); } }) : creer('strong', { texte: nom }),
           c.age ? creer('div', { classe: 'indice', texte: c.age }) : null,
           c.tailleArbre ? creer('div', { classe: 'indice', texte: 'Arbre de ' + pluriel(c.tailleArbre, 'personne', 'personnes') }) : null,
           c.patronymes ? creer('div', { classe: 'indice', texte: c.patronymes }) : null]),
@@ -4361,7 +4399,7 @@ function dessinerCarteCousins(boite, statut, enregistrer, filtrer) {
     var nom = (c.prenom + ' ' + c.nom).trim() || 'Sans nom';
     var parente = c.relation || estimerParente(c.cm);
     var el = creer('button', { classe: 'cousin-carte cousin-carte--' + cercleADN(c.cm) }, [
-      creer('span', { classe: 'cousin-carte__nom', texte: nom }),
+      creer('span', { classe: 'cousin-carte__nom' }, [c.verifiee ? cocheVerifiee('coche-verif--ligne') : null, nom]),
       creer('span', { classe: 'cousin-carte__info', texte: [c.age, c.cm ? formaterNombre(c.cm, 0) + ' cM' : '', parente || c.branche || ''].filter(function (x) { return x; }).join(' · ') || ' ' })
     ]);
     el.addEventListener('click', function (e) { e.stopPropagation(); if (etat.peutModifier) { ouvrirFormCousin(c); } });
@@ -4538,6 +4576,7 @@ function ouvrirFormCousin(c) {
     champ('Piste dans l’arbre', liste('cAncetre', optionsPersonnes([]), v.ancetre || '', { vide: 'Aucune piste pour l’instant' }), { facultatif: true, plein: true, indice: 'Une personne de l’arbre par qui ce cousin serait relié, si vous avez une idée.' }),
     champ('Contact', saisie('cContact', v.contact, { max: 300 }), { facultatif: true, indice: 'Pseudo, adresse, ou lien « Contacter » copié depuis le site.' }),
     creer('div', { classe: 'champ' }, [creer('span', { classe: 'etiq', texte: 'Échange' }), caseACocher('cContacte', 'Déjà contacté', !!v.contacte)]),
+    creer('div', { classe: 'champ' }, [creer('span', { classe: 'etiq', texte: 'Contrôle' }), caseACocher('cVerifiee', 'Vérifiée (données contrôlées à la main)', !!v.verifiee)]),
     champ('Notes', saisie('cNotes', v.notes, { multiligne: true, lignes: 3 }), { facultatif: true, plein: true })
   ])];
   var enregistrer = bouton(c ? 'Enregistrer' : 'Ajouter', 'p', null, async function () {
@@ -4558,6 +4597,7 @@ function ouvrirFormCousin(c) {
     o[cc.site] = val('cSite'); o[cc.branche] = val('cBranche'); o[cc.cm] = cm; o[cc.segments] = seg; o[cc.relation] = val('cRelation');
     o[cc.patronymes] = val('cPatronymes'); o[cc.ancetre] = val('cAncetre') ? parseInt(val('cAncetre'), 10) : 0; o[cc.contact] = val('cContact');
     o[cc.contacte] = document.getElementById('cContacte').checked; o[cc.notes] = val('cNotes');
+    if (cc.verifiee) { o[cc.verifiee] = document.getElementById('cVerifiee').checked; }
     o[cc.pct] = pct; o[cc.segmentMax] = segMax; o[cc.age] = val('cAge'); o[cc.tailleArbre] = isNaN(taille) ? null : taille; o[cc.lieuCommun] = val('cLieuCommun');
     Object.keys(o).forEach(function (k) { if (!infoColonne(etat.config.tables.cousins, k)) { delete o[k]; } });
     enregistrer.disabled = true;
