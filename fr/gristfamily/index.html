@@ -692,7 +692,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.25.0';
+var VERSION = '1.26.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -807,6 +807,7 @@ var CHAMPS_PERS = [
   { cle: 'decesLieu', id: 'DECES_LIEU', label: 'DECES LIEU', type: 'Text', genre: 'texte', nom: 'Lieu de décès' },
   { cle: 'filiation', id: 'FILIATION', label: 'FILIATION', type: 'Choice', genre: 'choix', nom: 'Filiation', choix: CHOIX_FILIATION },
   { cle: 'profession', id: 'PROFESSION', label: 'PROFESSION', type: 'Text', genre: 'texte', nom: 'Profession' },
+  { cle: 'professions', id: 'PROFESSIONS', label: 'PROFESSIONS', type: 'Text', genre: 'texte', nom: 'Professions datées' },
   { cle: 'notes', id: 'NOTES', label: 'NOTES', type: 'Text', genre: 'texte', nom: 'Notes' },
   { cle: 'verifiee', id: 'VERIFIEE', label: 'VERIFIEE', type: 'Bool', genre: 'oui', nom: 'Vérifiée' },
   { cle: 'aVerifier', id: 'A_VERIFIER', label: 'A VERIFIER', type: 'Bool', genre: 'oui', nom: 'À vérifier' },
@@ -2421,11 +2422,11 @@ async function assurerColonnesVerifiee(cfg) {
       var tid = jobs[i][0];
       var cols = jobs[i][1];
       if (!tid || !cols || !etat.meta || !etat.meta.tables[tid]) { continue; }
-      var marques = [['verifiee', 'VERIFIEE', 'Bool'], ['aVerifier', 'A_VERIFIER', 'Bool'], ['photoUrl', 'PHOTO_URL', 'Text'], ['erronee', 'BRANCHE_ERRONEE', 'Bool']];
+      var marques = [['verifiee', 'VERIFIEE', 'Bool'], ['aVerifier', 'A_VERIFIER', 'Bool'], ['photoUrl', 'PHOTO_URL', 'Text'], ['professions', 'PROFESSIONS', 'Text'], ['erronee', 'BRANCHE_ERRONEE', 'Bool']];
       for (var m = 0; m < marques.length; m++) {
         var cle = marques[m][0];
         var idCol = marques[m][1];
-        if ((cle === 'photoUrl' || cle === 'erronee') && i === 1) { continue; }
+        if ((cle === 'photoUrl' || cle === 'erronee' || cle === 'professions') && i === 1) { continue; }
         if (cols[cle] && infoColonne(tid, cols[cle])) { continue; }
         if (infoColonne(tid, idCol)) { cols[cle] = idCol; continue; }
         if (!etat.peutModifier) { continue; }
@@ -4442,6 +4443,16 @@ function ecartAnnees(d1, d2) {
 function texteEcart(e, avant) { return e ? (e.approx ? 'vers ' : '') + e.n + ' an' + (e.n > 1 ? 's' : '') : ''; }
 function cleDate(d) { return d ? d.a * 10000 + (d.m || 6) * 100 + (d.j || 15) : 99999999; }
 
+function professionsDatees(p) {
+  var res = { datees: [], libres: [] };
+  ((p && p.professions) || '').split(/\n/).map(function (l) { return l.trim(); }).filter(Boolean).forEach(function (l) {
+    var m = /^(?:(\d{1,2})\/(\d{1,2})\/)?(\d{4})\s*:\s*(.+)$/.exec(l);
+    if (m) { res.datees.push({ d: m[1] ? { a: +m[3], m: +m[2], j: +m[1] } : { a: +m[3] }, txt: m[4].trim() }); }
+    else { res.libres.push(l); }
+  });
+  return res;
+}
+
 function evenementsVie(p) {
   var ev = [];
   var prem = function (x) { return ((x && x.prenom) || '').trim().split(/\s+/)[0] || nomComplet(x); };
@@ -4475,6 +4486,10 @@ function evenementsVie(p) {
       ev.push({ d: pc.deces, titre: 'Décès ' + accord(pc, 'de son conjoint', 'de sa conjointe', 'du conjoint') + ' ' + prem(pc), sous: ecartAnnees(p.naissance, pc.deces) ? 'À ' + texteEcart(ecartAnnees(p.naissance, pc.deces)) : '' });
     }
     enfantsUnion(uid).forEach(function (e) { if (pers(e)) { enfants.push(pers(e)); } });
+  });
+  professionsDatees(p).datees.forEach(function (x) {
+    var ag = ecartAnnees(p.naissance, x.d);
+    ev.push({ d: x.d, titre: 'Profession : ' + x.txt, sous: ag ? 'À ' + texteEcart(ag) : '' });
   });
   enfants.sort(function (a, b) { return cleDate(a.naissance) - cleDate(b.naissance); });
   enfants.forEach(function (e, i) {
@@ -4531,7 +4546,9 @@ function rendreFiche() {
     rangs.push([accord(p, 'Décédé', 'Décédée', 'Décès'), ligneDeces || '?', 'nd']);
   } else if (avecAge) { rangs.push(['Âge', age + ' ans']); }
   if (p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom)) { rangs.push([accord(p, 'Né sous le nom', 'Née sous le nom', 'Nom de naissance'), p.nomNaissance]); }
-  if (p.profession) { rangs.push(['Profession', p.profession]); }
+  var pd = professionsDatees(p);
+  var profAff = p.profession || (pd.datees.length ? pd.datees[pd.datees.length - 1].txt : '') || pd.libres.join(', ');
+  if (profAff) { rangs.push(['Profession', profAff]); }
   if (p.residence && !estDecede(p)) { rangs.push(['Lieu de vie', p.residence]); }
   var info = br.parId[p.id];
   var actions = creer('div', { classe: 'fiche__actions' }, [
@@ -4775,6 +4792,9 @@ function ouvrirFormPersonne(o) {
   zoneNouv.appendChild(champ('Lieu de naissance', saisie('fNaissanceLieu', p ? p.naissanceLieu : '', { max: 160, indice: 'Ville, pays' })));
   zoneNouv.appendChild(champ('Lieu de vie', saisie('fResidence', p ? p.residence : '', { max: 160, indice: 'Ville, pays' }), { facultatif: true }));
   zoneNouv.appendChild(champ('Profession', saisie('fProfession', p ? p.profession : '', { max: 160 }), { facultatif: true }));
+  if (etat.config.cols.professions) {
+    zoneNouv.appendChild(champ('Professions datées, une par ligne', saisie('fProfessions', p ? p.professions : '', { multiligne: true, lignes: 3, indice: '1954 : cultivateur (acte de mariage)\n1961 : ouvrier (naissance de son fils)' }), { facultatif: true, plein: true }));
+  }
   var zoneDeces = creer('div', { classe: 'grille2 plein', attrs: { hidden: !(p && estDecede(p)) } }, [
     champ('Date de décès', saisie('fDeces', p ? dateVersSaisie(p.deces, p.decesApprox) : '', { max: 40 }), { facultatif: true }),
     champ('Lieu de décès', saisie('fDecesLieu', p ? p.decesLieu : '', { max: 160 }), { facultatif: true })
@@ -4863,7 +4883,7 @@ async function validerFormPersonne(o, etatForm, btn) {
     if (colonnePersEstDate('naissance') && n.date && (!n.date.j || n.approx)) { marquerInvalide('fNaissance', 'La colonne de votre table attend une date complète : jour, mois et année.'); return; }
     if (n.date && d.date && comparerDates(d.date, n.date) < 0) { marquerInvalide('fDeces', 'Le décès ne peut pas précéder la naissance.'); return; }
     v = { prenom: val('fPrenom'), nom: val('fNom'), nomNaissance: val('fNomNaissance'), sexe: val('fSexe'),
-      naissance: n.date, naissanceApprox: n.approx, naissanceLieu: val('fNaissanceLieu'), residence: val('fResidence'), profession: val('fProfession'),
+      naissance: n.date, naissanceApprox: n.approx, naissanceLieu: val('fNaissanceLieu'), residence: val('fResidence'), profession: val('fProfession'), professions: document.getElementById('fProfessions') ? document.getElementById('fProfessions').value.trim() : undefined,
       decede: decede, deces: decede ? d.date : null, decesApprox: decede ? d.approx : false, decesLieu: decede ? val('fDecesLieu') : '', notes: val('fNotes'), verifiee: document.getElementById('fVerifiee').checked, aVerifier: document.getElementById('fAVerifier').checked, erronee: document.getElementById('fErronee').checked };
     if (document.getElementById('fFiliation')) { v.filiation = val('fFiliation'); }
   }
