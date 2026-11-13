@@ -693,7 +693,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.26.1';
+var VERSION = '1.26.2';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -2830,6 +2830,17 @@ function calculerDispositionGraphe(garder) {
   function unionsDeP(id) { return unionsPersonne(id).filter(function (uid) { return membresUnion(uid).length; }); }
   function enfantsDeU(uid) { return enfantsUnion(uid).filter(function (x) { return dedans[x]; }).sort(comparerNaissance); }
 
+  /* Frères et sœurs dont les parents ne sont pas connus : ils partagent une
+     union sans personne, on les garde côte à côte sur la même rangée. */
+  function uniteOrpheline(id) {
+    var p = pers(id);
+    return p && p.parents && !membresUnion(p.parents).length ? p.parents : 0;
+  }
+  function fratrieOrpheline(id) {
+    var uo = uniteOrpheline(id);
+    return uo ? enfantsDeU(uo).filter(function (y) { return y !== id; }) : [];
+  }
+
   /* 1. Générations */
   var gen = {};
   [ref].concat(ids).forEach(function (s) {
@@ -2843,6 +2854,7 @@ function calculerDispositionGraphe(garder) {
       unionsDeP(x).forEach(function (uid) { membresUnion(uid).forEach(function (y) { poser(y, g); }); });
       var pu = parentsUnion(x);
       if (pu) { membresUnion(pu).forEach(function (y) { poser(y, g - 1); }); }
+      else { fratrieOrpheline(x).forEach(function (y) { poser(y, g); }); }
       unionsDeP(x).forEach(function (uid) { enfantsDeU(uid).forEach(function (y) { poser(y, g + 1); }); });
     }
   });
@@ -2916,6 +2928,12 @@ function calculerDispositionGraphe(garder) {
   var emettre = function (u) { (rangees[genU[u]] = rangees[genU[u]] || []).push(u); };
   var famille = function (x) {
     var pu = parentsUnion(x);
+    var uo = !pu ? uniteOrpheline(x) : 0;
+    if (uo) {
+      if (fait[uo]) { return null; }
+      fait[uo] = true;
+      return fratrieOrpheline(x);
+    }
     if (!pu || fait[pu]) { return null; }
     fait[pu] = true;
     parcourir(uniteDe[membresUnion(pu)[0]]);
@@ -3248,6 +3266,15 @@ function calculerDispositionGraphe(garder) {
       (barres[gEnf] = barres[gEnf] || []).push({ uid: uid, enf: enf, min: Math.min.apply(null, xs), max: Math.max.apply(null, xs) });
     });
   });
+  /* Cadre des frères et sœurs aux parents inconnus. */
+  var vuO = {};
+  ids.forEach(function (id) {
+    var uo = uniteOrpheline(id);
+    if (!uo || vuO[uo]) { return; }
+    vuO[uo] = true;
+    var en = enfantsDeU(uo);
+    if (en.length > 1) { sortie.fratries.push({ uid: uo, enf: en.slice() }); }
+  });
   /* Barres d'enfants : sur des voies différentes quand elles se recouvrent. */
   Object.keys(barres).forEach(function (gk) {
     var l = barres[gk].sort(function (a, b) { return a.min - b.min; });
@@ -3390,7 +3417,7 @@ function cadresFratries(disp) {
     if (gene) { return; }
     var u = unionDe(fr.uid);
     var noms = u ? [u.a, u.b].filter(function (x) { return x && pers(x); }).map(function (x) { return pers(x).prenom || nomComplet(pers(x)); }).join(' et ') : '';
-    cadres.push({ x: x0 - 10, y: y - 10, w: x1 - x0 + 20, h: DIM.H + 20, titre: 'Enfants de ' + noms });
+    cadres.push({ x: x0 - 10, y: y - 10, w: x1 - x0 + 20, h: DIM.H + 20, titre: noms ? 'Enfants de ' + noms : 'Frères et sœurs (parents inconnus)' });
   });
   return cadres;
 }
