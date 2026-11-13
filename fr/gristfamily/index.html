@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.16.0
+  Version     : 1.17.0
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.17.0 - 13/11/2026 - madeXcé - Une icône sur chaque carte de recherche selon le document à trouver (naissance, mariage, décès, matricule, recensement...). Quand on trouve un document, on l'ajoute directement depuis la carte de la recherche : il est joint à la personne (type deviné d'après le titre), la recherche passe à « Trouvé » et la carte garde un lien vers le document (colonne RECHERCHE ajoutée toute seule dans DOCUMENTS_).
   1.16.0 - 13/11/2026 - madeXcé - Recherches et Sources sur une seule page : les recherches à gauche, les sites utiles sous les yeux à droite. Chaque recherche peut proposer plusieurs sources (liens cliquables) et un clic sur une source filtre les recherches qui l'utilisent.
   1.15.0 - 13/11/2026 - madeXcé - Nouvelle page Recherches (table RECHERCHES_ créée toute seule) : la liste des documents à trouver, avec la personne, le site de la page Sources où chercher, un statut (à faire, en cours, trouvé, introuvable) et une note. Section Recherches dans la fiche, icône 🔎 sur la carte, et recherches ouvertes rappelées sur chaque site de la page Sources.
   1.14.0 - 13/11/2026 - madeXcé - Documents (actes, recensements, copies) joints aux personnes et aux unions, avec un type (naissance, mariage, décès, autre) ; icônes sur les cartes pour les notes et les documents ; nouvelle page Sources pour ranger les liens utiles. Deux tables sont créées toutes seules : DOCUMENTS_ et SOURCES_.
@@ -591,7 +592,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.16.0</span>
+    <span class="bandeau__version">v1.17.0</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -627,7 +628,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.16.0';
+var VERSION = '1.17.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -1640,7 +1641,7 @@ async function chargerDonnees() {
   var DOCS = { parPers: {}, parUnion: {} };
   if (dd && dd.id) {
     for (var di = 0; di < dd.id.length; di++) {
-      var doc = { id: dd.id[di], pers: refId(dd.PERSONNE && dd.PERSONNE[di]), union: refId(dd.UNION_LIEE && dd.UNION_LIEE[di]),
+      var doc = { id: dd.id[di], pers: refId(dd.PERSONNE && dd.PERSONNE[di]), union: refId(dd.UNION_LIEE && dd.UNION_LIEE[di]), recherche: refId(dd.RECHERCHE && dd.RECHERCHE[di]),
         type: texteCellule(dd.TYPE && dd.TYPE[di]).trim() || 'Autre', libelle: texteCellule(dd.LIBELLE && dd.LIBELLE[di]).trim(), fichiers: idsPJ(dd.FICHIER && dd.FICHIER[di]) };
       if (doc.pers) { (DOCS.parPers[doc.pers] = DOCS.parPers[doc.pers] || []).push(doc); }
       if (doc.union) { (DOCS.parUnion[doc.union] = DOCS.parUnion[doc.union] || []).push(doc); }
@@ -3653,6 +3654,10 @@ async function assurerTablesAnnexes(cfg) {
       await creerTables([{ id: ID_RECH, libelle: LABEL_RECH, colonnes: colsR.concat(COLONNES_META) }]);
       etat.tRech = trouverTableModele(ID_RECH);
     }
+    if (etat.tDocs && etat.tRech && !infoColonne(etat.tDocs, 'RECHERCHE')) {
+      await ajouterColonne(etat.tDocs, 'RECHERCHE', 'Ref:' + etat.tRech, 'RECHERCHE');
+      await chargerMeta();
+    }
   } catch (e) { logSecurite('WARNING', 'Tables des documents et des sources non créées', e); }
 }
 
@@ -3775,21 +3780,46 @@ async function supprimerDocument(d) {
   } catch (e) { afficherErreur(messageEchec(e, 'La suppression a échoué.'), e); }
 }
 
-function ouvrirFormDocument(p) {
+function typeDevine(txt) {
+  if (/naissance|bapt/i.test(txt || '')) { return 'Naissance'; }
+  if (/mariage/i.test(txt || '')) { return 'Mariage'; }
+  if (/d[ée]c[èe]s|sépulture/i.test(txt || '')) { return 'Décès'; }
+  return 'Autre';
+}
+
+function iconeRecherche(txt) {
+  if (/matricule|militaire|guerre|soldat/i.test(txt || '')) { return '🎖️'; }
+  if (/recensement/i.test(txt || '')) { return '📋'; }
+  if (/livret|souvenir|interroger|demander/i.test(txt || '')) { return '📖'; }
+  if (/recherche gratuite|première étape|rattachement|confirmer/i.test(txt || '')) { return '🔍'; }
+  return typeDoc(typeDevine(txt)).icone;
+}
+
+function docsDeRecherche(r) {
+  var out = [];
+  var D = etat.docs || { parPers: {}, parUnion: {} };
+  Object.keys(D.parPers).forEach(function (k) { D.parPers[k].forEach(function (d) { if (d.recherche === r.id) { out.push(d); } }); });
+  Object.keys(D.parUnion).forEach(function (k) { D.parUnion[k].forEach(function (d) { if (d.recherche === r.id) { out.push(d); } }); });
+  return out;
+}
+
+function ouvrirFormDocument(p, opt) {
+  opt = opt || {};
   var unions = modeColonnes() ? [] : unionsPersonne(p.id);
   var optionsConcerne = [{ valeur: 'p', libelle: 'Cette personne' }].concat(unions.map(function (uid) {
     var cj = conjointDans(uid, p.id);
     return { valeur: 'u' + uid, libelle: 'Union avec ' + (cj ? nomComplet(pers(cj)) : 'un autre parent inconnu') };
   }));
-  var selType = liste('docType', DOC_TYPES.map(function (t) { return { valeur: t.cle, libelle: t.icone + ' ' + t.nom }; }), 'Naissance');
-  var selConcerne = liste('docConcerne', optionsConcerne, 'p');
+  var selType = liste('docType', DOC_TYPES.map(function (t) { return { valeur: t.cle, libelle: t.icone + ' ' + t.nom }; }), opt.type || 'Naissance');
+  var selConcerne = liste('docConcerne', optionsConcerne, opt.type === 'Mariage' && unions.length ? 'u' + unions[0] : 'p');
   selType.addEventListener('change', function () { selConcerne.value = selType.value === 'Mariage' && unions.length ? 'u' + unions[0] : 'p'; });
   var fichier = creer('input', { classe: 'saisie', id: 'docFichier', attrs: { type: 'file', accept: '.jpg,.jpeg,.png,.gif,.webp,.pdf,image/*,application/pdf', multiple: 'multiple' } });
   var corps = [creer('div', { classe: 'grille2' }, [
     champ('Type de document', selType),
     unions.length ? champ('Concerne', selConcerne) : null,
-    champ('Titre', saisie('docLibelle', '', { max: 120, indice: 'Ex. : Acte de mariage, Us, 1913' }), { facultatif: true, plein: true }),
-    champ('Fichier', fichier, { plein: true, indice: 'Image ou PDF, 15 Mo au plus. Plusieurs fichiers possibles (pages d’un même acte).' })
+    champ('Titre', saisie('docLibelle', opt.titre || '', { max: 160, indice: 'Ex. : Acte de mariage, Us, 1913' }), { facultatif: true, plein: true }),
+    champ('Fichier', fichier, { plein: true, indice: 'Image ou PDF, 15 Mo au plus. Plusieurs fichiers possibles (pages d’un même acte).' }),
+    opt.recherche ? creer('div', { classe: 'plein' }, [caseACocher('docTrouve', 'Marquer la recherche « ' + (opt.recherche.doc || 'sans titre') + ' » comme trouvée', true)]) : null
   ])];
   var ok = bouton('Enregistrer', 'p', null, async function () {
     var fs = Array.prototype.slice.call(fichier.files || []);
@@ -3809,11 +3839,14 @@ function ouvrirFormDocument(p) {
         ids.push(await envoyerPhoto(g));
       }
       var rec = { TYPE: type, LIBELLE: lib, FICHIER: ['L'].concat(ids) };
+      if (opt.recherche && infoColonne(etat.tDocs, 'RECHERCHE')) { rec.RECHERCHE = opt.recherche.id; }
       if (cible.charAt(0) === 'u') { rec.UNION_LIEE = parseInt(cible.slice(1), 10); } else { rec.PERSONNE = p.id; }
-      await agir([['AddRecord', etat.tDocs, null, rec]]);
+      var actions = [['AddRecord', etat.tDocs, null, rec]];
+      if (opt.recherche && document.getElementById('docTrouve') && document.getElementById('docTrouve').checked) { actions.push(['UpdateRecord', etat.tRech, opt.recherche.id, { STATUT: 'Trouvé' }]); }
+      await agir(actions);
       masquerLoader();
       fermerModale();
-      await apresEcriture('Document ajouté.', p.id);
+      await apresEcriture('Document ajouté.', etat.selection);
     } catch (e) { masquerLoader(); afficherErreur(messageEchec(e, 'L’envoi du document a échoué.'), e); }
   });
   ouvrirModale({ titre: 'Ajouter un document', sousTitre: nomComplet(p), corps: corps, pied: [bouton('Annuler', '', null, fermerModale), ok], focus: 'docType' });
@@ -3833,14 +3866,18 @@ function carteRecherche(r, avecPersonne) {
   srcs.forEach(function (x, i) { if (i) { liens.push(', '); } liens.push(lienSource(x)); });
   return creer('div', { classe: 'source-carte' }, [
     creer('div', { classe: 'source-carte__tete' }, [
-      creer('strong', { texte: r.doc || 'Sans titre' }),
+      creer('strong', { texte: iconeRecherche(r.doc) + ' ' + (r.doc || 'Sans titre') }),
       etat.peutModifier ? bouton('Modifier la recherche ' + (r.doc || ''), 'ico', 'modifier', function () { ouvrirFormRecherche(r); }, { petit: true, classe: 'no-print' }) : null
     ]),
     creer('div', { classe: 'compteurs', attrs: { style: 'margin:.25rem 0' } }, [badge(r.statut, classeStatut(r.statut))]),
     avecPersonne && p ? creer('p', { attrs: { style: 'margin:0' } }, [creer('button', { classe: 'lien-personne', texte: nomComplet(p), clic: function () { ouvrirFiche(p.id); } })]) : null,
     liens.length ? creer('p', { attrs: { style: 'margin:.125rem 0 0' } }, [creer('span', { classe: 'indice', texte: 'Où chercher : ' })].concat(liens)) : null,
     r.notes ? creer('p', { texte: r.notes, attrs: { style: 'margin:.25rem 0 0;white-space:pre-line' } }) : null,
-    etat.peutModifier && etat.tRech && rechOuverte(r) ? creer('div', { attrs: { style: 'margin-top:.5rem' } }, [bouton('Marquer comme trouvé', '', 'ok', async function () {
+    docsDeRecherche(r).length ? creer('div', { attrs: { style: 'margin-top:.375rem' } }, docsDeRecherche(r).map(function (d) {
+      return creer('p', { attrs: { style: 'margin:0' } }, [creer('span', { texte: typeDoc(d.type).icone + ' ', attrs: { 'aria-hidden': 'true' } }), creer('button', { classe: 'lien-personne', texte: d.libelle || typeDoc(d.type).nom, clic: function () { relayer(ouvrirDocument(d), 'Ouverture du document'); } })]);
+    })) : null,
+    etat.peutModifier && etat.tDocs && p ? creer('div', { attrs: { style: 'margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap' } }, [bouton('J’ai trouvé : ajouter le document', 'p', 'plus', function () { ouvrirFormDocument(p, { titre: r.doc, type: typeDevine(r.doc), recherche: r }); }, { petit: true, classe: 'no-print' })]) : null,
+    etat.peutModifier && etat.tRech && rechOuverte(r) ? creer('div', { attrs: { style: 'margin-top:.5rem' } }, [bouton('Marquer comme trouvé sans document', '', 'ok', async function () {
       try { await agir([['UpdateRecord', etat.tRech, r.id, { STATUT: 'Trouvé' }]]); await apresEcriture('Recherche marquée comme trouvée. Joignez le document depuis la fiche.', etat.selection); }
       catch (e) { afficherErreur(messageEchec(e, 'L’enregistrement a échoué.'), e); }
     }, { petit: true, classe: 'no-print' })]) : null
@@ -3913,7 +3950,7 @@ function sectionRecherches(p) {
   var lignes = l.map(function (r) {
     var srcs = sourcesDe(r);
     return creer('div', { classe: 'doc-ligne' }, [
-      creer('span', { classe: 'doc-ligne__ico', texte: '🔎', attrs: { 'aria-hidden': 'true' } }),
+      creer('span', { classe: 'doc-ligne__ico', texte: iconeRecherche(r.doc), attrs: { 'aria-hidden': 'true' } }),
       creer('span', { classe: 'doc-ligne__txt' }, [
         creer('button', { classe: 'lien-personne', texte: r.doc || 'Sans titre', clic: function () { etat.vue = 'recherches'; rendre(); } }),
         creer('span', { classe: 'rel__sous', texte: r.statut + (srcs.length ? ', ' + srcs.map(function (x) { return x.libelle; }).join(', ') : '') })
