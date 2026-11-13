@@ -436,6 +436,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 .pr-lien:first-child { border-top: 0; }
 .pr-desc { margin-left: 1.5rem; }
 .pr-fleche { font-size: .75rem; color: #5F6672; margin: .125rem 0 .125rem 1.5rem; }
+.ligne--decede td { background: #F4F4F7; color: #5F6672; }
 .prenoms-suite { color: #6B7280; font-weight: 400; }
 .lien-personne .prenoms-suite { color: #5F7F70; }
 .lien-personne:hover { text-decoration-color: currentColor; }
@@ -693,7 +694,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.26.4';
+var VERSION = '1.27.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -5507,12 +5508,12 @@ function rendreListe(zone) {
     l.sort(function (a, b) { return cmp(a, b) * f.sens || nomComplet(a).localeCompare(nomComplet(b), 'fr'); });
     l.forEach(function (p) {
       var i = br.parId[p.id];
-      tbody.appendChild(creer('tr', {}, [
+      tbody.appendChild(creer('tr', { classe: estDecede(p) ? 'ligne--decede' : '' }, [
         creer('td', {}, [p.verifiee ? cocheVerifiee('coche-verif--ligne') : null, p.aVerifier ? pointAVerifier('point-verif--ligne') : null, avecPhoto(p.id, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(p.id); } }, [nomAffiche(p)])),
           p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom) ? creer('div', { classe: 'indice', texte: accord(p, 'né ', 'née ', 'naissance : ') + p.nomNaissance }) : null]),
         creer('td', {}, [p.naissance ? formaterDate(p.naissance, p.naissanceApprox) : '?', p.naissanceLieu ? creer('div', { classe: 'indice', texte: p.naissanceLieu }) : null]),
         creer('td', {}, [p.deces ? formaterDate(p.deces, p.decesApprox) : (estDecede(p) ? '?' : ''), p.decesLieu ? creer('div', { classe: 'indice', texte: p.decesLieu }) : null]),
-        creer('td', { texte: texteAge(p) }),
+        creer('td', { texte: (estDecede(p) && texteAge(p) ? '† ' : '') + texteAge(p) }),
         creer('td', { texte: estDecede(p) ? '' : p.residence }),
         creer('td', { texte: libelleParente(p.id, br, centre) }),
         creer('td', {}, [badge(libelleBranche(i ? i.branche : 'aucune', br.noms), classeBranche(i ? i.branche : ''))])
