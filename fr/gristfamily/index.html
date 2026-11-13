@@ -672,7 +672,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.21.0';
+var VERSION = '1.21.1';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -706,7 +706,7 @@ var SOURCES_DEPART = [
   ['FranceArchives', 'https://francearchives.gouv.fr', 'Archives', 'Portail des archives françaises : trouver le bon service d’archives (départemental, communal, national).'],
   ['Archives nationales', 'https://www.archives-nationales.culture.gouv.fr', 'Archives', 'Fonds nationaux, notaires parisiens, naturalisations, grandes institutions.'],
   ['Archives nationales d’outre-mer', 'https://anom.archivesnationales.culture.gouv.fr', 'Archives', 'État civil des anciennes colonies et de l’Algérie, dossiers de rapatriés.'],
-  ['Filae', 'https://www.filae.com', 'Bases généalogiques', 'Recherche gratuite pour vérifier qu’un acte existe, détail réservé aux abonnés.'],
+  ['Filae', 'https://www.filae.com', 'Bases généalogiques', 'Base payante : le compte gratuit ne donne pas accès aux actes. À utiliser seulement si vous êtes abonné.'],
   ['Geneanet', 'https://www.geneanet.org', 'Bases généalogiques', 'Arbres des autres chercheurs et relevés.'],
   ['MyHeritage', 'https://www.myheritage.fr', 'Bases généalogiques', 'Arbres, découvertes et cousins ADN.'],
   ['FamilySearch', 'https://www.familysearch.org', 'Bases généalogiques', 'Gratuit, mondial : registres paroissiaux et état civil numérisés, arbre collaboratif.'],
@@ -4147,7 +4147,7 @@ function ouvrirFormRecherche(r, pidDefaut) {
     champ('Statut', selSt),
     zoneSrc,
     champ('Ce qu’on sait (une info par ligne, sous la forme « Titre : valeur »)', saisie('rechInfos', r ? r.infos : '', { multiligne: true, lignes: 6, indice: 'Priorité : 1\nÉpoux : Albert MASSON, né le 05/04/1895\nMariage : entre 1915 et 1929\nLieu : à trouver' }), { facultatif: true, plein: true }),
-    champ('Marche à suivre (une étape par ligne)', saisie('rechEtapes', r ? r.etapes : '', { multiligne: true, lignes: 4, indice: 'Chercher le couple sur Filae\nOuvrir l’état civil aux Archives' }), { facultatif: true, plein: true }),
+    champ('Marche à suivre (une étape par ligne)', saisie('rechEtapes', r ? r.etapes : '', { multiligne: true, lignes: 4, indice: 'Chercher le couple sur Geneanet\nOuvrir l’état civil aux Archives' }), { facultatif: true, plein: true }),
     champ('Mes notes', saisie('rechNotes', r ? r.notes : '', { multiligne: true, lignes: 4, indice: 'Vos remarques personnelles sur cette recherche' }), { facultatif: true, plein: true })
   ])];
   var pied = [];
