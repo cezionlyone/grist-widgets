@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.17.3
+  Version     : 1.18.0
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.18.0 - 13/11/2026 - madeXcé - Une quarantaine de sources généalogiques pour tous les pays (archives, bases, militaire, presse, cimetières, ADN), bouton pour ajouter les sources conseillées manquantes, sources avec recherche ouverte sur fond vert.
   1.17.3 - 13/11/2026 - madeXcé - La page « Recherches et sources » est renommée « Recherches à mener ».
   1.17.2 - 13/11/2026 - madeXcé - Les cartes de recherche sont regroupées par type : questions à la famille, vérifications en ligne, naissances, mariages, décès, militaire, recensements, autres.
   1.17.1 - 13/11/2026 - madeXcé - Sur chaque carte de recherche, des liens de recherche pré-remplis avec le nom (de naissance pour les femmes mariées) et le prénom de la personne : Geneanet, Gallica et le web.
@@ -347,6 +348,7 @@ textarea.saisie { resize: vertical; }
 .rs-sources .sources__liste { grid-template-columns: 1fr; }
 .rs-sources .sources__cat { margin: .75rem 0 .375rem; font-size: .9375rem; }
 .source-carte--actif { border: 2px solid var(--vert); }
+.source-carte--ouverte { background: #E3F6EC; border-color: var(--vert); }
 .chip-filtre { display: inline-flex; align-items: center; gap: .375rem; padding: .125rem .5rem; border: 1px solid var(--vert); border-radius: 999px; background: #fff; }
 @media (max-width: 900px) { .rs-grille { grid-template-columns: 1fr; } .rs-sources { position: static; max-height: none; } }
 .sources__liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: .75rem; }
@@ -595,7 +597,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.17.3</span>
+    <span class="bandeau__version">v1.18.0</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -631,7 +633,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.17.3';
+var VERSION = '1.18.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -662,13 +664,44 @@ var TAILLE_MAX_DOC = 15 * 1024 * 1024;
 var SOURCES_DEPART = [
   ['Archives départementales du Val-d’Oise', 'https://archives.valdoise.fr', 'Archives', 'État civil en ligne (1900-1932 pour toutes les communes), recensements, tables décennales.'],
   ['Archives de Paris', 'https://archives.paris.fr', 'Archives', 'État civil parisien, état civil reconstitué avant 1860.'],
-  ['FranceArchives', 'https://francearchives.gouv.fr', 'Archives', 'Portail des archives françaises : trouver le bon service d’archives.'],
+  ['FranceArchives', 'https://francearchives.gouv.fr', 'Archives', 'Portail des archives françaises : trouver le bon service d’archives (départemental, communal, national).'],
+  ['Archives nationales', 'https://www.archives-nationales.culture.gouv.fr', 'Archives', 'Fonds nationaux, notaires parisiens, naturalisations, grandes institutions.'],
+  ['Archives nationales d’outre-mer', 'https://anom.archivesnationales.culture.gouv.fr', 'Archives', 'État civil des anciennes colonies et de l’Algérie, dossiers de rapatriés.'],
   ['Filae', 'https://www.filae.com', 'Bases généalogiques', 'Recherche gratuite pour vérifier qu’un acte existe, détail réservé aux abonnés.'],
   ['Geneanet', 'https://www.geneanet.org', 'Bases généalogiques', 'Arbres des autres chercheurs et relevés.'],
   ['MyHeritage', 'https://www.myheritage.fr', 'Bases généalogiques', 'Arbres, découvertes et cousins ADN.'],
+  ['FamilySearch', 'https://www.familysearch.org', 'Bases généalogiques', 'Gratuit, mondial : registres paroissiaux et état civil numérisés, arbre collaboratif.'],
+  ['Ancestry', 'https://www.ancestry.fr', 'Bases généalogiques', 'Base mondiale par abonnement, très riche pour les États-Unis et le Royaume-Uni.'],
+  ['Fédération française de généalogie', 'https://www.genealogie.org', 'Associations et entraide', 'Cercles généalogiques locaux : relevés, entraide, bibliothèques spécialisées.'],
+  ['GeneaBank', 'https://www.geneabank.org', 'Associations et entraide', 'Relevés d’actes réalisés par les associations de généalogie.'],
+  ['Fichier des décès de l’Insee', 'https://www.insee.fr/fr/information/4190491', 'État civil et décès', 'Décès en France depuis 1970 : date et lieu de naissance et de décès.'],
+  ['MatchID décès', 'https://deces.matchid.io', 'État civil et décès', 'Recherche pratique dans le fichier des décès depuis 1970.'],
+  ['Service-public : copie d’acte', 'https://www.service-public.fr/particuliers/vosdroits/N359', 'État civil et décès', 'Demander une copie ou un extrait d’acte d’état civil à la mairie.'],
   ['Mémoire des hommes', 'https://www.memoiredeshommes.sga.defense.gouv.fr', 'Militaire', 'Soldats morts pour la France, journaux de marche.'],
+  ['Base Léonore', 'https://www.leonore.archives-nationales.culture.gouv.fr', 'Militaire', 'Dossiers des personnes décorées de la Légion d’honneur.'],
+  ['Service historique de la Défense', 'https://www.servicehistorique.sga.defense.gouv.fr', 'Militaire', 'Dossiers de militaires, officiers, marins.'],
+  ['Commonwealth War Graves Commission', 'https://www.cwgc.org', 'Militaire', 'Tombes de guerre des soldats du Commonwealth.'],
+  ['Volksbund', 'https://www.volksbund.de', 'Militaire', 'Soldats allemands morts à la guerre et leurs sépultures.'],
   ['Gallica', 'https://gallica.bnf.fr', 'Presse et livres', 'Presse ancienne, livres et annuaires numérisés.'],
-  ['RetroNews', 'https://www.retronews.fr', 'Presse et livres', 'Presse ancienne de la BnF.']
+  ['RetroNews', 'https://www.retronews.fr', 'Presse et livres', 'Presse ancienne de la BnF.'],
+  ['Europeana', 'https://www.europeana.eu', 'Presse et livres', 'Journaux, photos et documents numérisés des bibliothèques européennes.'],
+  ['Internet Archive', 'https://archive.org', 'Presse et livres', 'Livres, annuaires et monographies locales numérisés, du monde entier.'],
+  ['Google Livres', 'https://books.google.com', 'Presse et livres', 'Histoires de familles, monographies et annuaires anciens.'],
+  ['Landru - Cimetières de France', 'https://www.landrucimetieres.fr', 'Cimetières', 'Tombes de personnes célèbres et sépultures en France.'],
+  ['Find a Grave', 'https://www.findagrave.com', 'Cimetières', 'Tombes et photos de sépultures dans le monde entier.'],
+  ['Géoportail', 'https://www.geoportail.gouv.fr', 'Cartes et lieux', 'Cartes anciennes et photos aériennes pour situer un lieu-dit ou une ferme.'],
+  ['Antenati (Italie)', 'https://antenati.cultura.gov.it', 'Autres pays', 'État civil italien numérisé.'],
+  ['PARES (Espagne)', 'https://pares.cultura.gob.es', 'Autres pays', 'Archives d’État espagnoles.'],
+  ['Digitarq (Portugal)', 'https://digitarq.arquivos.pt', 'Autres pays', 'Archives portugaises : registres paroissiaux et état civil.'],
+  ['FreeBMD (Royaume-Uni)', 'https://www.freebmd.org.uk', 'Autres pays', 'Index gratuit des naissances, mariages et décès en Angleterre et au Pays de Galles.'],
+  ['Archivportal-D (Allemagne)', 'https://www.archivportal-d.de', 'Autres pays', 'Portail des archives allemandes.'],
+  ['Geneteka (Pologne)', 'https://geneteka.genealodzy.pl', 'Autres pays', 'Index des actes paroissiaux polonais.'],
+  ['Arch (Belgique)', 'https://www.arch.be', 'Autres pays', 'Archives de l’État en Belgique.'],
+  ['BAnQ (Québec)', 'https://www.banq.qc.ca', 'Autres pays', 'Archives nationales du Québec, registres paroissiaux.'],
+  ['Bibliothèque et Archives Canada', 'https://library-archives.canada.ca', 'Autres pays', 'Recensements, immigration et dossiers militaires canadiens.'],
+  ['Ellis Island', 'https://heritage.statueofliberty.org', 'Autres pays', 'Passagers arrivés à New York (1892-1957).'],
+  ['National Archives (États-Unis)', 'https://www.archives.gov', 'Autres pays', 'Recensements américains, immigration, dossiers militaires.'],
+  ['GEDmatch', 'https://www.gedmatch.com', 'ADN', 'Comparer ses résultats ADN entre plusieurs sociétés.']
 ];
 var ID_COUSINS = 'COUSINS_ADN_';
 var LABEL_COUSINS = '🧬 COUSINS ADN ⚡';
@@ -3928,6 +3961,17 @@ function blocSources() {
     creer('h2', { classe: 'page__titre', attrs: { style: 'font-size:1.125rem' } }, ['Sources', badge(pluriel(liste.length, 'lien', 'liens'))]),
     etat.peutModifier && etat.tSources ? bouton('Ajouter un lien', '', 'plus', function () { ouvrirFormSource(null); }, { petit: true, classe: 'no-print' }) : null
   ]));
+  var hoteDe = function (u) { try { return new URL(u).hostname.replace(/^www\./, '') + new URL(u).pathname.replace(/\/$/, ''); } catch (e) { return ''; } };
+  var connus = {};
+  (etat.sources || []).forEach(function (x) { connus[hoteDe(x.url)] = true; });
+  var manquantes = SOURCES_DEPART.filter(function (x) { return !connus[hoteDe(x[1])]; });
+  if (etat.peutModifier && etat.tSources && manquantes.length) {
+    bloc.appendChild(bouton('Ajouter les ' + manquantes.length + ' sources conseillées', '', 'plus', async function () {
+      await agir(manquantes.map(function (x) { return ['AddRecord', etat.tSources, null, { LIBELLE: x[0], URL: x[1], CATEGORIE: x[2], NOTES: x[3] }]; }));
+      await apresEcriture('Sources conseillées ajoutées.');
+    }, { petit: true, classe: 'no-print', attrs: { style: 'margin-bottom:.5rem' } }));
+  }
+  bloc.appendChild(creer('p', { classe: 'indice', texte: 'Les sources sur fond vert ont au moins une recherche ouverte.', attrs: { style: 'margin:0 0 .25rem' } }));
   if (!etat.tSources) { bloc.appendChild(alerte('info', 'La table des sources n’existe pas encore. Elle se crée toute seule quand l’arbre est ouvert avec un compte qui peut modifier le document.')); }
   var groupes = {};
   var ordre = [];
@@ -3941,7 +3985,7 @@ function blocSources() {
       try { hote = urlSure(x.url) ? new URL(x.url).hostname.replace(/^www\./, '') : ''; } catch (e) { hote = ''; }
       var n = liees(x).length;
       var actif = etat.filtreSource === x.id;
-      grille.appendChild(creer('div', { classe: 'source-carte' + (actif ? ' source-carte--actif' : '') }, [
+      grille.appendChild(creer('div', { classe: 'source-carte' + (n ? ' source-carte--ouverte' : '') + (actif ? ' source-carte--actif' : '') }, [
         creer('div', { classe: 'source-carte__tete' }, [
           lienSource(x),
           etat.peutModifier ? bouton('Modifier ' + (x.libelle || 'ce lien'), 'ico', 'modifier', function () { ouvrirFormSource(x); }, { petit: true, classe: 'no-print' }) : null
