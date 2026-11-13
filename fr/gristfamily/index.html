@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.20.2
+  Version     : 1.20.3
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.20.3 - 13/11/2026 - madeXcé - Vue Ascendance : les dates sont gardées en priorité, le texte rétrécit un peu plutôt que de les retirer.
   1.20.2 - 13/11/2026 - madeXcé - Vue Ascendance : quand l’éventail est zoomé, on se déplace en glissant, à la molette ou au pavé tactile, comme dans l’arbre.
   1.20.1 - 13/11/2026 - madeXcé - Vue Ascendance : l’éventail est recadré sur la partie dessinée, sans grand espace vide autour.
   1.20.0 - 13/11/2026 - madeXcé - Vue Ascendance : toutes les générations connues par défaut, zoom et déplacement (boutons, Ctrl + molette, pincement), texte qui s’adapte à chaque case et dates qui ne débordent plus.
@@ -626,7 +627,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.20.2</span>
+    <span class="bandeau__version">v1.20.3</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -662,7 +663,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.20.2';
+var VERSION = '1.20.3';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -4965,8 +4966,15 @@ function rendreAscendance(zone) {
         return { lp: lp, lignes: lp.concat(ln, ld) };
       };
       var resultat = null;
+      /* Passe 1 : avec les dates, en réduisant jusqu'à 60 % de la taille de base ; passe 2 : sans dates */
+      if (k2 <= 5 && periodeVie(p)) {
+        for (var t1 = tailleBase; t1 >= Math.max(4, tailleBase * 0.6) && !resultat; t1 -= 0.5) {
+          resultat = composer(t1, true, false);
+          if (resultat) { taille = t1; }
+        }
+      }
       for (var t = tailleBase; t >= 4 && !resultat; t -= 0.5) {
-        resultat = composer(t, k2 <= 4, false) || composer(t, false, false);
+        resultat = composer(t, false, false);
         if (resultat) { taille = t; }
       }
       if (!resultat) { taille = 4; resultat = composer(4, false, true); }
