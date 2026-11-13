@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.14.0
+  Version     : 1.15.0
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.15.0 - 13/11/2026 - madeXcé - Nouvelle page Recherches (table RECHERCHES_ créée toute seule) : la liste des documents à trouver, avec la personne, le site de la page Sources où chercher, un statut (à faire, en cours, trouvé, introuvable) et une note. Section Recherches dans la fiche, icône 🔎 sur la carte, et recherches ouvertes rappelées sur chaque site de la page Sources.
   1.14.0 - 13/11/2026 - madeXcé - Documents (actes, recensements, copies) joints aux personnes et aux unions, avec un type (naissance, mariage, décès, autre) ; icônes sur les cartes pour les notes et les documents ; nouvelle page Sources pour ranger les liens utiles. Deux tables sont créées toutes seules : DOCUMENTS_ et SOURCES_.
   1.13.0 - 13/11/2026 - madeXcé - Statut « Branche erronée » (colonne BRANCHE_ERRONEE ajoutée toute seule) : la personne rattachée par erreur est affichée en rouge pointillé, son trait de filiation aussi, avec un badge dans la fiche, un bouton et une case dans le formulaire, et une ligne dans la légende.
   1.12.0 - 13/11/2026 - madeXcé - Arbre plus lisible : plus d'espace entre deux familles, cadre léger autour de chaque fratrie, surbrillance de la lignée au clic sur une personne (le reste s'estompe) et mention « conjoint(e) de ... » sur les cartes des personnes entrées par mariage.
@@ -582,7 +583,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.14.0</span>
+    <span class="bandeau__version">v1.15.0</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -618,7 +619,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.14.0';
+var VERSION = '1.15.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -633,6 +634,9 @@ var ID_UNIONS = 'UNIONS_';
 var LABEL_UNIONS = '💞 UNIONS ⚡';
 var ID_DOCS = 'DOCUMENTS_';
 var LABEL_DOCS = '📎 DOCUMENTS ⚡';
+var ID_RECH = 'RECHERCHES_';
+var LABEL_RECH = '🔎 RECHERCHES ⚡';
+var STATUTS_RECH = ['À faire', 'En cours', 'Trouvé', 'Introuvable'];
 var ID_SOURCES = 'SOURCES_';
 var LABEL_SOURCES = '🔗 SOURCES ⚡';
 var DOC_TYPES = [
@@ -1618,7 +1622,9 @@ async function chargerDonnees() {
   var dsrc = null;
   if (etat.tDocs && etat.meta.tables[etat.tDocs]) { try { dd = await lireTable(etat.tDocs); } catch (e) { logSecurite('WARNING', 'Documents illisibles', e); } }
   if (etat.tSources && etat.meta.tables[etat.tSources]) { try { dsrc = await lireTable(etat.tSources); } catch (e) { logSecurite('WARNING', 'Sources illisibles', e); } }
-  var empreinte = JSON.stringify([dp, du, dc, dd, dsrc]);
+  var dr = null;
+  if (etat.tRech && etat.meta.tables[etat.tRech]) { try { dr = await lireTable(etat.tRech); } catch (e) { logSecurite('WARNING', 'Recherches illisibles', e); } }
+  var empreinte = JSON.stringify([dp, du, dc, dd, dsrc, dr]);
   if (empreinte === etat.empreinte && etat.donnees) { return false; }
   etat.empreinte = empreinte;
   var refId = function (v) { v = valeurCellule(v); return typeof v === 'number' && v > 0 ? v : 0; };
@@ -1640,6 +1646,14 @@ async function chargerDonnees() {
     }
   }
   etat.sources = SRC;
+  var REC = [];
+  if (dr && dr.id) {
+    for (var ri = 0; ri < dr.id.length; ri++) {
+      REC.push({ id: dr.id[ri], pers: refId(dr.PERSONNE && dr.PERSONNE[ri]), source: refId(dr.SOURCE && dr.SOURCE[ri]),
+        doc: texteCellule(dr.DOCUMENT && dr.DOCUMENT[ri]).trim(), statut: texteCellule(dr.STATUT && dr.STATUT[ri]).trim() || 'À faire', notes: texteCellule(dr.NOTES && dr.NOTES[ri]).trim() });
+    }
+  }
+  etat.recherches = REC;
   var cols = cfg.cols;
   var cu = cfg.colsUnions;
   var P = {};
@@ -2112,6 +2126,7 @@ var VUES = [
   { cle: 'anniversaires', nom: 'Anniversaires', icone: 'gateau' },
   { cle: 'carte', nom: 'Carte', icone: 'carte' },
   { cle: 'cousins', nom: 'Cousins ADN', icone: 'adn' },
+  { cle: 'recherches', nom: 'Recherches', icone: 'recherche' },
   { cle: 'sources', nom: 'Sources', icone: 'lien' }
 ];
 
@@ -2151,6 +2166,7 @@ function rendre() {
   else if (etat.vue === 'anniversaires') { rendreAnniversaires(zone); }
   else if (etat.vue === 'carte') { rendreCarte(zone); }
   else if (etat.vue === 'cousins') { rendreCousins(zone); }
+  else if (etat.vue === 'recherches') { rendreRecherches(zone); }
   else if (etat.vue === 'sources') { rendreSources(zone); }
   if (etat.selection) { rendreFiche(); }
   if (etat.aideOuverte) { rendreAide(); }
@@ -3600,6 +3616,7 @@ async function assurerTablesAnnexes(cfg) {
     await chargerMeta();
     etat.tDocs = trouverTableModele(ID_DOCS);
     etat.tSources = trouverTableModele(ID_SOURCES);
+    etat.tRech = trouverTableModele(ID_RECH);
     if (!etat.peutModifier) { return; }
     var defs = [];
     var colsDocs = [{ id: 'PERSONNE', type: 'Ref:' + cfg.tables.pers, label: 'PERSONNE' }];
@@ -3614,12 +3631,19 @@ async function assurerTablesAnnexes(cfg) {
         { id: 'LIBELLE', type: 'Text', label: 'LIBELLE' }, { id: 'URL', type: 'Text', label: 'URL' },
         { id: 'CATEGORIE', type: 'Text', label: 'CATEGORIE' }, { id: 'NOTES', type: 'Text', label: 'NOTES' }].concat(COLONNES_META) });
     }
-    if (!defs.length) { return; }
-    await creerTables(defs);
+    if (defs.length) { await creerTables(defs); }
     etat.tDocs = trouverTableModele(ID_DOCS);
     etat.tSources = trouverTableModele(ID_SOURCES);
     if (creeSources && etat.tSources) {
       await agir(SOURCES_DEPART.map(function (x) { return ['AddRecord', etat.tSources, null, { LIBELLE: x[0], URL: x[1], CATEGORIE: x[2], NOTES: x[3] }]; }));
+    }
+    if (!etat.tRech) {
+      var colsR = [{ id: 'PERSONNE', type: 'Ref:' + cfg.tables.pers, label: 'PERSONNE' }, { id: 'DOCUMENT', type: 'Text', label: 'DOCUMENT' }];
+      if (etat.tSources) { colsR.push({ id: 'SOURCE', type: 'Ref:' + etat.tSources, label: 'SOURCE' }); }
+      colsR.push({ id: 'STATUT', type: 'Choice', label: 'STATUT', choix: STATUTS_RECH });
+      colsR.push({ id: 'NOTES', type: 'Text', label: 'NOTES' });
+      await creerTables([{ id: ID_RECH, libelle: LABEL_RECH, colonnes: colsR.concat(COLONNES_META) }]);
+      etat.tRech = trouverTableModele(ID_RECH);
     }
   } catch (e) { logSecurite('WARNING', 'Tables des documents et des sources non créées', e); }
 }
@@ -3639,6 +3663,7 @@ function marquesCarte(p) {
   if (etat.config.affichage.carte.marques === false) { return { noeud: null, texte: '' }; }
   var items = [];
   if (p.notes) { items.push(['📝', 'Notes']); }
+  if ((etat.recherches || []).some(function (r) { return r.pers === p.id && rechOuverte(r); })) { items.push(['🔎', 'Recherche en cours']); }
   var presents = {};
   docsDePersonne(p.id).forEach(function (x) { presents[x.doc.type] = true; });
   DOC_TYPES.forEach(function (t) { if (presents[t.cle]) { items.push([t.icone, t.nom]); } });
@@ -3799,6 +3824,7 @@ function rendreSources(zone) {
   var groupes = {};
   var ordre = [];
   liste.forEach(function (x) { var c = x.categorie || 'Sans catégorie'; if (!groupes[c]) { groupes[c] = []; ordre.push(c); } groupes[c].push(x); });
+  var liees = function (x) { return (etat.recherches || []).filter(function (r) { return r.source === x.id && rechOuverte(r); }); };
   ordre.forEach(function (c) {
     page.appendChild(creer('h3', { classe: 'sources__cat', texte: c }));
     var grille = creer('div', { classe: 'sources__liste' });
@@ -3811,13 +3837,120 @@ function rendreSources(zone) {
           etat.peutModifier ? bouton('Modifier ' + (x.libelle || 'ce lien'), 'ico', 'modifier', function () { ouvrirFormSource(x); }, { petit: true, classe: 'no-print' }) : null
         ]),
         hote ? creer('p', { classe: 'indice', texte: hote, attrs: { style: 'margin:0' } }) : null,
-        x.notes ? creer('p', { texte: x.notes, attrs: { style: 'margin:.25rem 0 0;white-space:pre-line' } }) : null
+        x.notes ? creer('p', { texte: x.notes, attrs: { style: 'margin:.25rem 0 0;white-space:pre-line' } }) : null,
+        liees(x).length ? creer('div', { attrs: { style: 'margin-top:.5rem' } }, [
+          creer('p', { classe: 'indice', texte: '🔎 ' + pluriel(liees(x).length, 'recherche ouverte', 'recherches ouvertes') + ' ici', attrs: { style: 'margin:0' } }),
+          creer('ul', { attrs: { style: 'margin:.125rem 0 0;padding-left:1.125rem' } }, liees(x).map(function (r) { return creer('li', { texte: (r.doc || 'Sans titre') + (r.pers && pers(r.pers) ? ' (' + nomComplet(pers(r.pers)) + ')' : '') }); })),
+          bouton('Voir les recherches', '', 'recherche', function () { etat.vue = 'recherches'; rendre(); }, { petit: true, classe: 'no-print' })
+        ]) : null
       ]));
     });
     page.appendChild(grille);
   });
   if (etat.tSources && !liste.length) { page.appendChild(creer('p', { classe: 'indice', texte: 'Aucun lien pour l’instant.' })); }
   zone.appendChild(page);
+}
+
+function rechOuverte(r) { return r.statut !== 'Trouvé' && r.statut !== 'Introuvable'; }
+function sourceDe(r) { return r.source ? (etat.sources || []).filter(function (x) { return x.id === r.source; })[0] || null : null; }
+function classeStatut(st) { return st === 'Trouvé' ? 'br-b' : (st === 'À faire' ? 'br-a' : ''); }
+
+function carteRecherche(r, avecPersonne) {
+  var src = sourceDe(r);
+  var p = r.pers ? pers(r.pers) : null;
+  var lienSource = src ? (urlSure(src.url) ? creer('a', { classe: 'source-carte__lien', texte: src.libelle || src.url, attrs: { href: src.url, target: '_blank', rel: 'noopener noreferrer' } }) : creer('span', { texte: src.libelle })) : null;
+  return creer('div', { classe: 'source-carte' }, [
+    creer('div', { classe: 'source-carte__tete' }, [
+      creer('strong', { texte: r.doc || 'Sans titre' }),
+      etat.peutModifier ? bouton('Modifier la recherche ' + (r.doc || ''), 'ico', 'modifier', function () { ouvrirFormRecherche(r); }, { petit: true, classe: 'no-print' }) : null
+    ]),
+    creer('div', { classe: 'compteurs', attrs: { style: 'margin:.25rem 0' } }, [badge(r.statut, classeStatut(r.statut))]),
+    avecPersonne && p ? creer('p', { attrs: { style: 'margin:0' } }, [creer('button', { classe: 'lien-personne', texte: nomComplet(p), clic: function () { ouvrirFiche(p.id); } })]) : null,
+    lienSource ? creer('p', { attrs: { style: 'margin:.125rem 0 0' } }, [creer('span', { classe: 'indice', texte: 'Où chercher : ' }), lienSource]) : null,
+    r.notes ? creer('p', { texte: r.notes, attrs: { style: 'margin:.25rem 0 0;white-space:pre-line' } }) : null,
+    etat.peutModifier && etat.tRech && rechOuverte(r) ? creer('div', { attrs: { style: 'margin-top:.5rem' } }, [bouton('Marquer comme trouvé', '', 'ok', async function () {
+      try { await agir([['UpdateRecord', etat.tRech, r.id, { STATUT: 'Trouvé' }]]); await apresEcriture('Recherche marquée comme trouvée. Joignez le document depuis la fiche.', etat.selection); }
+      catch (e) { afficherErreur(messageEchec(e, 'L’enregistrement a échoué.'), e); }
+    }, { petit: true, classe: 'no-print' })]) : null
+  ]);
+}
+
+function rendreRecherches(zone) {
+  var f = etat.filtreRech = etat.filtreRech || 'ouvertes';
+  var toutes = etat.recherches || [];
+  var nbOuv = toutes.filter(rechOuverte).length;
+  var page = creer('div', { classe: 'page' });
+  page.appendChild(creer('div', { classe: 'page__tete' }, [
+    creer('h2', { classe: 'page__titre' }, ['Recherches', badge(pluriel(nbOuv, 'ouverte', 'ouvertes'))]),
+    etat.peutModifier && etat.tRech ? bouton('Ajouter une recherche', 'p', 'plus', function () { ouvrirFormRecherche(null); }, { classe: 'no-print' }) : null
+  ]));
+  if (!etat.tRech) { page.appendChild(alerte('info', 'La table des recherches n’existe pas encore. Elle se crée toute seule quand l’arbre est ouvert avec un compte qui peut modifier le document.')); }
+  var opts = [{ valeur: 'ouvertes', libelle: 'Ouvertes (à faire et en cours)' }, { valeur: 'toutes', libelle: 'Toutes' }].concat(STATUTS_RECH.map(function (x) { return { valeur: x, libelle: x }; }));
+  var sel = liste('rechFiltre', opts, f);
+  sel.addEventListener('change', function () { etat.filtreRech = sel.value; rendre(); });
+  page.appendChild(creer('div', { classe: 'filtres no-print' }, [champ('Afficher', sel)]));
+  var vues = toutes.filter(function (r) { return f === 'toutes' || (f === 'ouvertes' ? rechOuverte(r) : r.statut === f); });
+  vues.sort(function (a, b) { return STATUTS_RECH.indexOf(a.statut) - STATUTS_RECH.indexOf(b.statut) || nomComplet(pers(a.pers)).localeCompare(nomComplet(pers(b.pers)), 'fr'); });
+  var grille = creer('div', { classe: 'sources__liste' });
+  vues.forEach(function (r) { grille.appendChild(carteRecherche(r, true)); });
+  page.appendChild(grille);
+  if (etat.tRech && !vues.length) { page.appendChild(creer('p', { classe: 'indice', texte: 'Aucune recherche à afficher.' })); }
+  zone.appendChild(page);
+}
+
+function sectionRecherches(p) {
+  if (!etat.tRech) { return null; }
+  var l = (etat.recherches || []).filter(function (r) { return r.pers === p.id; });
+  if (!l.length && !etat.peutModifier) { return null; }
+  var lignes = l.map(function (r) {
+    var src = sourceDe(r);
+    return creer('div', { classe: 'doc-ligne' }, [
+      creer('span', { classe: 'doc-ligne__ico', texte: '🔎', attrs: { 'aria-hidden': 'true' } }),
+      creer('span', { classe: 'doc-ligne__txt' }, [
+        creer('button', { classe: 'lien-personne', texte: r.doc || 'Sans titre', clic: function () { ouvrirFormRecherche(r); } }),
+        creer('span', { classe: 'rel__sous', texte: r.statut + (src ? ', ' + src.libelle : '') })
+      ])
+    ]);
+  });
+  if (!lignes.length) { lignes = [creer('p', { classe: 'indice', texte: 'Aucune recherche.', attrs: { style: 'margin:0' } })]; }
+  return creer('section', { classe: 'section-f' }, [creer('h3', { texte: 'RECHERCHES' })].concat(lignes).concat([
+    etat.peutModifier ? bouton('Ajouter une recherche', '', 'plus', function () { ouvrirFormRecherche(null, p.id); }, { petit: true }) : null]));
+}
+
+function ouvrirFormRecherche(r, pidDefaut) {
+  var personnes = etat.donnees.ordre.map(pers).sort(function (a, b) { return nomComplet(a).localeCompare(nomComplet(b), 'fr'); });
+  var selPers = liste('rechPers', personnes.map(function (q) { return { valeur: q.id, libelle: nomComplet(q) + (periodeVie(q) ? ' (' + periodeVie(q) + ')' : '') }; }), r ? r.pers : (pidDefaut || ''), { vide: 'Aucune personne' });
+  var selSrc = liste('rechSource', (etat.sources || []).map(function (x) { return { valeur: x.id, libelle: x.libelle || x.url }; }), r ? r.source : '', { vide: 'Aucune' });
+  var selSt = liste('rechStatut', STATUTS_RECH.map(function (x) { return { valeur: x, libelle: x }; }), r ? r.statut : 'À faire');
+  var corps = [creer('div', { classe: 'grille2' }, [
+    champ('Document à trouver', saisie('rechDoc', r ? r.doc : '', { max: 160, indice: 'Ex. : Acte de naissance du 02/06/1929' }), { obligatoire: true, plein: true }),
+    champ('Personne concernée', selPers),
+    champ('Statut', selSt),
+    champ('Où chercher', selSrc, { facultatif: true, plein: true }),
+    champ('Notes', saisie('rechNotes', r ? r.notes : '', { multiligne: true, lignes: 3, indice: 'Salle de lecture seulement, cote, commune...' }), { facultatif: true, plein: true })
+  ])];
+  var pied = [];
+  if (r) {
+    pied.push(bouton('Supprimer cette recherche', 'danger', 'supprimer', async function () {
+      var ok = await confirmerAction('Supprimer cette recherche ?', 'Elle sera retirée de la liste.', 'Supprimer');
+      if (!ok) { return; }
+      try { await agir([['RemoveRecord', etat.tRech, r.id]]); fermerModale(); await apresEcriture('Recherche supprimée.', etat.selection); }
+      catch (e) { afficherErreur(messageEchec(e, 'La suppression a échoué.'), e); }
+    }, { classe: 'gauche' }));
+  }
+  pied.push(bouton('Annuler', '', null, fermerModale));
+  pied.push(bouton('Enregistrer', 'p', null, async function () {
+    var doc = document.getElementById('rechDoc').value.trim();
+    if (!doc) { marquerInvalide('rechDoc', 'Indiquez le document à trouver.'); return; }
+    var rec = { PERSONNE: parseInt(selPers.value, 10) || 0, DOCUMENT: doc, STATUT: selSt.value, NOTES: document.getElementById('rechNotes').value.trim() };
+    if (infoColonne(etat.tRech, 'SOURCE')) { rec.SOURCE = parseInt(selSrc.value, 10) || 0; }
+    try {
+      await agir([r ? ['UpdateRecord', etat.tRech, r.id, rec] : ['AddRecord', etat.tRech, null, rec]]);
+      fermerModale();
+      await apresEcriture(r ? 'Recherche enregistrée.' : 'Recherche ajoutée.', etat.selection);
+    } catch (e) { afficherErreur(messageEchec(e, 'L’enregistrement a échoué.'), e); }
+  }));
+  ouvrirModale({ titre: r ? 'Modifier la recherche' : 'Ajouter une recherche', corps: corps, pied: pied, focus: 'rechDoc' });
 }
 
 function ouvrirFormSource(x) {
@@ -4039,6 +4172,7 @@ function rendreFiche() {
     })));
   }
   ajouterA(corps, sectionDocuments(p));
+  ajouterA(corps, sectionRecherches(p));
   if (p.notes) { ajouterA(corps, sectionFiche('NOTES', [creer('p', { texte: p.notes, attrs: { style: 'margin:0;white-space:pre-line' } })])); }
   var meta = [];
   if (p.creeLe) { meta.push('Ajoutée le ' + formaterHorodatage(p.creeLe) + (p.creePar ? ' par ' + p.creePar : '')); }
@@ -4432,6 +4566,7 @@ async function supprimerPersonne(pid) {
     if (c.ancetre === pid) { var y = {}; y[etat.config.colsCousins.ancetre] = 0; actions.push(['UpdateRecord', etat.config.tables.cousins, c.id, y]); }
   });
   ((etat.docs && etat.docs.parPers[pid]) || []).forEach(function (d) { actions.push(['RemoveRecord', etat.tDocs, d.id]); });
+  (etat.recherches || []).forEach(function (r) { if (r.pers === pid) { actions.push(['RemoveRecord', etat.tRech, r.id]); } });
   actions.push(['RemoveRecord', etat.config.tables.pers, pid]);
   afficherLoader('Suppression…');
   try {
