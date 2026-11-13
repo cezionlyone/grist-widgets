@@ -693,7 +693,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.26.3';
+var VERSION = '1.26.4';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -5510,7 +5510,7 @@ function rendreListe(zone) {
       tbody.appendChild(creer('tr', {}, [
         creer('td', {}, [p.verifiee ? cocheVerifiee('coche-verif--ligne') : null, p.aVerifier ? pointAVerifier('point-verif--ligne') : null, avecPhoto(p.id, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(p.id); } }, [nomAffiche(p)])),
           p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom) ? creer('div', { classe: 'indice', texte: accord(p, 'né ', 'née ', 'naissance : ') + p.nomNaissance }) : null]),
-        creer('td', {}, [formaterDate(p.naissance, p.naissanceApprox), p.naissanceLieu ? creer('div', { classe: 'indice', texte: p.naissanceLieu }) : null]),
+        creer('td', {}, [p.naissance ? formaterDate(p.naissance, p.naissanceApprox) : '?', p.naissanceLieu ? creer('div', { classe: 'indice', texte: p.naissanceLieu }) : null]),
         creer('td', {}, [p.deces ? formaterDate(p.deces, p.decesApprox) : (estDecede(p) ? '?' : ''), p.decesLieu ? creer('div', { classe: 'indice', texte: p.decesLieu }) : null]),
         creer('td', { texte: texteAge(p) }),
         creer('td', { texte: estDecede(p) ? '' : p.residence }),
