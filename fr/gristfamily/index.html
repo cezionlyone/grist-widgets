@@ -678,7 +678,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.23.1';
+var VERSION = '1.23.2';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -3413,7 +3413,7 @@ function avatar(p, classeCoul, classe) {
     afficherPhoto(av, pj);
   } else if (p.photoUrl && etat.config.affichage.carte.photo && /^https:\/\/[a-z0-9.-]+\//i.test(p.photoUrl)) {
     av.textContent = initiales(p);
-    var img = creer('img', { attrs: { src: p.photoUrl, alt: '', title: 'Portrait illustré, sans ressemblance réelle' } });
+    var img = creer('img', { attrs: { src: p.photoUrl, alt: '' } });
     img.addEventListener('load', function () { vider(av); av.appendChild(img); });
   } else {
     av.textContent = initiales(p);
@@ -4469,7 +4469,6 @@ function rendreFiche() {
     av,
     creer('h3', { classe: 'fiche__nom' }, [nomAffiche(p)]),
     p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom) ? creer('p', { classe: 'fiche__ligne', texte: accord(p, 'Né ', 'Née ', 'Nom de naissance : ') + p.nomNaissance }) : null,
-    p.photoUrl && !(p.photo && p.photo.length) ? creer('p', { classe: 'fiche__ligne', texte: 'Portrait illustré, sans ressemblance réelle.' }) : null,
     info ? creer('div', { classe: 'compteurs', attrs: { style: 'justify-content:center' } }, [badge(libelleBranche(info.branche, br.noms), classeBranche(info.branche)), info.branche !== 'centre' && libelleParente(p.id, br, idCentre()) ? badge(libelleParente(p.id, br, idCentre()) + ' de ' + (pers(idCentre()).prenom || nomComplet(pers(idCentre())))) : null]) : null
   ].concat(lignes.map(function (l) { return creer('p', { classe: 'fiche__ligne', texte: l }); })).concat([p.filiation === 'Adoption' ? badge(accord(p, 'Adopté', 'Adoptée', 'Adoption')) : null, p.verifiee ? badge('Vérifiée', 'br-b') : null, p.aVerifier ? badge('À vérifier', 'br-a') : null, p.erronee ? badge('Branche erronée', 'br-err') : null, actions])));
   /* Parents */
