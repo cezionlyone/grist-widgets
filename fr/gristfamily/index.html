@@ -472,6 +472,14 @@ table.tableau { width: 100%; border-collapse: collapse; }
 .fiche__id { display: flex; flex-direction: column; align-items: center; gap: .375rem; text-align: center; padding-bottom: 1rem; border-bottom: 1px solid #EEEEF2; margin-bottom: 1rem; }
 .fiche__nom { margin: .25rem 0 0; font-size: 1.125rem; }
 .fiche__ligne { margin: 0; color: var(--gris); }
+.fiche__infos { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .25rem .75rem; margin: 0; }
+.fiche__infos dt { color: var(--gris); font-size: .8125rem; }
+.fiche__infos dd { margin: 0; overflow-wrap: anywhere; }
+.btn--barre { border: 1px solid #DADCE3; background: #fff; color: var(--encre); }
+.btn--barre:hover { background: var(--sable2); }
+.btn--actif-vert { background: #E3F6EC; border-color: var(--vert); color: var(--vert-f); }
+.btn--actif-orange { background: #FFF0DB; border-color: #D98A1C; color: #8A4B00; }
+.btn--actif-rouge { background: #FBE7E4; border-color: #C0392B; color: #9B1206; }
 .fiche__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .375rem; margin-top: .5rem; }
 .section-f { margin: 0 0 1.125rem; }
 .section-f h3 { margin: 0 0 .5rem; font-size: .75rem; font-weight: 700; letter-spacing: .04em; color: var(--gris); }
@@ -678,7 +686,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.23.2';
+var VERSION = '1.24.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -4436,41 +4444,43 @@ function rendreFiche() {
   ]));
   var corps = creer('div', { classe: 'volet__corps' });
   var av = avatar(p, classeCouleur(p, br), 'avatar--xl');
-  var lignes = [];
-  if (p.naissance || p.naissanceLieu) {
-    lignes.push(accord(p, 'Né ', 'Née ', 'Naissance ') + (p.naissance ? (p.naissance.j ? 'le ' : 'en ') + formaterDate(p.naissance, p.naissanceApprox) : '') + (p.naissanceLieu ? ' à ' + p.naissanceLieu : ''));
-  }
-  if (estDecede(p)) {
-    lignes.push(accord(p, 'Décédé', 'Décédée', 'Décès') + (p.deces ? (p.deces.j ? ' le ' : ' en ') + formaterDate(p.deces, p.decesApprox) : '') + (p.decesLieu ? ' à ' + p.decesLieu : ''));
-  }
+  var rangs = [];
+  var ligneNaiss = (p.naissance ? (p.naissance.j ? 'le ' : 'en ') + formaterDate(p.naissance, p.naissanceApprox) : '') + (p.naissanceLieu ? (p.naissance ? ' à ' : 'à ') + p.naissanceLieu : '');
+  if (ligneNaiss) { rangs.push([accord(p, 'Né', 'Née', 'Naissance'), ligneNaiss]); }
   var age = !estDecede(p) ? ageEntre(p.naissance, aujourdhui()) : ageEntre(p.naissance, p.deces);
-  if (age !== null && !p.naissanceApprox) { lignes.push(estDecede(p) ? accord(p, 'Mort', 'Morte', 'Décès') + ' à ' + age + ' ans' : age + ' ans'); }
-  if (p.residence && !estDecede(p)) { lignes.push('Vit à ' + p.residence); }
-  if (p.profession) { lignes.push(p.profession); }
+  var avecAge = age !== null && !p.naissanceApprox;
+  if (estDecede(p)) {
+    var ligneDeces = (p.deces ? (p.deces.j ? 'le ' : 'en ') + formaterDate(p.deces, p.decesApprox) : '') + (p.decesLieu ? (p.deces ? ' à ' : 'à ') + p.decesLieu : '') + (avecAge ? (p.deces || p.decesLieu ? ', à ' : 'à ') + age + ' ans' : '');
+    rangs.push([accord(p, 'Décédé', 'Décédée', 'Décès'), ligneDeces || 'date inconnue']);
+  } else if (avecAge) { rangs.push(['Âge', age + ' ans']); }
+  if (p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom)) { rangs.push([accord(p, 'Né sous le nom', 'Née sous le nom', 'Nom de naissance'), p.nomNaissance]); }
+  if (p.profession) { rangs.push(['Profession', p.profession]); }
+  if (p.residence && !estDecede(p)) { rangs.push(['Lieu de vie', p.residence]); }
   var info = br.parId[p.id];
   var actions = creer('div', { classe: 'fiche__actions' }, [
-    bouton('Centrer l’arbre ici', '', 'cible', function () { etat.centreSession = p.id; etat.vue = etat.vue === 'ascendance' ? 'ascendance' : 'arbre'; rendre(); centrerSur(p.id, false); }, { petit: true }),
-    etat.peutModifier ? bouton('Modifier', '', 'modifier', function () { ouvrirFormPersonne({ mode: 'modifier', id: p.id }); }, { petit: true }) : null,
-    etat.peutModifier && etat.config.cols.verifiee ? bouton(p.verifiee ? 'Retirer « Vérifiée »' : 'Marquer comme vérifiée', '', 'ok', async function () {
+    bouton('Centrer l’arbre sur cette personne', 'ico', 'cible', function () { etat.centreSession = p.id; etat.vue = etat.vue === 'ascendance' ? 'ascendance' : 'arbre'; rendre(); centrerSur(p.id, false); }, { petit: true, classe: 'btn--barre' }),
+    etat.peutModifier ? bouton('Modifier la fiche', 'ico', 'modifier', function () { ouvrirFormPersonne({ mode: 'modifier', id: p.id }); }, { petit: true, classe: 'btn--barre' }) : null,
+    etat.peutModifier && etat.config.cols.verifiee ? bouton(p.verifiee ? 'Retirer « Vérifiée »' : 'Marquer comme vérifiée', 'ico', 'ok', async function () {
       try { await modifierPersonne(p.id, { verifiee: !p.verifiee }); await apresEcriture(p.verifiee ? 'Coche « Vérifiée » retirée.' : 'Fiche marquée comme vérifiée.', p.id); }
       catch (e) { afficherErreur(messageEchec(e, 'L’enregistrement a échoué.'), e); }
-    }, { petit: true }) : null,
-    etat.peutModifier && etat.config.cols.aVerifier ? bouton(p.aVerifier ? 'Retirer « À vérifier »' : 'Marquer à vérifier', '', 'attention', async function () {
+    }, { petit: true, classe: 'btn--barre' + (p.verifiee ? ' btn--actif-vert' : '') }) : null,
+    etat.peutModifier && etat.config.cols.aVerifier ? bouton(p.aVerifier ? 'Retirer « À vérifier »' : 'Marquer à vérifier', 'ico', 'attention', async function () {
       try { await modifierPersonne(p.id, { aVerifier: !p.aVerifier }); await apresEcriture(p.aVerifier ? 'Marque « À vérifier » retirée.' : 'Fiche marquée à vérifier.', p.id); }
       catch (e) { afficherErreur(messageEchec(e, 'L’enregistrement a échoué.'), e); }
-    }, { petit: true }) : null,
-    etat.peutModifier && etat.config.cols.erronee ? bouton(p.erronee ? 'Retirer « Branche erronée »' : 'Marquer comme branche erronée', '', 'attention', async function () {
+    }, { petit: true, classe: 'btn--barre' + (p.aVerifier ? ' btn--actif-orange' : '') }) : null,
+    etat.peutModifier && etat.config.cols.erronee ? bouton(p.erronee ? 'Retirer « Branche erronée »' : 'Marquer comme branche erronée', 'ico', 'attention', async function () {
       try { await modifierPersonne(p.id, { erronee: !p.erronee }); await apresEcriture(p.erronee ? 'Marque « Branche erronée » retirée.' : 'Personne marquée comme branche erronée.', p.id); }
       catch (e) { afficherErreur(messageEchec(e, 'L’enregistrement a échoué.'), e); }
-    }, { petit: true }) : null,
-    etat.peutModifier ? bouton('Supprimer ' + nomComplet(p), 'ico', 'supprimer', function () { return supprimerPersonne(p.id); }, { petit: true, classe: 'btn--danger' }) : null
+    }, { petit: true, classe: 'btn--barre' + (p.erronee ? ' btn--actif-rouge' : '') }) : null,
+    etat.peutModifier ? bouton('Supprimer ' + nomComplet(p), 'ico', 'supprimer', function () { return supprimerPersonne(p.id); }, { petit: true, classe: 'btn--barre btn--danger' }) : null
   ]);
   corps.appendChild(creer('div', { classe: 'fiche__id' }, [
     av,
     creer('h3', { classe: 'fiche__nom' }, [nomAffiche(p)]),
-    p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom) ? creer('p', { classe: 'fiche__ligne', texte: accord(p, 'Né ', 'Née ', 'Nom de naissance : ') + p.nomNaissance }) : null,
     info ? creer('div', { classe: 'compteurs', attrs: { style: 'justify-content:center' } }, [badge(libelleBranche(info.branche, br.noms), classeBranche(info.branche)), info.branche !== 'centre' && libelleParente(p.id, br, idCentre()) ? badge(libelleParente(p.id, br, idCentre()) + ' de ' + (pers(idCentre()).prenom || nomComplet(pers(idCentre())))) : null]) : null
-  ].concat(lignes.map(function (l) { return creer('p', { classe: 'fiche__ligne', texte: l }); })).concat([p.filiation === 'Adoption' ? badge(accord(p, 'Adopté', 'Adoptée', 'Adoption')) : null, p.verifiee ? badge('Vérifiée', 'br-b') : null, p.aVerifier ? badge('À vérifier', 'br-a') : null, p.erronee ? badge('Branche erronée', 'br-err') : null, actions])));
+  ].concat([p.filiation === 'Adoption' ? badge(accord(p, 'Adopté', 'Adoptée', 'Adoption')) : null, p.verifiee ? badge('Vérifiée', 'br-b') : null, p.aVerifier ? badge('À vérifier', 'br-a') : null, p.erronee ? badge('Branche erronée', 'br-err') : null, actions])));
+  /* Informations */
+  ajouterA(corps, sectionFiche('INFORMATIONS', rangs.length ? [creer('dl', { classe: 'fiche__infos' }, rangs.reduce(function (acc, r) { acc.push(creer('dt', { texte: r[0] }), creer('dd', { texte: r[1] })); return acc; }, []))] : [creer('p', { classe: 'indice', texte: 'Aucune information renseignée.' })]));
   /* Parents */
   var par = parentsDe(p.id);
   var u0 = unionDe(p.parents);
