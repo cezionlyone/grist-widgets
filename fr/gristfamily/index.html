@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.17.0
+  Version     : 1.17.1
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.17.1 - 13/11/2026 - madeXcé - Sur chaque carte de recherche, des liens de recherche pré-remplis avec le nom (de naissance pour les femmes mariées) et le prénom de la personne : Geneanet, Gallica et le web.
   1.17.0 - 13/11/2026 - madeXcé - Une icône sur chaque carte de recherche selon le document à trouver (naissance, mariage, décès, matricule, recensement...). Quand on trouve un document, on l'ajoute directement depuis la carte de la recherche : il est joint à la personne (type deviné d'après le titre), la recherche passe à « Trouvé » et la carte garde un lien vers le document (colonne RECHERCHE ajoutée toute seule dans DOCUMENTS_).
   1.16.0 - 13/11/2026 - madeXcé - Recherches et Sources sur une seule page : les recherches à gauche, les sites utiles sous les yeux à droite. Chaque recherche peut proposer plusieurs sources (liens cliquables) et un clic sur une source filtre les recherches qui l'utilisent.
   1.15.0 - 13/11/2026 - madeXcé - Nouvelle page Recherches (table RECHERCHES_ créée toute seule) : la liste des documents à trouver, avec la personne, le site de la page Sources où chercher, un statut (à faire, en cours, trouvé, introuvable) et une note. Section Recherches dans la fiche, icône 🔎 sur la carte, et recherches ouvertes rappelées sur chaque site de la page Sources.
@@ -592,7 +593,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.17.0</span>
+    <span class="bandeau__version">v1.17.1</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -628,7 +629,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.17.0';
+var VERSION = '1.17.1';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -3859,6 +3860,22 @@ function sourcesDe(r) { return (r.sources || []).map(function (id) { return (eta
 function classeStatut(st) { return st === 'Trouvé' ? 'br-b' : (st === 'À faire' ? 'br-a' : ''); }
 function lienSource(x) { return urlSure(x.url) ? creer('a', { classe: 'source-carte__lien', texte: x.libelle || x.url, attrs: { href: x.url, target: '_blank', rel: 'noopener noreferrer' } }) : creer('strong', { texte: x.libelle || 'Sans titre' }); }
 
+function liensPreRemplis(p) {
+  var nom = (p.nomNaissance || p.nom || '').trim();
+  var prenom = (p.prenom || '').trim().split(/\s+/)[0] || '';
+  if (!nom) { return null; }
+  var annee = p.naissance && p.naissance.a ? ' ' + p.naissance.a : '';
+  var plein = (prenom + ' ' + nom).trim();
+  var defs = [
+    ['Geneanet', 'https://www.geneanet.org/fonds/individus/?go=1&nom=' + encodeURIComponent(nom) + '&prenom=' + encodeURIComponent(prenom)],
+    ['Gallica', 'https://gallica.bnf.fr/services/engine/search/sru?operation=searchRetrieve&query=' + encodeURIComponent('(gallica all "' + plein + '")')],
+    ['Le web', 'https://duckduckgo.com/?q=' + encodeURIComponent('"' + plein + '"' + annee)]
+  ];
+  var noeuds = [creer('span', { classe: 'indice', texte: 'Chercher ' + plein + ' sur : ' })];
+  defs.forEach(function (d, i) { if (i) { noeuds.push(' · '); } noeuds.push(creer('a', { classe: 'source-carte__lien', texte: d[0], attrs: { href: d[1], target: '_blank', rel: 'noopener noreferrer' } })); });
+  return creer('p', { classe: 'no-print', attrs: { style: 'margin:.125rem 0 0' } }, noeuds);
+}
+
 function carteRecherche(r, avecPersonne) {
   var srcs = sourcesDe(r);
   var p = r.pers ? pers(r.pers) : null;
@@ -3872,6 +3889,7 @@ function carteRecherche(r, avecPersonne) {
     creer('div', { classe: 'compteurs', attrs: { style: 'margin:.25rem 0' } }, [badge(r.statut, classeStatut(r.statut))]),
     avecPersonne && p ? creer('p', { attrs: { style: 'margin:0' } }, [creer('button', { classe: 'lien-personne', texte: nomComplet(p), clic: function () { ouvrirFiche(p.id); } })]) : null,
     liens.length ? creer('p', { attrs: { style: 'margin:.125rem 0 0' } }, [creer('span', { classe: 'indice', texte: 'Où chercher : ' })].concat(liens)) : null,
+    p ? liensPreRemplis(p) : null,
     r.notes ? creer('p', { texte: r.notes, attrs: { style: 'margin:.25rem 0 0;white-space:pre-line' } }) : null,
     docsDeRecherche(r).length ? creer('div', { attrs: { style: 'margin-top:.375rem' } }, docsDeRecherche(r).map(function (d) {
       return creer('p', { attrs: { style: 'margin:0' } }, [creer('span', { texte: typeDoc(d.type).icone + ' ', attrs: { 'aria-hidden': 'true' } }), creer('button', { classe: 'lien-personne', texte: d.libelle || typeDoc(d.type).nom, clic: function () { relayer(ouvrirDocument(d), 'Ouverture du document'); } })]);
