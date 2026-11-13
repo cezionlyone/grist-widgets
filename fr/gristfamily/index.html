@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.18.3
+  Version     : 1.19.0
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.19.0 - 13/11/2026 - madeXcé - La photo (ou les initiales) de la personne s’affiche aussi dans la Liste, les Anniversaires, la Carte, les Cousins ADN, les Recherches et les proches de la fiche.
   1.18.3 - 13/11/2026 - madeXcé - Confort tablette : boutons et liens plus grands au doigt, champs sans zoom automatique sur iPad, page Recherches adaptée au portrait et au paysage.
   1.18.2 - 13/11/2026 - madeXcé - Les boutons des cartes de recherche et de sources passent à la ligne au lieu de déborder.
   1.18.1 - 13/11/2026 - madeXcé - Correction : le fond vert des sources avec recherche ouverte s’affiche enfin.
@@ -376,6 +377,8 @@ textarea.saisie { resize: vertical; }
 .avatar { flex: none; width: 2.5rem; height: 2.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .8125rem; overflow: hidden; background: var(--sable2); color: #44444F; }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
 .avatar--carre { border-radius: var(--r-m); }
+.avatar--petit { width: 1.75rem; height: 1.75rem; font-size: .625rem; background: #EEF0F3; color: var(--gris); }
+.avec-photo { display: inline-flex; align-items: center; gap: .5rem; vertical-align: middle; }
 .avatar.br-a { background: var(--peche); color: var(--peche-f); } .avatar.br-b { background: var(--ecume); color: var(--vert-f); } .avatar.br-desc { background: var(--lavande); color: var(--lavande-f); }
 .avatar.br-centre { background: var(--citron); color: var(--citron-f); }
 .avatar.gen-0 { background: var(--citron); color: var(--citron-f); } .avatar.gen-1 { background: var(--peche); color: var(--peche-f); } .avatar.gen-2 { background: var(--ecume); color: var(--vert-f); }
@@ -617,7 +620,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.18.3</span>
+    <span class="bandeau__version">v1.19.0</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -653,7 +656,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.18.3';
+var VERSION = '1.19.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -3384,6 +3387,15 @@ function avatar(p, classeCoul, classe) {
   return av;
 }
 
+function petitAvatar(pid) {
+  var p = pers(pid);
+  return p ? avatar(p, '', 'avatar--petit') : null;
+}
+
+function avecPhoto(pid, noeud) {
+  return creer('span', { classe: 'avec-photo' }, [petitAvatar(pid), noeud]);
+}
+
 function noeudCarte(n, centre, br) {
   var p = pers(n.pid);
   var info = infoCarte(p);
@@ -3959,7 +3971,7 @@ function carteRecherche(r, avecPersonne) {
       etat.peutModifier ? bouton('Modifier la recherche ' + (r.doc || ''), 'ico', 'modifier', function () { ouvrirFormRecherche(r); }, { petit: true, classe: 'no-print' }) : null
     ]),
     creer('div', { classe: 'compteurs', attrs: { style: 'margin:.25rem 0' } }, [badge(r.statut, classeStatut(r.statut))]),
-    avecPersonne && p ? creer('p', { attrs: { style: 'margin:0' } }, [creer('button', { classe: 'lien-personne', texte: nomComplet(p), clic: function () { ouvrirFiche(p.id); } })]) : null,
+    avecPersonne && p ? creer('p', { attrs: { style: 'margin:.25rem 0' } }, [avecPhoto(p.id, creer('button', { classe: 'lien-personne', texte: nomComplet(p), clic: function () { ouvrirFiche(p.id); } }))]) : null,
     liens.length ? creer('p', { attrs: { style: 'margin:.125rem 0 0' } }, [creer('span', { classe: 'indice', texte: 'Où chercher : ' })].concat(liens)) : null,
     p ? liensPreRemplis(p) : null,
     r.notes ? creer('p', { texte: r.notes, attrs: { style: 'margin:.25rem 0 0;white-space:pre-line' } }) : null,
@@ -4214,7 +4226,7 @@ function lienPersonne(pid, sous) {
   var p = pers(pid);
   if (!p) { return null; }
   return creer('div', { classe: 'rel' }, [
-    creer('button', { classe: 'lien-personne', texte: nomComplet(p), clic: function () { ouvrirFiche(pid); } }),
+    avecPhoto(pid, creer('button', { classe: 'lien-personne', texte: nomComplet(p), clic: function () { ouvrirFiche(pid); } })),
     creer('span', { classe: 'rel__sous', texte: sous !== undefined ? sous : periodeVie(p) })
   ]);
 }
@@ -4993,7 +5005,7 @@ function rendreListe(zone) {
     l.forEach(function (p) {
       var i = br.parId[p.id];
       tbody.appendChild(creer('tr', {}, [
-        creer('td', {}, [p.verifiee ? cocheVerifiee('coche-verif--ligne') : null, p.aVerifier ? pointAVerifier('point-verif--ligne') : null, creer('button', { classe: 'lien-personne', texte: nomComplet(p), clic: function () { ouvrirFiche(p.id); } }),
+        creer('td', {}, [p.verifiee ? cocheVerifiee('coche-verif--ligne') : null, p.aVerifier ? pointAVerifier('point-verif--ligne') : null, avecPhoto(p.id, creer('button', { classe: 'lien-personne', texte: nomComplet(p), clic: function () { ouvrirFiche(p.id); } })),
           p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom) ? creer('div', { classe: 'indice', texte: accord(p, 'né ', 'née ', 'naissance : ') + p.nomNaissance }) : null]),
         creer('td', {}, [formaterDate(p.naissance, p.naissanceApprox), p.naissanceLieu ? creer('div', { classe: 'indice', texte: p.naissanceLieu }) : null]),
         creer('td', {}, [p.deces ? formaterDate(p.deces, p.decesApprox) : (estDecede(p) ? 'date inconnue' : ''), p.decesLieu ? creer('div', { classe: 'indice', texte: p.decesLieu }) : null]),
@@ -5077,7 +5089,7 @@ function rendreAnniversaires(zone) {
     }
     bloc.appendChild(creer('div', { classe: 'anniv anniv--' + e.type }, [
       creer('span', { classe: 'anniv__date' }, [creer('span', { classe: 'anniv__jour', texte: e.quand.getDate() }), creer('span', { classe: 'anniv__mois', texte: MOIS_COURTS[e.quand.getMonth()] })]),
-      creer('span', {}, [creer('button', { classe: 'lien-personne', texte: e.titre, clic: function () { ouvrirFiche(e.pid); } }), creer('span', { classe: 'indice', texte: ' ' + e.detail })]),
+      creer('span', {}, [avecPhoto(e.pid, creer('button', { classe: 'lien-personne', texte: e.titre, clic: function () { ouvrirFiche(e.pid); } })), creer('span', { classe: 'indice', texte: ' ' + e.detail })]),
       creer('span', { attrs: { style: 'margin-left:auto' } }, [badge(e.type === 'naissance' ? 'Anniversaire' : (e.type === 'union' ? 'Union' : 'Souvenir'), e.type === 'naissance' ? 'br-b' : (e.type === 'union' ? 'br-a' : ''))])
     ]));
   });
@@ -5176,7 +5188,7 @@ function rendreCousins(zone) {
         creer('td', {}, [c.cm ? formaterNombre(c.cm, 1) + ' cM' : '', detailADN(c) ? creer('div', { classe: 'indice', texte: detailADN(c) }) : null]),
         creer('td', {}, [c.relation ? c.relation : (estim ? creer('span', { classe: 'indice', texte: 'Estimation : ' + estim }) : '')]),
         creer('td', {}, [c.branche ? badge(c.branche, c.branche === 'Paternelle' ? 'br-a' : (c.branche === 'Maternelle' ? 'br-b' : '')) : null]),
-        creer('td', {}, [anc ? creer('button', { classe: 'lien-personne', texte: nomComplet(anc), clic: function () { ouvrirFiche(anc.id); } }) : null,
+        creer('td', {}, [anc ? avecPhoto(anc.id, creer('button', { classe: 'lien-personne', texte: nomComplet(anc), clic: function () { ouvrirFiche(anc.id); } })) : null,
           c.lieuCommun ? creer('div', { classe: 'indice', texte: 'Lieu commun : ' + c.lieuCommun }) : null]),
         creer('td', {}, [c.contacte ? badge('Contacté', 'br-b') : null, contactCousin(c)])
       ]));
@@ -5751,7 +5763,7 @@ function rendreCarte(zone) {
   lieux.forEach(function (l) {
     tb.appendChild(creer('tr', {}, [
       creer('th', { texte: l.nom, attrs: { scope: 'row', style: 'font-weight:600' } }),
-      creer('td', {}, l.personnes.map(function (pid) { return creer('div', {}, [creer('button', { classe: 'lien-personne', texte: nomComplet(pers(pid)), clic: function () { ouvrirFiche(pid); } }), texteAgeApres(pid)]); })),
+      creer('td', {}, l.personnes.map(function (pid) { return creer('div', { attrs: { style: 'margin:.125rem 0' } }, [avecPhoto(pid, creer('button', { classe: 'lien-personne', texte: nomComplet(pers(pid)), clic: function () { ouvrirFiche(pid); } })), texteAgeApres(pid)]); })),
       avecCousins ? creer('td', {}, l.cousins.map(function (cid) { var c = etat.donnees.cousins.filter(function (x) { return x.id === cid; })[0]; return creer('div', { texte: c ? ((c.prenom + ' ' + c.nom).trim() || 'Sans nom') + (c.cm ? ' (' + formaterNombre(c.cm, 0) + ' cM)' : '') : '' }); })) : null
     ]));
   });
@@ -5785,7 +5797,7 @@ function rendreCarte(zone) {
         var m = L.circleMarker([g.lat, g.lon], { radius: Math.min(22, 7 + Math.sqrt(nb) * 3), color: cou ? '#6B2FA0' : '#FFFFFF', weight: cou && fam ? 4 : 2,
           fillColor: fam ? '#007548' : '#6B2FA0', fillOpacity: 0.85 });
         var pop = creer('div', { attrs: { style: 'min-width:11rem' } }, [creer('strong', { texte: l.nom })]);
-        l.personnes.forEach(function (pid) { pop.appendChild(creer('div', {}, [creer('button', { classe: 'lien-personne', texte: nomComplet(pers(pid)), clic: function () { ouvrirFiche(pid); } }), texteAgeApres(pid)])); });
+        l.personnes.forEach(function (pid) { pop.appendChild(creer('div', { attrs: { style: 'margin:.25rem 0' } }, [avecPhoto(pid, creer('button', { classe: 'lien-personne', texte: nomComplet(pers(pid)), clic: function () { ouvrirFiche(pid); } })), texteAgeApres(pid)])); });
         l.cousins.forEach(function (cid) { var c = etat.donnees.cousins.filter(function (x) { return x.id === cid; })[0]; if (c) { pop.appendChild(creer('div', { texte: 'ADN : ' + ((c.prenom + ' ' + c.nom).trim() || 'Sans nom') + (c.cm ? ' (' + formaterNombre(c.cm, 0) + ' cM)' : '') })); } });
         m.bindPopup(pop);
         m.bindTooltip(l.nom + ' : ' + nb);
