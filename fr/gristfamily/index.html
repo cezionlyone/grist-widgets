@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.20.1
+  Version     : 1.20.2
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.20.2 - 13/11/2026 - madeXcé - Vue Ascendance : quand l’éventail est zoomé, on se déplace en glissant, à la molette ou au pavé tactile, comme dans l’arbre.
   1.20.1 - 13/11/2026 - madeXcé - Vue Ascendance : l’éventail est recadré sur la partie dessinée, sans grand espace vide autour.
   1.20.0 - 13/11/2026 - madeXcé - Vue Ascendance : toutes les générations connues par défaut, zoom et déplacement (boutons, Ctrl + molette, pincement), texte qui s’adapte à chaque case et dates qui ne débordent plus.
   1.19.2 - 13/11/2026 - madeXcé - Vue Ascendance : la taille du texte s’adapte à chaque case pour que les prénoms et les noms restent entiers.
@@ -625,7 +626,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.20.1</span>
+    <span class="bandeau__version">v1.20.2</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -661,7 +662,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.20.1';
+var VERSION = '1.20.2';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -5051,7 +5052,10 @@ function rendreAscendance(zone) {
       aBouge = true;
     } else if (depart) {
       var dx = e.clientX - depart.x, dy = e.clientY - depart.y;
-      if (Math.abs(dx) + Math.abs(dy) > 5) { aBouge = true; }
+      if (!aBouge && Math.abs(dx) + Math.abs(dy) > 5) {
+        aBouge = true;
+        try { svg.setPointerCapture(e.pointerId); } catch (er) { logSecurite('INFO', 'Capture du pointeur impossible', er); }
+      }
       if (aBouge) {
         vue.x = depart.vx - dx * vue.w / r.width;
         vue.y = depart.vy - dy * vue.h / r.height;
@@ -5069,10 +5073,19 @@ function rendreAscendance(zone) {
   /* un glissement ne doit pas ouvrir une fiche */
   svg.addEventListener('click', function (e) { if (aBouge) { e.stopPropagation(); e.preventDefault(); aBouge = false; } }, true);
   svg.addEventListener('wheel', function (e) {
-    if (!(e.ctrlKey || e.metaKey)) { return; }
-    e.preventDefault();
     var r = svg.getBoundingClientRect();
-    zoomerEv(e.deltaY < 0 ? 1.2 : 1 / 1.2, (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      zoomerEv(e.deltaY < 0 ? 1.2 : 1 / 1.2, (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+      return;
+    }
+    /* zoomé : la molette ou le pavé tactile déplacent la vue, comme dans l'arbre */
+    if (vue.w < plein.w - 1) {
+      e.preventDefault();
+      vue.x += e.deltaX * vue.w / r.width;
+      vue.y += e.deltaY * vue.h / r.height;
+      borner(); appliquerVue();
+    }
   }, { passive: false });
   appliquerVue();
   var commandesEv = creer('div', { classe: 'commandes-eventail no-print' }, [
@@ -5097,7 +5110,7 @@ function rendreAscendance(zone) {
     br.noms.a ? creer('span', {}, [creer('span', { classe: 'pastille br-a', attrs: { 'aria-hidden': 'true' } }), br.noms.a + ' (à gauche)']) : null,
     br.noms.b ? creer('span', {}, [creer('span', { classe: 'pastille br-b', attrs: { 'aria-hidden': 'true' } }), br.noms.b + ' (à droite)']) : null,
     etat.peutModifier ? creer('span', { classe: 'indice', texte: 'Cases en pointillés : cliquez pour ajouter un parent.' }) : null,
-    creer('span', { classe: 'indice no-print', texte: 'Zoom : boutons, Ctrl + molette ou pincement ; glissez pour vous déplacer.' })
+    creer('span', { classe: 'indice no-print', texte: 'Zoom : boutons, Ctrl + molette ou pincement. Zoomé, glissez ou utilisez la molette pour vous déplacer.' })
   ]));
 }
 
