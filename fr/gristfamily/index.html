@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.18.2
+  Version     : 1.18.3
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.18.3 - 13/11/2026 - madeXcé - Confort tablette : boutons et liens plus grands au doigt, champs sans zoom automatique sur iPad, page Recherches adaptée au portrait et au paysage.
   1.18.2 - 13/11/2026 - madeXcé - Les boutons des cartes de recherche et de sources passent à la ligne au lieu de déborder.
   1.18.1 - 13/11/2026 - madeXcé - Correction : le fond vert des sources avec recherche ouverte s’affiche enfin.
   1.18.0 - 13/11/2026 - madeXcé - Une quarantaine de sources généalogiques pour tous les pays (archives, bases, militaire, presse, cimetières, ADN), bouton pour ajouter les sources conseillées manquantes, sources avec recherche ouverte sur fond vert.
@@ -577,7 +578,22 @@ table.tableau { width: 100%; border-collapse: collapse; }
   .plus { width: 2.25rem; height: 2.25rem; right: -12px; bottom: -12px; }
   .vue-btn { min-height: 2.5rem; }
   .menu-plus button { min-height: 2.75rem; }
+  input, select, textarea, .saisie { font-size: 1rem; }
+  .source-carte .btn, .btn--s { min-height: 2.75rem; }
+  .source-carte__lien, .lien-personne, .rs-recherches .carte a, .rs-sources a { display: inline-block; padding: .3125rem 0; }
+  .source-carte, .carte-recherche { -webkit-tap-highlight-color: transparent; }
+  .onglet { min-height: 3rem; }
+  .page { -webkit-overflow-scrolling: touch; }
 }
+@media (pointer: coarse) and (min-width: 761px) and (max-width: 1100px) {
+  .page { padding: 1rem 1.25rem 2rem; }
+  .rs-grille { grid-template-columns: minmax(0, 1.4fr) minmax(15rem, 1fr); gap: 1rem; }
+  .rs-sources { position: static; max-height: none; }
+  .sources__liste { grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); }
+  .vue-btn__txt { display: inline; }
+  .vue-btn { padding: 0 .5rem; }
+}
+@media (max-width: 900px) { .rs-grille { grid-template-columns: minmax(0, 1fr); } }
 
 /* === Impression : seulement le titre de la vue et son contenu === */
 .titre-impression { display: none; }
@@ -601,7 +617,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.18.2</span>
+    <span class="bandeau__version">v1.18.3</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -637,7 +653,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.18.2';
+var VERSION = '1.18.3';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
