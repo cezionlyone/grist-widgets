@@ -694,7 +694,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.27.0';
+var VERSION = '1.27.1';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -5485,7 +5485,7 @@ function rendreListe(zone) {
   var compteur = creer('p', { classe: 'indice', attrs: { 'aria-live': 'polite' } });
   var table = creer('table', { classe: 'tableau' }, [
     creer('caption', { classe: 'sr', texte: 'Personnes de l’arbre, triées par ' + f.tri }),
-    creer('thead', {}, [creer('tr', {}, [enteteTri('Nom', 'nom', f), enteteTri('Naissance', 'naissance', f), enteteTri('Décès', 'deces', f), creer('th', { texte: 'Âge', attrs: { scope: 'col' } }), creer('th', { texte: 'Lieu de vie', attrs: { scope: 'col' } }), enteteTri('Lien avec ' + (pers(centre).prenom || nomComplet(pers(centre))), 'generation', f), enteteTri('Branche', 'branche', f)])]),
+    creer('thead', {}, [creer('tr', {}, [enteteTri('Nom', 'nom', f), enteteTri('Naissance', 'naissance', f), enteteTri('Décès', 'deces', f), enteteTri('Âge', 'age', f), enteteTri('Lieu de vie', 'lieu', f), enteteTri('Lien avec ' + (pers(centre).prenom || nomComplet(pers(centre))), 'generation', f), enteteTri('Branche', 'branche', f)])]),
     tbody
   ]);
   var majCorps = function () {
@@ -5502,6 +5502,17 @@ function rendreListe(zone) {
       nom: function (a, b) { return (a.nom || '').localeCompare(b.nom || '', 'fr') || (a.prenom || '').localeCompare(b.prenom || '', 'fr'); },
       naissance: function (a, b) { return comparerDates(a.naissance, b.naissance); },
       deces: function (a, b) { return comparerDates(a.deces, b.deces); },
+      age: function (a, b) {
+        var x = parseInt(texteAge(a).replace(/\D/g, ''), 10), y = parseInt(texteAge(b).replace(/\D/g, ''), 10);
+        var vx = isNaN(x), vy = isNaN(y);
+        if (vx || vy) { return vx && vy ? 0 : (vx ? 1 : -1) * f.sens; }
+        return x - y;
+      },
+      lieu: function (a, b) {
+        var x = estDecede(a) ? '' : (a.residence || ''), y = estDecede(b) ? '' : (b.residence || '');
+        if (!x || !y) { return x === y ? 0 : (x ? -1 : 1) * f.sens; }
+        return x.localeCompare(y, 'fr');
+      },
       branche: function (a, b) { return libelleBranche((br.parId[a.id] || {}).branche, br.noms).localeCompare(libelleBranche((br.parId[b.id] || {}).branche, br.noms), 'fr'); },
       generation: function (a, b) { var x = br.parId[a.id], y = br.parId[b.id]; return (x ? x.gen : 99) - (y ? y.gen : 99); }
     }[f.tri] || function () { return 0; };
