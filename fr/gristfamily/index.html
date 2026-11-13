@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.20.0
+  Version     : 1.20.1
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.20.1 - 13/11/2026 - madeXcé - Vue Ascendance : l’éventail est recadré sur la partie dessinée, sans grand espace vide autour.
   1.20.0 - 13/11/2026 - madeXcé - Vue Ascendance : toutes les générations connues par défaut, zoom et déplacement (boutons, Ctrl + molette, pincement), texte qui s’adapte à chaque case et dates qui ne débordent plus.
   1.19.2 - 13/11/2026 - madeXcé - Vue Ascendance : la taille du texte s’adapte à chaque case pour que les prénoms et les noms restent entiers.
   1.19.1 - 13/11/2026 - madeXcé - Vue Ascendance : l’éventail occupe toute la place, les noms passent à la ligne au lieu d’être tronqués et les caractères sont plus grands.
@@ -405,7 +406,7 @@ textarea.saisie { resize: vertical; }
 
 /* === Éventail === */
 .commandes-eventail { display: flex; gap: .375rem; justify-content: flex-end; margin: 0 auto .25rem; max-width: 1400px; }
-.eventail { width: 100%; max-width: 1400px; height: auto; display: block; margin: 0 auto; }
+.eventail { width: 100%; max-width: 1400px; max-height: 80vh; height: auto; display: block; margin: 0 auto; }
 .secteur { stroke: var(--blanc); stroke-width: 2; cursor: pointer; }
 .secteur:hover, .secteur:focus-visible { filter: brightness(.95); outline: none; stroke: var(--vert-f); stroke-width: 3; }
 .secteur--vide { fill: #FAFAFB; stroke: var(--trait); stroke-dasharray: 4 4; }
@@ -624,7 +625,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.20.0</span>
+    <span class="bandeau__version">v1.20.1</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -660,7 +661,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.20.0';
+var VERSION = '1.20.1';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -5081,6 +5082,16 @@ function rendreAscendance(zone) {
   ]);
   page.appendChild(commandesEv);
   page.appendChild(svg);
+  /* Recadrage sur la partie réellement dessinée : plus d'espace perdu autour de l'éventail */
+  try {
+    var bb = svg.getBBox();
+    if (bb.width > 0 && bb.height > 0) {
+      var etaitPlein = vue.w >= plein.w - 1;
+      plein.x = bb.x - 14; plein.y = bb.y - 14; plein.w = bb.width + 28; plein.h = bb.height + 28;
+      if (etaitPlein) { vue.x = plein.x; vue.y = plein.y; vue.w = plein.w; vue.h = plein.h; }
+      appliquerVue();
+    }
+  } catch (er) { logSecurite('INFO', 'Recadrage de l’éventail impossible', er); }
   var br = calculerBranches(centre);
   page.appendChild(creer('div', { classe: 'compteurs', attrs: { style: 'justify-content:center;margin-top:.75rem' } }, [
     br.noms.a ? creer('span', {}, [creer('span', { classe: 'pastille br-a', attrs: { 'aria-hidden': 'true' } }), br.noms.a + ' (à gauche)']) : null,
