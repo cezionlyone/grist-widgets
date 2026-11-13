@@ -694,7 +694,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.28.1';
+var VERSION = '1.29.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -4072,6 +4072,84 @@ function blocEtapesRecherche(r) {
   return creer('div', { classe: 'rech-bloc' }, [creer('span', { classe: 'rech-etiq', texte: 'Marche à suivre' }), creer('ol', { classe: 'rech-etapes' }, E.map(function (t) { return creer('li', { texte: t }); }))]);
 }
 
+/* Recherches suggérées par le widget : déduites du contenu de l'arbre, pour
+   le centre et ses ancêtres. Une suggestion disparaît quand le document est
+   joint ou quand une recherche du même type existe déjà pour la personne. */
+function recherchesAuto() {
+  if (!etat.donnees) { return []; }
+  var centre = idCentre();
+  if (!centre) { return []; }
+  var anc = ancetresDe(centre);
+  var porte = {}; porte[centre] = 0;
+  Object.keys(anc).forEach(function (k) { porte[k] = anc[k]; });
+  var out = [];
+  var docsType = function (pid, type) { return docsDePersonne(pid).some(function (x) { return x.doc.type === type; }); };
+  var dejaSuivie = function (pid, cle) { return (etat.recherches || []).some(function (r) { return r.pers === pid && typeRecherche(r.doc).cle === cle; }); };
+  var info = function (etiq, val) { return val ? etiq + ' : ' + val : ''; };
+  var nom = function (q) { return nomComplet(q); };
+  var ajouter = function (pid, titre, lignes, etapes, prio) {
+    out.push({ id: 'auto:' + pid + ':' + titre, auto: true, pers: pid, doc: titre, statut: 'À faire', sources: [], notes: '', gen: porte[pid],
+      infos: ['Priorité : ' + prio].concat(lignes).filter(Boolean).join('\n'), etapes: etapes.join('\n') });
+  };
+  Object.keys(porte).map(Number).forEach(function (pid) {
+    var p = pers(pid);
+    if (!p || p.erronee) { return; }
+    var g = porte[pid];
+    var prio = g <= 2 ? 1 : (g <= 4 ? 2 : 3);
+    var ps = parentsDe(pid).map(function (x) { return nom(pers(x)); }).join(' et ');
+    /* naissance */
+    if ((p.naissance || p.naissanceLieu) && !docsType(pid, 'Naissance') && !dejaSuivie(pid, 'naissance')) {
+      ajouter(pid, 'Acte de naissance de ' + nom(p), [
+        info('Né' + accord(p, '', 'e', '·e') + ' le', p.naissance ? formaterDate(p.naissance, p.naissanceApprox) : '?'),
+        info('Lieu', p.naissanceLieu || '?'),
+        info('Parents', ps)
+      ], [p.naissanceLieu ? 'Chercher les archives de ' + p.naissanceLieu + ' (état civil en ligne ou par courrier)' : 'Trouver la commune de naissance (acte de mariage ou de décès, livret de famille)',
+          'Relever la date et les parents indiqués dans l’acte'], prio);
+    }
+    /* décès */
+    if (estDecede(p) && (p.deces || p.decesLieu) && !docsType(pid, 'Décès') && !dejaSuivie(pid, 'deces')) {
+      ajouter(pid, 'Acte de décès de ' + nom(p), [
+        info('Décédé' + accord(p, '', 'e', '·e') + ' le', p.deces ? formaterDate(p.deces, p.decesApprox) : '?'),
+        info('Lieu', p.decesLieu || '?'),
+        info('Âge', texteAge(p))
+      ], [p.decesLieu ? 'Demander l’acte à la mairie de ' + p.decesLieu + ' ou aux archives (selon l’ancienneté)' : 'Trouver la commune du décès (faire-part, tombe, acte de mariage mentionnant le décès)',
+          'Relever le conjoint et les parents cités dans l’acte'], prio);
+    }
+    /* acte de décès sans date : à trouver en priorité */
+    if (estDecede(p) && !p.deces && !p.decesLieu && !dejaSuivie(pid, 'deces') && !docsType(pid, 'Décès')) {
+      ajouter(pid, 'Date et lieu de décès de ' + nom(p), [info('Décès', 'date et lieu inconnus'), info('Naissance', p.naissance ? formaterDate(p.naissance, p.naissanceApprox) : '?')],
+        ['Interroger la famille, chercher tombe ou faire-part', 'Puis demander l’acte de décès'], prio);
+    }
+    /* unions */
+    unionsPersonne(pid).forEach(function (uid) {
+      var u = unionDe(uid);
+      if (!u || u.type === 'Concubinage' || u.virtuelle) { return; }
+      if (u.a !== pid) { return; }
+      var cj = conjointDans(uid, pid);
+      var deja = (D_union(uid) || []).some(function (x) { return x.type === 'Mariage'; });
+      if (deja || (etat.recherches || []).some(function (r) { return (r.pers === pid || r.pers === cj) && typeRecherche(r.doc).cle === 'mariage'; })) { return; }
+      if (!cj) {
+        ajouter(pid, 'Conjoint de ' + nom(p) + ' à identifier', [info('Union', 'conjoint inconnu'), info('Enfants', enfantsUnion(uid).map(function (x) { return nom(pers(x)); }).join(', '))],
+          ['Chercher l’acte de naissance d’un enfant : il nomme les deux parents'], prio);
+        return;
+      }
+      if (u.debut || (p.naissance && pers(cj).naissance)) {
+        ajouter(pid, 'Acte de mariage de ' + nom(p) + ' et ' + nom(pers(cj)), [
+          info('Mariage', u.debut ? formaterDate(u.debut) : '?'),
+          info('Époux', nom(p) + ', ' + nom(pers(cj)))
+        ], ['Chercher dans la commune de résidence des époux', 'Relever les parents et les témoins cités dans l’acte'], prio);
+      }
+    });
+    /* personne sans dates */
+    if (!p.naissance && !p.deces && !estDecede(p) && g > 0) {
+      ajouter(pid, 'Dates de ' + nom(p) + ' à retrouver', [info('Parents', ps), info('Enfants', unionsPersonne(pid).reduce(function (a, uid) { return a.concat(enfantsUnion(uid)); }, []).map(function (x) { return nom(pers(x)); }).join(', '))],
+        ['Interroger la famille', 'Chercher l’acte de mariage de ses parents ou de ses enfants'], prio);
+    }
+  });
+  return out.sort(function (a, b) { return a.gen - b.gen || nomComplet(pers(a.pers)).localeCompare(nomComplet(pers(b.pers)), 'fr'); });
+}
+function D_union(uid) { return ((etat.docs || { parUnion: {} }).parUnion || {})[uid]; }
+
 function carteRecherche(r, avecPersonne) {
   var srcs = sourcesDe(r);
   var p = r.pers ? pers(r.pers) : null;
@@ -4080,9 +4158,9 @@ function carteRecherche(r, avecPersonne) {
   return creer('div', { classe: 'source-carte' }, [
     creer('div', { classe: 'source-carte__tete' }, [
       creer('strong', { texte: iconeRecherche(r.doc) + ' ' + (r.doc || 'Sans titre') }),
-      etat.peutModifier ? bouton('Modifier la recherche ' + (r.doc || ''), 'ico', 'modifier', function () { ouvrirFormRecherche(r); }, { petit: true, classe: 'no-print' }) : null
+      etat.peutModifier && !r.auto ? bouton('Modifier la recherche ' + (r.doc || ''), 'ico', 'modifier', function () { ouvrirFormRecherche(r); }, { petit: true, classe: 'no-print' }) : null
     ]),
-    creer('div', { classe: 'compteurs', attrs: { style: 'margin:.25rem 0' } }, [badge(r.statut, classeStatut(r.statut))]),
+    creer('div', { classe: 'compteurs', attrs: { style: 'margin:.25rem 0' } }, [r.auto ? badge('Suggestion du widget', 'br-a') : badge(r.statut, classeStatut(r.statut))]),
     avecPersonne && p ? creer('p', { attrs: { style: 'margin:.25rem 0' } }, [avecPhoto(p.id, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(p.id); } }, [nomAffiche(p)]))]) : null,
     blocInfosRecherche(r),
     liens.length ? creer('div', { classe: 'rech-bloc' }, [creer('span', { classe: 'rech-etiq', texte: 'Où chercher' }), creer('p', { attrs: { style: 'margin:0' } }, liens)]) : null,
@@ -4092,8 +4170,12 @@ function carteRecherche(r, avecPersonne) {
     docsDeRecherche(r).length ? creer('div', { attrs: { style: 'margin-top:.375rem' } }, docsDeRecherche(r).map(function (d) {
       return creer('p', { attrs: { style: 'margin:0' } }, [creer('span', { texte: typeDoc(d.type).icone + ' ', attrs: { 'aria-hidden': 'true' } }), creer('button', { classe: 'lien-personne', texte: d.libelle || typeDoc(d.type).nom, clic: function () { relayer(ouvrirDocument(d), 'Ouverture du document'); } })]);
     })) : null,
-    etat.peutModifier && etat.tDocs && p ? creer('div', { attrs: { style: 'margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap' } }, [bouton('J’ai trouvé : ajouter le document', 'p', 'plus', function () { ouvrirFormDocument(p, { titre: r.doc, type: typeDevine(r.doc), recherche: r }); }, { petit: true, classe: 'no-print' })]) : null,
-    etat.peutModifier && etat.tRech && rechOuverte(r) ? creer('div', { attrs: { style: 'margin-top:.5rem' } }, [bouton('Marquer comme trouvé sans document', '', 'ok', async function () {
+    etat.peutModifier && etat.tDocs && p ? creer('div', { attrs: { style: 'margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap' } }, [bouton('J’ai trouvé : ajouter le document', 'p', 'plus', function () { ouvrirFormDocument(p, r.auto ? { titre: r.doc, type: typeDevine(r.doc) } : { titre: r.doc, type: typeDevine(r.doc), recherche: r }); }, { petit: true, classe: 'no-print' })]) : null,
+    r.auto && etat.peutModifier && etat.tRech ? creer('div', { attrs: { style: 'margin-top:.5rem' } }, [bouton('Suivre cette recherche', '', 'plus', async function () {
+      try { await agir([['AddRecord', etat.tRech, null, { PERSONNE: r.pers, DOCUMENT: r.doc, STATUT: 'En cours', NOTES: '', INFOS: r.infos, ETAPES: r.etapes }]]); await apresEcriture('Recherche ajoutée à votre suivi.', etat.selection); }
+      catch (e) { afficherErreur(messageEchec(e, 'L’enregistrement a échoué.'), e); }
+    }, { petit: true, classe: 'no-print' })]) : null,
+    etat.peutModifier && etat.tRech && !r.auto && rechOuverte(r) ? creer('div', { attrs: { style: 'margin-top:.5rem' } }, [bouton('Marquer comme trouvé sans document', '', 'ok', async function () {
       try { await agir([['UpdateRecord', etat.tRech, r.id, { STATUT: 'Trouvé' }]]); await apresEcriture('Recherche marquée comme trouvée. Joignez le document depuis la fiche.', etat.selection); }
       catch (e) { afficherErreur(messageEchec(e, 'L’enregistrement a échoué.'), e); }
     }, { petit: true, classe: 'no-print' })]) : null
@@ -4275,9 +4357,11 @@ function rendreRecherches(zone) {
   var sel = liste('rechFiltre', opts, f);
   sel.addEventListener('change', function () { etat.filtreRech = sel.value; rendre(); });
   var src = etat.filtreSource ? (etat.sources || []).filter(function (x) { return x.id === etat.filtreSource; })[0] : null;
-  colG.appendChild(creer('div', { classe: 'filtres no-print' }, [champ('Afficher', sel), src ? creer('div', { classe: 'champ' }, [creer('span', { classe: 'etiq', texte: 'Source' }), creer('span', { classe: 'chip-filtre' }, [src.libelle, bouton('Retirer le filtre sur ' + src.libelle, 'ico', 'fermer', function () { etat.filtreSource = 0; rendre(); }, { petit: true })])]) : null]));
+  colG.appendChild(creer('div', { classe: 'filtres no-print' }, [champ('Afficher', sel), creer('div', { classe: 'champ' }, [creer('span', { classe: 'etiq', texte: 'Suggestions' }), caseACocher('rechAuto', 'Calculées depuis l’arbre', etat.suggestionsAuto !== false, function (v) { etat.suggestionsAuto = v; rendre(); })]), src ? creer('div', { classe: 'champ' }, [creer('span', { classe: 'etiq', texte: 'Source' }), creer('span', { classe: 'chip-filtre' }, [src.libelle, bouton('Retirer le filtre sur ' + src.libelle, 'ico', 'fermer', function () { etat.filtreSource = 0; rendre(); }, { petit: true })])]) : null]));
+  var auto = (f === 'ouvertes' || f === 'toutes' || f === 'À faire') && !etat.filtreSource && etat.suggestionsAuto !== false ? recherchesAuto() : [];
   var vues = toutes.filter(function (r) { return (f === 'toutes' || (f === 'ouvertes' ? rechOuverte(r) : r.statut === f)) && (!etat.filtreSource || (r.sources || []).indexOf(etat.filtreSource) !== -1); });
   vues.sort(function (a, b) { return STATUTS_RECH.indexOf(a.statut) - STATUTS_RECH.indexOf(b.statut) || nomComplet(pers(a.pers)).localeCompare(nomComplet(pers(b.pers)), 'fr'); });
+  vues = vues.concat(auto);
   TYPES_RECHERCHE.forEach(function (t) {
     var groupe = vues.filter(function (r) { return typeRecherche(r.doc).cle === t.cle; });
     if (!groupe.length) { return; }
