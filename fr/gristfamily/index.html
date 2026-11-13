@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.19.0
+  Version     : 1.19.1
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.19.1 - 13/11/2026 - madeXcé - Vue Ascendance : l’éventail occupe toute la place, les noms passent à la ligne au lieu d’être tronqués et les caractères sont plus grands.
   1.19.0 - 13/11/2026 - madeXcé - La photo (ou les initiales) de la personne s’affiche aussi dans la Liste, les Anniversaires, la Carte, les Cousins ADN, les Recherches et les proches de la fiche.
   1.18.3 - 13/11/2026 - madeXcé - Confort tablette : boutons et liens plus grands au doigt, champs sans zoom automatique sur iPad, page Recherches adaptée au portrait et au paysage.
   1.18.2 - 13/11/2026 - madeXcé - Les boutons des cartes de recherche et de sources passent à la ligne au lieu de déborder.
@@ -401,7 +402,7 @@ textarea.saisie { resize: vertical; }
 .titre-vue__nom { font-size: 1rem; font-weight: 700; background: rgba(247, 247, 247, .9); padding: 0 .25rem; border-radius: var(--r-s); }
 
 /* === Éventail === */
-.eventail { width: 100%; max-width: 1100px; height: auto; display: block; margin: 0 auto; }
+.eventail { width: 100%; max-width: 1400px; height: auto; display: block; margin: 0 auto; }
 .secteur { stroke: var(--blanc); stroke-width: 2; cursor: pointer; }
 .secteur:hover, .secteur:focus-visible { filter: brightness(.95); outline: none; stroke: var(--vert-f); stroke-width: 3; }
 .secteur--vide { fill: #FAFAFB; stroke: var(--trait); stroke-dasharray: 4 4; }
@@ -620,7 +621,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.19.0</span>
+    <span class="bandeau__version">v1.19.1</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -656,7 +657,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.19.0';
+var VERSION = '1.19.1';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -4838,11 +4839,11 @@ function rendreAscendance(zone) {
   ]));
   var ns = 'http://www.w3.org/2000/svg';
   var svg = document.createElementNS(ns, 'svg');
-  svg.setAttribute('viewBox', '0 0 1000 540');
+  svg.setAttribute('viewBox', '0 0 1010 535');
   svg.setAttribute('class', 'eventail');
   svg.setAttribute('role', 'group');
   svg.setAttribute('aria-label', 'Éventail des ancêtres de ' + nomComplet(pc));
-  var cx = 500, cy = 520, r0 = 78, rmax = 505;
+  var cx = 505, cy = 520, r0 = 62, rmax = 502;
   var largeurAnneau = (rmax - r0) / G;
   var couleurs = { a: ['#FDE7CF', '#8A4200'], b: ['#DCF4EB', '#005E3A'] };
   var arc = function (r1, r2, a1, a2) {
@@ -4903,11 +4904,31 @@ function rendreAscendance(zone) {
       var deg = am * 180 / Math.PI;
       var rot = k2 <= 2 ? deg + 90 : (deg > 270 ? deg : deg + 180);
       var tx = cx + rm * Math.cos(am), ty = cy + rm * Math.sin(am);
-      var taille = k2 <= 2 ? 15 : (k2 === 3 ? 13 : (k2 === 4 ? 11 : 9.5));
-      var maxCar = k2 <= 2 ? 22 : Math.max(8, Math.floor(largeurAnneau / (taille * 0.55)));
-      var couper = function (s) { return s.length > maxCar ? s.slice(0, maxCar - 1) + '…' : s; };
-      var lignes = k2 >= 5 ? [couper(p.prenom || nomComplet(p)), couper(p.nom)] : [couper(p.prenom), couper(p.nom), periodeVie(p)];
-      lignes = lignes.filter(function (x) { return x; });
+      var taille = k2 <= 2 ? 16 : (k2 === 3 ? 14.5 : (k2 === 4 ? 13 : (k2 === 5 ? 11.5 : 10.5)));
+      /* Longueur disponible le long du texte et nombre de lignes possibles en travers */
+      var longueur = k2 <= 2 ? rm * ouv * 0.85 : largeurAnneau * 0.94;
+      var travers = k2 <= 2 ? largeurAnneau * 0.9 : r1 * ouv * 0.92;
+      var maxCar = Math.max(6, Math.floor(longueur / (taille * 0.54)));
+      var maxLig = Math.max(2, Math.floor(travers / (taille * 1.18)));
+      var envelopper = function (txt) {
+        var mots = (txt || '').split(/\s+/).filter(function (m) { return m; });
+        var res = [];
+        var cour = '';
+        mots.forEach(function (m) {
+          if (m.length > maxCar) { m = m.slice(0, maxCar - 1) + '…'; }
+          if (!cour) { cour = m; } else if ((cour + ' ' + m).length <= maxCar) { cour += ' ' + m; } else { res.push(cour); cour = m; }
+        });
+        if (cour) { res.push(cour); }
+        return res;
+      };
+      var lPren = envelopper(p.prenom || (p.nom ? '' : nomComplet(p)));
+      var lNom = envelopper(p.nom);
+      var lDates = k2 >= 5 ? [] : (periodeVie(p) ? [periodeVie(p)] : []);
+      var place = maxLig - lNom.length - lDates.length;
+      if (place < 1) { lDates = []; place = maxLig - lNom.length; }
+      if (place < 1) { lNom = lNom.slice(0, Math.max(1, maxLig - 1)); place = maxLig - lNom.length; }
+      if (lPren.length > place) { lPren = lPren.slice(0, Math.max(1, place)); lPren[lPren.length - 1] = lPren[lPren.length - 1].replace(/…?$/, '…'); }
+      var lignes = lPren.concat(lNom, lDates);
       var texte = document.createElementNS(ns, 'text');
       texte.setAttribute('transform', 'translate(' + tx.toFixed(1) + ' ' + ty.toFixed(1) + ') rotate(' + rot.toFixed(1) + ')');
       texte.setAttribute('text-anchor', 'middle');
@@ -4917,7 +4938,7 @@ function rendreAscendance(zone) {
         var t = document.createElementNS(ns, 'tspan');
         t.setAttribute('x', '0');
         t.setAttribute('dy', i === 0 ? (-(lignes.length - 1) * taille * 0.6 + taille * 0.35).toFixed(1) : (taille * 1.2).toFixed(1));
-        if (i === 0) { t.setAttribute('font-weight', '700'); }
+        if (i < lPren.length) { t.setAttribute('font-weight', '700'); }
         t.textContent = l;
         texte.appendChild(t);
       });
@@ -4932,7 +4953,7 @@ function rendreAscendance(zone) {
   cercle.setAttribute('fill', '#FFF6E6');
   gc.appendChild(cercle);
   var tc = document.createElementNS(ns, 'text');
-  tc.setAttribute('x', cx); tc.setAttribute('y', cy - 30); tc.setAttribute('text-anchor', 'middle'); tc.setAttribute('font-size', '15'); tc.setAttribute('font-weight', '700'); tc.setAttribute('fill', '#7A4F00');
+  tc.setAttribute('x', cx); tc.setAttribute('y', cy - 30); tc.setAttribute('text-anchor', 'middle'); tc.setAttribute('font-size', '14'); tc.setAttribute('font-weight', '700'); tc.setAttribute('fill', '#7A4F00');
   tc.textContent = (pc.prenom || nomComplet(pc)).slice(0, 14);
   gc.appendChild(tc);
   gc.setAttribute('aria-label', nomComplet(pc) + ', au centre. Ouvrir la fiche');
