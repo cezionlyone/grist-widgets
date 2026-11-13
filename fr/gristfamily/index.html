@@ -686,7 +686,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.24.0';
+var VERSION = '1.24.1';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -4451,7 +4451,7 @@ function rendreFiche() {
   var avecAge = age !== null && !p.naissanceApprox;
   if (estDecede(p)) {
     var ligneDeces = (p.deces ? (p.deces.j ? 'le ' : 'en ') + formaterDate(p.deces, p.decesApprox) : '') + (p.decesLieu ? (p.deces ? ' à ' : 'à ') + p.decesLieu : '') + (avecAge ? (p.deces || p.decesLieu ? ', à ' : 'à ') + age + ' ans' : '');
-    rangs.push([accord(p, 'Décédé', 'Décédée', 'Décès'), ligneDeces || 'date inconnue']);
+    rangs.push([accord(p, 'Décédé', 'Décédée', 'Décès'), ligneDeces || '?']);
   } else if (avecAge) { rangs.push(['Âge', age + ' ans']); }
   if (p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom)) { rangs.push([accord(p, 'Né sous le nom', 'Née sous le nom', 'Nom de naissance'), p.nomNaissance]); }
   if (p.profession) { rangs.push(['Profession', p.profession]); }
