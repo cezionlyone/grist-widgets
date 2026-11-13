@@ -431,6 +431,10 @@ table.tableau { width: 100%; border-collapse: collapse; }
 .tableau tbody tr:hover { background: #FAFAFB; }
 .tri { display: inline-flex; align-items: center; gap: .25rem; border: 0; background: transparent; font: inherit; color: inherit; cursor: pointer; padding: .25rem 0; }
 .lien-personne { border: 0; background: transparent; padding: 0; color: var(--vert-f); font-weight: 600; cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 2px; text-decoration-color: rgba(0, 117, 72, .35); }
+.pr-grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: .75rem; }
+.pr-lien { padding: .375rem 0; border-top: 1px solid #ECECF1; font-size: .875rem; }
+.pr-lien:first-child { border-top: 0; }
+.pr-fleche { font-size: .75rem; color: #5F6672; margin: .125rem 0 .125rem 1.5rem; }
 .prenoms-suite { color: #6B7280; font-weight: 400; }
 .lien-personne .prenoms-suite { color: #5F7F70; }
 .lien-personne:hover { text-decoration-color: currentColor; }
@@ -674,7 +678,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.22.0';
+var VERSION = '1.23.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -850,6 +854,7 @@ var ICONES = {
   plus: 'M12 5v14M5 12h14',
   lien: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
   moins: 'M5 12h14',
+  coeur: 'M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z',
   recherche: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5',
   imprimer: 'M6 9V3h12v6M6 17H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M7 14h10v7H7z',
   reglages: 'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4',
@@ -2222,6 +2227,7 @@ var VUES = [
   { cle: 'anniversaires', nom: 'Anniversaires', icone: 'gateau' },
   { cle: 'carte', nom: 'Carte', icone: 'carte' },
   { cle: 'cousins', nom: 'Cousins ADN', icone: 'adn' },
+  { cle: 'prenoms', nom: 'Prénoms transmis', icone: 'coeur' },
   { cle: 'recherches', nom: 'Recherches à mener', icone: 'recherche' }
 ];
 
@@ -2262,6 +2268,7 @@ function rendre() {
   else if (etat.vue === 'anniversaires') { rendreAnniversaires(zone); }
   else if (etat.vue === 'carte') { rendreCarte(zone); }
   else if (etat.vue === 'cousins') { rendreCousins(zone); }
+  else if (etat.vue === 'prenoms') { rendrePrenoms(zone); }
   else if (etat.vue === 'recherches') { rendreRecherches(zone); }
   if (etat.selection) { rendreFiche(); }
   if (etat.aideOuverte) { rendreAide(); }
@@ -4093,6 +4100,110 @@ function blocSources() {
     bloc.appendChild(grille);
   });
   return bloc;
+}
+
+/* === SECTION : PRÉNOMS TRANSMIS === */
+var GROUPES_PRENOMS = [
+  ['joseph', 'josephe', 'josephine', 'josee', 'josette', 'jose'],
+  ['jean', 'jeanne', 'jeannine', 'jeannette', 'jeanine'],
+  ['pierre', 'pierrette'], ['georges', 'georgette', 'georgia', 'georgina'],
+  ['louis', 'louise', 'louisette'], ['albert', 'albertine'], ['antoine', 'antoinette', 'antonin', 'antonine'],
+  ['auguste', 'augustine'], ['michel', 'michele', 'michelle'], ['paul', 'paulette', 'pauline'],
+  ['henri', 'henriette'], ['claude', 'claudine', 'claudette'], ['charles', 'charlotte', 'charline'],
+  ['daniel', 'danielle'], ['denis', 'denise'], ['eugene', 'eugenie'], ['andre', 'andree'],
+  ['alexandre', 'alexandrine'], ['emile', 'emilie'], ['victor', 'victoire'], ['leon', 'leonie', 'leonne'],
+  ['francois', 'francoise'], ['gabriel', 'gabrielle'], ['etienne', 'etiennette'], ['marcel', 'marcelle', 'marcelline'],
+  ['lucien', 'lucienne', 'lucie'], ['raymond', 'raymonde'], ['gaston', 'gastonne'], ['fernand', 'fernande'],
+  ['christian', 'christiane', 'christine'], ['gilbert', 'gilberte'], ['rene', 'renee'], ['marie', 'maria', 'mariette']
+];
+
+function prenomsDe(p) {
+  return ((p && p.prenom) || '').trim().split(/\s+/).filter(function (m) { return normaliser(m).length > 2; });
+}
+
+function clePrenom(mot) {
+  var n = normaliser(mot);
+  for (var i = 0; i < GROUPES_PRENOMS.length; i++) { if (GROUPES_PRENOMS[i].indexOf(n) !== -1) { return GROUPES_PRENOMS[i][0]; } }
+  return n;
+}
+
+function ancetresDe(pid) {
+  var res = {};
+  var file = [{ id: pid, g: 0 }];
+  while (file.length) {
+    var c = file.shift();
+    parentsDe(c.id).forEach(function (x) { if (!res[x]) { res[x] = c.g + 1; file.push({ id: x, g: c.g + 1 }); } });
+  }
+  return res;
+}
+
+function calculerPrenomsTransmis() {
+  var groupes = {};
+  etat.donnees.ordre.forEach(function (pid) {
+    var p = pers(pid);
+    if (!p || p.erronee) { return; }
+    var anc = ancetresDe(pid);
+    var ancIds = Object.keys(anc).map(Number).filter(function (a) { return pers(a); });
+    prenomsDe(p).forEach(function (mot) {
+      var cle = clePrenom(mot);
+      var meilleur = null;
+      ancIds.forEach(function (a) {
+        prenomsDe(pers(a)).forEach(function (m2) {
+          if (clePrenom(m2) !== cle) { return; }
+          var exact = normaliser(m2) === normaliser(mot);
+          var ok = !meilleur || anc[a] < meilleur.g || (anc[a] === meilleur.g && exact && !meilleur.exact);
+          if (ok) { meilleur = { anc: a, g: anc[a], exact: exact, motAnc: m2 }; }
+        });
+      });
+      if (!meilleur) { return; }
+      if (!groupes[cle]) { groupes[cle] = { cle: cle, noms: {}, liens: [] }; }
+      groupes[cle].noms[mot] = (groupes[cle].noms[mot] || 0) + 1;
+      groupes[cle].liens.push({ desc: pid, anc: meilleur.anc, g: meilleur.g, exact: meilleur.exact, mot: mot, motAnc: meilleur.motAnc });
+    });
+  });
+  return Object.keys(groupes).map(function (k) {
+    var g = groupes[k];
+    g.titre = Object.keys(g.noms).sort(function (a, b) { return g.noms[b] - g.noms[a]; })[0];
+    g.liens.sort(function (a, b) { var pa = pers(a.anc).naissance, pb = pers(b.anc).naissance; return ((pa && pa.a) || 9999) - ((pb && pb.a) || 9999); });
+    return g;
+  }).sort(function (a, b) { return b.liens.length - a.liens.length || a.titre.localeCompare(b.titre, 'fr'); });
+}
+
+function libelleLienPrenom(anc, g) {
+  if (g === 1) { return accord(anc, 'père', 'mère', 'parent'); }
+  if (g === 2) { return accord(anc, 'grand-père', 'grand-mère', 'grand-parent'); }
+  if (g === 3) { return accord(anc, 'arrière-grand-père', 'arrière-grand-mère', 'arrière-grand-parent'); }
+  return 'ancêtre, ' + g + ' générations plus haut';
+}
+
+function rendrePrenoms(zone) {
+  var groupes = calculerPrenomsTransmis();
+  var page = creer('div', { classe: 'page' });
+  page.appendChild(creer('div', { classe: 'page__tete' }, [
+    creer('h2', { classe: 'page__titre' }, ['Prénoms transmis', badge(pluriel(groupes.length, 'prénom', 'prénoms'))])
+  ]));
+  page.appendChild(creer('p', { classe: 'indice', texte: 'Un prénom est transmis quand une personne le porte déjà chez un de ses ancêtres. Les variantes (Joseph, Joséphine, Josée) comptent aussi et sont signalées.' }));
+  if (!groupes.length) { page.appendChild(creer('p', { classe: 'indice', texte: 'Aucun prénom transmis repéré pour le moment.' })); }
+  var grille = creer('div', { classe: 'pr-grille' });
+  groupes.forEach(function (g) {
+    var lignes = g.liens.map(function (l) {
+      var a = pers(l.anc), d = pers(l.desc);
+      var an = a.naissance && a.naissance.a ? ' (' + a.naissance.a + ')' : '';
+      var dn = d.naissance && d.naissance.a ? ' (' + d.naissance.a + ')' : '';
+      return creer('div', { classe: 'pr-lien' }, [
+        creer('div', {}, [avecPhoto(a.id, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(a.id); } }, [nomAffiche(a)])), an]),
+        creer('div', { classe: 'pr-fleche', texte: '↓ ' + libelleLienPrenom(a, l.g) + ' de' + (l.exact ? '' : ' (variante : ' + l.motAnc + ' → ' + l.mot + ')') }),
+        creer('div', {}, [avecPhoto(d.id, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(d.id); } }, [nomAffiche(d)])), dn])
+      ]);
+    });
+    var tete = creer('div', { classe: 'source-carte__tete' }, [creer('strong', { texte: g.titre }), badge(pluriel(g.liens.length, 'transmission', 'transmissions'))]);
+    var corps = lignes.length > 4
+      ? creer('details', {}, [creer('summary', { texte: 'Voir les ' + lignes.length + ' transmissions' })].concat(lignes))
+      : creer('div', {}, lignes);
+    grille.appendChild(creer('div', { classe: 'source-carte' }, [tete, corps]));
+  });
+  page.appendChild(grille);
+  zone.appendChild(page);
 }
 
 function rendreRecherches(zone) {
