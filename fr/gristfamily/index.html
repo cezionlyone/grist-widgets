@@ -6315,14 +6315,17 @@ function rendreCarte(zone) {
     etat.carteObjet = carte;
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© contributeurs OpenStreetMap' }).addTo(carte);
     var couche = L.layerGroup().addTo(carte);
+    var dejaPlaces = {};
     var placer = function () {
-      couche.clearLayers();
       var points = [];
       var attente = 0, introuvables = [];
       lieux.forEach(function (l) {
         var g = etat.lieux[l.cle];
         if (!g) { attente++; return; }
         if (g.introuvable) { introuvables.push(l.nom); return; }
+        points.push([g.lat, g.lon]);
+        if (dejaPlaces[l.cle]) { return; }
+        dejaPlaces[l.cle] = true;
         var nb = l.personnes.length + l.cousins.length;
         var viv = l.personnes.some(function (pid) { return !estDecede(pers(pid)); });
         var anc = l.personnes.some(function (pid) { return estDecede(pers(pid)); });
@@ -6335,7 +6338,6 @@ function rendreCarte(zone) {
         m.bindPopup(pop);
         m.bindTooltip(l.nom + ' : ' + nb);
         m.addTo(couche);
-        points.push([g.lat, g.lon]);
       });
       if (points.length && !etat.carteCadree) { carte.fitBounds(points, { padding: [40, 40], maxZoom: 9 }); etat.carteCadree = true; }
       statut.textContent = (attente ? 'Recherche de ' + pluriel(attente, 'lieu', 'lieux') + ' en cours… ' : '') + (introuvables.length ? 'Lieux introuvables : ' + introuvables.join(' ; ') + '. Précisez-les, par exemple « Rezé, France ».' : '');
