@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.13.0
+  Version     : 1.14.0
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.14.0 - 13/11/2026 - madeXcé - Documents (actes, recensements, copies) joints aux personnes et aux unions, avec un type (naissance, mariage, décès, autre) ; icônes sur les cartes pour les notes et les documents ; nouvelle page Sources pour ranger les liens utiles. Deux tables sont créées toutes seules : DOCUMENTS_ et SOURCES_.
   1.13.0 - 13/11/2026 - madeXcé - Statut « Branche erronée » (colonne BRANCHE_ERRONEE ajoutée toute seule) : la personne rattachée par erreur est affichée en rouge pointillé, son trait de filiation aussi, avec un badge dans la fiche, un bouton et une case dans le formulaire, et une ligne dans la légende.
   1.12.0 - 13/11/2026 - madeXcé - Arbre plus lisible : plus d'espace entre deux familles, cadre léger autour de chaque fratrie, surbrillance de la lignée au clic sur une personne (le reste s'estompe) et mention « conjoint(e) de ... » sur les cartes des personnes entrées par mariage.
   1.11.1 - 12/11/2026 - madeXcé - Correction : les portraits illustrés ne s'affichaient pas (chargement différé retiré).
@@ -329,6 +330,16 @@ textarea.saisie { resize: vertical; }
 .carte.carte--erronee { border: 2px dashed #C9190B; border-left-width: 6px; background: #FDF1F1; }
 .carte--erronee .carte__nom, .carte--erronee .carte__info { color: #9B1206; }
 .legende__erronee { display: inline-block; width: 1.25rem; height: .75rem; border: 2px dashed #C9190B; border-radius: 3px; background: #FDF1F1; vertical-align: middle; margin-right: .375rem; }
+.marques-carte { position: absolute; right: 10px; bottom: -10px; z-index: 2; display: flex; gap: 2px; padding: 1px 5px; background: #fff; border: 1px solid var(--trait); border-radius: 999px; font-size: .75rem; line-height: 1.35; box-shadow: 0 1px 2px rgba(0,0,0,.12); pointer-events: none; }
+.doc-ligne { display: flex; align-items: flex-start; gap: .5rem; padding: .25rem 0; }
+.doc-ligne__ico { flex: none; font-size: 1.125rem; line-height: 1.5; }
+.doc-ligne__txt { flex: 1; min-width: 0; display: flex; flex-direction: column; text-align: left; }
+.doc-image { display: block; max-width: 100%; max-height: 70vh; margin: 0 auto .5rem; border: 1px solid var(--trait); border-radius: var(--r-l); }
+.sources__cat { margin: 1.25rem 0 .5rem; }
+.sources__liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: .75rem; }
+.source-carte { padding: .75rem .875rem; background: var(--blanc); border: 1px solid var(--trait); border-radius: var(--r-l); box-shadow: var(--ombre); }
+.source-carte__tete { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.source-carte__lien { font-weight: 700; overflow-wrap: anywhere; }
 .cadre-fratrie { position: absolute; background: rgba(76, 132, 216, .06); border: 1px dashed #B8C6DD; border-radius: 14px; pointer-events: none; }
 .carte__allie { font-style: italic; }
 .monde--focus .noeud { opacity: .28; transition: opacity .15s; }
@@ -571,7 +582,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.13.0</span>
+    <span class="bandeau__version">v1.14.0</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -607,7 +618,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.13.0';
+var VERSION = '1.14.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -620,6 +631,29 @@ var ID_PERS = 'GENEALOGIE_';
 var LABEL_PERS = '👪 GÉNÉALOGIE ⚡';
 var ID_UNIONS = 'UNIONS_';
 var LABEL_UNIONS = '💞 UNIONS ⚡';
+var ID_DOCS = 'DOCUMENTS_';
+var LABEL_DOCS = '📎 DOCUMENTS ⚡';
+var ID_SOURCES = 'SOURCES_';
+var LABEL_SOURCES = '🔗 SOURCES ⚡';
+var DOC_TYPES = [
+  { cle: 'Naissance', icone: '👶', nom: 'Acte de naissance' },
+  { cle: 'Mariage', icone: '💍', nom: 'Acte de mariage' },
+  { cle: 'Décès', icone: '🕊️', nom: 'Acte de décès' },
+  { cle: 'Autre', icone: '📄', nom: 'Autre document' }
+];
+var EXT_DOCS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'];
+var TAILLE_MAX_DOC = 15 * 1024 * 1024;
+var SOURCES_DEPART = [
+  ['Archives départementales du Val-d’Oise', 'https://archives.valdoise.fr', 'Archives', 'État civil en ligne (1900-1932 pour toutes les communes), recensements, tables décennales.'],
+  ['Archives de Paris', 'https://archives.paris.fr', 'Archives', 'État civil parisien, état civil reconstitué avant 1860.'],
+  ['FranceArchives', 'https://francearchives.gouv.fr', 'Archives', 'Portail des archives françaises : trouver le bon service d’archives.'],
+  ['Filae', 'https://www.filae.com', 'Bases généalogiques', 'Recherche gratuite pour vérifier qu’un acte existe, détail réservé aux abonnés.'],
+  ['Geneanet', 'https://www.geneanet.org', 'Bases généalogiques', 'Arbres des autres chercheurs et relevés.'],
+  ['MyHeritage', 'https://www.myheritage.fr', 'Bases généalogiques', 'Arbres, découvertes et cousins ADN.'],
+  ['Mémoire des hommes', 'https://www.memoiredeshommes.sga.defense.gouv.fr', 'Militaire', 'Soldats morts pour la France, journaux de marche.'],
+  ['Gallica', 'https://gallica.bnf.fr', 'Presse et livres', 'Presse ancienne, livres et annuaires numérisés.'],
+  ['RetroNews', 'https://www.retronews.fr', 'Presse et livres', 'Presse ancienne de la BnF.']
+];
 var ID_COUSINS = 'COUSINS_ADN_';
 var LABEL_COUSINS = '🧬 COUSINS ADN ⚡';
 
@@ -724,6 +758,7 @@ var MOIS_COURTS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'a
 /* Icônes (tracés 24 x 24, trait de 2). */
 var ICONES = {
   plus: 'M12 5v14M5 12h14',
+  lien: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
   moins: 'M5 12h14',
   recherche: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5',
   imprimer: 'M6 9V3h12v6M6 17H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M7 14h10v7H7z',
@@ -1510,7 +1545,7 @@ function idsParDefaut(champs) {
 
 function affichageParDefaut() {
   return { ascendants: 3, descendants: 3, fratrie: true, tout: true, couleur: 'branche',
-    carte: { photo: true, annees: true, lieu: false, nomNaissance: true, profession: false, sexeCouleur: true },
+    carte: { photo: true, annees: true, lieu: false, nomNaissance: true, profession: false, sexeCouleur: true, marques: true },
     souvenirs: false, unionsAnniv: true, cousins: false };
 }
 
@@ -1579,9 +1614,32 @@ async function chargerDonnees() {
   if (cfg.affichage.cousins && cfg.tables.cousins && etat.meta.tables[cfg.tables.cousins]) {
     try { dc = await lireTable(cfg.tables.cousins); } catch (e) { logSecurite('WARNING', 'Cousins ADN illisibles', e); }
   }
-  var empreinte = JSON.stringify([dp, du, dc]);
+  var dd = null;
+  var dsrc = null;
+  if (etat.tDocs && etat.meta.tables[etat.tDocs]) { try { dd = await lireTable(etat.tDocs); } catch (e) { logSecurite('WARNING', 'Documents illisibles', e); } }
+  if (etat.tSources && etat.meta.tables[etat.tSources]) { try { dsrc = await lireTable(etat.tSources); } catch (e) { logSecurite('WARNING', 'Sources illisibles', e); } }
+  var empreinte = JSON.stringify([dp, du, dc, dd, dsrc]);
   if (empreinte === etat.empreinte && etat.donnees) { return false; }
   etat.empreinte = empreinte;
+  var refId = function (v) { v = valeurCellule(v); return typeof v === 'number' && v > 0 ? v : 0; };
+  var DOCS = { parPers: {}, parUnion: {} };
+  if (dd && dd.id) {
+    for (var di = 0; di < dd.id.length; di++) {
+      var doc = { id: dd.id[di], pers: refId(dd.PERSONNE && dd.PERSONNE[di]), union: refId(dd.UNION_LIEE && dd.UNION_LIEE[di]),
+        type: texteCellule(dd.TYPE && dd.TYPE[di]).trim() || 'Autre', libelle: texteCellule(dd.LIBELLE && dd.LIBELLE[di]).trim(), fichiers: idsPJ(dd.FICHIER && dd.FICHIER[di]) };
+      if (doc.pers) { (DOCS.parPers[doc.pers] = DOCS.parPers[doc.pers] || []).push(doc); }
+      if (doc.union) { (DOCS.parUnion[doc.union] = DOCS.parUnion[doc.union] || []).push(doc); }
+    }
+  }
+  etat.docs = DOCS;
+  var SRC = [];
+  if (dsrc && dsrc.id) {
+    for (var si = 0; si < dsrc.id.length; si++) {
+      SRC.push({ id: dsrc.id[si], libelle: texteCellule(dsrc.LIBELLE && dsrc.LIBELLE[si]).trim(), url: texteCellule(dsrc.URL && dsrc.URL[si]).trim(),
+        categorie: texteCellule(dsrc.CATEGORIE && dsrc.CATEGORIE[si]).trim(), notes: texteCellule(dsrc.NOTES && dsrc.NOTES[si]).trim() });
+    }
+  }
+  etat.sources = SRC;
   var cols = cfg.cols;
   var cu = cfg.colsUnions;
   var P = {};
@@ -2053,7 +2111,8 @@ var VUES = [
   { cle: 'liste', nom: 'Liste', icone: 'liste' },
   { cle: 'anniversaires', nom: 'Anniversaires', icone: 'gateau' },
   { cle: 'carte', nom: 'Carte', icone: 'carte' },
-  { cle: 'cousins', nom: 'Cousins ADN', icone: 'adn' }
+  { cle: 'cousins', nom: 'Cousins ADN', icone: 'adn' },
+  { cle: 'sources', nom: 'Sources', icone: 'lien' }
 ];
 
 function vuesDisponibles() {
@@ -2092,6 +2151,7 @@ function rendre() {
   else if (etat.vue === 'anniversaires') { rendreAnniversaires(zone); }
   else if (etat.vue === 'carte') { rendreCarte(zone); }
   else if (etat.vue === 'cousins') { rendreCousins(zone); }
+  else if (etat.vue === 'sources') { rendreSources(zone); }
   if (etat.selection) { rendreFiche(); }
   if (etat.aideOuverte) { rendreAide(); }
 }
@@ -2284,6 +2344,7 @@ async function changerArbre(cle) {
       return;
     }
     await assurerColonnesVerifiee(etat.config);
+    await assurerTablesAnnexes(etat.config);
     await chargerDonnees();
     masquerLoader();
     rendre();
@@ -3262,7 +3323,8 @@ function noeudCarte(n, centre, br) {
     var cjs = unionsPersonne(n.pid).map(function (uid) { return conjointDans(uid, n.pid); }).filter(function (x) { return x && pers(x); });
     if (cjs.length) { allieDe = accord(p, 'conjoint de ', 'conjointe de ', 'union avec ') + (pers(cjs[0]).prenom || nomComplet(pers(cjs[0]))); }
   }
-  var etiquette = nom + (info ? ', ' + info : '') + (n.pid === centre ? ', au centre de l’arbre' : '') + (estDecede(p) ? ', ' + accord(p, 'décédé', 'décédée', 'décès') : '') + (n.dup ? ', déjà présente ailleurs dans l’arbre' : '') + (p.verifiee ? ', vérifiée' : '') + (p.aVerifier ? ', à vérifier' : '') + (p.erronee ? ', branche erronée' : '');
+  var marq = marquesCarte(p);
+  var etiquette = nom + (info ? ', ' + info : '') + (n.pid === centre ? ', au centre de l’arbre' : '') + (estDecede(p) ? ', ' + accord(p, 'décédé', 'décédée', 'décès') : '') + (n.dup ? ', déjà présente ailleurs dans l’arbre' : '') + (p.verifiee ? ', vérifiée' : '') + (p.aVerifier ? ', à vérifier' : '') + (p.erronee ? ', branche erronée' : '') + marq.texte;
   var carte = creer('button', { classe: classes.join(' '), attrs: { 'data-pid': n.pid, 'aria-label': etiquette + '. Ouvrir la fiche' },
     clic: function () { ouvrirFiche(n.pid); } }, [
     avatar(p, classeCouleur(p, br)),
@@ -3272,6 +3334,7 @@ function noeudCarte(n, centre, br) {
   var noeud = creer('div', { classe: 'noeud', attrs: { style: 'left:' + Math.round(n.x) + 'px;top:' + Math.round(n.y) + 'px' } }, [carte]);
   if (p.verifiee) { noeud.appendChild(cocheVerifiee('coche-verif--coin')); }
   if (p.aVerifier) { noeud.appendChild(pointAVerifier('point-verif--coin')); }
+  if (marq.noeud) { noeud.appendChild(marq.noeud); }
   if (etat.peutModifier) {
     var plus = creer('button', { classe: 'plus', attrs: { 'aria-label': 'Ajouter un proche à ' + nom, 'aria-haspopup': 'menu', 'aria-expanded': 'false', title: 'Ajouter un proche' } }, [icone('plus', 'ico--s')]);
     plus.addEventListener('click', function (e) { e.stopPropagation(); ouvrirMenuPlus(n, plus); });
@@ -3531,6 +3594,264 @@ async function envoyerPhoto(fichier) {
   return ids[0];
 }
 
+/* === SECTION : DOCUMENTS ET SOURCES === */
+async function assurerTablesAnnexes(cfg) {
+  try {
+    await chargerMeta();
+    etat.tDocs = trouverTableModele(ID_DOCS);
+    etat.tSources = trouverTableModele(ID_SOURCES);
+    if (!etat.peutModifier) { return; }
+    var defs = [];
+    var colsDocs = [{ id: 'PERSONNE', type: 'Ref:' + cfg.tables.pers, label: 'PERSONNE' }];
+    if (cfg.tables.unions && cfg.liens !== 'colonnes') { colsDocs.push({ id: 'UNION_LIEE', type: 'Ref:' + cfg.tables.unions, label: 'UNION LIEE' }); }
+    colsDocs.push({ id: 'TYPE', type: 'Choice', label: 'TYPE', choix: DOC_TYPES.map(function (t) { return t.cle; }) });
+    colsDocs.push({ id: 'LIBELLE', type: 'Text', label: 'LIBELLE' });
+    colsDocs.push({ id: 'FICHIER', type: 'Attachments', label: 'FICHIER' });
+    if (!etat.tDocs) { defs.push({ id: ID_DOCS, libelle: LABEL_DOCS, colonnes: colsDocs.concat(COLONNES_META) }); }
+    var creeSources = !etat.tSources;
+    if (creeSources) {
+      defs.push({ id: ID_SOURCES, libelle: LABEL_SOURCES, colonnes: [
+        { id: 'LIBELLE', type: 'Text', label: 'LIBELLE' }, { id: 'URL', type: 'Text', label: 'URL' },
+        { id: 'CATEGORIE', type: 'Text', label: 'CATEGORIE' }, { id: 'NOTES', type: 'Text', label: 'NOTES' }].concat(COLONNES_META) });
+    }
+    if (!defs.length) { return; }
+    await creerTables(defs);
+    etat.tDocs = trouverTableModele(ID_DOCS);
+    etat.tSources = trouverTableModele(ID_SOURCES);
+    if (creeSources && etat.tSources) {
+      await agir(SOURCES_DEPART.map(function (x) { return ['AddRecord', etat.tSources, null, { LIBELLE: x[0], URL: x[1], CATEGORIE: x[2], NOTES: x[3] }]; }));
+    }
+  } catch (e) { logSecurite('WARNING', 'Tables des documents et des sources non créées', e); }
+}
+
+function typeDoc(cle) { return DOC_TYPES.filter(function (t) { return t.cle === cle; })[0] || DOC_TYPES[DOC_TYPES.length - 1]; }
+
+/* Documents d'une personne : les siens, plus ceux de ses unions (l'acte de
+   mariage se voit sur la fiche des deux époux). */
+function docsDePersonne(pid) {
+  var D = etat.docs || { parPers: {}, parUnion: {} };
+  var out = (D.parPers[pid] || []).map(function (d) { return { doc: d, union: 0 }; });
+  unionsPersonne(pid).forEach(function (uid) { (D.parUnion[uid] || []).forEach(function (d) { out.push({ doc: d, union: uid }); }); });
+  return out;
+}
+
+function marquesCarte(p) {
+  if (etat.config.affichage.carte.marques === false) { return { noeud: null, texte: '' }; }
+  var items = [];
+  if (p.notes) { items.push(['📝', 'Notes']); }
+  var presents = {};
+  docsDePersonne(p.id).forEach(function (x) { presents[x.doc.type] = true; });
+  DOC_TYPES.forEach(function (t) { if (presents[t.cle]) { items.push([t.icone, t.nom]); } });
+  if (!items.length) { return { noeud: null, texte: '' }; }
+  var noms = items.map(function (x) { return x[1]; }).join(', ');
+  return { noeud: creer('span', { classe: 'marques-carte', attrs: { title: noms, 'aria-hidden': 'true' } }, items.map(function (x) { return creer('span', { texte: x[0] }); })), texte: ', ' + noms.toLowerCase() };
+}
+
+function validerDocument(f) {
+  var ext = (/\.([A-Za-z0-9]+)$/.exec(f.name || '') || [])[1];
+  ext = ext ? ext.toLowerCase() : '';
+  if (EXT_DOCS.indexOf(ext) === -1) { return 'Choisissez une image (JPG, PNG, GIF, WebP) ou un PDF.'; }
+  if (f.size > TAILLE_MAX_DOC) { return 'Le fichier dépasse 15 Mo.'; }
+  return '';
+}
+
+/* Les grandes photos d'actes sont réduites avant l'envoi pour ne pas
+   alourdir le document Grist. */
+function reduireImage(f) {
+  return new Promise(function (ok) {
+    if (!/^image\/(jpeg|png|webp)$/.test(f.type) || f.size < 1500000) { ok(f); return; }
+    var url = URL.createObjectURL(f);
+    var img = new Image();
+    img.onload = function () {
+      try {
+        var k = Math.min(1, 2600 / Math.max(img.width, img.height));
+        var c = document.createElement('canvas');
+        c.width = Math.round(img.width * k);
+        c.height = Math.round(img.height * k);
+        var g = c.getContext('2d');
+        g.fillStyle = '#fff';
+        g.fillRect(0, 0, c.width, c.height);
+        g.drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob(function (b) {
+          URL.revokeObjectURL(url);
+          ok(b && b.size < f.size ? new File([b], (f.name || 'document').replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }) : f);
+        }, 'image/jpeg', 0.88);
+      } catch (e) { URL.revokeObjectURL(url); ok(f); }
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); ok(f); };
+    img.src = url;
+  });
+}
+
+function sectionDocuments(p) {
+  if (!etat.tDocs) { return null; }
+  var l = docsDePersonne(p.id);
+  var lignes = l.map(function (x) {
+    var d = x.doc;
+    var t = typeDoc(d.type);
+    var cj = x.union ? conjointDans(x.union, p.id) : 0;
+    var sous = [t.nom, x.union ? (cj ? 'union avec ' + (pers(cj).prenom || nomComplet(pers(cj))) : 'union') : '', d.fichiers.length > 1 ? d.fichiers.length + ' fichiers' : ''].filter(function (z) { return z; }).join(', ');
+    var titre = d.libelle || t.nom;
+    return creer('div', { classe: 'doc-ligne' }, [
+      creer('span', { classe: 'doc-ligne__ico', texte: t.icone, attrs: { 'aria-hidden': 'true' } }),
+      creer('span', { classe: 'doc-ligne__txt' }, [
+        creer('button', { classe: 'lien-personne', texte: titre, clic: function () { relayer(ouvrirDocument(d), 'Ouverture du document'); } }),
+        creer('span', { classe: 'rel__sous', texte: sous })
+      ]),
+      etat.peutModifier ? bouton('Supprimer le document ' + titre, 'ico', 'supprimer', function () { return supprimerDocument(d); }, { petit: true }) : null
+    ]);
+  });
+  if (!lignes.length && !etat.peutModifier) { return null; }
+  if (!lignes.length) { lignes = [creer('p', { classe: 'indice', texte: 'Aucun document.', attrs: { style: 'margin:0' } })]; }
+  return creer('section', { classe: 'section-f' }, [creer('h3', { texte: 'DOCUMENTS' })].concat(lignes).concat([
+    etat.peutModifier ? bouton('Ajouter un document', '', 'plus', function () { ouvrirFormDocument(p); }, { petit: true }) : null]));
+}
+
+async function ouvrirDocument(d) {
+  afficherLoader('Ouverture du document…');
+  var urls = [];
+  var corps = [];
+  try {
+    for (var i = 0; i < d.fichiers.length; i++) {
+      var blob = await recupererPJ(d.fichiers[i]);
+      var url = URL.createObjectURL(blob);
+      urls.push(url);
+      var estImage = /^image\//.test(blob.type);
+      var ext = estImage ? (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg') : (blob.type === 'application/pdf' ? 'pdf' : 'bin');
+      var nom = ((d.libelle || typeDoc(d.type).nom).replace(/[^\w\-. ]+/g, '') || 'document') + (d.fichiers.length > 1 ? '-' + (i + 1) : '') + '.' + ext;
+      if (estImage) { corps.push(creer('img', { classe: 'doc-image', attrs: { src: url, alt: d.libelle || typeDoc(d.type).nom } })); }
+      corps.push(creer('a', { classe: 'btn btn--s', texte: 'Télécharger' + (d.fichiers.length > 1 ? ' (' + (i + 1) + ')' : ''), attrs: { href: url, download: nom } }));
+    }
+  } catch (e) {
+    masquerLoader();
+    afficherErreur(messageEchec(e, 'Le document n’a pas pu être ouvert.'), e);
+    return;
+  }
+  masquerLoader();
+  ouvrirModale({ titre: d.libelle || typeDoc(d.type).nom, sousTitre: typeDoc(d.type).nom, corps: corps,
+    pied: [bouton('Fermer', 'p', null, fermerModale)],
+    surFermeture: function () { urls.forEach(function (u) { URL.revokeObjectURL(u); }); } });
+}
+
+async function supprimerDocument(d) {
+  var ok = await confirmerAction('Supprimer ce document ?', 'Le document sera retiré de la fiche. Cette action ne peut pas être annulée depuis le widget.', 'Supprimer');
+  if (!ok) { return; }
+  try {
+    await agir([['RemoveRecord', etat.tDocs, d.id]]);
+    await apresEcriture('Document supprimé.', etat.selection);
+  } catch (e) { afficherErreur(messageEchec(e, 'La suppression a échoué.'), e); }
+}
+
+function ouvrirFormDocument(p) {
+  var unions = modeColonnes() ? [] : unionsPersonne(p.id);
+  var optionsConcerne = [{ valeur: 'p', libelle: 'Cette personne' }].concat(unions.map(function (uid) {
+    var cj = conjointDans(uid, p.id);
+    return { valeur: 'u' + uid, libelle: 'Union avec ' + (cj ? nomComplet(pers(cj)) : 'un autre parent inconnu') };
+  }));
+  var selType = liste('docType', DOC_TYPES.map(function (t) { return { valeur: t.cle, libelle: t.icone + ' ' + t.nom }; }), 'Naissance');
+  var selConcerne = liste('docConcerne', optionsConcerne, 'p');
+  selType.addEventListener('change', function () { selConcerne.value = selType.value === 'Mariage' && unions.length ? 'u' + unions[0] : 'p'; });
+  var fichier = creer('input', { classe: 'saisie', id: 'docFichier', attrs: { type: 'file', accept: '.jpg,.jpeg,.png,.gif,.webp,.pdf,image/*,application/pdf', multiple: 'multiple' } });
+  var corps = [creer('div', { classe: 'grille2' }, [
+    champ('Type de document', selType),
+    unions.length ? champ('Concerne', selConcerne) : null,
+    champ('Titre', saisie('docLibelle', '', { max: 120, indice: 'Ex. : Acte de mariage, Us, 1913' }), { facultatif: true, plein: true }),
+    champ('Fichier', fichier, { plein: true, indice: 'Image ou PDF, 15 Mo au plus. Plusieurs fichiers possibles (pages d’un même acte).' })
+  ])];
+  var ok = bouton('Enregistrer', 'p', null, async function () {
+    var fs = Array.prototype.slice.call(fichier.files || []);
+    if (!fs.length) { marquerInvalide('docFichier', 'Choisissez au moins un fichier.'); return; }
+    for (var i = 0; i < fs.length; i++) {
+      var err = validerDocument(fs[i]);
+      if (err) { marquerInvalide('docFichier', err); return; }
+    }
+    var type = selType.value;
+    var lib = document.getElementById('docLibelle').value.trim();
+    var cible = unions.length ? selConcerne.value : 'p';
+    afficherLoader('Envoi du document…');
+    try {
+      var ids = [];
+      for (var k = 0; k < fs.length; k++) {
+        var g = await reduireImage(fs[k]);
+        ids.push(await envoyerPhoto(g));
+      }
+      var rec = { TYPE: type, LIBELLE: lib, FICHIER: ['L'].concat(ids) };
+      if (cible.charAt(0) === 'u') { rec.UNION_LIEE = parseInt(cible.slice(1), 10); } else { rec.PERSONNE = p.id; }
+      await agir([['AddRecord', etat.tDocs, null, rec]]);
+      masquerLoader();
+      fermerModale();
+      await apresEcriture('Document ajouté.', p.id);
+    } catch (e) { masquerLoader(); afficherErreur(messageEchec(e, 'L’envoi du document a échoué.'), e); }
+  });
+  ouvrirModale({ titre: 'Ajouter un document', sousTitre: nomComplet(p), corps: corps, pied: [bouton('Annuler', '', null, fermerModale), ok], focus: 'docType' });
+}
+
+function urlSure(u) { return /^https?:\/\/[^\s]+$/i.test(u || ''); }
+
+function rendreSources(zone) {
+  var page = creer('div', { classe: 'page' });
+  var liste = (etat.sources || []).slice().sort(function (a, b) { return (a.categorie || '~').localeCompare(b.categorie || '~', 'fr') || a.libelle.localeCompare(b.libelle, 'fr'); });
+  page.appendChild(creer('div', { classe: 'page__tete' }, [
+    creer('h2', { classe: 'page__titre' }, ['Sources et sites utiles', badge(pluriel(liste.length, 'lien', 'liens'))]),
+    etat.peutModifier && etat.tSources ? bouton('Ajouter un lien', 'p', 'plus', function () { ouvrirFormSource(null); }, { classe: 'no-print' }) : null
+  ]));
+  if (!etat.tSources) { page.appendChild(alerte('info', 'La table des sources n’existe pas encore. Elle se crée toute seule quand l’arbre est ouvert avec un compte qui peut modifier le document.')); }
+  var groupes = {};
+  var ordre = [];
+  liste.forEach(function (x) { var c = x.categorie || 'Sans catégorie'; if (!groupes[c]) { groupes[c] = []; ordre.push(c); } groupes[c].push(x); });
+  ordre.forEach(function (c) {
+    page.appendChild(creer('h3', { classe: 'sources__cat', texte: c }));
+    var grille = creer('div', { classe: 'sources__liste' });
+    groupes[c].forEach(function (x) {
+      var hote = '';
+      try { hote = urlSure(x.url) ? new URL(x.url).hostname.replace(/^www\./, '') : ''; } catch (e) { hote = ''; }
+      grille.appendChild(creer('div', { classe: 'source-carte' }, [
+        creer('div', { classe: 'source-carte__tete' }, [
+          urlSure(x.url) ? creer('a', { classe: 'source-carte__lien', texte: x.libelle || hote, attrs: { href: x.url, target: '_blank', rel: 'noopener noreferrer' } }) : creer('strong', { texte: x.libelle || 'Sans titre' }),
+          etat.peutModifier ? bouton('Modifier ' + (x.libelle || 'ce lien'), 'ico', 'modifier', function () { ouvrirFormSource(x); }, { petit: true, classe: 'no-print' }) : null
+        ]),
+        hote ? creer('p', { classe: 'indice', texte: hote, attrs: { style: 'margin:0' } }) : null,
+        x.notes ? creer('p', { texte: x.notes, attrs: { style: 'margin:.25rem 0 0;white-space:pre-line' } }) : null
+      ]));
+    });
+    page.appendChild(grille);
+  });
+  if (etat.tSources && !liste.length) { page.appendChild(creer('p', { classe: 'indice', texte: 'Aucun lien pour l’instant.' })); }
+  zone.appendChild(page);
+}
+
+function ouvrirFormSource(x) {
+  var corps = [creer('div', { classe: 'grille2' }, [
+    champ('Titre', saisie('srcLibelle', x ? x.libelle : '', { max: 120 }), { obligatoire: true }),
+    champ('Catégorie', saisie('srcCategorie', x ? x.categorie : '', { max: 60, indice: 'Archives, Bases généalogiques, Presse...' }), { facultatif: true }),
+    champ('Adresse du site', saisie('srcUrl', x ? x.url : '', { type: 'url', max: 500, indice: 'https://...' }), { obligatoire: true, plein: true }),
+    champ('Notes', saisie('srcNotes', x ? x.notes : '', { multiligne: true, lignes: 3 }), { facultatif: true, plein: true })
+  ])];
+  var pied = [];
+  if (x) {
+    pied.push(bouton('Supprimer ce lien', 'danger', 'supprimer', async function () {
+      var ok = await confirmerAction('Supprimer ce lien ?', 'Le lien sera retiré de la page Sources.', 'Supprimer');
+      if (!ok) { return; }
+      try { await agir([['RemoveRecord', etat.tSources, x.id]]); fermerModale(); await apresEcriture('Lien supprimé.'); }
+      catch (e) { afficherErreur(messageEchec(e, 'La suppression a échoué.'), e); }
+    }, { classe: 'gauche' }));
+  }
+  pied.push(bouton('Annuler', '', null, fermerModale));
+  pied.push(bouton('Enregistrer', 'p', null, async function () {
+    var lib = document.getElementById('srcLibelle').value.trim();
+    var url = document.getElementById('srcUrl').value.trim();
+    if (!lib) { marquerInvalide('srcLibelle', 'Donnez un titre à ce lien.'); return; }
+    if (!urlSure(url)) { marquerInvalide('srcUrl', 'L’adresse doit commencer par https:// ou http://.'); return; }
+    var rec = { LIBELLE: lib, URL: url, CATEGORIE: document.getElementById('srcCategorie').value.trim(), NOTES: document.getElementById('srcNotes').value.trim() };
+    try {
+      await agir([x ? ['UpdateRecord', etat.tSources, x.id, rec] : ['AddRecord', etat.tSources, null, rec]]);
+      fermerModale();
+      await apresEcriture(x ? 'Lien enregistré.' : 'Lien ajouté.');
+    } catch (e) { afficherErreur(messageEchec(e, 'L’enregistrement a échoué.'), e); }
+  }));
+  ouvrirModale({ titre: x ? 'Modifier le lien' : 'Ajouter un lien', corps: corps, pied: pied, focus: 'srcLibelle' });
+}
+
 /* === SECTION : FICHE PERSONNE (volet de droite) === */
 /* Surbrillance : la personne choisie, ses ancêtres, ses descendants et leurs
    conjoints restent nets, tout le reste s'estompe. */
@@ -3717,6 +4038,7 @@ function rendreFiche() {
       return creer('div', { classe: 'rel' }, [creer('span', { texte: (c.prenom + ' ' + c.nom).trim() || 'Sans nom' }), creer('span', { classe: 'rel__sous', texte: [c.pays, c.cm ? formaterNombre(c.cm, 0) + ' cM' : ''].filter(function (x) { return x; }).join(', ') })]);
     })));
   }
+  ajouterA(corps, sectionDocuments(p));
   if (p.notes) { ajouterA(corps, sectionFiche('NOTES', [creer('p', { texte: p.notes, attrs: { style: 'margin:0;white-space:pre-line' } })])); }
   var meta = [];
   if (p.creeLe) { meta.push('Ajoutée le ' + formaterHorodatage(p.creeLe) + (p.creePar ? ' par ' + p.creePar : '')); }
@@ -4109,6 +4431,7 @@ async function supprimerPersonne(pid) {
   etat.donnees.cousins.forEach(function (c) {
     if (c.ancetre === pid) { var y = {}; y[etat.config.colsCousins.ancetre] = 0; actions.push(['UpdateRecord', etat.config.tables.cousins, c.id, y]); }
   });
+  ((etat.docs && etat.docs.parPers[pid]) || []).forEach(function (d) { actions.push(['RemoveRecord', etat.tDocs, d.id]); });
   actions.push(['RemoveRecord', etat.config.tables.pers, pid]);
   afficherLoader('Suppression…');
   try {
@@ -5562,7 +5885,8 @@ function etapeCartes(z, poserApercu) {
     caseACocher('cNomN', 'Nom de naissance, s’il diffère', c.nomNaissance, function (v) { c.nomNaissance = v; maj(); }),
     caseACocher('cLieu', 'Lieu de naissance', c.lieu, function (v) { c.lieu = v; maj(); }),
     caseACocher('cProf', 'Profession', c.profession, function (v) { c.profession = v; maj(); }),
-    caseACocher('cSexe', 'Liseré bleu (homme) ou rose (femme)', c.sexeCouleur !== false, function (v) { c.sexeCouleur = v; maj(); })
+    caseACocher('cSexe', 'Liseré bleu (homme) ou rose (femme)', c.sexeCouleur !== false, function (v) { c.sexeCouleur = v; maj(); }),
+    caseACocher('cMarques', 'Icônes des notes et des documents', c.marques !== false, function (v) { c.marques = v; maj(); })
   ]));
   z.appendChild(creer('h3', { texte: 'Couleur des cartes', attrs: { style: 'margin:0;font-size:1rem' } }));
   var t = creer('div', { classe: 'tuiles' });
