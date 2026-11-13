@@ -694,7 +694,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.27.1';
+var VERSION = '1.28.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -6217,16 +6217,26 @@ function chargerLeaflet() {
 /* Lieux à placer : membres de la famille selon le lieu choisi, cousins ADN
    selon leur ville et leur pays. */
 function lieuxAPlacer() {
-  var mode = etat.carteMode || 'residence';
+  var mode = etat.carteMode || 'tous';
   var lieux = {};
   var ajouter = function (nom, quoi) {
     nom = String(nom || '').trim();
     if (!nom) { return; }
     var k = normaliser(nom);
-    if (!lieux[k]) { lieux[k] = { nom: nom, cle: k, personnes: [], cousins: [] }; }
-    lieux[k][quoi.type].push(quoi.id);
+    if (!lieux[k]) { lieux[k] = { nom: nom, cle: k, personnes: [], cousins: [], motifs: {} }; }
+    if (quoi.type === 'personnes') {
+      if (lieux[k].personnes.indexOf(quoi.id) === -1) { lieux[k].personnes.push(quoi.id); }
+      var m = lieux[k].motifs[quoi.id] = lieux[k].motifs[quoi.id] || [];
+      if (quoi.motif && m.indexOf(quoi.motif) === -1) { m.push(quoi.motif); }
+    } else { lieux[k][quoi.type].push(quoi.id); }
   };
   etat.donnees.ordre.map(pers).forEach(function (p) {
+    if (mode === 'tous') {
+      ajouter(p.naissanceLieu, { type: 'personnes', id: p.id, motif: 'naissance' });
+      if (estDecede(p)) { ajouter(p.decesLieu, { type: 'personnes', id: p.id, motif: 'décès' }); }
+      else { ajouter(p.residence, { type: 'personnes', id: p.id, motif: 'vit ici' }); }
+      return;
+    }
     var l = mode === 'naissance' ? p.naissanceLieu : (mode === 'deces' ? p.decesLieu : (estDecede(p) ? '' : p.residence));
     ajouter(l, { type: 'personnes', id: p.id });
   });
@@ -6240,22 +6250,26 @@ function lieuxAPlacer() {
 }
 
 /* Âge à côté d'un nom, dans les listes et les fenêtres de la carte. */
-function texteAgeApres(pid) {
+function texteAgeApres(pid, lieu) {
   var a = texteAge(pers(pid));
-  if (!a) { return null; }
-  return creer('span', { classe: 'indice', texte: ' (' + a + (estDecede(pers(pid)) ? ' au décès' : '') + ')' });
+  var mo = lieu && lieu.motifs && lieu.motifs[pid] && lieu.motifs[pid].length ? lieu.motifs[pid].join(', ') : '';
+  if (!a && !mo) { return null; }
+  var morceaux = [];
+  if (mo) { morceaux.push(mo); }
+  if (a) { morceaux.push(a + (estDecede(pers(pid)) ? ' au décès' : '')); }
+  return creer('span', { classe: 'indice', texte: ' (' + morceaux.join(' ; ') + ')' });
 }
 
 function rendreCarte(zone) {
   if (etat.carteObjet) { try { etat.carteObjet.remove(); } catch (e) { logSecurite('INFO', 'Carte non retirée', e); } etat.carteObjet = null; }
   var page = creer('div', { classe: 'page' });
-  var modes = [{ valeur: 'residence', libelle: 'Lieu de vie' }, { valeur: 'naissance', libelle: 'Lieu de naissance' }, { valeur: 'deces', libelle: 'Lieu de décès' }];
-  var sel = liste('carteMode', modes, etat.carteMode || 'residence');
+  var modes = [{ valeur: 'tous', libelle: 'Tous les lieux (vivants et ancêtres)' }, { valeur: 'residence', libelle: 'Lieu de vie' }, { valeur: 'naissance', libelle: 'Lieu de naissance' }, { valeur: 'deces', libelle: 'Lieu de décès' }];
+  var sel = liste('carteMode', modes, etat.carteMode || 'tous');
   sel.addEventListener('change', function () { etat.carteMode = sel.value; rendre(); });
   var lieux = lieuxAPlacer();
   var avecCousins = etat.config.affichage.cousins && etat.config.tables.cousins;
   page.appendChild(creer('div', { classe: 'page__tete' }, [
-    creer('h2', { classe: 'page__titre' }, ['Où vit la famille', badge(pluriel(lieux.length, 'lieu', 'lieux'))]),
+    creer('h2', { classe: 'page__titre' }, ['Où vit et vivait la famille', badge(pluriel(lieux.length, 'lieu', 'lieux'))]),
     creer('div', { classe: 'filtres no-print', attrs: { style: 'margin:0' } }, [
       champ('Placer la famille selon', sel),
       avecCousins ? creer('div', { classe: 'champ' }, [creer('span', { classe: 'etiq', texte: 'Cousins ADN' }), caseACocher('carteCousins', 'Afficher', etat.carteCousins !== false, function (v) { etat.carteCousins = v; rendre(); })]) : null
@@ -6265,7 +6279,9 @@ function rendreCarte(zone) {
   var boite = creer('div', { id: 'carteBoite', attrs: { style: 'height:calc(100vh - 190px);min-height:460px;border:1px solid #E6E6EC;border-radius:10px;overflow:hidden;background:#EEF2F4', role: 'region', 'aria-label': 'Carte des lieux. La liste des lieux, sous la carte, donne les mêmes informations.' } });
   page.appendChild(boite);
   page.appendChild(creer('div', { classe: 'compteurs', attrs: { style: 'margin:.5rem 0' } }, [
-    creer('span', {}, [creer('span', { classe: 'pastille', attrs: { style: 'background:#007548', 'aria-hidden': 'true' } }), 'Famille']),
+    creer('span', {}, [creer('span', { classe: 'pastille', attrs: { style: 'background:#007548', 'aria-hidden': 'true' } }), 'Famille vivante']),
+    creer('span', {}, [creer('span', { classe: 'pastille', attrs: { style: 'background:#C2410C', 'aria-hidden': 'true' } }), 'Ancêtres']),
+    creer('span', {}, [creer('span', { classe: 'pastille', attrs: { style: 'background:#007548;border:3px solid #C2410C', 'aria-hidden': 'true' } }), 'Vivants et ancêtres']),
     avecCousins ? creer('span', {}, [creer('span', { classe: 'pastille', attrs: { style: 'background:#6B2FA0', 'aria-hidden': 'true' } }), 'Cousins ADN']) : null,
     avecCousins ? creer('span', {}, [creer('span', { classe: 'pastille', attrs: { style: 'background:#007548;border:3px solid #6B2FA0', 'aria-hidden': 'true' } }), 'Les deux']) : null,
     creer('span', { classe: 'indice', texte: 'Plus le rond est grand, plus il y a de monde.' })
@@ -6278,7 +6294,7 @@ function rendreCarte(zone) {
   lieux.forEach(function (l) {
     tb.appendChild(creer('tr', {}, [
       creer('th', { texte: l.nom, attrs: { scope: 'row', style: 'font-weight:600' } }),
-      creer('td', {}, l.personnes.map(function (pid) { return creer('div', { attrs: { style: 'margin:.125rem 0' } }, [avecPhoto(pid, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(pid); } }, [nomAffiche(pers(pid))])), texteAgeApres(pid)]); })),
+      creer('td', {}, l.personnes.map(function (pid) { return creer('div', { attrs: { style: 'margin:.125rem 0' } }, [avecPhoto(pid, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(pid); } }, [nomAffiche(pers(pid))])), texteAgeApres(pid, l)]); })),
       avecCousins ? creer('td', {}, l.cousins.map(function (cid) { var c = etat.donnees.cousins.filter(function (x) { return x.id === cid; })[0]; return creer('div', { texte: c ? ((c.prenom + ' ' + c.nom).trim() || 'Sans nom') + (c.cm ? ' (' + formaterNombre(c.cm, 0) + ' cM)' : '') : '' }); })) : null
     ]));
   });
@@ -6308,11 +6324,13 @@ function rendreCarte(zone) {
         if (!g) { attente++; return; }
         if (g.introuvable) { introuvables.push(l.nom); return; }
         var nb = l.personnes.length + l.cousins.length;
-        var fam = l.personnes.length > 0, cou = l.cousins.length > 0;
-        var m = L.circleMarker([g.lat, g.lon], { radius: Math.min(22, 7 + Math.sqrt(nb) * 3), color: cou ? '#6B2FA0' : '#FFFFFF', weight: cou && fam ? 4 : 2,
-          fillColor: fam ? '#007548' : '#6B2FA0', fillOpacity: 0.85 });
+        var viv = l.personnes.some(function (pid) { return !estDecede(pers(pid)); });
+        var anc = l.personnes.some(function (pid) { return estDecede(pers(pid)); });
+        var cou = l.cousins.length > 0;
+        var m = L.circleMarker([g.lat, g.lon], { radius: Math.min(22, 7 + Math.sqrt(nb) * 3), color: cou ? '#6B2FA0' : (viv && anc ? '#C2410C' : '#FFFFFF'), weight: (cou && (viv || anc)) || (viv && anc) ? 4 : 2,
+          fillColor: viv ? '#007548' : (anc ? '#C2410C' : '#6B2FA0'), fillOpacity: 0.85 });
         var pop = creer('div', { attrs: { style: 'min-width:11rem' } }, [creer('strong', { texte: l.nom })]);
-        l.personnes.forEach(function (pid) { pop.appendChild(creer('div', { attrs: { style: 'margin:.25rem 0' } }, [avecPhoto(pid, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(pid); } }, [nomAffiche(pers(pid))])), texteAgeApres(pid)])); });
+        l.personnes.forEach(function (pid) { pop.appendChild(creer('div', { attrs: { style: 'margin:.25rem 0' } }, [avecPhoto(pid, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(pid); } }, [nomAffiche(pers(pid))])), texteAgeApres(pid, l)])); });
         l.cousins.forEach(function (cid) { var c = etat.donnees.cousins.filter(function (x) { return x.id === cid; })[0]; if (c) { pop.appendChild(creer('div', { texte: 'ADN : ' + ((c.prenom + ' ' + c.nom).trim() || 'Sans nom') + (c.cm ? ' (' + formaterNombre(c.cm, 0) + ' cM)' : '') })); } });
         m.bindPopup(pop);
         m.bindTooltip(l.nom + ' : ' + nb);
