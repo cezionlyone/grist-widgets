@@ -363,6 +363,15 @@ textarea.saisie { resize: vertical; }
 .sources__liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: .75rem; }
 .source-carte { padding: .75rem .875rem; background: var(--blanc); border: 1px solid var(--trait); border-radius: var(--r-l); box-shadow: var(--ombre); }
 .source-carte { min-width: 0; overflow-wrap: anywhere; }
+.rech-grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .375rem; margin: .375rem 0; }
+.rech-info { background: var(--fond-doux, #F4F5F8); border-radius: 6px; padding: .375rem .625rem; display: flex; flex-direction: column; gap: .125rem; min-width: 0; }
+.rech-info--large { grid-column: 1 / -1; }
+.rech-info--att { background: #FFF4E5; }
+.rech-etiq { font-size: .75rem; color: #5F6672; }
+.rech-val { font-size: .875rem; overflow-wrap: anywhere; }
+.rech-bloc { margin: .375rem 0 0; display: flex; flex-direction: column; gap: .125rem; }
+.rech-etapes { margin: 0; padding-left: 1.25rem; font-size: .875rem; line-height: 1.5; }
+.rech-notes { margin: .5rem 0 0; padding: .5rem .625rem; background: #FFFBE6; border: 1px dashed #D9C65A; border-radius: 6px; display: flex; flex-direction: column; gap: .125rem; }
 .source-carte .btn { white-space: normal; max-width: 100%; height: auto; min-height: 2rem; padding-top: .25rem; padding-bottom: .25rem; text-align: left; }
 .source-carte.source-carte--ouverte { background: #E3F6EC; border-color: var(--vert); }
 .source-carte__tete { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
@@ -663,7 +672,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.20.3';
+var VERSION = '1.21.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -1726,7 +1735,8 @@ async function chargerDonnees() {
   if (dr && dr.id) {
     for (var ri = 0; ri < dr.id.length; ri++) {
       REC.push({ id: dr.id[ri], pers: refId(dr.PERSONNE && dr.PERSONNE[ri]), sources: listeRefs(dr.SOURCE && dr.SOURCE[ri]),
-        doc: texteCellule(dr.DOCUMENT && dr.DOCUMENT[ri]).trim(), statut: texteCellule(dr.STATUT && dr.STATUT[ri]).trim() || 'À faire', notes: texteCellule(dr.NOTES && dr.NOTES[ri]).trim() });
+        doc: texteCellule(dr.DOCUMENT && dr.DOCUMENT[ri]).trim(), statut: texteCellule(dr.STATUT && dr.STATUT[ri]).trim() || 'À faire', notes: texteCellule(dr.NOTES && dr.NOTES[ri]).trim(),
+        infos: texteCellule(dr.INFOS && dr.INFOS[ri]).trim(), etapes: texteCellule(dr.ETAPES && dr.ETAPES[ri]).trim() });
     }
   }
   etat.recherches = REC;
@@ -3726,9 +3736,13 @@ async function assurerTablesAnnexes(cfg) {
       if (etat.tSources) { colsR.push({ id: 'SOURCE', type: 'RefList:' + etat.tSources, label: 'SOURCES' }); }
       colsR.push({ id: 'STATUT', type: 'Choice', label: 'STATUT', choix: STATUTS_RECH });
       colsR.push({ id: 'NOTES', type: 'Text', label: 'NOTES' });
+      colsR.push({ id: 'INFOS', type: 'Text', label: 'INFOS' });
+      colsR.push({ id: 'ETAPES', type: 'Text', label: 'ETAPES' });
       await creerTables([{ id: ID_RECH, libelle: LABEL_RECH, colonnes: colsR.concat(COLONNES_META) }]);
       etat.tRech = trouverTableModele(ID_RECH);
     }
+    if (etat.tRech && !infoColonne(etat.tRech, 'INFOS')) { await ajouterColonne(etat.tRech, 'INFOS', 'Text', 'INFOS'); await chargerMeta(); }
+    if (etat.tRech && !infoColonne(etat.tRech, 'ETAPES')) { await ajouterColonne(etat.tRech, 'ETAPES', 'Text', 'ETAPES'); await chargerMeta(); }
     if (etat.tDocs && etat.tRech && !infoColonne(etat.tDocs, 'RECHERCHE')) {
       await ajouterColonne(etat.tDocs, 'RECHERCHE', 'Ref:' + etat.tRech, 'RECHERCHE');
       await chargerMeta();
@@ -3967,6 +3981,36 @@ function liensPreRemplis(p) {
   return creer('p', { classe: 'no-print', attrs: { style: 'margin:.125rem 0 0' } }, noeuds);
 }
 
+function lignesInfos(txt) {
+  return (txt || '').split(/\n/).map(function (l) { return l.trim(); }).filter(Boolean).map(function (l) {
+    var i = l.indexOf(' : ');
+    return i > 0 ? { etiq: l.slice(0, i).trim(), val: l.slice(i + 3).trim() } : { etiq: '', val: l };
+  });
+}
+
+function blocInfosRecherche(r) {
+  var L = lignesInfos(r.infos);
+  if (!L.length) { return null; }
+  var prio = L.filter(function (x) { return /^priorit/i.test(x.etiq); })[0];
+  var autres = L.filter(function (x) { return x !== prio; });
+  var noeuds = autres.map(function (x) {
+    return creer('div', { classe: 'rech-info' + (/^(attention|à vérifier)/i.test(x.etiq) ? ' rech-info--att' : '') + (x.val.length > 70 ? ' rech-info--large' : '') }, [
+      creer('span', { classe: 'rech-etiq', texte: x.etiq || 'Info' }),
+      creer('span', { classe: 'rech-val', texte: x.val })
+    ]);
+  });
+  var out = [];
+  if (prio) { out.push(creer('p', { attrs: { style: 'margin:.25rem 0 0' } }, [badge('Priorité ' + prio.val, 'br-a')])); }
+  out.push(creer('div', { classe: 'rech-grille' }, noeuds));
+  return creer('div', {}, out);
+}
+
+function blocEtapesRecherche(r) {
+  var E = (r.etapes || '').split(/\n/).map(function (l) { return l.trim().replace(/^\d+[.)]\s*/, ''); }).filter(Boolean);
+  if (!E.length) { return null; }
+  return creer('div', { classe: 'rech-bloc' }, [creer('span', { classe: 'rech-etiq', texte: 'Marche à suivre' }), creer('ol', { classe: 'rech-etapes' }, E.map(function (t) { return creer('li', { texte: t }); }))]);
+}
+
 function carteRecherche(r, avecPersonne) {
   var srcs = sourcesDe(r);
   var p = r.pers ? pers(r.pers) : null;
@@ -3979,9 +4023,11 @@ function carteRecherche(r, avecPersonne) {
     ]),
     creer('div', { classe: 'compteurs', attrs: { style: 'margin:.25rem 0' } }, [badge(r.statut, classeStatut(r.statut))]),
     avecPersonne && p ? creer('p', { attrs: { style: 'margin:.25rem 0' } }, [avecPhoto(p.id, creer('button', { classe: 'lien-personne', texte: nomComplet(p), clic: function () { ouvrirFiche(p.id); } }))]) : null,
-    liens.length ? creer('p', { attrs: { style: 'margin:.125rem 0 0' } }, [creer('span', { classe: 'indice', texte: 'Où chercher : ' })].concat(liens)) : null,
+    blocInfosRecherche(r),
+    liens.length ? creer('div', { classe: 'rech-bloc' }, [creer('span', { classe: 'rech-etiq', texte: 'Où chercher' }), creer('p', { attrs: { style: 'margin:0' } }, liens)]) : null,
     p ? liensPreRemplis(p) : null,
-    r.notes ? creer('p', { texte: r.notes, attrs: { style: 'margin:.25rem 0 0;white-space:pre-line' } }) : null,
+    blocEtapesRecherche(r),
+    r.notes ? creer('div', { classe: 'rech-notes' }, [creer('span', { classe: 'rech-etiq', texte: 'Mes notes' }), creer('p', { texte: r.notes, attrs: { style: 'margin:0;white-space:pre-line' } })]) : null,
     docsDeRecherche(r).length ? creer('div', { attrs: { style: 'margin-top:.375rem' } }, docsDeRecherche(r).map(function (d) {
       return creer('p', { attrs: { style: 'margin:0' } }, [creer('span', { texte: typeDoc(d.type).icone + ' ', attrs: { 'aria-hidden': 'true' } }), creer('button', { classe: 'lien-personne', texte: d.libelle || typeDoc(d.type).nom, clic: function () { relayer(ouvrirDocument(d), 'Ouverture du document'); } })]);
     })) : null,
@@ -4100,7 +4146,9 @@ function ouvrirFormRecherche(r, pidDefaut) {
     champ('Personne concernée', selPers),
     champ('Statut', selSt),
     zoneSrc,
-    champ('Notes', saisie('rechNotes', r ? r.notes : '', { multiligne: true, lignes: 4, indice: 'Salle de lecture seulement, commune, noms, dates...' }), { facultatif: true, plein: true })
+    champ('Ce qu’on sait (une info par ligne, sous la forme « Titre : valeur »)', saisie('rechInfos', r ? r.infos : '', { multiligne: true, lignes: 6, indice: 'Priorité : 1\nÉpoux : Albert MASSON, né le 05/04/1895\nMariage : entre 1915 et 1929\nLieu : à trouver' }), { facultatif: true, plein: true }),
+    champ('Marche à suivre (une étape par ligne)', saisie('rechEtapes', r ? r.etapes : '', { multiligne: true, lignes: 4, indice: 'Chercher le couple sur Filae\nOuvrir l’état civil aux Archives' }), { facultatif: true, plein: true }),
+    champ('Mes notes', saisie('rechNotes', r ? r.notes : '', { multiligne: true, lignes: 4, indice: 'Vos remarques personnelles sur cette recherche' }), { facultatif: true, plein: true })
   ])];
   var pied = [];
   if (r) {
@@ -4117,7 +4165,7 @@ function ouvrirFormRecherche(r, pidDefaut) {
     if (!doc) { marquerInvalide('rechDoc', 'Indiquez le document à trouver.'); return; }
     var ids = [];
     (etat.sources || []).forEach(function (x, i) { if (document.getElementById('rechSrc' + i).checked) { ids.push(x.id); } });
-    var rec = { PERSONNE: parseInt(selPers.value, 10) || 0, DOCUMENT: doc, STATUT: selSt.value, NOTES: document.getElementById('rechNotes').value.trim() };
+    var rec = { PERSONNE: parseInt(selPers.value, 10) || 0, DOCUMENT: doc, STATUT: selSt.value, NOTES: document.getElementById('rechNotes').value.trim(), INFOS: document.getElementById('rechInfos').value.trim(), ETAPES: document.getElementById('rechEtapes').value.trim() };
     var infoS = infoColonne(etat.tRech, 'SOURCE');
     if (infoS) { rec.SOURCE = /^RefList/.test(infoS.type) ? ['L'].concat(ids) : (ids[0] || 0); }
     try {
