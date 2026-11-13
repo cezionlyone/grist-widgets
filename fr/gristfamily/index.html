@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.19.2
+  Version     : 1.20.0
   Date        : 11/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.20.0 - 13/11/2026 - madeXcé - Vue Ascendance : toutes les générations connues par défaut, zoom et déplacement (boutons, Ctrl + molette, pincement), texte qui s’adapte à chaque case et dates qui ne débordent plus.
   1.19.2 - 13/11/2026 - madeXcé - Vue Ascendance : la taille du texte s’adapte à chaque case pour que les prénoms et les noms restent entiers.
   1.19.1 - 13/11/2026 - madeXcé - Vue Ascendance : l’éventail occupe toute la place, les noms passent à la ligne au lieu d’être tronqués et les caractères sont plus grands.
   1.19.0 - 13/11/2026 - madeXcé - La photo (ou les initiales) de la personne s’affiche aussi dans la Liste, les Anniversaires, la Carte, les Cousins ADN, les Recherches et les proches de la fiche.
@@ -403,6 +404,7 @@ textarea.saisie { resize: vertical; }
 .titre-vue__nom { font-size: 1rem; font-weight: 700; background: rgba(247, 247, 247, .9); padding: 0 .25rem; border-radius: var(--r-s); }
 
 /* === Éventail === */
+.commandes-eventail { display: flex; gap: .375rem; justify-content: flex-end; margin: 0 auto .25rem; max-width: 1400px; }
 .eventail { width: 100%; max-width: 1400px; height: auto; display: block; margin: 0 auto; }
 .secteur { stroke: var(--blanc); stroke-width: 2; cursor: pointer; }
 .secteur:hover, .secteur:focus-visible { filter: brightness(.95); outline: none; stroke: var(--vert-f); stroke-width: 3; }
@@ -622,7 +624,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.19.2</span>
+    <span class="bandeau__version">v1.20.0</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -658,7 +660,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.19.2';
+var VERSION = '1.20.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -4816,9 +4818,26 @@ function rendreAscendance(zone) {
   if (!etat.donnees.ordre.length) { rendreArbre(zone); return; }
   var centre = idCentre();
   var pc = pers(centre);
-  var G = etat.genEventail || Math.max(3, Math.min(5, etat.config.affichage.ascendants || 4));
-  var selG = liste('genEventail', [2, 3, 4, 5, 6].map(function (n) { return { valeur: n, libelle: n + ' générations' }; }), G);
-  selG.addEventListener('change', function () { etat.genEventail = parseInt(selG.value, 10); rendre(); });
+  /* Profondeur connue : nombre de générations d'ancêtres réellement présentes dans l'arbre */
+  var profondeur = 0;
+  var courant = [centre];
+  while (profondeur < 14) {
+    var suivant = [];
+    courant.forEach(function (pid) {
+      var par = pid ? unionDe(pers(pid).parents) : null;
+      if (par && par.a) { suivant.push(par.a); }
+      if (par && par.b) { suivant.push(par.b); }
+    });
+    if (!suivant.length) { break; }
+    profondeur++;
+    courant = suivant;
+  }
+  var maxG = Math.max(2, profondeur);
+  var G = Math.min(maxG, etat.genEventail || maxG);
+  var choixG = [];
+  for (var ng = 2; ng <= maxG; ng++) { choixG.push({ valeur: ng, libelle: ng + ' générations' + (ng === maxG ? ' (toutes)' : '') }); }
+  var selG = liste('genEventail', choixG, G);
+  selG.addEventListener('change', function () { etat.genEventail = parseInt(selG.value, 10); etat.zoomEv = null; rendre(); });
   /* Places : niveau 0 = centre ; aux places 2j et 2j+1 du niveau k, les
      parents de la place j du niveau k-1. */
   var places = [[centre]];
@@ -4840,12 +4859,15 @@ function rendreAscendance(zone) {
   ]));
   var ns = 'http://www.w3.org/2000/svg';
   var svg = document.createElementNS(ns, 'svg');
-  svg.setAttribute('viewBox', '0 0 1010 535');
+  var r0 = 62;
+  var largeurAnneau = G <= 5 ? (502 - r0) / G : 88;
+  var rmax = r0 + G * largeurAnneau;
+  var cx = rmax + 5, cy = rmax + 20;
+  var largeurVue = 2 * rmax + 10, hauteurVue = rmax + 35;
+  svg.setAttribute('viewBox', '0 0 ' + largeurVue.toFixed(0) + ' ' + hauteurVue.toFixed(0));
   svg.setAttribute('class', 'eventail');
   svg.setAttribute('role', 'group');
   svg.setAttribute('aria-label', 'Éventail des ancêtres de ' + nomComplet(pc));
-  var cx = 505, cy = 520, r0 = 62, rmax = 502;
-  var largeurAnneau = (rmax - r0) / G;
   var couleurs = { a: ['#FDE7CF', '#8A4200'], b: ['#DCF4EB', '#005E3A'] };
   var arc = function (r1, r2, a1, a2) {
     var p = function (r, a) { return (cx + r * Math.cos(a)).toFixed(1) + ' ' + (cy + r * Math.sin(a)).toFixed(1); };
@@ -4906,6 +4928,7 @@ function rendreAscendance(zone) {
       var rot = k2 <= 2 ? deg + 90 : (deg > 270 ? deg : deg + 180);
       var tx = cx + rm * Math.cos(am), ty = cy + rm * Math.sin(am);
       var tailleBase = k2 <= 2 ? 16 : (k2 === 3 ? 14.5 : (k2 === 4 ? 13 : (k2 === 5 ? 11.5 : 10.5)));
+      if (G <= 5) { tailleBase = tailleBase * 1; }
       var taille = tailleBase;
       var lignes = [];
       var nbPren = 1;
@@ -4913,8 +4936,8 @@ function rendreAscendance(zone) {
       var composer = function (t, avecDates, force) {
         var longueur = k2 <= 2 ? rm * ouv * 0.85 : largeurAnneau * 0.94;
         var travers = k2 <= 2 ? largeurAnneau * 0.9 : r1 * ouv * 0.94;
-        var maxCar = Math.max(5, Math.floor(longueur / (t * 0.54)));
-        var maxLig = Math.max(2, Math.floor(travers / (t * 1.16)));
+        var maxCar = Math.max(3, Math.floor(longueur / (t * 0.54)));
+        var maxLig = Math.max(1, Math.floor(travers / (t * 1.16)));
         var troncature = false;
         var envelopper = function (txt) {
           var mots = (txt || '').split(/\s+/).filter(function (m) { return m; });
@@ -4930,6 +4953,7 @@ function rendreAscendance(zone) {
         var lp = envelopper(p.prenom || (p.nom ? '' : nomComplet(p)));
         var ln = envelopper(p.nom);
         var ld = avecDates && periodeVie(p) ? [periodeVie(p)] : [];
+        if (ld.length && ld[0].length > maxCar) { if (!force) { return null; } ld = []; }
         var total = lp.length + ln.length + ld.length;
         if (!force && (troncature || total > maxLig)) { return null; }
         if (force && total > maxLig) {
@@ -4939,11 +4963,11 @@ function rendreAscendance(zone) {
         return { lp: lp, lignes: lp.concat(ln, ld) };
       };
       var resultat = null;
-      for (var t = tailleBase; t >= 7 && !resultat; t -= 0.5) {
+      for (var t = tailleBase; t >= 4 && !resultat; t -= 0.5) {
         resultat = composer(t, k2 <= 4, false) || composer(t, false, false);
         if (resultat) { taille = t; }
       }
-      if (!resultat) { taille = 7; resultat = composer(7, false, true); }
+      if (!resultat) { taille = 4; resultat = composer(4, false, true); }
       lignes = resultat.lignes;
       nbPren = resultat.lp.length;
       var texte = document.createElementNS(ns, 'text');
@@ -4976,12 +5000,93 @@ function rendreAscendance(zone) {
   gc.setAttribute('aria-label', nomComplet(pc) + ', au centre. Ouvrir la fiche');
   activer(gc, function () { ouvrirFiche(centre); });
   svg.appendChild(gc);
+  /* Zoom et déplacement : boutons, Ctrl + molette, pincement, glisser quand on est zoomé */
+  var plein = { x: 0, y: 0, w: largeurVue, h: hauteurVue };
+  var vue = etat.zoomEv && etat.zoomEv.cle === G + '_' + centre ? etat.zoomEv.v : { x: plein.x, y: plein.y, w: plein.w, h: plein.h };
+  var appliquerVue = function () {
+    svg.setAttribute('viewBox', vue.x.toFixed(1) + ' ' + vue.y.toFixed(1) + ' ' + vue.w.toFixed(1) + ' ' + vue.h.toFixed(1));
+    svg.style.touchAction = vue.w < plein.w - 1 ? 'none' : 'auto';
+    svg.style.cursor = vue.w < plein.w - 1 ? 'grab' : '';
+    etat.zoomEv = { cle: G + '_' + centre, v: vue };
+  };
+  var borner = function () {
+    vue.w = Math.max(plein.w / 40, Math.min(plein.w, vue.w));
+    vue.h = vue.w * plein.h / plein.w;
+    vue.x = Math.max(plein.x - vue.w * 0.1, Math.min(plein.x + plein.w - vue.w * 0.9, vue.x));
+    vue.y = Math.max(plein.y - vue.h * 0.1, Math.min(plein.y + plein.h - vue.h * 0.9, vue.y));
+  };
+  var zoomerEv = function (facteur, fx, fy) {
+    var nx = vue.x + vue.w * fx, ny = vue.y + vue.h * fy;
+    var nw = vue.w / facteur;
+    vue.x = nx - (nx - vue.x) / facteur; vue.y = ny - (ny - vue.y) / facteur; vue.w = nw; vue.h = nw * plein.h / plein.w;
+    borner(); appliquerVue();
+  };
+  var pointeurs = {};
+  var depart = null;
+  var pincement = null;
+  var aBouge = false;
+  svg.addEventListener('pointerdown', function (e) {
+    pointeurs[e.pointerId] = { x: e.clientX, y: e.clientY };
+    var ids = Object.keys(pointeurs);
+    aBouge = false;
+    if (ids.length === 2) {
+      var a = pointeurs[ids[0]], b = pointeurs[ids[1]];
+      pincement = { dist: Math.hypot(a.x - b.x, a.y - b.y), w: vue.w };
+      depart = null;
+    } else if (vue.w < plein.w - 1) {
+      depart = { x: e.clientX, y: e.clientY, vx: vue.x, vy: vue.y };
+    }
+  });
+  svg.addEventListener('pointermove', function (e) {
+    if (!pointeurs[e.pointerId]) { return; }
+    pointeurs[e.pointerId] = { x: e.clientX, y: e.clientY };
+    var r = svg.getBoundingClientRect();
+    var ids = Object.keys(pointeurs);
+    if (ids.length === 2 && pincement) {
+      var a = pointeurs[ids[0]], b = pointeurs[ids[1]];
+      var dist = Math.hypot(a.x - b.x, a.y - b.y);
+      var cible = pincement.w * pincement.dist / Math.max(1, dist);
+      zoomerEv(vue.w / cible, ((a.x + b.x) / 2 - r.left) / r.width, ((a.y + b.y) / 2 - r.top) / r.height);
+      aBouge = true;
+    } else if (depart) {
+      var dx = e.clientX - depart.x, dy = e.clientY - depart.y;
+      if (Math.abs(dx) + Math.abs(dy) > 5) { aBouge = true; }
+      if (aBouge) {
+        vue.x = depart.vx - dx * vue.w / r.width;
+        vue.y = depart.vy - dy * vue.h / r.height;
+        borner(); appliquerVue();
+      }
+    }
+  });
+  var finEv = function (e) {
+    delete pointeurs[e.pointerId];
+    if (Object.keys(pointeurs).length < 2) { pincement = null; }
+    if (!Object.keys(pointeurs).length) { depart = null; }
+  };
+  svg.addEventListener('pointerup', finEv);
+  svg.addEventListener('pointercancel', finEv);
+  /* un glissement ne doit pas ouvrir une fiche */
+  svg.addEventListener('click', function (e) { if (aBouge) { e.stopPropagation(); e.preventDefault(); aBouge = false; } }, true);
+  svg.addEventListener('wheel', function (e) {
+    if (!(e.ctrlKey || e.metaKey)) { return; }
+    e.preventDefault();
+    var r = svg.getBoundingClientRect();
+    zoomerEv(e.deltaY < 0 ? 1.2 : 1 / 1.2, (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+  }, { passive: false });
+  appliquerVue();
+  var commandesEv = creer('div', { classe: 'commandes-eventail no-print' }, [
+    bouton('Zoomer', 'ico', 'plus', function () { zoomerEv(1.4, 0.5, 0.75); }),
+    bouton('Dézoomer', 'ico', 'moins', function () { zoomerEv(1 / 1.4, 0.5, 0.75); }),
+    bouton('Tout voir', 'ico', 'ajuster', function () { vue.x = plein.x; vue.y = plein.y; vue.w = plein.w; vue.h = plein.h; appliquerVue(); })
+  ]);
+  page.appendChild(commandesEv);
   page.appendChild(svg);
   var br = calculerBranches(centre);
   page.appendChild(creer('div', { classe: 'compteurs', attrs: { style: 'justify-content:center;margin-top:.75rem' } }, [
     br.noms.a ? creer('span', {}, [creer('span', { classe: 'pastille br-a', attrs: { 'aria-hidden': 'true' } }), br.noms.a + ' (à gauche)']) : null,
     br.noms.b ? creer('span', {}, [creer('span', { classe: 'pastille br-b', attrs: { 'aria-hidden': 'true' } }), br.noms.b + ' (à droite)']) : null,
-    etat.peutModifier ? creer('span', { classe: 'indice', texte: 'Cases en pointillés : cliquez pour ajouter un parent.' }) : null
+    etat.peutModifier ? creer('span', { classe: 'indice', texte: 'Cases en pointillés : cliquez pour ajouter un parent.' }) : null,
+    creer('span', { classe: 'indice no-print', texte: 'Zoom : boutons, Ctrl + molette ou pincement ; glissez pour vous déplacer.' })
   ]));
 }
 
