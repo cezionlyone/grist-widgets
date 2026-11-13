@@ -431,6 +431,8 @@ table.tableau { width: 100%; border-collapse: collapse; }
 .tableau tbody tr:hover { background: #FAFAFB; }
 .tri { display: inline-flex; align-items: center; gap: .25rem; border: 0; background: transparent; font: inherit; color: inherit; cursor: pointer; padding: .25rem 0; }
 .lien-personne { border: 0; background: transparent; padding: 0; color: var(--vert-f); font-weight: 600; cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 2px; text-decoration-color: rgba(0, 117, 72, .35); }
+.prenoms-suite { color: #6B7280; font-weight: 400; }
+.lien-personne .prenoms-suite { color: #5F7F70; }
 .lien-personne:hover { text-decoration-color: currentColor; }
 .filtres { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end; margin-bottom: 1rem; }
 .filtres .champ { flex: 1 1 12rem; max-width: 18rem; }
@@ -672,7 +674,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.21.1';
+var VERSION = '1.22.0';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -1843,6 +1845,14 @@ function comparerNaissance(x, y) {
 function pers(id) { return etat.donnees && id ? etat.donnees.P[id] || null : null; }
 function unionDe(id) { return etat.donnees && id ? etat.donnees.U[id] || null : null; }
 function nomComplet(p) { if (!p) { return ''; } var s = (p.prenom + ' ' + p.nom).trim(); return s || 'Sans nom'; }
+function nomAffiche(p) {
+  var mots = ((p && p.prenom) || '').trim().split(/\s+/).filter(Boolean);
+  if (!mots.length) { return creer('span', { classe: 'nom-aff', texte: nomComplet(p) }); }
+  var n = [mots[0]];
+  if (mots.length > 1) { n.push(' ', creer('span', { classe: 'prenoms-suite', texte: mots.slice(1).join(' ') })); }
+  if ((p.nom || '').trim()) { n.push(' ' + p.nom.trim()); }
+  return creer('span', { classe: 'nom-aff' }, n);
+}
 function initiales(p) {
   var a = (p.prenom || '').trim().charAt(0);
   var b = (p.nom || '').trim().charAt(0);
@@ -2291,7 +2301,7 @@ function zoneRecherche() {
     if (!trouves.length && !cousinsTrouves.length) { ul.appendChild(creer('li', { classe: 'indice', texte: 'Personne ne correspond.', attrs: { style: 'padding:.5rem .625rem' } })); }
     trouves.forEach(function (p) {
       var b = creer('button', { clic: function () { inp.value = ''; ul.hidden = true; allerAPersonne(p.id); } },
-        [creer('span', { texte: nomComplet(p) }), creer('span', { classe: 'indice', texte: anneeAffichee(p.naissance, p.naissanceApprox) })]);
+        [creer('span', {}, [nomAffiche(p)]), creer('span', { classe: 'indice', texte: anneeAffichee(p.naissance, p.naissanceApprox) })]);
       ul.appendChild(creer('li', {}, [b]));
     });
     if (cousinsTrouves.length) {
@@ -3438,7 +3448,7 @@ function noeudCarte(n, centre, br) {
   var carte = creer('button', { classe: classes.join(' '), attrs: { 'data-pid': n.pid, 'aria-label': etiquette + '. Ouvrir la fiche' },
     clic: function () { ouvrirFiche(n.pid); } }, [
     avatar(p, classeCouleur(p, br)),
-    creer('span', { classe: 'carte__txt' }, [creer('span', { classe: 'carte__nom', texte: nom }), sous ? creer('span', { classe: 'carte__info', texte: sous }) : null, allieDe ? creer('span', { classe: 'carte__info carte__allie', texte: allieDe }) : null, info ? creer('span', { classe: 'carte__info', texte: info }) : null])
+    creer('span', { classe: 'carte__txt' }, [creer('span', { classe: 'carte__nom' }, [nomAffiche(p)]), sous ? creer('span', { classe: 'carte__info', texte: sous }) : null, allieDe ? creer('span', { classe: 'carte__info carte__allie', texte: allieDe }) : null, info ? creer('span', { classe: 'carte__info', texte: info }) : null])
   ]);
   carte.addEventListener('dblclick', function () { etat.centreSession = n.pid; rendre(); centrerSur(n.pid, true); });
   var noeud = creer('div', { classe: 'noeud', attrs: { style: 'left:' + Math.round(n.x) + 'px;top:' + Math.round(n.y) + 'px' } }, [carte]);
@@ -4022,7 +4032,7 @@ function carteRecherche(r, avecPersonne) {
       etat.peutModifier ? bouton('Modifier la recherche ' + (r.doc || ''), 'ico', 'modifier', function () { ouvrirFormRecherche(r); }, { petit: true, classe: 'no-print' }) : null
     ]),
     creer('div', { classe: 'compteurs', attrs: { style: 'margin:.25rem 0' } }, [badge(r.statut, classeStatut(r.statut))]),
-    avecPersonne && p ? creer('p', { attrs: { style: 'margin:.25rem 0' } }, [avecPhoto(p.id, creer('button', { classe: 'lien-personne', texte: nomComplet(p), clic: function () { ouvrirFiche(p.id); } }))]) : null,
+    avecPersonne && p ? creer('p', { attrs: { style: 'margin:.25rem 0' } }, [avecPhoto(p.id, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(p.id); } }, [nomAffiche(p)]))]) : null,
     blocInfosRecherche(r),
     liens.length ? creer('div', { classe: 'rech-bloc' }, [creer('span', { classe: 'rech-etiq', texte: 'Où chercher' }), creer('p', { attrs: { style: 'margin:0' } }, liens)]) : null,
     p ? liensPreRemplis(p) : null,
@@ -4281,7 +4291,7 @@ function lienPersonne(pid, sous) {
   var p = pers(pid);
   if (!p) { return null; }
   return creer('div', { classe: 'rel' }, [
-    avecPhoto(pid, creer('button', { classe: 'lien-personne', texte: nomComplet(p), clic: function () { ouvrirFiche(pid); } })),
+    avecPhoto(pid, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(pid); } }, [nomAffiche(p)])),
     creer('span', { classe: 'rel__sous', texte: sous !== undefined ? sous : periodeVie(p) })
   ]);
 }
@@ -4346,7 +4356,7 @@ function rendreFiche() {
   ]);
   corps.appendChild(creer('div', { classe: 'fiche__id' }, [
     av,
-    creer('h3', { classe: 'fiche__nom', texte: nomComplet(p) }),
+    creer('h3', { classe: 'fiche__nom' }, [nomAffiche(p)]),
     p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom) ? creer('p', { classe: 'fiche__ligne', texte: accord(p, 'Né ', 'Née ', 'Nom de naissance : ') + p.nomNaissance }) : null,
     p.photoUrl && !(p.photo && p.photo.length) ? creer('p', { classe: 'fiche__ligne', texte: 'Portrait illustré, sans ressemblance réelle.' }) : null,
     info ? creer('div', { classe: 'compteurs', attrs: { style: 'justify-content:center' } }, [badge(libelleBranche(info.branche, br.noms), classeBranche(info.branche)), info.branche !== 'centre' && libelleParente(p.id, br, idCentre()) ? badge(libelleParente(p.id, br, idCentre()) + ' de ' + (pers(idCentre()).prenom || nomComplet(pers(idCentre())))) : null]) : null
@@ -4368,7 +4378,7 @@ function rendreFiche() {
       var enf = enfantsUnion(uid);
       return creer('div', { classe: 'union-bloc' }, [
         creer('div', { classe: 'union-bloc__tete' }, [
-          cj ? creer('button', { classe: 'lien-personne', texte: nomComplet(pers(cj)), clic: function () { ouvrirFiche(cj); } }) : creer('span', { classe: 'indice', texte: 'Autre parent inconnu' }),
+          cj ? creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(cj); } }, [nomAffiche(pers(cj))]) : creer('span', { classe: 'indice', texte: 'Autre parent inconnu' }),
           etat.peutModifier ? bouton('Modifier cette union', 'ico', 'modifier', function () { ouvrirFormUnion(uid); }, { petit: true }) : null
         ]),
         creer('p', { classe: 'indice', texte: desc, attrs: { style: 'margin:0 0 .375rem' } })
@@ -5037,8 +5047,19 @@ function rendreAscendance(zone) {
         var t = document.createElementNS(ns, 'tspan');
         t.setAttribute('x', '0');
         t.setAttribute('dy', i === 0 ? (-(lignes.length - 1) * taille * 0.6 + taille * 0.35).toFixed(1) : (taille * 1.2).toFixed(1));
-        if (i < nbPren) { t.setAttribute('font-weight', '700'); }
-        t.textContent = l;
+        if (i < nbPren) {
+          t.setAttribute('font-weight', '700');
+          var mm = l.split(' ');
+          var suite = mm.slice(i === 0 ? 1 : 0).join(' ');
+          if (i === 0) { t.appendChild(document.createTextNode(mm[0] + (suite ? ' ' : ''))); }
+          if (suite) {
+            var ts2 = document.createElementNS(ns, 'tspan');
+            ts2.setAttribute('font-weight', '400');
+            ts2.setAttribute('fill-opacity', '0.6');
+            ts2.textContent = suite;
+            t.appendChild(ts2);
+          }
+        } else { t.textContent = l; }
         texte.appendChild(t);
       });
       g.appendChild(texte);
@@ -5228,7 +5249,7 @@ function rendreListe(zone) {
     l.forEach(function (p) {
       var i = br.parId[p.id];
       tbody.appendChild(creer('tr', {}, [
-        creer('td', {}, [p.verifiee ? cocheVerifiee('coche-verif--ligne') : null, p.aVerifier ? pointAVerifier('point-verif--ligne') : null, avecPhoto(p.id, creer('button', { classe: 'lien-personne', texte: nomComplet(p), clic: function () { ouvrirFiche(p.id); } })),
+        creer('td', {}, [p.verifiee ? cocheVerifiee('coche-verif--ligne') : null, p.aVerifier ? pointAVerifier('point-verif--ligne') : null, avecPhoto(p.id, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(p.id); } }, [nomAffiche(p)])),
           p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom) ? creer('div', { classe: 'indice', texte: accord(p, 'né ', 'née ', 'naissance : ') + p.nomNaissance }) : null]),
         creer('td', {}, [formaterDate(p.naissance, p.naissanceApprox), p.naissanceLieu ? creer('div', { classe: 'indice', texte: p.naissanceLieu }) : null]),
         creer('td', {}, [p.deces ? formaterDate(p.deces, p.decesApprox) : (estDecede(p) ? 'date inconnue' : ''), p.decesLieu ? creer('div', { classe: 'indice', texte: p.decesLieu }) : null]),
@@ -5312,7 +5333,7 @@ function rendreAnniversaires(zone) {
     }
     bloc.appendChild(creer('div', { classe: 'anniv anniv--' + e.type }, [
       creer('span', { classe: 'anniv__date' }, [creer('span', { classe: 'anniv__jour', texte: e.quand.getDate() }), creer('span', { classe: 'anniv__mois', texte: MOIS_COURTS[e.quand.getMonth()] })]),
-      creer('span', {}, [avecPhoto(e.pid, creer('button', { classe: 'lien-personne', texte: e.titre, clic: function () { ouvrirFiche(e.pid); } })), creer('span', { classe: 'indice', texte: ' ' + e.detail })]),
+      creer('span', {}, [avecPhoto(e.pid, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(e.pid); } }, [e.type === 'union' || !pers(e.pid) ? e.titre : nomAffiche(pers(e.pid))])), creer('span', { classe: 'indice', texte: ' ' + e.detail })]),
       creer('span', { attrs: { style: 'margin-left:auto' } }, [badge(e.type === 'naissance' ? 'Anniversaire' : (e.type === 'union' ? 'Union' : 'Souvenir'), e.type === 'naissance' ? 'br-b' : (e.type === 'union' ? 'br-a' : ''))])
     ]));
   });
@@ -5411,7 +5432,7 @@ function rendreCousins(zone) {
         creer('td', {}, [c.cm ? formaterNombre(c.cm, 1) + ' cM' : '', detailADN(c) ? creer('div', { classe: 'indice', texte: detailADN(c) }) : null]),
         creer('td', {}, [c.relation ? c.relation : (estim ? creer('span', { classe: 'indice', texte: 'Estimation : ' + estim }) : '')]),
         creer('td', {}, [c.branche ? badge(c.branche, c.branche === 'Paternelle' ? 'br-a' : (c.branche === 'Maternelle' ? 'br-b' : '')) : null]),
-        creer('td', {}, [anc ? avecPhoto(anc.id, creer('button', { classe: 'lien-personne', texte: nomComplet(anc), clic: function () { ouvrirFiche(anc.id); } })) : null,
+        creer('td', {}, [anc ? avecPhoto(anc.id, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(anc.id); } }, [nomAffiche(anc)])) : null,
           c.lieuCommun ? creer('div', { classe: 'indice', texte: 'Lieu commun : ' + c.lieuCommun }) : null]),
         creer('td', {}, [c.contacte ? badge('Contacté', 'br-b') : null, contactCousin(c)])
       ]));
@@ -5986,7 +6007,7 @@ function rendreCarte(zone) {
   lieux.forEach(function (l) {
     tb.appendChild(creer('tr', {}, [
       creer('th', { texte: l.nom, attrs: { scope: 'row', style: 'font-weight:600' } }),
-      creer('td', {}, l.personnes.map(function (pid) { return creer('div', { attrs: { style: 'margin:.125rem 0' } }, [avecPhoto(pid, creer('button', { classe: 'lien-personne', texte: nomComplet(pers(pid)), clic: function () { ouvrirFiche(pid); } })), texteAgeApres(pid)]); })),
+      creer('td', {}, l.personnes.map(function (pid) { return creer('div', { attrs: { style: 'margin:.125rem 0' } }, [avecPhoto(pid, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(pid); } }, [nomAffiche(pers(pid))])), texteAgeApres(pid)]); })),
       avecCousins ? creer('td', {}, l.cousins.map(function (cid) { var c = etat.donnees.cousins.filter(function (x) { return x.id === cid; })[0]; return creer('div', { texte: c ? ((c.prenom + ' ' + c.nom).trim() || 'Sans nom') + (c.cm ? ' (' + formaterNombre(c.cm, 0) + ' cM)' : '') : '' }); })) : null
     ]));
   });
@@ -6020,7 +6041,7 @@ function rendreCarte(zone) {
         var m = L.circleMarker([g.lat, g.lon], { radius: Math.min(22, 7 + Math.sqrt(nb) * 3), color: cou ? '#6B2FA0' : '#FFFFFF', weight: cou && fam ? 4 : 2,
           fillColor: fam ? '#007548' : '#6B2FA0', fillOpacity: 0.85 });
         var pop = creer('div', { attrs: { style: 'min-width:11rem' } }, [creer('strong', { texte: l.nom })]);
-        l.personnes.forEach(function (pid) { pop.appendChild(creer('div', { attrs: { style: 'margin:.25rem 0' } }, [avecPhoto(pid, creer('button', { classe: 'lien-personne', texte: nomComplet(pers(pid)), clic: function () { ouvrirFiche(pid); } })), texteAgeApres(pid)])); });
+        l.personnes.forEach(function (pid) { pop.appendChild(creer('div', { attrs: { style: 'margin:.25rem 0' } }, [avecPhoto(pid, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(pid); } }, [nomAffiche(pers(pid))])), texteAgeApres(pid)])); });
         l.cousins.forEach(function (cid) { var c = etat.donnees.cousins.filter(function (x) { return x.id === cid; })[0]; if (c) { pop.appendChild(creer('div', { texte: 'ADN : ' + ((c.prenom + ' ' + c.nom).trim() || 'Sans nom') + (c.cm ? ' (' + formaterNombre(c.cm, 0) + ' cM)' : '') })); } });
         m.bindPopup(pop);
         m.bindTooltip(l.nom + ' : ' + nb);
@@ -6435,7 +6456,7 @@ function etapeCartes(z, poserApercu) {
       var coul = b.affichage.couleur === 'aucune' ? 'br-aucune' : (b.affichage.couleur === 'generation' ? (p.br === 'a' ? 'gen-2' : 'gen-1') : classeBranche(p.br));
       ap.appendChild(creer('div', { classe: 'noeud', attrs: { style: 'position:relative' } }, [creer('div', { classe: 'carte' + (estDecede(p) ? ' carte--mort' : '') }, [
         creer('span', { classe: 'avatar ' + coul, texte: initiales(p) }),
-        creer('span', { classe: 'carte__txt' }, [creer('span', { classe: 'carte__nom', texte: nomComplet(p) }), sous ? creer('span', { classe: 'carte__info', texte: sous }) : null, info ? creer('span', { classe: 'carte__info', texte: info }) : null])
+        creer('span', { classe: 'carte__txt' }, [creer('span', { classe: 'carte__nom' }, [nomAffiche(p)]), sous ? creer('span', { classe: 'carte__info', texte: sous }) : null, info ? creer('span', { classe: 'carte__info', texte: info }) : null])
       ])]));
     });
     etat.config = ancienne;
