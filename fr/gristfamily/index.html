@@ -434,6 +434,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 .pr-grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: .75rem; }
 .pr-lien { padding: .375rem 0; border-top: 1px solid #ECECF1; font-size: .875rem; }
 .pr-lien:first-child { border-top: 0; }
+.pr-desc { margin-left: 1.5rem; }
 .pr-fleche { font-size: .75rem; color: #5F6672; margin: .125rem 0 .125rem 1.5rem; }
 .prenoms-suite { color: #6B7280; font-weight: 400; }
 .lien-personne .prenoms-suite { color: #5F7F70; }
@@ -692,7 +693,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.26.0';
+var VERSION = '1.26.1';
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
@@ -4129,7 +4130,7 @@ var GROUPES_PRENOMS = [
   ['alexandre', 'alexandrine'], ['emile', 'emilie'], ['victor', 'victoire'], ['leon', 'leonie', 'leonne'],
   ['francois', 'francoise'], ['gabriel', 'gabrielle'], ['etienne', 'etiennette'], ['marcel', 'marcelle', 'marcelline'],
   ['lucien', 'lucienne', 'lucie'], ['raymond', 'raymonde'], ['gaston', 'gastonne'], ['fernand', 'fernande'],
-  ['christian', 'christiane', 'christine'], ['gilbert', 'gilberte'], ['rene', 'renee'], ['marie', 'maria', 'mariette']
+  ['christian', 'christiane', 'christine', 'christelle'], ['gilbert', 'gilberte'], ['rene', 'renee'], ['marie', 'maria', 'mariette']
 ];
 
 function prenomsDe(p) {
@@ -4201,19 +4202,30 @@ function rendrePrenoms(zone) {
   if (!groupes.length) { page.appendChild(creer('p', { classe: 'indice', texte: 'Aucun prénom transmis repéré pour le moment.' })); }
   var grille = creer('div', { classe: 'pr-grille' });
   groupes.forEach(function (g) {
-    var lignes = g.liens.map(function (l) {
-      var a = pers(l.anc), d = pers(l.desc);
+    var parAnc = [];
+    var index = {};
+    g.liens.forEach(function (l) {
+      var k = l.anc + '|' + l.g;
+      if (!index[k]) { index[k] = { anc: l.anc, g: l.g, liste: [] }; parAnc.push(index[k]); }
+      index[k].liste.push(l);
+    });
+    var lignes = parAnc.map(function (bloc) {
+      var a = pers(bloc.anc);
       var an = a.naissance && a.naissance.a ? ' (' + a.naissance.a + ')' : '';
-      var dn = d.naissance && d.naissance.a ? ' (' + d.naissance.a + ')' : '';
+      var descendants = bloc.liste.map(function (l) {
+        var d = pers(l.desc);
+        var dn = d.naissance && d.naissance.a ? ' (' + d.naissance.a + ')' : '';
+        return creer('div', { classe: 'pr-desc' }, [avecPhoto(d.id, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(d.id); } }, [nomAffiche(d)])), dn, l.exact ? '' : creer('span', { classe: 'indice', texte: ' variante : ' + l.motAnc + ' → ' + l.mot })]);
+      });
+      var rel = libelleLienPrenom(a, bloc.g);
       return creer('div', { classe: 'pr-lien' }, [
         creer('div', {}, [avecPhoto(a.id, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(a.id); } }, [nomAffiche(a)])), an]),
-        creer('div', { classe: 'pr-fleche', texte: '↓ ' + libelleLienPrenom(a, l.g) + ' de' + (l.exact ? '' : ' (variante : ' + l.motAnc + ' → ' + l.mot + ')') }),
-        creer('div', {}, [avecPhoto(d.id, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(d.id); } }, [nomAffiche(d)])), dn])
-      ]);
+        creer('div', { classe: 'pr-fleche', texte: '↓ ' + rel + (bloc.liste.length > 1 ? ' de :' : ' de') })
+      ].concat(descendants));
     });
     var tete = creer('div', { classe: 'source-carte__tete' }, [creer('strong', { texte: g.titre }), badge(pluriel(g.liens.length, 'transmission', 'transmissions'))]);
-    var corps = lignes.length > 4
-      ? creer('details', {}, [creer('summary', { texte: 'Voir les ' + lignes.length + ' transmissions' })].concat(lignes))
+    var corps = lignes.length > 3
+      ? creer('details', {}, [creer('summary', { texte: 'Voir les ' + lignes.length + ' ancêtres' })].concat(lignes))
       : creer('div', {}, lignes);
     grille.appendChild(creer('div', { classe: 'source-carte' }, [tete, corps]));
   });
