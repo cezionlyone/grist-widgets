@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.31.8
+  Version     : 1.32.0
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.32.0 - 14/11/2026 - madeXcé - Barre au-dessus de l'arbre : mode Épuré ou Datas précises (dates et lieux complets, unions, infos manquantes signalées), choix des données affichées, mise en évidence (infos à compléter, à vérifier, vérifiées, branche, vivants, décédés) ; réglages propres à chaque utilisateur.
   1.31.8 - 14/11/2026 - madeXcé - Modifier une personne : champ « Parents » pour choisir le couple dont elle est l'enfant (conjoint connu ou autre parent inconnu) ; l'union devenue vide est supprimée.
   1.31.7 - 14/11/2026 - madeXcé - Liens web d'une personne : colonne LIENS (ajoutée toute seule), saisie dans la fiche, liens cliquables (https ou http seulement).
   1.31.6 - 14/11/2026 - madeXcé - Ajout d'un conjoint : il peut compléter l'union qui porte déjà les enfants (plus d'union en double) ; parcours de vie : décès du père et de la mère, avec les âges.
@@ -427,6 +428,20 @@ textarea.saisie { resize: vertical; }
 .commandes { position: absolute; right: 1rem; bottom: 1rem; display: flex; flex-direction: column; gap: 2px; padding: 3px; background: var(--blanc); border: 1px solid var(--trait); border-radius: var(--r-l); box-shadow: var(--ombre); }
 .legende { position: absolute; left: 1rem; bottom: 1rem; right: 5rem; display: flex; flex-wrap: wrap; align-items: center; gap: .375rem .75rem; padding: .5rem .75rem; background: rgba(255, 255, 255, .94); border: 1px solid var(--trait); border-radius: var(--r-l); font-size: .75rem; width: max-content; max-width: calc(100% - 6rem); }
 .pastille { width: .75rem; height: .75rem; border-radius: 50%; display: inline-block; vertical-align: -1px; margin-right: .25rem; border: 1px solid rgba(0, 0, 0, .15); }
+.barre-arbre { position: absolute; left: 1rem; top: 3rem; z-index: 6; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .375rem .5rem; background: rgba(255, 255, 255, .96); border: 1px solid var(--trait); border-radius: var(--r-l); box-shadow: var(--ombre); font-size: .8125rem; max-width: calc(100% - 6rem); }
+.barre-arbre .saisie { width: auto; min-height: 0; padding: .1875rem .5rem; font-size: .8125rem; }
+.segment { display: inline-flex; border: 1px solid var(--trait); border-radius: 999px; overflow: hidden; }
+.segment__btn { border: 0; background: transparent; padding: .25rem .75rem; cursor: pointer; }
+.segment__btn[aria-pressed="true"] { background: var(--vert-f); color: #fff; }
+.barre__menu { position: relative; }
+.barre__menu summary { cursor: pointer; padding: .25rem .625rem; border: 1px solid var(--trait); border-radius: 999px; list-style: none; }
+.barre__menu summary::-webkit-details-marker { display: none; }
+.barre__menu summary::after { content: ' ▾'; }
+.barre__panneau { position: absolute; top: calc(100% + .375rem); left: 0; z-index: 7; display: flex; flex-direction: column; gap: .25rem; min-width: 13rem; padding: .5rem .75rem; background: #fff; border: 1px solid var(--trait); border-radius: var(--r-m); box-shadow: var(--ombre-forte); }
+.barre__evidence { color: var(--gris); }
+.manque { color: var(--peche-f); background: var(--peche); border-radius: 3px; padding: 0 .1875rem; font-weight: 600; }
+.vue-arbre--precis { --carte-l: 270px; --carte-h: 150px; }
+.noeud--estompe { opacity: .25; }
 .titre-vue { position: absolute; left: 1rem; top: .75rem; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; pointer-events: none; }
 .titre-vue > * { pointer-events: auto; }
 .titre-vue__nom { font-size: 1rem; font-weight: 700; background: rgba(247, 247, 247, .9); padding: 0 .25rem; border-radius: var(--r-s); }
@@ -674,7 +689,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.31.8</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.32.0</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -710,7 +725,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.31.8';
+var VERSION = '1.32.0';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -2107,19 +2122,107 @@ function classeCouleur(p, br) {
    emoji : 👶 naissance, 🕊️ décès, 🏠 lieu de vie, 💼 profession. Sur la
    carte, un lieu se limite à la commune (avant la première virgule). */
 function communeSeule(l) { return String(l || '').split(',')[0].trim(); }
-function lignesCarte(p) {
-  var a = etat.config.affichage.carte;
+/* Réglages d'affichage des cartes : ceux de l'arbre par défaut, puis ceux
+   de la barre au-dessus de l'arbre (propres à chaque utilisateur). */
+function reglageConfig(c) {
+  c = c || {};
+  return { mode: 'epure', evidence: '', aff: { photo: c.photo !== false, dates: c.annees !== false, lieux: !!c.lieu, age: c.annees !== false, mariages: false, profession: !!c.profession, nomNaissance: c.nomNaissance !== false } };
+}
+function cleBarre() { return 'gristfamily.barre.' + (etat.cleArbre || ''); }
+function barreArbre() {
+  if (etat.barre && etat.barre.cle === etat.cleArbre) { return etat.barre; }
+  var b = reglageConfig(etat.config.affichage.carte);
+  b.cle = etat.cleArbre;
+  try {
+    var g = JSON.parse(localStorage.getItem(cleBarre()) || 'null');
+    if (g && typeof g === 'object') {
+      if (g.mode === 'precis' || g.mode === 'epure') { b.mode = g.mode; }
+      if (typeof g.evidence === 'string') { b.evidence = g.evidence; }
+      if (g.aff && typeof g.aff === 'object') { Object.keys(b.aff).forEach(function (k) { if (typeof g.aff[k] === 'boolean') { b.aff[k] = g.aff[k]; } }); }
+    }
+  } catch (e) { logSecurite('INFO', 'Réglages de la barre illisibles', e); }
+  etat.barre = b;
+  return b;
+}
+function enregistrerBarre() {
+  try { localStorage.setItem(cleBarre(), JSON.stringify({ mode: etat.barre.mode, evidence: etat.barre.evidence, aff: etat.barre.aff })); }
+  catch (e) { logSecurite('INFO', 'Réglages de la barre non gardés', e); }
+}
+
+/* Lignes d'information d'une carte, chacune repérée par un emoji :
+   👶 naissance, 🕊️ décès, 🏠 lieu de vie, 💍 union, 💼 profession.
+   Mode épuré : année et commune. Mode « Datas précises » : dates et lieux
+   complets, et ce qui manque signalé (date ?, incomplète, lieu ?). */
+function lignesCarte(p, reglage) {
+  var r = reglage || barreArbre();
+  var a = r.aff;
+  var precis = r.mode === 'precis';
   var L = [];
-  var ligne = function (emoji, morceaux) { morceaux = morceaux.filter(Boolean); if (morceaux.length) { L.push(emoji + ' ' + morceaux.join(' · ')); } };
+  var seg = function (t, manque) { return t ? { t: t, manque: !!manque } : null; };
+  var ligne = function (emoji, segs, utiles) {
+    segs = segs.filter(Boolean);
+    if (segs.length > (utiles || 0)) { L.push({ emoji: emoji, segs: segs }); }
+  };
   var mort = estDecede(p);
-  var age = a.annees ? texteAge(p).replace(/ /g, '\u00a0') : '';
-  ligne('👶', [a.annees ? anneeAffichee(p.naissance, p.naissanceApprox) : '', a.lieu ? communeSeule(p.naissanceLieu) : '', mort ? '' : age]);
-  if (mort) { ligne('🕊️', [a.annees ? anneeAffichee(p.deces, p.decesApprox) : '', a.lieu ? communeSeule(p.decesLieu) : '', age]); }
-  else if (a.lieu && p.residence) { ligne('🏠', [communeSeule(p.residence)]); }
-  if (a.profession && p.profession) { ligne('💼', [p.profession]); }
+  var age = a.age ? texteAge(p).replace(/ /g, ' ') : '';
+  var datePrecise = function (d, approx) {
+    if (!d) { return [seg('date ?', true)]; }
+    var t = formaterDate(d, approx);
+    return d.j && !approx ? [seg(t)] : [seg(t), seg(approx ? 'approximative' : 'incomplète', true)];
+  };
+  var lieuPrecis = function (l) { return l ? [seg(l)] : [seg('lieu ?', true)]; };
+  var unions = p.id ? unionsPersonne(p.id).filter(function (uid) { var u = unionDe(uid); return u && !u.virtuelle && conjointDans(uid, p.id); }) : [];
+  var prenomCj = function (uid) { return unions.length > 1 ? seg(((pers(conjointDans(uid, p.id)) || {}).prenom || '').split(/\s+/)[0] + ' :') : null; };
+  if (precis) {
+    ligne('👶', datePrecise(p.naissance, p.naissanceApprox).concat(lieuPrecis(p.naissanceLieu), [mort ? null : seg(age)]));
+    if (mort) { ligne('🕊️', datePrecise(p.deces, p.decesApprox).concat(lieuPrecis(p.decesLieu), [seg(age)])); }
+    else if (p.residence) { ligne('🏠', [seg(p.residence)]); }
+    unions.forEach(function (uid) { var u = unionDe(uid); ligne('💍', [prenomCj(uid)].concat(datePrecise(u.debut), lieuPrecis(u.lieu))); });
+  } else {
+    ligne('👶', [seg(a.dates ? anneeAffichee(p.naissance, p.naissanceApprox) : ''), seg(a.lieux ? communeSeule(p.naissanceLieu) : ''), seg(mort ? '' : age)]);
+    if (mort) { ligne('🕊️', [seg(a.dates ? anneeAffichee(p.deces, p.decesApprox) : ''), seg(a.lieux ? communeSeule(p.decesLieu) : ''), seg(age)]); }
+    else if (a.lieux && p.residence) { ligne('🏠', [seg(communeSeule(p.residence))]); }
+    if (a.mariages) {
+      unions.forEach(function (uid) {
+        var u = unionDe(uid);
+        var nom = prenomCj(uid);
+        ligne('💍', [nom, seg(a.dates ? anneeAffichee(u.debut) : ''), seg(a.lieux ? communeSeule(u.lieu) : '')], nom ? 1 : 0);
+      });
+    }
+  }
+  if (a.profession && p.profession) { ligne('💼', [seg(p.profession)]); }
   return L;
 }
-function infoCarte(p) { return lignesCarte(p).join(', '); }
+function texteLigneCarte(l) { return l.emoji + ' ' + l.segs.map(function (x) { return x.t; }).join(' · '); }
+function infoCarte(p, reglage) { return lignesCarte(p, reglage).map(texteLigneCarte).join(', '); }
+function noeudsLignesCarte(p, reglage) {
+  return lignesCarte(p, reglage).map(function (l) {
+    var enfants = [l.emoji + ' '];
+    l.segs.forEach(function (x, i) { if (i) { enfants.push(' · '); } enfants.push(x.manque ? creer('span', { classe: 'manque', texte: x.t }) : x.t); });
+    return creer('span', { classe: 'carte__info' }, enfants);
+  });
+}
+/* Infos à compléter : date précise et lieu de naissance, de décès, d'union. */
+function infosManquantes(p) {
+  var n = 0;
+  var dateOk = function (d, approx) { return !!(d && d.j && !approx); };
+  if (!dateOk(p.naissance, p.naissanceApprox)) { n++; }
+  if (!p.naissanceLieu) { n++; }
+  if (estDecede(p)) { if (!dateOk(p.deces, p.decesApprox)) { n++; } if (!p.decesLieu) { n++; } }
+  unionsPersonne(p.id).forEach(function (uid) { var u = unionDe(uid); if (u && !u.virtuelle && conjointDans(uid, p.id)) { if (!dateOk(u.debut)) { n++; } if (!u.lieu) { n++; } } });
+  return n;
+}
+function correspondEvidence(p, ev, br) {
+  if (!ev) { return true; }
+  if (ev === 'manque') { return infosManquantes(p) > 0; }
+  if (ev === 'aVerifier') { return !!p.aVerifier; }
+  if (ev === 'verifiee') { return !!p.verifiee; }
+  if (ev === 'vivants') { return !estDecede(p); }
+  if (ev === 'decedes') { return estDecede(p); }
+  var x = br && br.parId ? br.parId[p.id] : null;
+  return !!(x && x.branche === ev);
+}
+
 /* Lieux complets, pour la bulle au survol de la carte. */
 function lieuxComplets(p) {
   return [p.naissanceLieu ? 'Naissance : ' + p.naissanceLieu : '', estDecede(p) && p.decesLieu ? 'Décès : ' + p.decesLieu : '', !estDecede(p) && p.residence ? 'Lieu de vie : ' + p.residence : ''].filter(Boolean).join('\n');
@@ -3421,6 +3524,9 @@ function rendreArbre(zone, garderCamera) {
   var centre = idCentre();
   var br = calculerBranches(centre);
   etat.branches = br;
+  var precis = barreArbre().mode === 'precis';
+  DIM.L = precis ? 270 : 220;
+  DIM.H = precis ? 150 : 100;
   var disp;
   if (etat.config.affichage.tout !== false) { disp = calculerDispositionGraphe(null); }
   else {
@@ -3431,7 +3537,7 @@ function rendreArbre(zone, garderCamera) {
     disp = calculerDispositionGraphe(garder);
   }
   etat.disposition = disp;
-  var vue = creer('div', { classe: 'vue-arbre', id: 'vueArbre', attrs: { tabindex: '0', role: 'region',
+  var vue = creer('div', { classe: 'vue-arbre' + (precis ? ' vue-arbre--precis' : ''), id: 'vueArbre', attrs: { tabindex: '0', role: 'region',
     'aria-label': 'Arbre centré sur ' + nomComplet(pers(centre)) + '. Flèches pour se déplacer, plus et moins pour zoomer, zéro pour tout voir.' } });
   var monde = creer('div', { classe: 'monde', id: 'monde', attrs: { style: 'width:' + disp.largeur + 'px;height:' + disp.hauteur + 'px' } });
   cadresFratries(disp).forEach(function (c) {
@@ -3450,6 +3556,7 @@ function rendreArbre(zone, garderCamera) {
     titre.appendChild(bouton('Revenir à ' + nomComplet(pers(etat.config.centre)), '', 'retour', function () { etat.centreSession = null; rendre(); centrerSur(idCentre(), false); }, { petit: true }));
   }
   vue.appendChild(titre);
+  vue.appendChild(barreOutilsArbre(br, disp));
   vue.appendChild(creer('div', { classe: 'commandes no-print' }, [
     bouton('Zoomer', 'ico', 'plus', function () { zoomer(1.2); }),
     bouton('Dézoomer', 'ico', 'moins', function () { zoomer(1 / 1.2); }),
@@ -3463,6 +3570,51 @@ function rendreArbre(zone, garderCamera) {
   var cam = etat.cam[etat.cleArbre];
   if (garderCamera && cam) { appliquerCamera(); }
   else { requestAnimationFrame(function () { centrerSur(centre, false); }); }
+}
+
+/* Barre au-dessus de l'arbre : mode d'affichage, données affichées et mise
+   en évidence. Réglages gardés dans le navigateur de chaque utilisateur. */
+function barreOutilsArbre(br, disp) {
+  var b = barreArbre();
+  var maj = function (recentrer) {
+    enregistrerBarre();
+    rendre();
+    if (recentrer) { requestAnimationFrame(function () { centrerSur(etat.selection && pers(etat.selection) ? etat.selection : idCentre(), false); }); }
+  };
+  var mode = function (val, lib) {
+    return creer('button', { classe: 'segment__btn', texte: lib, attrs: { type: 'button', 'aria-pressed': b.mode === val ? 'true' : 'false' },
+      clic: function () { if (b.mode !== val) { b.mode = val; maj(true); } } });
+  };
+  var precis = b.mode === 'precis';
+  var cases = [['photo', 'Photos'], ['dates', 'Dates'], ['lieux', 'Lieux'], ['age', 'Âge'], ['mariages', 'Unions'], ['profession', 'Profession'], ['nomNaissance', 'Nom de naissance']];
+  var menu = creer('details', { classe: 'barre__menu', attrs: { open: etat.barreMenuOuvert ? '' : null } }, [
+    creer('summary', { texte: 'Afficher' }),
+    creer('div', { classe: 'barre__panneau' }, cases.map(function (c) {
+      var force = precis && (c[0] === 'dates' || c[0] === 'lieux' || c[0] === 'mariages');
+      var cc = caseACocher('barre_' + c[0], c[1], force || !!b.aff[c[0]], function (v) { b.aff[c[0]] = v; maj(false); }, force ? '(toujours en mode précis)' : '');
+      if (force) { cc.querySelector('input').disabled = true; }
+      return cc;
+    }))
+  ]);
+  menu.addEventListener('toggle', function () { etat.barreMenuOuvert = menu.open; });
+  var opts = [{ valeur: '', libelle: 'Rien' }, { valeur: 'manque', libelle: 'Infos à compléter' }, { valeur: 'aVerifier', libelle: 'Fiches à vérifier' }, { valeur: 'verifiee', libelle: 'Fiches vérifiées' }];
+  if (br && br.noms) { ['a', 'b'].forEach(function (k) { if (br.noms[k]) { opts.push({ valeur: k, libelle: br.noms[k] }); } }); }
+  opts.push({ valeur: 'vivants', libelle: 'Personnes vivantes' }, { valeur: 'decedes', libelle: 'Personnes décédées' });
+  var sel = liste('barreEvidence', opts, b.evidence);
+  sel.addEventListener('change', function () { b.evidence = sel.value; maj(false); });
+  var compte = null;
+  if (b.evidence) {
+    var vus = {}, nb = 0;
+    disp.noeuds.forEach(function (n) { if (vus[n.pid]) { return; } vus[n.pid] = true; if (correspondEvidence(pers(n.pid), b.evidence, br)) { nb++; } });
+    compte = badge(pluriel(nb, 'fiche', 'fiches'));
+  }
+  return creer('div', { classe: 'barre-arbre no-print', attrs: { role: 'toolbar', 'aria-label': 'Affichage de l’arbre' } }, [
+    creer('div', { classe: 'segment', attrs: { role: 'group', 'aria-label': 'Mode d’affichage' } }, [mode('epure', 'Épuré'), mode('precis', 'Datas précises')]),
+    menu,
+    creer('label', { classe: 'barre__evidence', attrs: { 'for': 'barreEvidence' } }, ['Mettre en évidence']),
+    sel,
+    compte
+  ]);
 }
 
 function legendeArbre(br) {
@@ -3587,18 +3739,19 @@ function noeudCarte(n, centre, br) {
   if (p.erronee) { classes.push('carte--erronee'); }
   if (etat.config.affichage.carte.sexeCouleur !== false) { if (p.sexe === 'Femme') { classes.push('carte--f'); } else if (p.sexe === 'Homme') { classes.push('carte--h'); } }
   if (n.pid === etat.trouve) { classes.push('carte--trouve'); }
-  var aff = etat.config.affichage.carte;
+  var aff = barreArbre().aff;
   var nom = nomComplet(p);
   var sous = aff.nomNaissance && p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom) ? accord(p, 'né ', 'née ', 'naissance : ') + p.nomNaissance : '';
   var marq = marquesCarte(p);
   var etiquette = nom + (info ? ', ' + info : '') + (n.pid === centre ? ', au centre de l’arbre' : '') + (estDecede(p) ? ', ' + accord(p, 'décédé', 'décédée', 'décès') : '') + (n.dup ? ', déjà présente ailleurs dans l’arbre' : '') + (p.verifiee ? ', vérifiée' : '') + (p.aVerifier ? ', à vérifier' : '') + (p.erronee ? ', branche erronée' : '') + marq.texte;
   var carte = creer('button', { classe: classes.join(' '), attrs: { 'data-pid': n.pid, 'aria-label': etiquette + '. Ouvrir la fiche', title: lieuxComplets(p) || null },
     clic: function () { ouvrirFiche(n.pid); } }, [
-    avatar(p, classeCouleur(p, br)),
-    creer('span', { classe: 'carte__txt' }, [creer('span', { classe: 'carte__nom' }, [nomAffiche(p)]), sous ? creer('span', { classe: 'carte__info', texte: sous }) : null].concat(lignesCarte(p).map(function (l) { return creer('span', { classe: 'carte__info', texte: l }); })))
+    avatar(aff.photo ? p : Object.assign({}, p, { photo: [], photoUrl: '' }), classeCouleur(p, br)),
+    creer('span', { classe: 'carte__txt' }, [creer('span', { classe: 'carte__nom' }, [nomAffiche(p)]), sous ? creer('span', { classe: 'carte__info', texte: sous }) : null].concat(noeudsLignesCarte(p)))
   ]);
   carte.addEventListener('dblclick', function () { etat.centreSession = n.pid; rendre(); centrerSur(n.pid, true); });
-  var noeud = creer('div', { classe: 'noeud', attrs: { style: 'left:' + Math.round(n.x) + 'px;top:' + Math.round(n.y) + 'px' } }, [carte]);
+  var ev = barreArbre().evidence;
+  var noeud = creer('div', { classe: 'noeud' + (ev && !correspondEvidence(p, ev, br) ? ' noeud--estompe' : ''), attrs: { style: 'left:' + Math.round(n.x) + 'px;top:' + Math.round(n.y) + 'px' } }, [carte]);
   if (p.verifiee) { noeud.appendChild(cocheVerifiee('coche-verif--coin')); }
   if (p.aVerifier) { noeud.appendChild(pointAVerifier('point-verif--coin')); }
   if (marq.noeud) { noeud.appendChild(marq.noeud); }
@@ -3719,7 +3872,7 @@ function brancherNavigation(vue, monde) {
   var pointeurs = {};
   var depart = null;
   var pincement = null;
-  var estFond = function (cible) { return !cible.closest('.noeud, .commandes, .legende, .titre-vue, .menu-plus, .coeur'); };
+  var estFond = function (cible) { return !cible.closest('.noeud, .commandes, .legende, .titre-vue, .menu-plus, .coeur, .barre-arbre'); };
   vue.addEventListener('pointerdown', function (e) {
     if (!estFond(e.target)) { return; }
     pointeurs[e.pointerId] = { x: e.clientX, y: e.clientY };
@@ -7182,7 +7335,7 @@ function etapeCartes(z, poserApercu) {
       var coul = b.affichage.couleur === 'aucune' ? 'br-aucune' : (b.affichage.couleur === 'generation' ? (p.br === 'a' ? 'gen-2' : 'gen-1') : classeBranche(p.br));
       ap.appendChild(creer('div', { classe: 'noeud', attrs: { style: 'position:relative' } }, [creer('div', { classe: 'carte' + (estDecede(p) ? ' carte--mort' : '') }, [
         creer('span', { classe: 'avatar ' + coul, texte: initiales(p) }),
-        creer('span', { classe: 'carte__txt' }, [creer('span', { classe: 'carte__nom' }, [nomAffiche(p)]), sous ? creer('span', { classe: 'carte__info', texte: sous }) : null].concat(lignesCarte(p).map(function (l) { return creer('span', { classe: 'carte__info', texte: l }); })))
+        creer('span', { classe: 'carte__txt' }, [creer('span', { classe: 'carte__nom' }, [nomAffiche(p)]), sous ? creer('span', { classe: 'carte__info', texte: sous }) : null].concat(noeudsLignesCarte(p, reglageConfig(b.affichage.carte))))
       ])]));
     });
     etat.config = ancienne;
@@ -7490,6 +7643,7 @@ async function sauvegarderParametres() {
   try {
     cfg.nom = b.nom.trim();
     cfg.affichage = b.affichage;
+    etat.barre = null;
     if (b.centre.id) { cfg.centre = b.centre.id; }
     if (cfg.source === 'existant') {
       await chargerMeta();
