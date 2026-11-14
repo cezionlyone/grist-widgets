@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.5.0
+  Version     : 1.5.1
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -53,6 +53,7 @@
 
   HISTORIQUE
   ----------
+  1.5.1 - 14/11/2026 - madeXcé - Mode « Infos à compléter » (anciennement Datas précises) ; option « Fiches incomplètes » dans la mise en évidence.
   1.5.0 - 14/11/2026 - madeXcé - Barre au-dessus de l'arbre : mode Épuré ou Datas précises (dates et lieux complets, unions, infos manquantes signalées), choix des données affichées, mise en évidence (infos à compléter, à vérifier, vérifiées, branche, vivants, décédés) ; réglages propres à chaque utilisateur.
   1.4.9 - 14/11/2026 - madeXcé - Modifier une personne : champ « Parents » pour choisir le couple dont elle est l'enfant (conjoint connu ou autre parent inconnu) ; l'union devenue vide est supprimée.
   1.4.8 - 14/11/2026 - madeXcé - Liens web d'une personne : colonne LIENS (ajoutée toute seule), saisie dans la fiche, liens cliquables (https ou http seulement).
@@ -649,7 +650,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.5.0</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.5.1</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -685,7 +686,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.5.0';
+var VERSION = '1.5.1';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -2101,7 +2102,7 @@ function enregistrerBarre() {
 
 /* Lignes d'information d'une carte, chacune repérée par un emoji :
    👶 naissance, 🕊️ décès, 🏠 lieu de vie, 💍 union, 💼 profession.
-   Mode épuré : année et commune. Mode « Datas précises » : dates et lieux
+   Mode épuré : année et commune. Mode « Infos à compléter » : dates et lieux
    complets, et ce qui manque signalé (date ?, incomplète, lieu ?). */
 function lignesCarte(p, reglage) {
   var r = reglage || barreArbre();
@@ -3541,13 +3542,13 @@ function barreOutilsArbre(br, disp) {
     creer('summary', { texte: 'Afficher' }),
     creer('div', { classe: 'barre__panneau' }, cases.map(function (c) {
       var force = precis && (c[0] === 'dates' || c[0] === 'lieux' || c[0] === 'mariages');
-      var cc = caseACocher('barre_' + c[0], c[1], force || !!b.aff[c[0]], function (v) { b.aff[c[0]] = v; maj(false); }, force ? '(toujours en mode précis)' : '');
+      var cc = caseACocher('barre_' + c[0], c[1], force || !!b.aff[c[0]], function (v) { b.aff[c[0]] = v; maj(false); }, force ? '(toujours en mode Infos à compléter)' : '');
       if (force) { cc.querySelector('input').disabled = true; }
       return cc;
     }))
   ]);
   menu.addEventListener('toggle', function () { etat.barreMenuOuvert = menu.open; });
-  var opts = [{ valeur: '', libelle: 'Rien' }, { valeur: 'manque', libelle: 'Infos à compléter' }, { valeur: 'aVerifier', libelle: 'Fiches à vérifier' }, { valeur: 'verifiee', libelle: 'Fiches vérifiées' }];
+  var opts = [{ valeur: '', libelle: 'Rien' }, { valeur: 'manque', libelle: 'Fiches incomplètes' }, { valeur: 'aVerifier', libelle: 'Fiches à vérifier' }, { valeur: 'verifiee', libelle: 'Fiches vérifiées' }];
   if (br && br.noms) { ['a', 'b'].forEach(function (k) { if (br.noms[k]) { opts.push({ valeur: k, libelle: br.noms[k] }); } }); }
   opts.push({ valeur: 'vivants', libelle: 'Personnes vivantes' }, { valeur: 'decedes', libelle: 'Personnes décédées' });
   var sel = liste('barreEvidence', opts, b.evidence);
@@ -3559,7 +3560,7 @@ function barreOutilsArbre(br, disp) {
     compte = badge(pluriel(nb, 'fiche', 'fiches'));
   }
   return creer('div', { classe: 'barre-arbre no-print', attrs: { role: 'toolbar', 'aria-label': 'Affichage de l’arbre' } }, [
-    creer('div', { classe: 'segment', attrs: { role: 'group', 'aria-label': 'Mode d’affichage' } }, [mode('epure', 'Épuré'), mode('precis', 'Datas précises')]),
+    creer('div', { classe: 'segment', attrs: { role: 'group', 'aria-label': 'Mode d’affichage' } }, [mode('epure', 'Épuré'), mode('precis', 'Infos à compléter')]),
     menu,
     creer('label', { classe: 'barre__evidence', attrs: { 'for': 'barreEvidence' } }, ['Mettre en évidence']),
     sel,
