@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.3.0
+  Version     : 1.4.0
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -51,6 +51,7 @@
 
   HISTORIQUE
   ----------
+  1.4.0 - 14/11/2026 - madeXcé - Cousins ADN : retrait du collage de fiche et de l'import groupé, saisie manuelle uniquement.
   1.3.0 - 14/11/2026 - madeXcé - Création d'un arbre : la table des unions est toujours créée, plus de question à ce sujet.
   1.2.0 - 14/11/2026 - madeXcé - « Nouvelle généalogie vide » : toutes les tables de l'arbre (personnes, unions, documents, recherches, cousins) sont créées à son nom ; documents et recherches disponibles.
   1.1.0 - 14/11/2026 - madeXcé - Nouvel arbre : choix « Nouvelle généalogie vide » (tables indépendantes, sans partage de personnes).
@@ -86,9 +87,7 @@
   PRENOM, NOM, PAYS, VILLE, SITE, AGE, ADN CM, ADN POURCENT, SEGMENTS,
   SEGMENT MAX CM, RELATION ESTIMEE, BRANCHE, PATRONYMES, LIEU COMMUN,
   TAILLE ARBRE, ANCETRE PROBABLE, CONTACT, CONTACTE, NOTES.
-  Saisie d'un cousin par copier-coller de sa fiche sur le site de test
-  (MyHeritage notamment), ou import groupé d'une page entière de
-  correspondances ; les doublons (même prénom et même nom) sont ignorés.
+  Saisie manuelle de chaque cousin (identité, ADN partagé, pistes).
   Cercles de parenté d'après les centimorgans : famille proche (1 300 cM
   et plus), famille élargie (200 à 1 300), parents éloignés.
   Dates stockées en texte AAAA, AAAA-MM ou AAAA-MM-JJ (tri correct,
@@ -619,7 +618,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.3.0</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.4.0</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -655,7 +654,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.3.0';
+var VERSION = '1.4.0';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -5733,7 +5732,7 @@ function rendreCousins(zone) {
   var nbPays = Object.keys(pays).filter(function (k) { return k !== 'Pays inconnu'; }).length;
   page.appendChild(creer('div', { classe: 'page__tete' }, [
     creer('h2', { classe: 'page__titre' }, ['Cousins ADN', badge(pluriel(C.length, 'cousin', 'cousins'), 'br-adn'), badge(pluriel(nbPays, 'pays', 'pays'))]),
-    etat.peutModifier ? creer('div', { classe: 'compteurs no-print' }, [bouton('Importer plusieurs fiches', '', 'liste', ouvrirImportCousins), bouton('Ajouter un cousin ADN', 'p', 'plus', function () { ouvrirFormCousin(null); })]) : null
+    etat.peutModifier ? creer('div', { classe: 'compteurs no-print' }, [bouton('Ajouter un cousin ADN', 'p', 'plus', function () { ouvrirFormCousin(null); })]) : null
   ]));
   if (!C.length) {
     page.appendChild(creer('div', { classe: 'vide' }, [creer('h2', { texte: 'Aucun cousin ADN pour l’instant' }),
@@ -5958,195 +5957,9 @@ function nombreFr(s) {
   return isNaN(n) ? null : n;
 }
 
-/* Lecture d'une fiche copiée depuis un site de tests ADN (MyHeritage,
-   Ancestry...) : texte libre, rien n'est enregistré avant validation.
-   Les liens collés au format [texte](adresse) sont acceptés. */
-function analyserFicheADN(texte) {
-  var r = {};
-  var brut = String(texte || '').replace(/\r/g, '').replace(/[‎‏]/g, '');
-  var liens = [];
-  var t = brut.replace(/\[([^\]]*)\]\((https?:[^)\s]+)\)/g, function (tout, mot, url) { liens.push(url); return mot; });
-  (brut.match(/https?:\/\/[^\s)\]]+/g) || []).forEach(function (u) { if (liens.indexOf(u) === -1) { liens.push(u); } });
-  var propre = function (u) { return u.replace(/#$/, ''); };
-  var lignes = t.split('\n').map(function (l) { return l.replace(/^[*•\-]\s*/, '').replace(/[\s ]+/g, ' ').trim(); }).filter(function (l) { return l; });
-  var m;
-  var cmMotif = '([\\d.,]+)\\s*cM';
-  /* ADN partagé : « 0,5% (32,4 cM) », avant ou après le mot « ADN partagé » */
-  if ((m = /(?:ADN partag[ée]|Shared DNA)\s*:?\s*([\d.,]+)\s*%\s*\(\s*([\d.,\s]+)\s*cM\s*\)/i.exec(t))) { r.pct = nombreFr(m[1]); r.cm = nombreFr(m[2]); }
-  else if ((m = /([\d.,]+)\s*%\s*\(\s*([\d.,\s]+)\s*cM\s*\)\s*(?:ADN partag[ée]|Shared DNA)/i.exec(t))) { r.pct = nombreFr(m[1]); r.cm = nombreFr(m[2]); }
-  else if ((m = /([\d.,]+)\s*%\s*\(\s*([\d.,\s]+)\s*cM\s*\)/i.exec(t))) { r.pct = nombreFr(m[1]); r.cm = nombreFr(m[2]); }
-  else if ((m = /([\d.,\s]+)\s*cM/i.exec(t))) { r.cm = nombreFr(m[1]); }
-  if ((m = /(?:^|\n)\s*(\d+)\s*(?:Segments? partag[ée]s?|Shared segments?)/i.exec(t)) || (m = /(?:Segments? partag[ée]s?|Shared segments?)\s*:\s*(\d+)/i.exec(t))) { r.segments = parseInt(m[1], 10); }
-  if ((m = /(?:Segment le plus long|Largest segment|Longest segment)\s*:?\s*([\d.,]+)\s*cM/i.exec(t)) || (m = new RegExp(cmMotif + '\\s*(?:Segment le plus long|Largest segment|Longest segment)', 'i').exec(t))) { r.segmentMax = nombreFr(m[1]); }
-  if ((m = /arbre g[ée]n[ée]alogique (?:de|d.une)\s*([\d\s]*)\s*personnes?/i.exec(t))) { r.tailleArbre = parseInt(String(m[1]).replace(/\D/g, ''), 10) || 1; }
-  if ((m = /family tree with\s*([\d,]+)\s*people/i.exec(t))) { r.tailleArbre = parseInt(m[1].replace(/\D/g, ''), 10); }
-  if (/Qualité correspondance ADN|MyHeritage/i.test(t)) { r.site = 'MyHeritage'; }
-  else if (/Ancestry/i.test(t)) { r.site = 'Ancestry'; }
-  else if (/23andMe/i.test(t)) { r.site = '23andMe'; }
-  else if (/Geneanet/i.test(t)) { r.site = 'Geneanet'; }
-
-  /* Liens : profil, arbre, page de la correspondance */
-  liens.forEach(function (u) {
-    if (!r.lienProfil && /\/profile-[A-Z0-9]+/i.test(u)) { r.lienProfil = propre(u); }
-    else if (!r.lienArbre && /pedigree-tree-/i.test(u)) { r.lienArbre = propre(u); }
-    else if (!r.lienCorrespondance && /\/dna\/match\//i.test(u)) { r.lienCorrespondance = propre(u); }
-  });
-
-  /* En-tête : le nom est la ligne qui précède « Âge », le pays suit */
-  var iAge = -1;
-  lignes.forEach(function (l, i) { if (iAge < 0 && /^[ÂA]ge\s*:/i.test(l)) { iAge = i; } });
-  var relation = [];
-  var dansRelation = false;
-  lignes.forEach(function (l, i) {
-    var mm;
-    if ((mm = /^[ÂA]ge\s*:\s*(.+)$/i.exec(l))) { r.age = mm[1]; dansRelation = false; return; }
-    if ((mm = /^(?:De|From|Pays)\s*:\s*(.+)$/i.exec(l))) {
-      if (iAge < 0 || (i > iAge && i <= iAge + 2) || !r.pays) { if (iAge < 0 || i > iAge) { r.pays = mm[1]; } }
-      dansRelation = false; return;
-    }
-    if (/^(Relations? estim[ée]es?|Estimated relationships?)\s*:?\s*(.*)$/i.test(l)) {
-      dansRelation = true;
-      var reste = l.replace(/^(Relations? estim[ée]es?|Estimated relationships?)\s*:?\s*/i, '');
-      if (reste) { relation.push(reste); }
-      return;
-    }
-    if (dansRelation) {
-      if (/:|Qualité|ADN|DNA|Segment|Contacter|Contact|arbre|tree|^\?$|%/i.test(l)) { dansRelation = false; }
-      else { relation.push(l); return; }
-    }
-  });
-  if (iAge > 0) {
-    var cand = lignes[iAge - 1];
-    if (cand && !/:|contact|qualité|relation|vous$/i.test(cand) && cand.length < 90) {
-      var mots = cand.split(/\s+/);
-      r.prenom = mots.shift();
-      r.nom = mots.join(' ');
-    }
-  } else {
-    lignes.slice(0, 3).forEach(function (l) {
-      if (!r.prenom && !r.nom && !/:|contacter|contact|qualité|relation/i.test(l) && /^[\p{L}'’ .\-\[\]]{2,80}$/u.test(l)) {
-        var mots2 = l.split(/\s+/);
-        r.prenom = mots2.shift();
-        r.nom = mots2.join(' ');
-      }
-    });
-  }
-  if (relation.length) { r.relation = relation.join(' ').replace(/\s+,/g, ',').replace(/\s+/g, ' '); }
-
-  var rang = function (re, depuis) { for (var i = depuis || 0; i < lignes.length; i++) { if (re.test(lignes[i])) { return i; } } return -1; };
-  var pctCm = /^([\d.,]+)\s*%\s*\(\s*([\d.,\s]+)\s*cM\s*\)$/i;
-
-  /* Noms ancestraux du cousin */
-  var iN = rang(/^Noms ancestraux$/i);
-  if (iN >= 0) {
-    var k = iN + 1;
-    while (k < lignes.length && (lignes[k] === '?' || (lignes[k].length > 40 && /[.]$/.test(lignes[k])))) { k++; }
-    var noms = [];
-    for (; k < lignes.length; k++) {
-      if (/^Voir tous les noms|^Lieux ancestraux|^Ancestral places/i.test(lignes[k])) { break; }
-      noms.push(lignes[k]);
-    }
-    if (noms.length) { r.nomsAncestraux = noms.join(', '); }
-  }
-
-  /* Lieux ancestraux */
-  var iL = rang(/^Revoir tous les lieux|^Review all places/i);
-  if (iL >= 0) {
-    var lieux = [];
-    for (var a = iL + 1; a < lignes.length - 1; a++) {
-      if (/^Correspondances ADN partag|^Shared DNA matches/i.test(lignes[a])) { break; }
-      if (/^Les ancêtres de .+ sont listés|^\d+ ancêtres? dans l.arbre/i.test(lignes[a + 1]) && !/^Les ancêtres de|^\d+ ancêtres?/i.test(lignes[a]) && lieux.indexOf(lignes[a]) === -1) { lieux.push(lignes[a]); }
-    }
-    if (lieux.length) { r.lieuxAncestraux = lieux.join(' ; '); }
-  }
-  if (!r.lieuCommun && /lieu ancestral commun|ancestral place in common/i.test(t)) { r.lieuCommun = 'Signalé par le site'; }
-
-  /* Liens de parenté possibles : parenté, probabilité, ancêtre commun */
-  var iP = rang(/^Ancêtre commun le plus récent$/i);
-  if (iP >= 0) {
-    var par = [];
-    for (var b = iP + 1; b + 2 < lignes.length + 1; b += 3) {
-      if (!/^[\d.,]+\s*%$/.test(lignes[b + 1] || '')) { break; }
-      par.push(lignes[b] + ' : ' + lignes[b + 1].replace('.', ',').replace(/\s*%/, ' %') + ' (' + (lignes[b + 2] || '') + ')');
-    }
-    if (par.length) { r.parentesProbables = par.join('\n'); }
-  }
-
-  /* Correspondances ADN partagées */
-  var iC = rang(/^Correspondance partagée$/i);
-  if (iC >= 0) {
-    var com = [];
-    for (var c = iC + 2; c + 2 < lignes.length; c++) {
-      if (/partagez plus de|^Vérifier toutes|^Tableaux d.ascendance/i.test(lignes[c])) { break; }
-      var a1 = pctCm.exec(lignes[c]);
-      var a2 = pctCm.exec(lignes[c + 1] || '');
-      if (a1 && a2 && lignes[c + 2]) {
-        com.push(lignes[c + 2] + ' : ' + a1[2].replace(/\s/g, '') + ' cM avec vous' + (lignes[c + 3] && !pctCm.test(lignes[c + 3]) && !/^Tableaux|^Vérifier|partagez/i.test(lignes[c + 3]) && lignes[c + 3].length < 60 ? ', ' + lignes[c + 3] : ''));
-        c += 2;
-      }
-    }
-    if (com.length) { r.correspondancesCommunes = com.join('\n'); }
-  }
-
-  /* Ancêtres directs dans l'arbre du cousin */
-  var iA = rang(/^Tableaux d.ascendance/i);
-  if (iA >= 0) {
-    var iT = iA;
-    {
-      var asc = [];
-      for (var d = iT + 1; d < lignes.length; d++) {
-        if (/^Le diagramme de généalogie|^Chromosome Browser/i.test(lignes[d])) { break; }
-        if (/^\d{4}(\s*-\s*\d{4})?$/.test(lignes[d])) { if (asc.length) { asc[asc.length - 1] += ' (' + lignes[d].replace(/\s*-\s*/, '-') + ')'; } }
-        else { asc.push(lignes[d]); }
-      }
-      asc = asc.map(function (x) { return x.replace(/\s+(\d{4})\s*-\s*(\d{4})$/, ' ($1-$2)').replace(/\s+(\d{4})$/, ' ($1)'); });
-      if (asc.length) { r.ascendanceCousin = asc.join(' ; '); }
-    }
-  }
-  return r;
-}
-
-/* Noms de famille de la fiche du cousin qui existent aussi dans votre arbre */
-function patronymesCommuns(noms) {
-  if (!noms || !etat.donnees) { return ''; }
-  var connus = {};
-  Object.keys(etat.donnees.P).forEach(function (id) {
-    var p = etat.donnees.P[id];
-    [p.nom, p.nomNaissance].forEach(function (n) { if (n) { connus[normaliser(n)] = n; } });
-  });
-  var vus = {};
-  var res = [];
-  String(noms).split(/[,;\n]/).forEach(function (n) {
-    n = n.replace(/\(.*?\)/g, '').trim();
-    var k = normaliser(n);
-    if (k && connus[k] && !vus[k]) { vus[k] = true; res.push(connus[k]); }
-  });
-  return res.join(', ');
-}
-
 function ouvrirFormCousin(c) {
   var v = c || {};
-  var coller = saisie('cColler', '', { multiligne: true, lignes: 4, indice: 'Sélectionnez le bloc du cousin sur le site (nom, pays, ADN partagé...), copiez-le, puis collez-le ici.' });
-  var resultat = creer('p', { classe: 'indice', attrs: { 'aria-live': 'polite', style: 'margin:0' } });
-  var zoneColler = creer('details', { attrs: { open: c ? null : true } }, [
-    creer('summary', { classe: 'etiq', texte: 'Coller la fiche du site', attrs: { style: 'cursor:pointer;min-height:1.75rem' } }),
-    creer('div', { classe: 'champ', attrs: { style: 'margin-top:.5rem' } }, [creer('label', { classe: 'sr', texte: 'Fiche copiée depuis le site', attrs: { 'for': 'cColler' } }), coller,
-      creer('div', { attrs: { style: 'display:flex;gap:.75rem;align-items:center;flex-wrap:wrap' } }, [bouton('Remplir les champs', '', 'ok', function () {
-        var r = analyserFicheADN(coller.value);
-        var map = { prenom: 'cPrenom', nom: 'cNom', pays: 'cPays', site: 'cSite', age: 'cAge', tailleArbre: 'cTaille', cm: 'cCm', pct: 'cPct', segments: 'cSegments', segmentMax: 'cSegMax', relation: 'cRelation', lieuCommun: 'cLieuCommun', lienProfil: 'cLienProfil', lienArbre: 'cLienArbre', lienCorrespondance: 'cLienCorr', nomsAncestraux: 'cNomsAnc', lieuxAncestraux: 'cLieuxAnc', parentesProbables: 'cParentes', correspondancesCommunes: 'cCorrCom', ascendanceCousin: 'cAscCousin', patronymes: 'cPatronymes' };
-        r.patronymes = patronymesCommuns(r.nomsAncestraux);
-        var n = 0;
-        Object.keys(map).forEach(function (k) {
-          if (r[k] === undefined || r[k] === null || r[k] === '') { return; }
-          var el = document.getElementById(map[k]);
-          if (!el) { return; }
-          el.value = typeof r[k] === 'number' ? String(r[k]).replace('.', ',') : r[k];
-          n++;
-        });
-        resultat.textContent = n ? pluriel(n, 'information remplie', 'informations remplies') + ' : vérifiez-les avant d\u2019enregistrer.' : 'Aucune information reconnue dans ce texte.';
-      }, { petit: true }), resultat])])
-  ]);
-  var corps = [zoneColler, creer('div', { classe: 'grille2' }, [
+  var corps = [creer('div', { classe: 'grille2' }, [
     champ('Prénom', saisie('cPrenom', v.prenom, { max: 120 })),
     champ('Nom', saisie('cNom', v.nom, { max: 120 })),
     champ('Pays', saisie('cPays', v.pays, { max: 80 })),
@@ -6221,71 +6034,6 @@ function ouvrirFormCousin(c) {
     catch (e) { afficherErreur(messageEchec(e, 'La suppression a échoué.'), e); }
   }, { classe: 'gauche' }) : null;
   ouvrirModale({ titre: c ? 'Cousin ADN' : 'Ajouter un cousin ADN', corps: corps, pied: [supprimer, bouton('Annuler', '', null, fermerModale), enregistrer] });
-}
-
-/* Import groupé : une page de correspondances copiée depuis le site est
-   découpée en fiches (une fiche commence par le nom, suivi de la ligne
-   « Âge » ou « De »). Les cousins déjà présents (même prénom et même nom)
-   sont ignorés. Rien n'est écrit avant « Ajouter ». */
-function decouperFichesADN(texte) {
-  var lignes = String(texte || '').replace(/\r/g, '').split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l; });
-  var debuts = [];
-  lignes.forEach(function (l, i) {
-    if (i > 0 && /^([ÂA]ge|De|From)\s*:/i.test(l) && !/:/.test(lignes[i - 1]) && /^[\p{L}'’ .\-\[\]]{2,80}$/u.test(lignes[i - 1])) {
-      var d = i - 1;
-      if (debuts.length && debuts[debuts.length - 1] === d) { return; }
-      debuts.push(d);
-    }
-  });
-  return debuts.map(function (d, k) { return lignes.slice(d, k + 1 < debuts.length ? debuts[k + 1] : lignes.length).join('\n'); })
-    .map(analyserFicheADN).filter(function (r) { return (r.prenom || r.nom) && (r.cm || r.pays || r.relation); });
-}
-
-function ouvrirImportCousins() {
-  var zone = saisie('impTexte', '', { multiligne: true, lignes: 10 });
-  var res = creer('div', { attrs: { 'aria-live': 'polite' } });
-  var fiches = [];
-  var ajouter = bouton('Ajouter', 'p', null, async function () {
-    var cc = etat.config.colsCousins;
-    var deja = {};
-    etat.donnees.cousins.forEach(function (c) { deja[normaliser(c.prenom + ' ' + c.nom)] = true; });
-    var nouvelles = fiches.filter(function (r) { var k = normaliser((r.prenom || '') + ' ' + (r.nom || '')); if (deja[k]) { return false; } deja[k] = true; return true; });
-    if (!nouvelles.length) { afficherErreur('Tous ces cousins sont déjà dans la liste.'); return; }
-    var actions = nouvelles.map(function (r) {
-      var o = {};
-      if (r.nomsAncestraux && !r.patronymes) { r.patronymes = patronymesCommuns(r.nomsAncestraux); }
-      Object.keys(r).forEach(function (k) { if (cc[k] && infoColonne(etat.config.tables.cousins, cc[k])) { o[cc[k]] = r[k]; } });
-      return ['AddRecord', etat.config.tables.cousins, null, o];
-    });
-    ajouter.disabled = true;
-    afficherLoader('Ajout de ' + pluriel(actions.length, 'cousin', 'cousins') + '…');
-    try {
-      for (var i = 0; i < actions.length; i += 200) { await agir(actions.slice(i, i + 200)); }
-      masquerLoader();
-      fermerModale();
-      var ignores = fiches.length - nouvelles.length;
-      await apresEcriture(pluriel(nouvelles.length, 'cousin ADN ajouté', 'cousins ADN ajoutés') + (ignores ? ', ' + pluriel(ignores, 'déjà présent ignoré', 'déjà présents ignorés') : '') + '.');
-    } catch (e) { masquerLoader(); ajouter.disabled = false; afficherErreur(messageEchec(e, 'L’import a échoué.'), e); }
-  }, { desactive: true });
-  zone.addEventListener('input', function () {
-    fiches = decouperFichesADN(zone.value);
-    vider(res);
-    ajouter.disabled = !fiches.length;
-    ajouter.lastChild.textContent = fiches.length ? 'Ajouter ' + pluriel(fiches.length, 'cousin', 'cousins') : 'Ajouter';
-    if (!zone.value.trim()) { return; }
-    if (!fiches.length) { res.appendChild(alerte('attention', 'Aucune fiche reconnue. Copiez la liste des correspondances avec leurs noms, pays et ADN partagé.')); return; }
-    var pays = {};
-    fiches.forEach(function (r) { var k = r.pays || 'Pays inconnu'; pays[k] = (pays[k] || 0) + 1; });
-    res.appendChild(alerte('info', pluriel(fiches.length, 'fiche reconnue', 'fiches reconnues') + ' : ' + Object.keys(pays).map(function (k) { return k + ' (' + pays[k] + ')'; }).join(', ') + '.', 'ok'));
-    var apercu = creer('ul', { attrs: { style: 'margin:.5rem 0 0;padding-left:1.25rem;max-height:12rem;overflow:auto' } });
-    fiches.forEach(function (r) { apercu.appendChild(creer('li', { texte: ((r.prenom || '') + ' ' + (r.nom || '')).trim() + (r.cm ? ', ' + formaterNombre(r.cm, 1) + ' cM' : '') + (r.pays ? ', ' + r.pays : '') })); });
-    res.appendChild(apercu);
-  });
-  ouvrirModale({ titre: 'Importer plusieurs cousins ADN', corps: [
-    creer('p', { texte: 'Sur la page des correspondances ADN du site, sélectionnez la liste (Ctrl + A puis Ctrl + C, ou en glissant), puis collez-la ici. Le widget reconnaît chaque fiche : nom, âge, pays, relation estimée, ADN partagé, segments.', attrs: { style: 'margin:0' } }),
-    champ('Texte copié', zone),
-    res
-  ], pied: [bouton('Annuler', '', null, fermerModale), ajouter] });
 }
 
 /* === SECTION : VUE CARTE ===
