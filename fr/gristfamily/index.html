@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.31.5
+  Version     : 1.31.6
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.31.6 - 14/11/2026 - madeXcé - Ajout d'un conjoint : il peut compléter l'union qui porte déjà les enfants (plus d'union en double) ; parcours de vie : décès du père et de la mère, avec les âges.
   1.31.5 - 14/11/2026 - madeXcé - Cartes de l'arbre : une ligne par information avec un emoji (naissance, décès, lieu de vie, profession), commune seule (lieu complet au survol), plus de « conjoint de ».
   1.31.4 - 14/11/2026 - madeXcé - Cœur d'union cliquable dans l'arbre (résumé au survol, fenêtre des dates et du lieu au clic) ; durée de l'union ; noms en majuscules et prénoms avec majuscules à la saisie, et bouton de mise en forme des fiches existantes dans les paramètres.
   1.31.3 - 14/11/2026 - madeXcé - Unions : lieu de l'union (colonne LIEU ajoutée), champs nommés selon le type (date du mariage, date du divorce...), bouton « Dates et lieu de l'union » dans la fiche, remariage possible avec la même personne une fois la première union terminée.
@@ -671,7 +672,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.31.5</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.31.6</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -707,7 +708,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.31.5';
+var VERSION = '1.31.6';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -4828,6 +4829,16 @@ function evenementsVie(p) {
     var age = ecartAnnees(p.naissance, e.naissance);
     ev.push({ d: e.naissance, approx: e.naissanceApprox, titre: 'Naissance ' + accord(e, 'de son fils ', 'de sa fille ', 'de son enfant ') + prem(e) + ' (' + (i === 0 ? '1er' : (i + 1) + 'e') + ' enfant)', sous: age ? 'À ' + texteEcart(age) : '' });
   });
+  parentsDe(p.id).forEach(function (x) {
+    var q = pers(x);
+    if (!q || !estDecede(q) || !q.deces) { return; }
+    if (p.naissance && cleDate(q.deces) < cleDate(p.naissance)) { return; }
+    if (estDecede(p) && p.deces && cleDate(q.deces) > cleDate(p.deces)) { return; }
+    var agP = ecartAnnees(p.naissance, q.deces);
+    var agQ = ecartAnnees(q.naissance, q.deces);
+    ev.push({ d: q.deces, approx: q.decesApprox, titre: 'Décès ' + accord(q, 'de son père', 'de sa mère', 'd’un parent') + ' ' + prem(q),
+      sous: [agP ? 'À ' + texteEcart(agP) : '', agQ ? prem(q) + ' avait ' + texteEcart(agQ) : ''].filter(Boolean).join(' · ') });
+  });
   if (estDecede(p) && (p.deces || p.decesLieu)) {
     var ad = ecartAnnees(p.naissance, p.deces);
     ev.push({ d: p.deces, approx: p.decesApprox, titre: accord(p, 'Décédé', 'Décédée', 'Décès') + (p.decesLieu ? ' à ' + p.decesLieu : '') + (ad ? ', à ' + texteEcart(ad) : '') });
@@ -5174,6 +5185,15 @@ function ouvrirFormPersonne(o) {
       champ(Lu.fin, saisie('fFinUnion', '', { max: 40 }), { facultatif: true }),
       creer('div', { classe: 'plein' }, [caseACocher('fSepares', Lu.separes, false)])
     ]);
+    /* Enfants déjà notés avec un autre parent inconnu : le conjoint complète
+       cette union plutôt que d'en créer une seconde sans enfant. */
+    var seules = unionsPersonne(o.de).filter(function (uid) { return !conjointDans(uid, o.de) && enfantsUnion(uid).length && !(unionDe(uid) || {}).virtuelle; });
+    if (seules.length) {
+      var nomsEnf = enfantsUnion(seules[0]).map(function (x) { return ((pers(x) || {}).prenom || '').split(/\s+/)[0]; }).filter(Boolean).join(', ');
+      var caseEnf = caseACocher('fEnfantsCommuns', 'Ce conjoint est aussi le parent de ' + (nomsEnf || 'ses enfants déjà notés'), true, null, '(enfants notés jusqu’ici avec un autre parent inconnu)');
+      caseEnf.querySelector('input').setAttribute('data-uid', seules[0]);
+      zoneLien.appendChild(creer('div', { classe: 'plein' }, [caseEnf]));
+    }
   }
   if (zoneLien) { corps.push(zoneLien); }
   /* Doublon possible */
@@ -5246,7 +5266,8 @@ async function validerFormPersonne(o, etatForm, btn) {
       message = nomComplet({ prenom: v.prenom, nom: v.nom }) + ' : modifications enregistrées.';
     } else {
       if (!cible) { cible = await ajouterPersonne(v); }
-      await relier(o, cible, { type: val('fTypeUnion'), debut: debutUnion, separes: (document.getElementById('fSepares') ? document.getElementById('fSepares').checked : false) || !!finUnion, fin: finUnion, lieu: document.getElementById('fLieuUnion') ? val('fLieuUnion') : '', autre: val('fAutreParent') });
+      await relier(o, cible, { type: val('fTypeUnion'), debut: debutUnion, separes: (document.getElementById('fSepares') ? document.getElementById('fSepares').checked : false) || !!finUnion, fin: finUnion, lieu: document.getElementById('fLieuUnion') ? val('fLieuUnion') : '', autre: val('fAutreParent'),
+        unionSeule: document.getElementById('fEnfantsCommuns') && document.getElementById('fEnfantsCommuns').checked ? Number(document.getElementById('fEnfantsCommuns').getAttribute('data-uid')) : 0 });
       message = (v ? nomComplet({ prenom: v.prenom, nom: v.nom }) : nomComplet(pers(cible))) + (existant ? ' : lien ajouté.' : ' est dans l’arbre.');
       if (o.premiere && cible) { etat.config.centre = cible; await ecrireConfig(etat.config); }
     }
@@ -5290,6 +5311,13 @@ async function relier(o, cible, opt) {
       throw new Error('LIEN');
     }
   } else if (o.mode === 'conjoint') {
+    var us = opt.unionSeule ? unionDe(opt.unionSeule) : null;
+    if (us && !conjointDans(us.id, de.id)) {
+      var vu = { type: opt.type || '', debut: opt.debut, fin: opt.fin || null, lieu: opt.lieu || '', separes: !!opt.separes };
+      vu[us.inverse ? 'a' : 'b'] = cible;
+      await modifierUnion(us.id, vu);
+      return;
+    }
     if (unionsPersonne(de.id).some(function (uid) { var x = unionDe(uid); return conjointDans(uid, de.id) === cible && !(x && (x.separes || x.fin)); })) {
       afficherErreur('Une union en cours existe déjà avec cette personne. Pour un remariage, indiquez d’abord la fin de la première union (bouton « Dates et lieu de l’union »).');
       throw new Error('LIEN');
