@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.2.0
+  Version     : 1.3.0
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -51,6 +51,7 @@
 
   HISTORIQUE
   ----------
+  1.3.0 - 14/11/2026 - madeXcé - Création d'un arbre : la table des unions est toujours créée, plus de question à ce sujet.
   1.2.0 - 14/11/2026 - madeXcé - « Nouvelle généalogie vide » : toutes les tables de l'arbre (personnes, unions, documents, recherches, cousins) sont créées à son nom ; documents et recherches disponibles.
   1.1.0 - 14/11/2026 - madeXcé - Nouvel arbre : choix « Nouvelle généalogie vide » (tables indépendantes, sans partage de personnes).
   1.0.0 - 14/11/2026 - madeXcé - Première édition publique en français.
@@ -618,7 +619,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.2.0</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.3.0</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -654,7 +655,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.2.0';
+var VERSION = '1.3.0';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -6585,7 +6586,7 @@ async function demarrerAssistant(cfg) {
     b = { nom: cfg.nom, source: cfg.source || 'modele', liens: cfg.liens || 'unions', tablePers: cfg.tables.pers, cols: JSON.parse(JSON.stringify(cfg.cols)),
       affichage: JSON.parse(JSON.stringify(cfg.affichage)), centre: { mode: 'existante', id: cfg.centre || 0, prenom: '', nom: '' } };
   } else {
-    b = { nom: etat.arbres.length ? '' : 'Ma famille', source: modele ? 'modele' : '', liens: modeTablesModele() || 'colonnes', tablePers: modele || '', cols: idsParDefaut(CHAMPS_PERS),
+    b = { nom: etat.arbres.length ? '' : 'Ma famille', source: modele ? 'modele' : '', liens: modeTablesModele() || 'unions', tablePers: modele || '', cols: idsParDefaut(CHAMPS_PERS),
       affichage: affichageParDefaut(), centre: { mode: 'nouvelle', id: 0, prenom: '', nom: '' } };
     b.cols.parents = COL_PARENTS.id;
   }
@@ -6689,11 +6690,11 @@ function etapeGeneral(z) {
     if (modele) { var cs = colonnesDe(modele); nbModele = cs.length; }
     z.appendChild(creer('h3', { texte: 'Vos données', attrs: { style: 'margin:0;font-size:1rem' } }));
     var tuiles = creer('div', { classe: 'tuiles' });
-    var choisirModele = function () { b.source = 'modele'; b.tablePers = modele || ''; b.liens = modeTablesModele() || 'colonnes'; b.cols = idsParDefaut(CHAMPS_PERS); rendre(); };
+    var choisirModele = function () { b.source = 'modele'; b.tablePers = modele || ''; b.liens = modeTablesModele() || 'unions'; b.cols = idsParDefaut(CHAMPS_PERS); rendre(); };
     if (modele) {
       tuiles.appendChild(tuile('Reprendre ma généalogie', 'La table 👪 GÉNÉALOGIE ⚡ d’un autre arbre existe déjà : ce nouvel arbre la reprend. Rien n’est créé.', b.source === 'modele', choisirModele));
     } else {
-      tuiles.appendChild(tuile('Je n’ai pas encore de données', 'Le widget crée une seule table, 👪 GÉNÉALOGIE ⚡. Vous ajoutez ensuite votre famille depuis l’arbre.', b.source === 'modele', choisirModele));
+      tuiles.appendChild(tuile('Je n’ai pas encore de données', 'Le widget crée les tables 👪 GÉNÉALOGIE ⚡ et 💞 UNIONS ⚡. Vous ajoutez ensuite votre famille depuis l’arbre.', b.source === 'modele', choisirModele));
     }
     if (modele) {
       tuiles.appendChild(tuile('Nouvelle généalogie vide', 'Le widget crée de nouvelles tables au nom de l’arbre (personnes, unions, documents, recherches), indépendantes de celles des autres arbres : aucune donnée n’est partagée.', b.source === 'vide', function () { b.source = 'vide'; b.tablePers = ''; b.liens = 'unions'; b.cols = idsParDefaut(CHAMPS_PERS); rendre(); }));
@@ -6783,12 +6784,6 @@ function etapeTables(z) {
   if (b.liens === 'unions') { cartes.push(carteTable('💞 UNIONS ⚡', !!unions, 'Les couples : les deux personnes, type d’union (mariage, PACS, union libre...), début, fin, séparés, notes. Les enfants sont rattachés à une union.')); }
   z.appendChild(creer('p', { texte: b.liens === 'unions' ? 'Cet arbre utilise deux tables : les personnes, et les unions qui notent les couples et leurs dates.' : 'Une seule table suffit : chaque personne indique ses deux parents et ses conjoints. Remariages, demi-frères et demi-sœurs se déduisent tout seuls.', attrs: { style: 'margin:0;max-width:44rem' } }));
   z.appendChild(creer('div', { attrs: { style: 'display:flex;flex-wrap:wrap;gap:1rem' } }, cartes));
-  if (!existe) {
-    z.appendChild(caseACocher('aUnions', 'Noter aussi le détail des unions (mariage, PACS, dates, séparation)', b.liens === 'unions', function (v) { b.liens = v ? 'unions' : 'colonnes'; rendre(); },
-      '(ajoute une seconde table, 💞 UNIONS ⚡ ; inutile si vous voulez seulement l’arbre)'));
-  } else if (existe === 'unions') {
-    z.appendChild(creer('p', { classe: 'indice', texte: 'Ces tables viennent d’une version précédente du widget, qui créait toujours 💞 UNIONS ⚡. Si elles sont vides et que vous ne voulez qu’une table, supprimez-les dans « Données source », puis relancez la création.', attrs: { style: 'margin:0;max-width:44rem' } }));
-  }
   z.appendChild(creer('p', { classe: 'indice', texte: 'Les pages créées avec les tables sont retirées : le widget est fait pour tout saisir. Les tables restent visibles dans « Données source ».', attrs: { style: 'margin:0' } }));
 }
 
