@@ -4889,6 +4889,9 @@ MGP.parcours = MGP.parcours || {};
     if (!col.isFormula || !col.formula) {
       return { ok: false, detail: "La colonne " + c.colonne + " n’est pas une formule." };
     }
+    if (c.attendu) {
+      return P.verifierResultat(c, m, t, col);
+    }
     if (c.contient && String(col.formula).replace(/\s/g, "").indexOf(String(c.contient).replace(/\s/g, "")) < 0) {
       return { ok: false, detail: "La formule n’utilise pas " + c.contient + "." };
     }
@@ -4913,7 +4916,7 @@ MGP.parcours = MGP.parcours || {};
     }
     return P.memeValeur(v, c.valeur) ? { ok: true } : { ok: false, detail: "Elle donne " + (v === null || v === void 0 ? "une cellule vide" : String(v)) + " au lieu de " + c.valeur + "." };
   }, indices: function(c) {
-    return ["Une formule commence par = dans la cellule, ou se tape dans le panneau de la colonne.", "Videz la colonne " + c.colonne + ", tapez = puis la formule" + (c.contient ? " (elle doit utiliser " + c.contient + ")" : "") + ". Une formule s’applique à toute la colonne.", c.solution ? "La formule : " + c.solution : "Colonne " + c.colonne + " > tapez = puis la formule demandée dans l’énoncé, et Entrée."];
+    return ["Une formule commence par = dans la cellule, ou se tape dans le panneau de la colonne.", "Videz la colonne " + c.colonne + ", tapez = puis la formule" + (c.contient && !c.attendu ? " (elle doit utiliser " + c.contient + ")" : "") + ". Une formule s’applique à toute la colonne" + (c.attendu ? " ; toute formule qui donne le bon résultat est acceptée." : "."), c.solution ? (c.attendu ? "Une formule possible : " : "La formule : ") + c.solution : "Colonne " + c.colonne + " > tapez = puis la formule demandée dans l’énoncé, et Entrée."];
   } }, reference: { libelle: function(c) {
     return "La colonne " + c.colonne + " est une " + (c.liste ? "Référence multiple" : "référence") + " vers « " + c.cible + " »";
   }, verifier: function(c, m) {
@@ -4960,7 +4963,11 @@ MGP.parcours = MGP.parcours || {};
     if (col.isFormula || !col.formula) {
       return { ok: false, detail: col.isFormula ? "C’est une formule ordinaire : elle se recalcule tout le temps." : "Pas de formule d’initialisation sur cette colonne." };
     }
-    if (c.formule && String(col.formula).replace(/\s/g, "") !== String(c.formule).replace(/\s/g, "")) {
+    if (c.motif) {
+      if (!new RegExp(c.motif).test(String(col.formula))) {
+        return { ok: false, detail: "La formule " + col.formula + " ne donne pas " + (c.attenduTexte || "la valeur attendue") + "." };
+      }
+    } else if (c.formule && String(col.formula).replace(/\s/g, "") !== String(c.formule).replace(/\s/g, "")) {
       return { ok: false, detail: "La formule est " + col.formula + "." };
     }
     return { ok: true };
@@ -5028,10 +5035,23 @@ MGP.parcours = MGP.parcours || {};
       if (res.indexOf(r.resource) < 0) {
         return false;
       }
-      if (c.permissions && String(r.permissionsText || "").indexOf(c.permissions) < 0) {
+      if (c.refuse) {
+        var nie = P.droitsRefuses(r.permissionsText);
+        if (c.refuse.split("").some(function(x) {
+          return nie.indexOf(x) < 0;
+        }) || c.garde && c.garde.split("").some(function(x) {
+          return nie.indexOf(x) >= 0;
+        })) {
+          return false;
+        }
+      } else if (c.permissions && String(r.permissionsText || "").indexOf(c.permissions) < 0) {
         return false;
       }
-      if (c.contient && String(r.aclFormula || "").replace(/\s/g, "").indexOf(String(c.contient).replace(/\s/g, "")) < 0) {
+      if (c.motif) {
+        if (!new RegExp(c.motif).test(String(r.aclFormula || ""))) {
+          return false;
+        }
+      } else if (c.contient && String(r.aclFormula || "").replace(/\s/g, "").indexOf(String(c.contient).replace(/\s/g, "")) < 0) {
         return false;
       }
       return !!(r.aclFormula || r.permissionsText);
@@ -5150,6 +5170,174 @@ MGP.parcours = MGP.parcours || {};
     var d = P.CHECKS[c.type] ? P.CHECKS[c.type].indices(c) : ["", "", ""];
     var p = c.indices || [];
     return [p[0] || d[0], p[1] || d[1], p[2] || d[2]];
+  };
+  P.droitsRefuses = function(txt) {
+    var s = String(txt || "").trim();
+    if (s === "none") {
+      return "CRUDS";
+    }
+    var r = "", signe = "";
+    s.split("").forEach(function(x) {
+      if (x === "+" || x === "-") {
+        signe = x;
+      } else if (signe === "-" && /[CRUDS]/.test(x)) {
+        r += x;
+      }
+    });
+    return r;
+  };
+  P.jourDe = function(v) {
+    if (typeof v === "number") {
+      return Math.floor(v / 86400);
+    }
+    var d = v ? Date.parse(String(v).slice(0, 10) + "T00:00:00Z") : NaN;
+    return isNaN(d) ? null : Math.floor(d / 864e5);
+  };
+  P.idsRef = function(v) {
+    return Array.isArray(v) ? v[0] === "L" ? v.slice(1) : [] : typeof v === "number" && v > 0 ? [v] : [];
+  };
+  P.valeurAffichee = async function(m, col, v) {
+    var mt = /^Ref:(.+)$/.exec(String(col.type || ""));
+    if (!mt || typeof v !== "number") {
+      return v;
+    }
+    var cible = (m.tables || []).filter(function(x) {
+      return x.tableId === mt[1];
+    })[0];
+    if (!cible) {
+      return v;
+    }
+    var vc = (m.colonnes || []).filter(function(x) {
+      return x.id === col.visibleCol;
+    })[0], l = (await P.donnees(m, cible)).filter(function(r) {
+      return r.id === v;
+    })[0];
+    return l && vc ? l[vc.colId] : v;
+  };
+  P.ATTENDUS = { produit: async function(a, r, ctx) {
+    var x = a.colonnes.map(function(n) {
+      var cc = ctx.col(n);
+      return cc ? P.nombre(r[cc.colId]) : null;
+    });
+    return x.some(function(n) {
+      return n === null;
+    }) ? void 0 : x.reduce(function(p, n) {
+      return p * n;
+    }, 1);
+  }, joursOuvres: async function(a, r, ctx) {
+    var d = ctx.col(a.debut), f = ctx.col(a.fin), jd = d ? P.jourDe(r[d.colId]) : null, jf = f ? P.jourDe(r[f.colId]) : null;
+    if (jd === null || jf === null || jf < jd) {
+      return void 0;
+    }
+    var n = 0;
+    for (var j = jd; j <= jf; j++) {
+      var w = new Date(j * 864e5).getUTCDay();
+      if (w !== 0 && w !== 6) {
+        n++;
+      }
+    }
+    return n;
+  }, joursRestants: async function(a, r, ctx) {
+    var e = ctx.col(a.date), je = e ? P.jourDe(r[e.colId]) : null;
+    if (je === null) {
+      return void 0;
+    }
+    var auj = /* @__PURE__ */ new Date(), j = Math.floor(Date.UTC(auj.getFullYear(), auj.getMonth(), auj.getDate()) / 864e5);
+    return { valeur: je - j, marge: 1 };
+  }, correspondance: async function(a, r, ctx) {
+    var cc = ctx.col(a.colonne);
+    if (!cc) {
+      return void 0;
+    }
+    var v = await P.valeurAffichee(ctx.m, cc, r[cc.colId]), cle = Object.keys(a.valeurs).filter(function(k) {
+      return P.norm(k) === P.norm(v);
+    })[0];
+    return cle === void 0 ? void 0 : a.valeurs[cle];
+  }, sommeLiee: async function(a, r, ctx) {
+    var t2 = P.trouverTable(ctx.m, a.table);
+    if (!t2) {
+      return void 0;
+    }
+    var ref = P.trouverColonne(ctx.m, t2, a.ref), ch = P.trouverColonne(ctx.m, t2, a.champ);
+    if (!ref || !ch) {
+      return void 0;
+    }
+    var lignes = await P.donnees(ctx.m, t2);
+    return lignes.filter(function(l) {
+      return P.idsRef(l[ref.colId]).indexOf(r.id) >= 0;
+    }).reduce(function(s, l) {
+      return s + (P.nombre(l[ch.colId]) || 0);
+    }, 0);
+  }, compteLie: async function(a, r, ctx) {
+    var t2 = P.trouverTable(ctx.m, a.table);
+    if (!t2) {
+      return void 0;
+    }
+    var ref = P.trouverColonne(ctx.m, t2, a.ref);
+    if (!ref) {
+      return void 0;
+    }
+    return (await P.donnees(ctx.m, t2)).filter(function(l) {
+      return P.idsRef(l[ref.colId]).indexOf(r.id) >= 0;
+    }).length;
+  }, ecartPrecedent: async function(a, r, ctx) {
+    var v = ctx.col(a.colonne), o = ctx.col(a.ordre);
+    if (!v || !o) {
+      return void 0;
+    }
+    var jr = P.jourDe(r[o.colId]), x = P.nombre(r[v.colId]);
+    if (jr === null || x === null) {
+      return void 0;
+    }
+    var avant = ctx.lignes.filter(function(l) {
+      var j = P.jourDe(l[o.colId]);
+      return j !== null && j < jr;
+    });
+    if (ctx.lignes.some(function(l) {
+      return l.id !== r.id && P.jourDe(l[o.colId]) === jr;
+    })) {
+      return void 0;
+    }
+    if (!avant.length) {
+      return { vide: true };
+    }
+    var p = avant.sort(function(u, w) {
+      return P.jourDe(w[o.colId]) - P.jourDe(u[o.colId]);
+    })[0], xp = P.nombre(p[v.colId]);
+    return xp === null ? void 0 : x - xp;
+  } };
+  P.verifierResultat = async function(c, m, t, col) {
+    var a = c.attendu, calc = P.ATTENDUS[a.calcul];
+    if (!calc) {
+      return { ok: false, detail: "Vérification inconnue : " + a.calcul + "." };
+    }
+    var lignes = await P.donnees(m, t), ctx = { m, t, lignes, col: function(n) {
+      return P.trouverColonne(m, t, n);
+    } }, vues = 0;
+    for (var i = 0; i < lignes.length; i++) {
+      var r = lignes[i], att = await calc(a, r, ctx), v = r[col.colId];
+      if (att === void 0) {
+        continue;
+      }
+      vues++;
+      if (Array.isArray(v) && v[0] === "E") {
+        return { ok: false, detail: "La formule est en erreur sur la ligne " + (i + 1) + "." };
+      }
+      var bon;
+      if (att && att.vide) {
+        bon = v === null || v === void 0 || v === "" || v === 0;
+      } else if (att && att.marge !== void 0) {
+        var nv = P.nombre(v);
+        bon = nv !== null && Math.abs(nv - att.valeur) <= att.marge;
+        att = att.valeur;
+      } else {
+        bon = P.memeValeur(v, att);
+      }
+      if (!bon) {
+        return { ok: false, detail: "Ligne " + (i + 1) + " : la formule donne " + (v === null || v === void 0 || v === "" ? "une cellule vide" : String(v)) + (att && att.vide ? " au lieu d’une cellule vide." : " au lieu de " + att + ".") };
+      }
+    }
+    return vues >= (a.min || 1) ? { ok: true } : { ok: false, detail: a.manque || "Remplissez une ligne complète pour que le résultat puisse être vérifié." };
   };
   P.verifier = async function(checks, meta) {
     var m = meta || await P.lireMeta(), res = [];
@@ -6605,7 +6793,7 @@ MGP.parcours = MGP.parcours || {};
     await P.noterInstallation(cfg.contenu);
   };
 })(MGP.parcours);
-MGP.parcours.CONTENU = { "carte": 19, "id": "epargne", "titre": "Formules d’initialisation", "competence": "declencheurs", "surprise": { "genre": "widget", "nom": "Mes projets d’épargne", "widget": "epargne", "texte": "Un objectif, une date, des versements : la jauge avance, et le widget vous dit combien mettre de côté chaque mois." }, "widget": "epargne", "niveau": "avance", "niveauNom": "Avancé", "contrat": { "note": "Tables du widget Mes projets d’épargne (src/widgets/epargne) : la mission construit Projets_epargne et Versements ; le widget les adopte (MGP.parcours.adopter) puis les complète. Signatures : Projets_epargne PROJET, OBJECTIF ; Versements MONTANT, PROJET, SAISI_LE.", "tables": [{ "id": "Projets_epargne", "colonnes": { "PROJET": "Text", "OBJECTIF": "Numeric" } }, { "id": "Versements", "colonnes": { "MONTANT": "Numeric", "PROJET": "Ref:Projets_epargne", "SAISI_LE": "formule d’initialisation NOW(), nouvelles lignes" } }] }, "objectif": "Garder une trace automatique : une valeur calculée une fois, puis figée.", "durees": { "lecon": 10, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "Une formule qui ne bouge plus", "paragraphes": ["Une formule ordinaire se recalcule sans cesse : `NOW()` changerait à chaque seconde. Une **formule d’initialisation** calcule sa valeur à un moment précis (à la création de la ligne, ou quand certaines colonnes changent), puis la garde."] }, { "titre": "Les trois classiques", "liste": ["`NOW()` à la création : la date de saisie", "`user.Name` à la création : qui a saisi", "`NOW()` à chaque modification : la date de dernière mise à jour"] }, { "titre": "Où la régler", "paragraphes": ["Panneau de la colonne > **Nature de colonne** > **Définir une formule d’initialisation**, puis cocher **Appliquer sur les nouvelles lignes uniquement**, ou **Réappliquer en cas de modification de la ligne** pour recalculer quand des colonnes changent."] }, { "titre": "Figer une valeur au bon moment", "paragraphes": ["Un versement garde le taux du jour où il a été fait, même si le taux du projet change ensuite : c'est le rôle d’une formule d’initialisation."] }], "mission": { "titre": "Les versements datés tout seuls", "intro": "Le cœur du widget Mes projets d'épargne : des projets, des versements, et leur date de saisie notée automatiquement.", "etapes": ["Créez **Projets_epargne** avec PROJET (Texte) et OBJECTIF (Numérique).", "Créez **Versements** avec MONTANT (Numérique) et PROJET (Référence vers Projets_epargne).", "Ajoutez à Versements une colonne **SAISI_LE** en formule d’initialisation `NOW()`, avec **Appliquer sur les nouvelles lignes uniquement**.", "Ajoutez deux versements."], "verifications": [{ "type": "table", "table": "Projets_epargne" }, { "type": "reference", "table": "Versements", "colonne": "PROJET", "cible": "Projets_epargne" }, { "type": "declencheur", "table": "Versements", "colonne": "SAISI_LE", "formule": "NOW()" }, { "type": "lignes", "table": "Versements", "min": 2 }] }, "questions": [{ "type": "qcm", "competence": "declencheurs", "question": "Pourquoi `NOW()` en formule ordinaire ne convient pas pour une date de saisie ?", "choix": ["Elle se recalcule et change tout le temps", "Elle est interdite", "Elle ne donne que l’heure"], "bonne": 0, "explication": "Une formule ordinaire se recalcule ; une formule d’initialisation fige la valeur.", "aide": "https://support.getgrist.com/formulas/" }, { "type": "paires", "competence": "declencheurs", "question": "Reliez chaque besoin à sa formule d’initialisation.", "paires": [["Date de création", "NOW(), nouvelles lignes"], ["Auteur de la ligne", "user.Name, nouvelles lignes"], ["Date de dernière modification", "NOW(), à chaque modification"]], "explication": "Les colonnes CREE_LE, CREE_PAR, MODIFIE_LE de vos widgets sont faites ainsi.", "aide": "https://support.getgrist.com/formulas/" }, { "type": "ordre", "competence": "declencheurs", "question": "Remettez dans l'ordre pour créer une date de saisie.", "etapes": ["Ajouter la colonne SAISI_LE", "Ouvrir le panneau de la colonne", "Définir une formule d’initialisation", "Écrire NOW()", "Cocher « Appliquer sur les nouvelles lignes uniquement »"], "explication": "Le choix du moment est ce qui distingue une formule d’initialisation.", "aide": "https://support.getgrist.com/formulas/" }, { "type": "multiple", "competence": "declencheurs", "question": "Lesquelles sont vraies ?", "choix": ["Une valeur de formule d’initialisation se modifie à la main", "Elle est calculée une seule fois au moment choisi", "Elle change quand on recharge la page", "Elle peut dépendre de certaines colonnes seulement"], "bonnes": [0, 1, 3], "explication": "C'est une donnée ordinaire, remplie au bon moment ; on peut la corriger.", "aide": "https://support.getgrist.com/formulas/" }, { "type": "qcm", "competence": "declencheurs", "question": "Un versement doit garder le taux du projet au jour du versement. Quelle formule pour TAUX_DU_JOUR ?", "choix": ["`$PROJET.TAUX` en formule ordinaire", "`$PROJET.TAUX` en formule d’initialisation, nouvelles lignes", "Retaper le taux à la main"], "bonne": 1, "explication": "En formule d’initialisation, la valeur est recopiée une fois puis gardée.", "aide": "https://support.getgrist.com/formulas/" }] };
+MGP.parcours.CONTENU = { "carte": 19, "id": "epargne", "titre": "Formules d’initialisation", "competence": "declencheurs", "surprise": { "genre": "widget", "nom": "Mes projets d’épargne", "widget": "epargne", "texte": "Un objectif, une date, des versements : la jauge avance, et le widget vous dit combien mettre de côté chaque mois." }, "widget": "epargne", "niveau": "avance", "niveauNom": "Avancé", "contrat": { "note": "Tables du widget Mes projets d’épargne (src/widgets/epargne) : la mission construit Projets_epargne et Versements ; le widget les adopte (MGP.parcours.adopter) puis les complète. Signatures : Projets_epargne PROJET, OBJECTIF ; Versements MONTANT, PROJET, SAISI_LE.", "tables": [{ "id": "Projets_epargne", "colonnes": { "PROJET": "Text", "OBJECTIF": "Numeric" } }, { "id": "Versements", "colonnes": { "MONTANT": "Numeric", "PROJET": "Ref:Projets_epargne", "SAISI_LE": "formule d’initialisation NOW(), nouvelles lignes" } }] }, "objectif": "Garder une trace automatique : une valeur calculée une fois, puis figée.", "durees": { "lecon": 10, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "Une formule qui ne bouge plus", "paragraphes": ["Une formule ordinaire se recalcule sans cesse : `NOW()` changerait à chaque seconde. Une **formule d’initialisation** calcule sa valeur à un moment précis (à la création de la ligne, ou quand certaines colonnes changent), puis la garde."] }, { "titre": "Les trois classiques", "liste": ["`NOW()` à la création : la date de saisie", "`user.Name` à la création : qui a saisi", "`NOW()` à chaque modification : la date de dernière mise à jour"] }, { "titre": "Où la régler", "paragraphes": ["Panneau de la colonne > **Nature de colonne** > **Définir une formule d’initialisation**, puis cocher **Appliquer sur les nouvelles lignes uniquement**, ou **Réappliquer en cas de modification de la ligne** pour recalculer quand des colonnes changent."] }, { "titre": "Figer une valeur au bon moment", "paragraphes": ["Un versement garde le taux du jour où il a été fait, même si le taux du projet change ensuite : c'est le rôle d’une formule d’initialisation."] }], "mission": { "titre": "Les versements datés tout seuls", "intro": "Le cœur du widget Mes projets d'épargne : des projets, des versements, et leur date de saisie notée automatiquement.", "etapes": ["Créez **Projets_epargne** avec PROJET (Texte) et OBJECTIF (Numérique).", "Créez **Versements** avec MONTANT (Numérique) et PROJET (Référence vers Projets_epargne).", "Ajoutez à Versements une colonne **SAISI_LE** en formule d’initialisation `NOW()`, avec **Appliquer sur les nouvelles lignes uniquement**.", "Ajoutez deux versements."], "verifications": [{ "type": "table", "table": "Projets_epargne" }, { "type": "reference", "table": "Versements", "colonne": "PROJET", "cible": "Projets_epargne" }, { "type": "declencheur", "table": "Versements", "colonne": "SAISI_LE", "formule": "NOW()", "motif": "\\b(NOW|TODAY)\\(\\s*\\)", "attenduTexte": "la date de saisie" }, { "type": "lignes", "table": "Versements", "min": 2 }] }, "questions": [{ "type": "qcm", "competence": "declencheurs", "question": "Pourquoi `NOW()` en formule ordinaire ne convient pas pour une date de saisie ?", "choix": ["Elle se recalcule et change tout le temps", "Elle est interdite", "Elle ne donne que l’heure"], "bonne": 0, "explication": "Une formule ordinaire se recalcule ; une formule d’initialisation fige la valeur.", "aide": "https://support.getgrist.com/formulas/" }, { "type": "paires", "competence": "declencheurs", "question": "Reliez chaque besoin à sa formule d’initialisation.", "paires": [["Date de création", "NOW(), nouvelles lignes"], ["Auteur de la ligne", "user.Name, nouvelles lignes"], ["Date de dernière modification", "NOW(), à chaque modification"]], "explication": "Les colonnes CREE_LE, CREE_PAR, MODIFIE_LE de vos widgets sont faites ainsi.", "aide": "https://support.getgrist.com/formulas/" }, { "type": "ordre", "competence": "declencheurs", "question": "Remettez dans l'ordre pour créer une date de saisie.", "etapes": ["Ajouter la colonne SAISI_LE", "Ouvrir le panneau de la colonne", "Définir une formule d’initialisation", "Écrire NOW()", "Cocher « Appliquer sur les nouvelles lignes uniquement »"], "explication": "Le choix du moment est ce qui distingue une formule d’initialisation.", "aide": "https://support.getgrist.com/formulas/" }, { "type": "multiple", "competence": "declencheurs", "question": "Lesquelles sont vraies ?", "choix": ["Une valeur de formule d’initialisation se modifie à la main", "Elle est calculée une seule fois au moment choisi", "Elle change quand on recharge la page", "Elle peut dépendre de certaines colonnes seulement"], "bonnes": [0, 1, 3], "explication": "C'est une donnée ordinaire, remplie au bon moment ; on peut la corriger.", "aide": "https://support.getgrist.com/formulas/" }, { "type": "qcm", "competence": "declencheurs", "question": "Un versement doit garder le taux du projet au jour du versement. Quelle formule pour TAUX_DU_JOUR ?", "choix": ["`$PROJET.TAUX` en formule ordinaire", "`$PROJET.TAUX` en formule d’initialisation, nouvelles lignes", "Retaper le taux à la main"], "bonne": 1, "explication": "En formule d’initialisation, la valeur est recopiée une fois puis gardée.", "aide": "https://support.getgrist.com/formulas/" }] };
 var EPA = { WIDGET: "epargne", NOM: "Mes projets d’épargne", NOM_PAGE: "🐷 Mes projets d’épargne", d: { projets: [], mouvements: [], personnes: [], comptes: null, operations: null, envies: null, voyages: null }, onglet: "bord", filtre: "", fp: { p: null }, fm: { m: null } };
 EPA.CATEGORIES = [["Vacances", "Écume", "🏖️"], ["Voiture", "Citron", "🚗"], ["Noël", "Flamant", "🎄"], ["Fonds d’urgence", "Menthe", "🛟"], ["Travaux", "Pêche", "🔨"], ["Cadeaux", "Flamant", "🎁"], ["Études", "Lavande", "🎓"], ["Maison", "Pêche", "🏠"], ["Envie", "Lavande", "🌠"], ["Autre", "Écume", "🐷"]];
 EPA.URGENCE = "Fonds d’urgence";

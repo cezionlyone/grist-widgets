@@ -4678,6 +4678,9 @@ MGP.parcours = MGP.parcours || {};
     if (!col.isFormula || !col.formula) {
       return { ok: false, detail: "La colonne " + c.colonne + " n’est pas une formule." };
     }
+    if (c.attendu) {
+      return P.verifierResultat(c, m, t, col);
+    }
     if (c.contient && String(col.formula).replace(/\s/g, "").indexOf(String(c.contient).replace(/\s/g, "")) < 0) {
       return { ok: false, detail: "La formule n’utilise pas " + c.contient + "." };
     }
@@ -4702,7 +4705,7 @@ MGP.parcours = MGP.parcours || {};
     }
     return P.memeValeur(v, c.valeur) ? { ok: true } : { ok: false, detail: "Elle donne " + (v === null || v === void 0 ? "une cellule vide" : String(v)) + " au lieu de " + c.valeur + "." };
   }, indices: function(c) {
-    return ["Une formule commence par = dans la cellule, ou se tape dans le panneau de la colonne.", "Videz la colonne " + c.colonne + ", tapez = puis la formule" + (c.contient ? " (elle doit utiliser " + c.contient + ")" : "") + ". Une formule s’applique à toute la colonne.", c.solution ? "La formule : " + c.solution : "Colonne " + c.colonne + " > tapez = puis la formule demandée dans l’énoncé, et Entrée."];
+    return ["Une formule commence par = dans la cellule, ou se tape dans le panneau de la colonne.", "Videz la colonne " + c.colonne + ", tapez = puis la formule" + (c.contient && !c.attendu ? " (elle doit utiliser " + c.contient + ")" : "") + ". Une formule s’applique à toute la colonne" + (c.attendu ? " ; toute formule qui donne le bon résultat est acceptée." : "."), c.solution ? (c.attendu ? "Une formule possible : " : "La formule : ") + c.solution : "Colonne " + c.colonne + " > tapez = puis la formule demandée dans l’énoncé, et Entrée."];
   } }, reference: { libelle: function(c) {
     return "La colonne " + c.colonne + " est une " + (c.liste ? "Référence multiple" : "référence") + " vers « " + c.cible + " »";
   }, verifier: function(c, m) {
@@ -4749,7 +4752,11 @@ MGP.parcours = MGP.parcours || {};
     if (col.isFormula || !col.formula) {
       return { ok: false, detail: col.isFormula ? "C’est une formule ordinaire : elle se recalcule tout le temps." : "Pas de formule d’initialisation sur cette colonne." };
     }
-    if (c.formule && String(col.formula).replace(/\s/g, "") !== String(c.formule).replace(/\s/g, "")) {
+    if (c.motif) {
+      if (!new RegExp(c.motif).test(String(col.formula))) {
+        return { ok: false, detail: "La formule " + col.formula + " ne donne pas " + (c.attenduTexte || "la valeur attendue") + "." };
+      }
+    } else if (c.formule && String(col.formula).replace(/\s/g, "") !== String(c.formule).replace(/\s/g, "")) {
       return { ok: false, detail: "La formule est " + col.formula + "." };
     }
     return { ok: true };
@@ -4817,10 +4824,23 @@ MGP.parcours = MGP.parcours || {};
       if (res.indexOf(r.resource) < 0) {
         return false;
       }
-      if (c.permissions && String(r.permissionsText || "").indexOf(c.permissions) < 0) {
+      if (c.refuse) {
+        var nie = P.droitsRefuses(r.permissionsText);
+        if (c.refuse.split("").some(function(x) {
+          return nie.indexOf(x) < 0;
+        }) || c.garde && c.garde.split("").some(function(x) {
+          return nie.indexOf(x) >= 0;
+        })) {
+          return false;
+        }
+      } else if (c.permissions && String(r.permissionsText || "").indexOf(c.permissions) < 0) {
         return false;
       }
-      if (c.contient && String(r.aclFormula || "").replace(/\s/g, "").indexOf(String(c.contient).replace(/\s/g, "")) < 0) {
+      if (c.motif) {
+        if (!new RegExp(c.motif).test(String(r.aclFormula || ""))) {
+          return false;
+        }
+      } else if (c.contient && String(r.aclFormula || "").replace(/\s/g, "").indexOf(String(c.contient).replace(/\s/g, "")) < 0) {
         return false;
       }
       return !!(r.aclFormula || r.permissionsText);
@@ -4939,6 +4959,174 @@ MGP.parcours = MGP.parcours || {};
     var d = P.CHECKS[c.type] ? P.CHECKS[c.type].indices(c) : ["", "", ""];
     var p = c.indices || [];
     return [p[0] || d[0], p[1] || d[1], p[2] || d[2]];
+  };
+  P.droitsRefuses = function(txt) {
+    var s = String(txt || "").trim();
+    if (s === "none") {
+      return "CRUDS";
+    }
+    var r = "", signe = "";
+    s.split("").forEach(function(x) {
+      if (x === "+" || x === "-") {
+        signe = x;
+      } else if (signe === "-" && /[CRUDS]/.test(x)) {
+        r += x;
+      }
+    });
+    return r;
+  };
+  P.jourDe = function(v) {
+    if (typeof v === "number") {
+      return Math.floor(v / 86400);
+    }
+    var d = v ? Date.parse(String(v).slice(0, 10) + "T00:00:00Z") : NaN;
+    return isNaN(d) ? null : Math.floor(d / 864e5);
+  };
+  P.idsRef = function(v) {
+    return Array.isArray(v) ? v[0] === "L" ? v.slice(1) : [] : typeof v === "number" && v > 0 ? [v] : [];
+  };
+  P.valeurAffichee = async function(m, col, v) {
+    var mt = /^Ref:(.+)$/.exec(String(col.type || ""));
+    if (!mt || typeof v !== "number") {
+      return v;
+    }
+    var cible = (m.tables || []).filter(function(x) {
+      return x.tableId === mt[1];
+    })[0];
+    if (!cible) {
+      return v;
+    }
+    var vc = (m.colonnes || []).filter(function(x) {
+      return x.id === col.visibleCol;
+    })[0], l = (await P.donnees(m, cible)).filter(function(r) {
+      return r.id === v;
+    })[0];
+    return l && vc ? l[vc.colId] : v;
+  };
+  P.ATTENDUS = { produit: async function(a, r, ctx) {
+    var x = a.colonnes.map(function(n) {
+      var cc = ctx.col(n);
+      return cc ? P.nombre(r[cc.colId]) : null;
+    });
+    return x.some(function(n) {
+      return n === null;
+    }) ? void 0 : x.reduce(function(p, n) {
+      return p * n;
+    }, 1);
+  }, joursOuvres: async function(a, r, ctx) {
+    var d = ctx.col(a.debut), f = ctx.col(a.fin), jd = d ? P.jourDe(r[d.colId]) : null, jf = f ? P.jourDe(r[f.colId]) : null;
+    if (jd === null || jf === null || jf < jd) {
+      return void 0;
+    }
+    var n = 0;
+    for (var j = jd; j <= jf; j++) {
+      var w = new Date(j * 864e5).getUTCDay();
+      if (w !== 0 && w !== 6) {
+        n++;
+      }
+    }
+    return n;
+  }, joursRestants: async function(a, r, ctx) {
+    var e = ctx.col(a.date), je = e ? P.jourDe(r[e.colId]) : null;
+    if (je === null) {
+      return void 0;
+    }
+    var auj = /* @__PURE__ */ new Date(), j = Math.floor(Date.UTC(auj.getFullYear(), auj.getMonth(), auj.getDate()) / 864e5);
+    return { valeur: je - j, marge: 1 };
+  }, correspondance: async function(a, r, ctx) {
+    var cc = ctx.col(a.colonne);
+    if (!cc) {
+      return void 0;
+    }
+    var v = await P.valeurAffichee(ctx.m, cc, r[cc.colId]), cle = Object.keys(a.valeurs).filter(function(k) {
+      return P.norm(k) === P.norm(v);
+    })[0];
+    return cle === void 0 ? void 0 : a.valeurs[cle];
+  }, sommeLiee: async function(a, r, ctx) {
+    var t2 = P.trouverTable(ctx.m, a.table);
+    if (!t2) {
+      return void 0;
+    }
+    var ref = P.trouverColonne(ctx.m, t2, a.ref), ch = P.trouverColonne(ctx.m, t2, a.champ);
+    if (!ref || !ch) {
+      return void 0;
+    }
+    var lignes = await P.donnees(ctx.m, t2);
+    return lignes.filter(function(l) {
+      return P.idsRef(l[ref.colId]).indexOf(r.id) >= 0;
+    }).reduce(function(s, l) {
+      return s + (P.nombre(l[ch.colId]) || 0);
+    }, 0);
+  }, compteLie: async function(a, r, ctx) {
+    var t2 = P.trouverTable(ctx.m, a.table);
+    if (!t2) {
+      return void 0;
+    }
+    var ref = P.trouverColonne(ctx.m, t2, a.ref);
+    if (!ref) {
+      return void 0;
+    }
+    return (await P.donnees(ctx.m, t2)).filter(function(l) {
+      return P.idsRef(l[ref.colId]).indexOf(r.id) >= 0;
+    }).length;
+  }, ecartPrecedent: async function(a, r, ctx) {
+    var v = ctx.col(a.colonne), o = ctx.col(a.ordre);
+    if (!v || !o) {
+      return void 0;
+    }
+    var jr = P.jourDe(r[o.colId]), x = P.nombre(r[v.colId]);
+    if (jr === null || x === null) {
+      return void 0;
+    }
+    var avant = ctx.lignes.filter(function(l) {
+      var j = P.jourDe(l[o.colId]);
+      return j !== null && j < jr;
+    });
+    if (ctx.lignes.some(function(l) {
+      return l.id !== r.id && P.jourDe(l[o.colId]) === jr;
+    })) {
+      return void 0;
+    }
+    if (!avant.length) {
+      return { vide: true };
+    }
+    var p = avant.sort(function(u, w) {
+      return P.jourDe(w[o.colId]) - P.jourDe(u[o.colId]);
+    })[0], xp = P.nombre(p[v.colId]);
+    return xp === null ? void 0 : x - xp;
+  } };
+  P.verifierResultat = async function(c, m, t, col) {
+    var a = c.attendu, calc = P.ATTENDUS[a.calcul];
+    if (!calc) {
+      return { ok: false, detail: "Vérification inconnue : " + a.calcul + "." };
+    }
+    var lignes = await P.donnees(m, t), ctx = { m, t, lignes, col: function(n) {
+      return P.trouverColonne(m, t, n);
+    } }, vues = 0;
+    for (var i = 0; i < lignes.length; i++) {
+      var r = lignes[i], att = await calc(a, r, ctx), v = r[col.colId];
+      if (att === void 0) {
+        continue;
+      }
+      vues++;
+      if (Array.isArray(v) && v[0] === "E") {
+        return { ok: false, detail: "La formule est en erreur sur la ligne " + (i + 1) + "." };
+      }
+      var bon;
+      if (att && att.vide) {
+        bon = v === null || v === void 0 || v === "" || v === 0;
+      } else if (att && att.marge !== void 0) {
+        var nv = P.nombre(v);
+        bon = nv !== null && Math.abs(nv - att.valeur) <= att.marge;
+        att = att.valeur;
+      } else {
+        bon = P.memeValeur(v, att);
+      }
+      if (!bon) {
+        return { ok: false, detail: "Ligne " + (i + 1) + " : la formule donne " + (v === null || v === void 0 || v === "" ? "une cellule vide" : String(v)) + (att && att.vide ? " au lieu d’une cellule vide." : " au lieu de " + att + ".") };
+      }
+    }
+    return vues >= (a.min || 1) ? { ok: true } : { ok: false, detail: a.manque || "Remplissez une ligne complète pour que le résultat puisse être vérifié." };
   };
   P.verifier = async function(checks, meta) {
     var m = meta || await P.lireMeta(), res = [];
@@ -6394,7 +6582,7 @@ MGP.parcours = MGP.parcours || {};
     await P.noterInstallation(cfg.contenu);
   };
 })(MGP.parcours);
-MGP.parcours.CONTENU = { "carte": 12, "id": "papiers", "titre": "Styles conditionnels", "competence": "miseenforme", "surprise": { "genre": "widget", "nom": "Mes papiers et échéances", "widget": "papiers", "texte": "Carte d'identité, passeport, assurance, contrôle technique : les dates qui comptent, et une alerte avant qu'il soit trop tard." }, "widget": "papiers", "niveau": "pratique", "niveauNom": "Pratique", "contrat": { "note": "Tables du widget Mes papiers et échéances (src/widgets/papiers) : la mission construit Papiers avec une formule de jours restants et une mise en forme ; le widget l’adopte (MGP.parcours.adopter) puis la complète. Signature : PAPIER, ECHEANCE, JOURS_RESTANTS.", "tables": [{ "id": "Papiers", "colonnes": { "PAPIER": "Text", "ECHEANCE": "Date", "JOURS_RESTANTS": "formule DAYS($ECHEANCE, TODAY()) if $ECHEANCE else None" } }], "miseEnForme": [{ "table": "Papiers", "colonne": "JOURS_RESTANTS" }] }, "objectif": "Colorer automatiquement ce qui demande votre attention.", "durees": { "lecon": 10, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "Une règle, une couleur", "paragraphes": ["Dans le panneau de la colonne, **Style de cellule** puis **Ajouter un style conditionnel** : une condition, une couleur. La cellule se colore toute seule quand la condition est vraie."] }, { "titre": "Les conditions sont des formules", "code": "$STOCK is not None and $STOCK < 5", "paragraphes": ["On écrit la condition comme une formule, vraie ou fausse. Plusieurs règles peuvent s'empiler, par exemple rouge sous 5, orange sous 10 : la première règle vraie l'emporte. Pensez aux cellules vides : la condition doit d'abord vérifier que la valeur existe."] }, { "titre": "Toute la ligne", "paragraphes": ["Un style conditionnel peut aussi s'appliquer à **la ligne entière** : panneau de droite, onglet **Vue**, **Aspect de la ligne**. Pratique pour griser les papiers déjà renouvelés."] }], "mission": { "titre": "Les échéances en couleur", "intro": "Le cœur du widget Mes papiers et échéances : chaque papier, sa date d'échéance, et une alerte en couleur.", "etapes": ["Créez une table **Papiers** avec PAPIER (Texte) et ECHEANCE (Date).", "Ajoutez **JOURS_RESTANTS** avec la formule `DAYS($ECHEANCE, TODAY()) if $ECHEANCE else None`.", "Sur JOURS_RESTANTS, dans le panneau de la colonne, **Style de cellule** > **Ajouter un style conditionnel** : condition `$JOURS_RESTANTS is not None and $JOURS_RESTANTS < 30`, avec un fond rouge.", "Ajoutez deux papiers, dont un qui expire bientôt."], "verifications": [{ "type": "table", "table": "Papiers" }, { "type": "colonne", "table": "Papiers", "colonne": "ECHEANCE", "typeCol": ["Date"] }, { "type": "formule", "table": "Papiers", "colonne": "JOURS_RESTANTS", "contient": "$ECHEANCE", "solution": "DAYS($ECHEANCE, TODAY()) if $ECHEANCE else None" }, { "type": "miseEnForme", "table": "Papiers", "colonne": "JOURS_RESTANTS", "condition": "$JOURS_RESTANTS is not None and $JOURS_RESTANTS < 30" }, { "type": "lignes", "table": "Papiers", "min": 2 }] }, "questions": [{ "type": "qcm", "competence": "miseenforme", "question": "Où ajoute-t-on un style conditionnel sur une colonne ?", "choix": ["Panneau de la colonne, Style de cellule", "Menu Fichier", "Dans la formule de la colonne"], "bonne": 0, "explication": "Style de cellule > Ajouter un style conditionnel.", "aide": "https://support.getgrist.com/conditional-formatting/" }, { "type": "trou", "competence": "miseenforme", "question": "Complétez la condition : en rouge quand il reste moins de 7 jours.", "formule": "$JOURS_RESTANTS ___ 7", "reponses": [["<"]], "explication": "Une condition de style est une formule qui vaut Vrai ou Faux.", "aide": "https://support.getgrist.com/conditional-formatting/" }, { "type": "qcm", "competence": "miseenforme", "question": "Deux règles sont vraies en même temps (moins de 7 jours, moins de 30 jours). Laquelle s'applique ?", "choix": ["La première de la liste", "La dernière ajoutée", "Aucune"], "bonne": 0, "explication": "Mettez la règle la plus stricte en premier.", "aide": "https://support.getgrist.com/conditional-formatting/" }, { "type": "erreur", "competence": "miseenforme", "question": "Cette condition doit colorer les papiers expirés. Où est l'erreur ?", "segments": ["$ECHEANCE", "and", "$ECHEANCE < TODAY"], "bonne": 2, "correction": "$ECHEANCE < TODAY()", "explication": "TODAY() avec ses parenthèses : c'est une fonction.", "aide": "https://support.getgrist.com/functions/" }, { "type": "multiple", "competence": "miseenforme", "question": "Que peut changer un style conditionnel ?", "choix": ["La couleur du texte", "La couleur de fond", "La valeur de la cellule", "Le gras"], "bonnes": [0, 1, 3], "explication": "Elle change l'apparence, jamais la valeur.", "aide": "https://support.getgrist.com/conditional-formatting/" }, { "type": "prediction", "competence": "miseenforme", "question": "L'échéance est dans 12 jours. Cette condition est-elle vraie ? (Vrai ou Faux)", "formule": "$JOURS_RESTANTS is not None and $JOURS_RESTANTS < 30", "reponses": ["Vrai", "True", "oui"], "explication": "12 est bien inférieur à 30 : la cellule se colore.", "aide": "https://support.getgrist.com/conditional-formatting/" }] };
+MGP.parcours.CONTENU = { "carte": 12, "id": "papiers", "titre": "Styles conditionnels", "competence": "miseenforme", "surprise": { "genre": "widget", "nom": "Mes papiers et échéances", "widget": "papiers", "texte": "Carte d'identité, passeport, assurance, contrôle technique : les dates qui comptent, et une alerte avant qu'il soit trop tard." }, "widget": "papiers", "niveau": "pratique", "niveauNom": "Pratique", "contrat": { "note": "Tables du widget Mes papiers et échéances (src/widgets/papiers) : la mission construit Papiers avec une formule de jours restants et une mise en forme ; le widget l’adopte (MGP.parcours.adopter) puis la complète. Signature : PAPIER, ECHEANCE, JOURS_RESTANTS.", "tables": [{ "id": "Papiers", "colonnes": { "PAPIER": "Text", "ECHEANCE": "Date", "JOURS_RESTANTS": "formule DAYS($ECHEANCE, TODAY()) if $ECHEANCE else None" } }], "miseEnForme": [{ "table": "Papiers", "colonne": "JOURS_RESTANTS" }] }, "objectif": "Colorer automatiquement ce qui demande votre attention.", "durees": { "lecon": 10, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "Une règle, une couleur", "paragraphes": ["Dans le panneau de la colonne, **Style de cellule** puis **Ajouter un style conditionnel** : une condition, une couleur. La cellule se colore toute seule quand la condition est vraie."] }, { "titre": "Les conditions sont des formules", "code": "$STOCK is not None and $STOCK < 5", "paragraphes": ["On écrit la condition comme une formule, vraie ou fausse. Plusieurs règles peuvent s'empiler, par exemple rouge sous 5, orange sous 10 : la première règle vraie l'emporte. Pensez aux cellules vides : la condition doit d'abord vérifier que la valeur existe."] }, { "titre": "Toute la ligne", "paragraphes": ["Un style conditionnel peut aussi s'appliquer à **la ligne entière** : panneau de droite, onglet **Vue**, **Aspect de la ligne**. Pratique pour griser les papiers déjà renouvelés."] }], "mission": { "titre": "Les échéances en couleur", "intro": "Le cœur du widget Mes papiers et échéances : chaque papier, sa date d'échéance, et une alerte en couleur.", "etapes": ["Créez une table **Papiers** avec PAPIER (Texte) et ECHEANCE (Date).", "Ajoutez **JOURS_RESTANTS** avec une formule, par exemple `DAYS($ECHEANCE, TODAY()) if $ECHEANCE else None` (toute formule qui donne le bon résultat est acceptée).", "Sur JOURS_RESTANTS, dans le panneau de la colonne, **Style de cellule** > **Ajouter un style conditionnel** : condition `$JOURS_RESTANTS is not None and $JOURS_RESTANTS < 30`, avec un fond rouge.", "Ajoutez deux papiers, dont un qui expire bientôt."], "verifications": [{ "type": "table", "table": "Papiers" }, { "type": "colonne", "table": "Papiers", "colonne": "ECHEANCE", "typeCol": ["Date"] }, { "type": "formule", "table": "Papiers", "colonne": "JOURS_RESTANTS", "solution": "DAYS($ECHEANCE, TODAY()) if $ECHEANCE else None", "attendu": { "calcul": "joursRestants", "date": "ECHEANCE", "manque": "Ajoutez un papier avec sa date d’échéance." } }, { "type": "miseEnForme", "table": "Papiers", "colonne": "JOURS_RESTANTS", "condition": "$JOURS_RESTANTS is not None and $JOURS_RESTANTS < 30" }, { "type": "lignes", "table": "Papiers", "min": 2 }] }, "questions": [{ "type": "qcm", "competence": "miseenforme", "question": "Où ajoute-t-on un style conditionnel sur une colonne ?", "choix": ["Panneau de la colonne, Style de cellule", "Menu Fichier", "Dans la formule de la colonne"], "bonne": 0, "explication": "Style de cellule > Ajouter un style conditionnel.", "aide": "https://support.getgrist.com/conditional-formatting/" }, { "type": "trou", "competence": "miseenforme", "question": "Complétez la condition : en rouge quand il reste moins de 7 jours.", "formule": "$JOURS_RESTANTS ___ 7", "reponses": [["<"]], "explication": "Une condition de style est une formule qui vaut Vrai ou Faux.", "aide": "https://support.getgrist.com/conditional-formatting/" }, { "type": "qcm", "competence": "miseenforme", "question": "Deux règles sont vraies en même temps (moins de 7 jours, moins de 30 jours). Laquelle s'applique ?", "choix": ["La première de la liste", "La dernière ajoutée", "Aucune"], "bonne": 0, "explication": "Mettez la règle la plus stricte en premier.", "aide": "https://support.getgrist.com/conditional-formatting/" }, { "type": "erreur", "competence": "miseenforme", "question": "Cette condition doit colorer les papiers expirés. Où est l'erreur ?", "segments": ["$ECHEANCE", "and", "$ECHEANCE < TODAY"], "bonne": 2, "correction": "$ECHEANCE < TODAY()", "explication": "TODAY() avec ses parenthèses : c'est une fonction.", "aide": "https://support.getgrist.com/functions/" }, { "type": "multiple", "competence": "miseenforme", "question": "Que peut changer un style conditionnel ?", "choix": ["La couleur du texte", "La couleur de fond", "La valeur de la cellule", "Le gras"], "bonnes": [0, 1, 3], "explication": "Elle change l'apparence, jamais la valeur.", "aide": "https://support.getgrist.com/conditional-formatting/" }, { "type": "prediction", "competence": "miseenforme", "question": "L'échéance est dans 12 jours. Cette condition est-elle vraie ? (Vrai ou Faux)", "formule": "$JOURS_RESTANTS is not None and $JOURS_RESTANTS < 30", "reponses": ["Vrai", "True", "oui"], "explication": "12 est bien inférieur à 30 : la cellule se colore.", "aide": "https://support.getgrist.com/conditional-formatting/" }] };
 var PAP = { WIDGET: "papiers", NOM: "Mes papiers et échéances", NOM_PAGE: "📁 Mes papiers et échéances", d: { papiers: [], garder: [], personnes: [], documents: [], vehicules: [], voyages: [] }, onglet: "echeances", filtre: "", pers: null, voy: { id: 0, depart: "", retour: "", qui: [] } };
 PAP.GENRES = [["Identité", "Lavande"], ["Véhicule", "Écume"], ["Santé", "Flamant"], ["Contrat", "Citron"], ["Logement", "Pêche"], ["Autre", "Menthe"]];
 PAP.EMOJI_GENRE = { "Identité": "🪪", "Véhicule": "🚗", "Santé": "💳", "Contrat": "📝", "Logement": "🏠", "Autre": "📄" };

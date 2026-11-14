@@ -4645,6 +4645,9 @@ MGP.parcours = MGP.parcours || {};
     if (!col.isFormula || !col.formula) {
       return { ok: false, detail: "La colonne " + c.colonne + " n’est pas une formule." };
     }
+    if (c.attendu) {
+      return P.verifierResultat(c, m, t, col);
+    }
     if (c.contient && String(col.formula).replace(/\s/g, "").indexOf(String(c.contient).replace(/\s/g, "")) < 0) {
       return { ok: false, detail: "La formule n’utilise pas " + c.contient + "." };
     }
@@ -4669,7 +4672,7 @@ MGP.parcours = MGP.parcours || {};
     }
     return P.memeValeur(v, c.valeur) ? { ok: true } : { ok: false, detail: "Elle donne " + (v === null || v === void 0 ? "une cellule vide" : String(v)) + " au lieu de " + c.valeur + "." };
   }, indices: function(c) {
-    return ["Une formule commence par = dans la cellule, ou se tape dans le panneau de la colonne.", "Videz la colonne " + c.colonne + ", tapez = puis la formule" + (c.contient ? " (elle doit utiliser " + c.contient + ")" : "") + ". Une formule s’applique à toute la colonne.", c.solution ? "La formule : " + c.solution : "Colonne " + c.colonne + " > tapez = puis la formule demandée dans l’énoncé, et Entrée."];
+    return ["Une formule commence par = dans la cellule, ou se tape dans le panneau de la colonne.", "Videz la colonne " + c.colonne + ", tapez = puis la formule" + (c.contient && !c.attendu ? " (elle doit utiliser " + c.contient + ")" : "") + ". Une formule s’applique à toute la colonne" + (c.attendu ? " ; toute formule qui donne le bon résultat est acceptée." : "."), c.solution ? (c.attendu ? "Une formule possible : " : "La formule : ") + c.solution : "Colonne " + c.colonne + " > tapez = puis la formule demandée dans l’énoncé, et Entrée."];
   } }, reference: { libelle: function(c) {
     return "La colonne " + c.colonne + " est une " + (c.liste ? "Référence multiple" : "référence") + " vers « " + c.cible + " »";
   }, verifier: function(c, m) {
@@ -4716,7 +4719,11 @@ MGP.parcours = MGP.parcours || {};
     if (col.isFormula || !col.formula) {
       return { ok: false, detail: col.isFormula ? "C’est une formule ordinaire : elle se recalcule tout le temps." : "Pas de formule d’initialisation sur cette colonne." };
     }
-    if (c.formule && String(col.formula).replace(/\s/g, "") !== String(c.formule).replace(/\s/g, "")) {
+    if (c.motif) {
+      if (!new RegExp(c.motif).test(String(col.formula))) {
+        return { ok: false, detail: "La formule " + col.formula + " ne donne pas " + (c.attenduTexte || "la valeur attendue") + "." };
+      }
+    } else if (c.formule && String(col.formula).replace(/\s/g, "") !== String(c.formule).replace(/\s/g, "")) {
       return { ok: false, detail: "La formule est " + col.formula + "." };
     }
     return { ok: true };
@@ -4784,10 +4791,23 @@ MGP.parcours = MGP.parcours || {};
       if (res.indexOf(r.resource) < 0) {
         return false;
       }
-      if (c.permissions && String(r.permissionsText || "").indexOf(c.permissions) < 0) {
+      if (c.refuse) {
+        var nie = P.droitsRefuses(r.permissionsText);
+        if (c.refuse.split("").some(function(x) {
+          return nie.indexOf(x) < 0;
+        }) || c.garde && c.garde.split("").some(function(x) {
+          return nie.indexOf(x) >= 0;
+        })) {
+          return false;
+        }
+      } else if (c.permissions && String(r.permissionsText || "").indexOf(c.permissions) < 0) {
         return false;
       }
-      if (c.contient && String(r.aclFormula || "").replace(/\s/g, "").indexOf(String(c.contient).replace(/\s/g, "")) < 0) {
+      if (c.motif) {
+        if (!new RegExp(c.motif).test(String(r.aclFormula || ""))) {
+          return false;
+        }
+      } else if (c.contient && String(r.aclFormula || "").replace(/\s/g, "").indexOf(String(c.contient).replace(/\s/g, "")) < 0) {
         return false;
       }
       return !!(r.aclFormula || r.permissionsText);
@@ -4906,6 +4926,174 @@ MGP.parcours = MGP.parcours || {};
     var d = P.CHECKS[c.type] ? P.CHECKS[c.type].indices(c) : ["", "", ""];
     var p = c.indices || [];
     return [p[0] || d[0], p[1] || d[1], p[2] || d[2]];
+  };
+  P.droitsRefuses = function(txt) {
+    var s = String(txt || "").trim();
+    if (s === "none") {
+      return "CRUDS";
+    }
+    var r = "", signe = "";
+    s.split("").forEach(function(x) {
+      if (x === "+" || x === "-") {
+        signe = x;
+      } else if (signe === "-" && /[CRUDS]/.test(x)) {
+        r += x;
+      }
+    });
+    return r;
+  };
+  P.jourDe = function(v) {
+    if (typeof v === "number") {
+      return Math.floor(v / 86400);
+    }
+    var d = v ? Date.parse(String(v).slice(0, 10) + "T00:00:00Z") : NaN;
+    return isNaN(d) ? null : Math.floor(d / 864e5);
+  };
+  P.idsRef = function(v) {
+    return Array.isArray(v) ? v[0] === "L" ? v.slice(1) : [] : typeof v === "number" && v > 0 ? [v] : [];
+  };
+  P.valeurAffichee = async function(m, col, v) {
+    var mt = /^Ref:(.+)$/.exec(String(col.type || ""));
+    if (!mt || typeof v !== "number") {
+      return v;
+    }
+    var cible = (m.tables || []).filter(function(x) {
+      return x.tableId === mt[1];
+    })[0];
+    if (!cible) {
+      return v;
+    }
+    var vc = (m.colonnes || []).filter(function(x) {
+      return x.id === col.visibleCol;
+    })[0], l = (await P.donnees(m, cible)).filter(function(r) {
+      return r.id === v;
+    })[0];
+    return l && vc ? l[vc.colId] : v;
+  };
+  P.ATTENDUS = { produit: async function(a, r, ctx) {
+    var x = a.colonnes.map(function(n) {
+      var cc = ctx.col(n);
+      return cc ? P.nombre(r[cc.colId]) : null;
+    });
+    return x.some(function(n) {
+      return n === null;
+    }) ? void 0 : x.reduce(function(p, n) {
+      return p * n;
+    }, 1);
+  }, joursOuvres: async function(a, r, ctx) {
+    var d = ctx.col(a.debut), f = ctx.col(a.fin), jd = d ? P.jourDe(r[d.colId]) : null, jf = f ? P.jourDe(r[f.colId]) : null;
+    if (jd === null || jf === null || jf < jd) {
+      return void 0;
+    }
+    var n = 0;
+    for (var j = jd; j <= jf; j++) {
+      var w = new Date(j * 864e5).getUTCDay();
+      if (w !== 0 && w !== 6) {
+        n++;
+      }
+    }
+    return n;
+  }, joursRestants: async function(a, r, ctx) {
+    var e = ctx.col(a.date), je = e ? P.jourDe(r[e.colId]) : null;
+    if (je === null) {
+      return void 0;
+    }
+    var auj = /* @__PURE__ */ new Date(), j = Math.floor(Date.UTC(auj.getFullYear(), auj.getMonth(), auj.getDate()) / 864e5);
+    return { valeur: je - j, marge: 1 };
+  }, correspondance: async function(a, r, ctx) {
+    var cc = ctx.col(a.colonne);
+    if (!cc) {
+      return void 0;
+    }
+    var v = await P.valeurAffichee(ctx.m, cc, r[cc.colId]), cle = Object.keys(a.valeurs).filter(function(k) {
+      return P.norm(k) === P.norm(v);
+    })[0];
+    return cle === void 0 ? void 0 : a.valeurs[cle];
+  }, sommeLiee: async function(a, r, ctx) {
+    var t2 = P.trouverTable(ctx.m, a.table);
+    if (!t2) {
+      return void 0;
+    }
+    var ref = P.trouverColonne(ctx.m, t2, a.ref), ch = P.trouverColonne(ctx.m, t2, a.champ);
+    if (!ref || !ch) {
+      return void 0;
+    }
+    var lignes = await P.donnees(ctx.m, t2);
+    return lignes.filter(function(l) {
+      return P.idsRef(l[ref.colId]).indexOf(r.id) >= 0;
+    }).reduce(function(s, l) {
+      return s + (P.nombre(l[ch.colId]) || 0);
+    }, 0);
+  }, compteLie: async function(a, r, ctx) {
+    var t2 = P.trouverTable(ctx.m, a.table);
+    if (!t2) {
+      return void 0;
+    }
+    var ref = P.trouverColonne(ctx.m, t2, a.ref);
+    if (!ref) {
+      return void 0;
+    }
+    return (await P.donnees(ctx.m, t2)).filter(function(l) {
+      return P.idsRef(l[ref.colId]).indexOf(r.id) >= 0;
+    }).length;
+  }, ecartPrecedent: async function(a, r, ctx) {
+    var v = ctx.col(a.colonne), o = ctx.col(a.ordre);
+    if (!v || !o) {
+      return void 0;
+    }
+    var jr = P.jourDe(r[o.colId]), x = P.nombre(r[v.colId]);
+    if (jr === null || x === null) {
+      return void 0;
+    }
+    var avant = ctx.lignes.filter(function(l) {
+      var j = P.jourDe(l[o.colId]);
+      return j !== null && j < jr;
+    });
+    if (ctx.lignes.some(function(l) {
+      return l.id !== r.id && P.jourDe(l[o.colId]) === jr;
+    })) {
+      return void 0;
+    }
+    if (!avant.length) {
+      return { vide: true };
+    }
+    var p = avant.sort(function(u, w) {
+      return P.jourDe(w[o.colId]) - P.jourDe(u[o.colId]);
+    })[0], xp = P.nombre(p[v.colId]);
+    return xp === null ? void 0 : x - xp;
+  } };
+  P.verifierResultat = async function(c, m, t, col) {
+    var a = c.attendu, calc = P.ATTENDUS[a.calcul];
+    if (!calc) {
+      return { ok: false, detail: "Vérification inconnue : " + a.calcul + "." };
+    }
+    var lignes = await P.donnees(m, t), ctx = { m, t, lignes, col: function(n) {
+      return P.trouverColonne(m, t, n);
+    } }, vues = 0;
+    for (var i = 0; i < lignes.length; i++) {
+      var r = lignes[i], att = await calc(a, r, ctx), v = r[col.colId];
+      if (att === void 0) {
+        continue;
+      }
+      vues++;
+      if (Array.isArray(v) && v[0] === "E") {
+        return { ok: false, detail: "La formule est en erreur sur la ligne " + (i + 1) + "." };
+      }
+      var bon;
+      if (att && att.vide) {
+        bon = v === null || v === void 0 || v === "" || v === 0;
+      } else if (att && att.marge !== void 0) {
+        var nv = P.nombre(v);
+        bon = nv !== null && Math.abs(nv - att.valeur) <= att.marge;
+        att = att.valeur;
+      } else {
+        bon = P.memeValeur(v, att);
+      }
+      if (!bon) {
+        return { ok: false, detail: "Ligne " + (i + 1) + " : la formule donne " + (v === null || v === void 0 || v === "" ? "une cellule vide" : String(v)) + (att && att.vide ? " au lieu d’une cellule vide." : " au lieu de " + att + ".") };
+      }
+    }
+    return vues >= (a.min || 1) ? { ok: true } : { ok: false, detail: a.manque || "Remplissez une ligne complète pour que le résultat puisse être vérifié." };
   };
   P.verifier = async function(checks, meta) {
     var m = meta || await P.lireMeta(), res = [];
@@ -6361,7 +6549,7 @@ MGP.parcours = MGP.parcours || {};
     await P.noterInstallation(cfg.contenu);
   };
 })(MGP.parcours);
-MGP.parcours.CONTENU = { "carte": 16, "id": "logement", "titre": "lookupRecords, lookupOne et totaux", "competence": "lookups", "surprise": { "genre": "widget", "nom": "Coût de mon logement", "widget": "logement", "texte": "Loyer ou crédit, charges, énergie, taxes : le vrai coût mensuel de votre logement, locataire ou propriétaire." }, "widget": "logement", "niveau": "avance", "niveauNom": "Avancé", "contrat": { "note": "Tables du widget Coût de mon logement (src/widgets/logement) : la mission construit Logements et Charges_logement ; le widget les adopte (MGP.parcours.adopter) puis les complète. Signatures : Logements NOM, STATUT, TOTAL_MOIS ; Charges_logement LIBELLE, MONTANT_MOIS, LOGEMENT.", "tables": [{ "id": "Logements", "colonnes": { "NOM": "Text", "STATUT": "Choice (Locataire, Propriétaire)", "TOTAL_MOIS": "formule SUM(Charges_logement.lookupRecords(LOGEMENT=$id).MONTANT_MOIS)" } }, { "id": "Charges_logement", "colonnes": { "LIBELLE": "Text", "MONTANT_MOIS": "Numeric", "LOGEMENT": "Ref:Logements" } }] }, "objectif": "Aller chercher et additionner des lignes d'une autre table.", "durees": { "lecon": 15, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "lookupRecords : toutes les lignes qui correspondent", "code": "Depenses.lookupRecords(PROJET=$id)", "paragraphes": ["Depuis un projet, cette formule trouve toutes ses dépenses, rangées dans une autre table. `$id` est l'identifiant de la ligne courante."] }, { "titre": "Additionner, compter", "code": "SUM(Depenses.lookupRecords(PROJET=$id).MONTANT)", "paragraphes": ["Ajoutez `.MONTANT` pour obtenir la liste des montants, puis SUM pour les additionner. `len(...)` compte les lignes. C'est ce genre de total que vous poserez dans la mission."] }, { "titre": "lookupOne : une seule ligne", "code": "Taux.lookupOne(ANNEE=$ANNEE).TAUX", "paragraphes": ["lookupOne rend la première ligne trouvée, ou une ligne vide si aucune : pratique pour une table de paramètres."] }, { "titre": "Plusieurs critères", "paragraphes": ['On peut combiner : `lookupRecords(PROJET=$id, TYPE="Matériel")`. Pour « plus grand que », on filtre ensuite : `[d for d in ... if d.MONTANT > 50]`.'] }], "mission": { "titre": "Ce que coûte vraiment le logement", "intro": "Le cœur du widget Coût de mon logement : les charges et leur total, calculé par lookupRecords.", "etapes": ["Créez une table **Logements** avec NOM (Texte) et STATUT (Choix unique : Locataire, Propriétaire).", "Créez **Charges_logement** avec LIBELLE (Texte), MONTANT_MOIS (Numérique) et LOGEMENT (Référence vers Logements).", "Dans Logements, ajoutez **TOTAL_MOIS** : `SUM(Charges_logement.lookupRecords(LOGEMENT=$id).MONTANT_MOIS)`.", "Ajoutez un logement et trois charges."], "verifications": [{ "type": "table", "table": "Logements" }, { "type": "choix", "table": "Logements", "colonne": "STATUT", "choix": ["Locataire", "Propriétaire"] }, { "type": "reference", "table": "Charges_logement", "colonne": "LOGEMENT", "cible": "Logements" }, { "type": "formule", "table": "Logements", "colonne": "TOTAL_MOIS", "contient": "lookupRecords", "solution": "SUM(Charges_logement.lookupRecords(LOGEMENT=$id).MONTANT_MOIS)" }, { "type": "lignes", "table": "Charges_logement", "min": 3 }] }, "questions": [{ "type": "trou", "competence": "lookups", "question": "Complétez pour additionner les charges du logement.", "formule": "___(Charges_logement.lookupRecords(LOGEMENT=$id).MONTANT_MOIS)", "reponses": [["SUM"]], "explication": "lookupRecords donne les lignes, `.MONTANT_MOIS` leurs montants, SUM le total.", "aide": "https://support.getgrist.com/references-lookups/" }, { "type": "qcm", "competence": "lookups", "question": "Que désigne `$id` dans `lookupRecords(LOGEMENT=$id)` ?", "choix": ["La ligne courante", "La première ligne de la table", "Le nom du logement"], "bonne": 0, "explication": "Chaque ligne a un identifiant ; les références pointent vers lui.", "aide": "https://support.getgrist.com/references-lookups/" }, { "type": "paires", "competence": "lookups", "question": "Reliez chaque formule à ce qu'elle donne.", "paires": [["lookupRecords(...)", "Toutes les lignes qui correspondent"], ["lookupOne(...)", "Une seule ligne"], ["len(lookupRecords(...))", "Le nombre de lignes"], ["SUM(lookupRecords(...).MONTANT)", "Le total des montants"]], "explication": "Ce sont les quatre usages les plus fréquents.", "aide": "https://support.getgrist.com/references-lookups/" }, { "type": "prediction", "competence": "lookups", "question": "Le logement a trois charges : 650, 80 et 45. Que vaut cette formule ?", "formule": "SUM(Charges_logement.lookupRecords(LOGEMENT=$id).MONTANT_MOIS)", "reponses": [775], "explication": "650 + 80 + 45 = 775.", "aide": "https://support.getgrist.com/references-lookups/" }, { "type": "erreur", "competence": "lookups", "question": "Cette formule doit compter les charges. Où est l'erreur ?", "segments": ["len(", "Charges_logement.lookupRecords(", "LOGEMENT=id", "))"], "bonne": 2, "correction": "LOGEMENT=$id", "explication": "Il faut `$id`, l'identifiant de la ligne courante.", "aide": "https://support.getgrist.com/references-lookups/" }] };
+MGP.parcours.CONTENU = { "carte": 16, "id": "logement", "titre": "lookupRecords, lookupOne et totaux", "competence": "lookups", "surprise": { "genre": "widget", "nom": "Coût de mon logement", "widget": "logement", "texte": "Loyer ou crédit, charges, énergie, taxes : le vrai coût mensuel de votre logement, locataire ou propriétaire." }, "widget": "logement", "niveau": "avance", "niveauNom": "Avancé", "contrat": { "note": "Tables du widget Coût de mon logement (src/widgets/logement) : la mission construit Logements et Charges_logement ; le widget les adopte (MGP.parcours.adopter) puis les complète. Signatures : Logements NOM, STATUT, TOTAL_MOIS ; Charges_logement LIBELLE, MONTANT_MOIS, LOGEMENT.", "tables": [{ "id": "Logements", "colonnes": { "NOM": "Text", "STATUT": "Choice (Locataire, Propriétaire)", "TOTAL_MOIS": "formule SUM(Charges_logement.lookupRecords(LOGEMENT=$id).MONTANT_MOIS)" } }, { "id": "Charges_logement", "colonnes": { "LIBELLE": "Text", "MONTANT_MOIS": "Numeric", "LOGEMENT": "Ref:Logements" } }] }, "objectif": "Aller chercher et additionner des lignes d'une autre table.", "durees": { "lecon": 15, "mission": 10, "quiz": 5 }, "lecon": [{ "titre": "lookupRecords : toutes les lignes qui correspondent", "code": "Depenses.lookupRecords(PROJET=$id)", "paragraphes": ["Depuis un projet, cette formule trouve toutes ses dépenses, rangées dans une autre table. `$id` est l'identifiant de la ligne courante."] }, { "titre": "Additionner, compter", "code": "SUM(Depenses.lookupRecords(PROJET=$id).MONTANT)", "paragraphes": ["Ajoutez `.MONTANT` pour obtenir la liste des montants, puis SUM pour les additionner. `len(...)` compte les lignes. C'est ce genre de total que vous poserez dans la mission."] }, { "titre": "lookupOne : une seule ligne", "code": "Taux.lookupOne(ANNEE=$ANNEE).TAUX", "paragraphes": ["lookupOne rend la première ligne trouvée, ou une ligne vide si aucune : pratique pour une table de paramètres."] }, { "titre": "Plusieurs critères", "paragraphes": ['On peut combiner : `lookupRecords(PROJET=$id, TYPE="Matériel")`. Pour « plus grand que », on filtre ensuite : `[d for d in ... if d.MONTANT > 50]`.'] }], "mission": { "titre": "Ce que coûte vraiment le logement", "intro": "Le cœur du widget Coût de mon logement : les charges et leur total, calculé par lookupRecords.", "etapes": ["Créez une table **Logements** avec NOM (Texte) et STATUT (Choix unique : Locataire, Propriétaire).", "Créez **Charges_logement** avec LIBELLE (Texte), MONTANT_MOIS (Numérique) et LOGEMENT (Référence vers Logements).", "Dans Logements, ajoutez **TOTAL_MOIS**, par exemple : `SUM(Charges_logement.lookupRecords(LOGEMENT=$id).MONTANT_MOIS)` (toute formule qui donne le bon résultat est acceptée).", "Ajoutez un logement et trois charges."], "verifications": [{ "type": "table", "table": "Logements" }, { "type": "choix", "table": "Logements", "colonne": "STATUT", "choix": ["Locataire", "Propriétaire"] }, { "type": "reference", "table": "Charges_logement", "colonne": "LOGEMENT", "cible": "Logements" }, { "type": "formule", "table": "Logements", "colonne": "TOTAL_MOIS", "solution": "SUM(Charges_logement.lookupRecords(LOGEMENT=$id).MONTANT_MOIS)", "attendu": { "calcul": "sommeLiee", "table": "Charges_logement", "ref": "LOGEMENT", "champ": "MONTANT_MOIS", "manque": "Ajoutez un logement." } }, { "type": "lignes", "table": "Charges_logement", "min": 3 }] }, "questions": [{ "type": "trou", "competence": "lookups", "question": "Complétez pour additionner les charges du logement.", "formule": "___(Charges_logement.lookupRecords(LOGEMENT=$id).MONTANT_MOIS)", "reponses": [["SUM"]], "explication": "lookupRecords donne les lignes, `.MONTANT_MOIS` leurs montants, SUM le total.", "aide": "https://support.getgrist.com/references-lookups/" }, { "type": "qcm", "competence": "lookups", "question": "Que désigne `$id` dans `lookupRecords(LOGEMENT=$id)` ?", "choix": ["La ligne courante", "La première ligne de la table", "Le nom du logement"], "bonne": 0, "explication": "Chaque ligne a un identifiant ; les références pointent vers lui.", "aide": "https://support.getgrist.com/references-lookups/" }, { "type": "paires", "competence": "lookups", "question": "Reliez chaque formule à ce qu'elle donne.", "paires": [["lookupRecords(...)", "Toutes les lignes qui correspondent"], ["lookupOne(...)", "Une seule ligne"], ["len(lookupRecords(...))", "Le nombre de lignes"], ["SUM(lookupRecords(...).MONTANT)", "Le total des montants"]], "explication": "Ce sont les quatre usages les plus fréquents.", "aide": "https://support.getgrist.com/references-lookups/" }, { "type": "prediction", "competence": "lookups", "question": "Le logement a trois charges : 650, 80 et 45. Que vaut cette formule ?", "formule": "SUM(Charges_logement.lookupRecords(LOGEMENT=$id).MONTANT_MOIS)", "reponses": [775], "explication": "650 + 80 + 45 = 775.", "aide": "https://support.getgrist.com/references-lookups/" }, { "type": "erreur", "competence": "lookups", "question": "Cette formule doit compter les charges. Où est l'erreur ?", "segments": ["len(", "Charges_logement.lookupRecords(", "LOGEMENT=id", "))"], "bonne": 2, "correction": "LOGEMENT=$id", "explication": "Il faut `$id`, l'identifiant de la ligne courante.", "aide": "https://support.getgrist.com/references-lookups/" }] };
 var LOG = { WIDGET: "logement", NOM: "Coût de mon logement", NOM_PAGE: "🏠 Coût de mon logement", d: { logements: [], charges: [], credits: [], indices: [], compteurs: null, interventions: null, travaux: null }, onglet: "accueil", filtre: 0 };
 LOG.LIEN_INSEE = "https://www.insee.fr/fr/statistiques/serie/001515333";
 LOG.EURO = { numMode: "currency", decimals: 2, maxDecimals: 2 };
