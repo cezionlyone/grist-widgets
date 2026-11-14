@@ -2834,6 +2834,13 @@ MGP.g.urlSection = function(s) {
   }
   return String(cv.url || o.url || "");
 };
+MGP.g.RE_COMPAGNON = /[?&]compagnon=1(?:&|#|$)/;
+MGP.g.estCompagnon = function(s) {
+  return MGP.g.RE_COMPAGNON.test(MGP.g.urlSection(s));
+};
+MGP.g.suisCompagnon = function() {
+  return MGP.g.RE_COMPAGNON.test(location.search);
+};
 MGP.g.estDiscret = function() {
   return /\/lib\/x\/[\w-]+\/?(?:index\.html)?$/.test(location.pathname);
 };
@@ -2851,9 +2858,9 @@ MGP.g.sectionCourante = async function() {
   var vues = (await MGP.g.lire("_grist_Views")).map(function(v) {
     return v.id;
   });
-  var exactes = [], parJour = [], secE = {}, secJ = {};
+  var exactes = [], parJour = [], secE = {}, secJ = {}, comp = MGP.g.suisCompagnon();
   sections.forEach(function(s) {
-    if (s.parentKey !== "custom" || !s.parentId || vues.indexOf(s.parentId) < 0) {
+    if (s.parentKey !== "custom" || !s.parentId || vues.indexOf(s.parentId) < 0 || MGP.g.estCompagnon(s) !== comp) {
       return;
     }
     var u = MGP.g.urlSection(s);
@@ -3088,7 +3095,7 @@ MGP.g.pageAcademie = async function(sauf) {
     return v.id;
   });
   var parUrl = sections.filter(function(s) {
-    return s.parentKey === "custom" && ids.indexOf(s.parentId) >= 0 && s.parentId !== sauf && /\/academie$/.test(MGP.g.normaliserUrl(MGP.g.urlSection(s)));
+    return s.parentKey === "custom" && ids.indexOf(s.parentId) >= 0 && s.parentId !== sauf && !MGP.g.estCompagnon(s) && /\/academie$/.test(MGP.g.normaliserUrl(MGP.g.urlSection(s)));
   }).map(function(s) {
     return s.parentId;
   });

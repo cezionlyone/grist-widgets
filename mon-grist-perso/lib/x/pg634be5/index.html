@@ -3294,6 +3294,13 @@ MGP.g.urlSection = function(s) {
   }
   return String(cv.url || o.url || "");
 };
+MGP.g.RE_COMPAGNON = /[?&]compagnon=1(?:&|#|$)/;
+MGP.g.estCompagnon = function(s) {
+  return MGP.g.RE_COMPAGNON.test(MGP.g.urlSection(s));
+};
+MGP.g.suisCompagnon = function() {
+  return MGP.g.RE_COMPAGNON.test(location.search);
+};
 MGP.g.estDiscret = function() {
   return /\/lib\/x\/[\w-]+\/?(?:index\.html)?$/.test(location.pathname);
 };
@@ -3311,9 +3318,9 @@ MGP.g.sectionCourante = async function() {
   var vues = (await MGP.g.lire("_grist_Views")).map(function(v) {
     return v.id;
   });
-  var exactes = [], parJour = [], secE = {}, secJ = {};
+  var exactes = [], parJour = [], secE = {}, secJ = {}, comp = MGP.g.suisCompagnon();
   sections.forEach(function(s) {
-    if (s.parentKey !== "custom" || !s.parentId || vues.indexOf(s.parentId) < 0) {
+    if (s.parentKey !== "custom" || !s.parentId || vues.indexOf(s.parentId) < 0 || MGP.g.estCompagnon(s) !== comp) {
       return;
     }
     var u = MGP.g.urlSection(s);
@@ -3548,7 +3555,7 @@ MGP.g.pageAcademie = async function(sauf) {
     return v.id;
   });
   var parUrl = sections.filter(function(s) {
-    return s.parentKey === "custom" && ids.indexOf(s.parentId) >= 0 && s.parentId !== sauf && /\/academie$/.test(MGP.g.normaliserUrl(MGP.g.urlSection(s)));
+    return s.parentKey === "custom" && ids.indexOf(s.parentId) >= 0 && s.parentId !== sauf && !MGP.g.estCompagnon(s) && /\/academie$/.test(MGP.g.normaliserUrl(MGP.g.urlSection(s)));
   }).map(function(s) {
     return s.parentId;
   });
@@ -4856,7 +4863,7 @@ MGP.parcours = MGP.parcours || {};
     var b = String(t || "").split(":")[0];
     return P.TYPES_COL[b] || b;
   };
-  P.lireMeta = async function() {
+  P.lireMeta = async function(checks) {
     var lire = async function(t) {
       try {
         return await MGP.g.lire(t);
@@ -4865,7 +4872,12 @@ MGP.parcours = MGP.parcours || {};
         return [];
       }
     };
-    var m = { tables: await lire("_grist_Tables"), colonnes: await lire("_grist_Tables_column"), sections: await lire("_grist_Views_section"), vues: await lire("_grist_Views"), ressources: await lire("_grist_ACLResources"), regles: await lire("_grist_ACLRules"), filtres: await lire("_grist_Filters") };
+    var tous = !checks, a = function(ty) {
+      return tous || checks.some(function(c) {
+        return c && c.type === ty;
+      });
+    };
+    var m = { tables: await lire("_grist_Tables"), colonnes: await lire("_grist_Tables_column"), sections: await lire("_grist_Views_section"), vues: await lire("_grist_Views"), ressources: a("regle") ? await lire("_grist_ACLResources") : [], regles: a("regle") ? await lire("_grist_ACLRules") : [], filtres: a("filtre") ? await lire("_grist_Filters") : [] };
     m.donnees = {};
     return m;
   };
@@ -5264,8 +5276,8 @@ MGP.parcours = MGP.parcours || {};
     var p = c.indices || [];
     return [p[0] || d[0], p[1] || d[1], p[2] || d[2]];
   };
-  P.verifier = async function(checks) {
-    var m = await P.lireMeta(), res = [];
+  P.verifier = async function(checks, meta) {
+    var m = meta || await P.lireMeta(), res = [];
     for (var i = 0; i < checks.length; i++) {
       var c = checks[i], k = P.CHECKS[c.type], r;
       try {
@@ -5412,6 +5424,15 @@ MGP.parcours = MGP.parcours || {};
   P.tableDeMission = function(c) {
     var v = c && c.mission && (c.mission.verifications || []).filter(function(x) {
       return x.type === "table" && x.table;
+    })[0];
+    return v ? v.table : "";
+  };
+  P.tableCompagnon = function(c) {
+    if (c && c.tables && c.tables.length) {
+      return c.tables[0];
+    }
+    var v = c && c.mission && (c.mission.verifications || []).filter(function(x) {
+      return x.table;
     })[0];
     return v ? v.table : "";
   };
@@ -6549,7 +6570,7 @@ MGP.parcours = MGP.parcours || {};
     if (!mi) {
       return '<section class="carte"><h2>🛠️ Mission</h2><p>Pas de mission dans ce module : place au quiz.</p></section>';
     }
-    var tete = '<section class="carte pc-mission"><h2>🛠️ ' + echapperHTML(mi.titre || "La mission") + '</h2><p class="mini">' + echapperHTML(P.duree((c.durees || {}).mission)) + "</p>" + (mi.intro ? '<p style="margin-top:8px">' + rich(mi.intro) + "</p>" : "") + (mi.etapes ? '<ol class="pc-etapes">' + mi.etapes.map(function(e) {
+    var tete = '<section class="carte pc-mission"><h2>🛠️ ' + echapperHTML(mi.titre || "La mission") + '</h2><p class="mini">' + echapperHTML(P.duree((c.durees || {}).mission)) + "</p>" + (cfg.blocMission ? cfg.blocMission(c, l) : "") + (mi.intro ? '<p style="margin-top:8px">' + rich(mi.intro) + "</p>" : "") + (mi.etapes ? '<ol class="pc-etapes">' + mi.etapes.map(function(e) {
       return "<li>" + rich(e) + "</li>";
     }).join("") + "</ol>" : "");
     if (l && l.MISSION === "Réussie") {
