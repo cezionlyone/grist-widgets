@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.4.1
+  Version     : 1.4.2
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -15,10 +15,12 @@
   -----------
   Gristfamily : un arbre généalogique pour tous, sans connaissance
   technique. Un même widget héberge tous les arbres d'un document, en
-  onglets ; le dernier onglet, « Nouvel arbre », en crée un autre. Les
-  arbres d'un même document partagent les mêmes tables : un arbre est une
-  façon de regarder la famille (personne au centre, générations
-  affichées, couleurs), pas une copie des données.
+  onglets ; le dernier onglet, « Nouvel arbre », en crée un autre. Un
+  nouvel arbre peut reprendre les tables d'un arbre existant (c'est alors
+  une autre façon de regarder la même famille : personne au centre,
+  générations affichées, couleurs) ou, avec « Nouvelle généalogie vide »,
+  avoir ses propres tables, nommées d'après l'arbre : aucune donnée n'est
+  alors partagée.
 
   Modèle de données : une personne a une union d'origine (ses parents) ;
   une union relie deux personnes (ou une seule, ou aucune si seule la
@@ -51,6 +53,7 @@
 
   HISTORIQUE
   ----------
+  1.4.2 - 14/11/2026 - madeXcé - Sécurité : info-bulle de la carte construite sans HTML. Aide et notice mises à jour (deux tables, généalogies indépendantes). Carte et cousins rafraîchis aussi après une erreur réseau.
   1.4.1 - 14/11/2026 - madeXcé - Nettoyage : retrait du code inutilisé (fonction, icônes, styles, branche de création jamais atteinte).
   1.4.0 - 14/11/2026 - madeXcé - Cousins ADN : retrait du collage de fiche et de l'import groupé, saisie manuelle uniquement.
   1.3.0 - 14/11/2026 - madeXcé - Création d'un arbre : la table des unions est toujours créée, plus de question à ce sujet.
@@ -78,12 +81,18 @@
   ligne par arbre (CLE = ARBRE:<identifiant>, VALEUR = configuration
   JSON) et deux lignes témoins des droits (ACCES_EDITION,
   ACCES_PARAMETRAGE). Exclue des listes de tables.
-  👤 PERSONNES ⚡ (PERSONNES_) : PRENOM, NOM, NOM NAISSANCE, SEXE,
+  👪 GÉNÉALOGIE ⚡ (GENEALOGIE_) : PRENOM, NOM, NOM NAISSANCE, SEXE,
   PHOTO, NAISSANCE, NAISSANCE APPROX, NAISSANCE LIEU, LIEU VIE, DECEDE, DECES,
   DECES APPROX, DECES LIEU, PARENTS (référence à l'union d'origine),
   FILIATION, PROFESSION, NOTES, NOM COMPLET (formule d'affichage).
   💞 UNIONS ⚡ (UNIONS_) : PERSONNE A, PERSONNE B, TYPE, DEBUT, FIN,
   SEPARES, NOTES, COUPLE (formule d'affichage).
+  📎 DOCUMENTS ⚡ (DOCUMENTS_), 🔗 SOURCES ⚡ (SOURCES_) et
+  🔎 RECHERCHES ⚡ (RECHERCHES_) : créées à l'ouverture d'un arbre par une
+  personne qui peut modifier le document.
+  « Nouvelle généalogie vide » : mêmes tables, nommées d'après l'arbre
+  (par exemple GENEALOGIE_DUPONT), sauf 🔗 SOURCES ⚡, commune à tous les
+  arbres.
   🧬 COUSINS ADN ⚡ (COUSINS_ADN_), seulement si l'option est cochée :
   PRENOM, NOM, PAYS, VILLE, SITE, AGE, ADN CM, ADN POURCENT, SEGMENTS,
   SEGMENT MAX CM, RELATION ESTIMEE, BRANCHE, PATRONYMES, LIEU COMMUN,
@@ -101,10 +110,11 @@
 
   UTILISER SES PROPRES TABLES
   ---------------------------
-  Parcours « J'ai déjà une table de personnes » : chaque information du
-  modèle est reliée à une colonne existante de type compatible, ou créée.
-  Aucune colonne n'est jamais retypée ni supprimée. La table des unions
-  est celle du modèle (créée si besoin).
+  Parcours « J'ai déjà mes données » : chaque information du modèle est
+  reliée à une colonne existante de type compatible, ou créée. Les liens
+  restent dans cette même table : deux colonnes de parents et une colonne
+  de conjoints, de type Référence vers elle-même. Aucune table d'unions
+  n'est créée. Aucune colonne n'est jamais retypée ni supprimée.
 
   CONFIGURATION
   -------------
@@ -617,7 +627,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.4.1</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.4.2</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -653,7 +663,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.4.1';
+var VERSION = '1.4.2';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -6183,7 +6193,7 @@ function rendreCarte(zone) {
         l.personnes.forEach(function (pid) { pop.appendChild(creer('div', { attrs: { style: 'margin:.25rem 0' } }, [avecPhoto(pid, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(pid); } }, [nomAffiche(pers(pid))])), texteAgeApres(pid, l)])); });
         l.cousins.forEach(function (cid) { var c = etat.donnees.cousins.filter(function (x) { return x.id === cid; })[0]; if (c) { pop.appendChild(creer('div', { texte: 'ADN : ' + ((c.prenom + ' ' + c.nom).trim() || 'Sans nom') + (c.cm ? ' (' + formaterNombre(c.cm, 0) + ' cM)' : '') })); } });
         m.bindPopup(pop);
-        m.bindTooltip(l.nom + ' : ' + nb);
+        m.bindTooltip(creer('span', { texte: l.nom + ' : ' + nb }));
         m.addTo(couche);
       });
       if (points.length && !etat.carteCadree) { carte.fitBounds(points, { padding: [40, 40], maxZoom: 9 }); etat.carteCadree = true; }
@@ -6220,7 +6230,7 @@ async function geocoderManquants(lieux, rappel) {
           res = Array.isArray(j) && j[0] ? { lat: parseFloat(j[0].lat), lon: parseFloat(j[0].lon) } : { introuvable: true };
           if (res.lat !== undefined && (isNaN(res.lat) || isNaN(res.lon))) { res = { introuvable: true }; }
         }
-      } catch (e) { logSecurite('INFO', 'Lieu non situé : réseau', e); etat.lieux[cle] = { introuvable: true, reseau: true }; }
+      } catch (e) { logSecurite('INFO', 'Lieu non situé : réseau', e); etat.lieux[cle] = { introuvable: true, reseau: true }; if (etat.vue === 'carte' || etat.vue === 'cousins') { rappel(); } }
       if (res) {
         etat.lieux[cle] = res;
         if (etat.peutModifier && etat.biblio) {
@@ -6233,7 +6243,7 @@ async function geocoderManquants(lieux, rappel) {
     }
   } finally {
     _geoEnCours = false;
-    if (etat.vue === 'carte') { rappel(); }
+    if (etat.vue === 'carte' || etat.vue === 'cousins') { rappel(); }
   }
 }
 
@@ -6429,7 +6439,7 @@ function etapeGeneral(z) {
     var tuiles = creer('div', { classe: 'tuiles' });
     var choisirModele = function () { b.source = 'modele'; b.tablePers = modele || ''; b.liens = modeTablesModele() || 'unions'; b.cols = idsParDefaut(CHAMPS_PERS); rendre(); };
     if (modele) {
-      tuiles.appendChild(tuile('Reprendre ma généalogie', 'La table 👪 GÉNÉALOGIE ⚡ d’un autre arbre existe déjà : ce nouvel arbre la reprend. Rien n’est créé.', b.source === 'modele', choisirModele));
+      tuiles.appendChild(tuile('Reprendre ma généalogie', 'La table 👪 GÉNÉALOGIE ⚡ d’un autre arbre existe déjà : ce nouvel arbre la reprend, avec ses données.', b.source === 'modele', choisirModele));
     } else {
       tuiles.appendChild(tuile('Je n’ai pas encore de données', 'Le widget crée les tables 👪 GÉNÉALOGIE ⚡ et 💞 UNIONS ⚡. Vous ajoutez ensuite votre famille depuis l’arbre.', b.source === 'modele', choisirModele));
     }
@@ -6437,7 +6447,7 @@ function etapeGeneral(z) {
       tuiles.appendChild(tuile('Nouvelle généalogie vide', 'Le widget crée de nouvelles tables au nom de l’arbre (personnes, unions, documents, recherches), indépendantes de celles des autres arbres : aucune donnée n’est partagée.', b.source === 'vide', function () { b.source = 'vide'; b.tablePers = ''; b.liens = 'unions'; b.cols = idsParDefaut(CHAMPS_PERS); rendre(); }));
     }
     var possibles = tablesPersonnesPossibles().filter(function (t) { return t !== modele; });
-    tuiles.appendChild(tuile('J’ai déjà mes données', possibles.length ? 'Vous choisissez la table qui contient votre famille et vous fléchez ses colonnes. Aucune table n’est créée.' : 'Aucune autre table dans ce document.', b.source === 'existant', function () { b.source = 'existant'; b.tablePers = ''; b.liens = 'colonnes'; rendre(); }, !possibles.length));
+    tuiles.appendChild(tuile('J’ai déjà mes données', possibles.length ? 'Vous choisissez la table qui contient votre famille et vous fléchez ses colonnes. Vos données restent dans cette table.' : 'Aucune autre table dans ce document.', b.source === 'existant', function () { b.source = 'existant'; b.tablePers = ''; b.liens = 'colonnes'; rendre(); }, !possibles.length));
     z.appendChild(tuiles);
     void nbModele;
   } else {
@@ -6667,16 +6677,19 @@ function etapeRecap(z) {
     if (b.liens === 'unions') {
       lignes.push(pers ? 'Tables ' + LABEL_PERS + ' et 💞 UNIONS ⚡ du document réutilisées : leurs données restent.' : 'Création des tables ' + LABEL_PERS + ' et 💞 UNIONS ⚡.');
     } else {
-      lignes.push('Table ' + LABEL_PERS + ' du document réutilisée : ses données restent. Aucune table créée.');
+      lignes.push('Table ' + LABEL_PERS + ' du document réutilisée : ses données restent.');
     }
   } else {
     var aCreer = CHAMPS_PERS.filter(function (ch) { return !b.cols[ch.cle]; }).map(function (ch) { return ch.label; })
       .concat(LIENS_COLONNES.filter(function (l) { return !b.cols[l.cle]; }).map(function (l) { return l.label; }));
-    lignes.push('Table « ' + libelleTable(b.tablePers) + ' » : ' + (aCreer.length ? 'ajout des colonnes ' + aCreer.join(', ') + '.' : 'aucune colonne ajoutée.') + ' Aucune table créée.');
+    lignes.push('Table « ' + libelleTable(b.tablePers) + ' » : ' + (aCreer.length ? 'ajout des colonnes ' + aCreer.join(', ') + '.' : 'aucune colonne ajoutée.') + ' Vos données restent dans cette table.');
   }
   if (b.affichage.cousins) { lignes.push(b.source === 'vide' ? 'Création d’une table 🧬 COUSINS ADN ⚡ propre à cet arbre.' : trouverTableModele(ID_COUSINS) ? 'Table 🧬 COUSINS ADN ⚡ réutilisée.' : 'Création de la table 🧬 COUSINS ADN ⚡.'); }
   if (b.centre.prenom.trim() || b.centre.nom.trim()) { lignes.push('Ajout de ' + (b.centre.prenom + ' ' + b.centre.nom).trim() + ', au centre de l’arbre.'); }
   lignes.push(pluriel(b.affichage.ascendants, 'génération', 'générations') + ' d’ascendants et ' + pluriel(b.affichage.descendants, 'génération', 'générations') + ' de descendants affichées.');
+  var annexes = (b.source === 'vide' ? [[ID_SOURCES, LABEL_SOURCES]] : [[ID_DOCS, LABEL_DOCS], [ID_SOURCES, LABEL_SOURCES], [ID_RECH, LABEL_RECH]])
+    .filter(function (x) { return !trouverTableModele(x[0]); }).map(function (x) { return x[1]; });
+  if (annexes.length) { lignes.push((annexes.length > 1 ? 'Création des tables ' : 'Création de la table ') + annexes.join(', ') + ' (documents, sites utiles et recherches).'); }
   if (!trouverTableModele(ID_BIBLIO)) { lignes.push('Création de la table de réglages 🌳 BIBLIOTHÈQUE D’ARBRES ⚡.'); }
   z.appendChild(creer('ul', { classe: 'recap' }, lignes.map(function (l) { return creer('li', {}, [icone('ok'), creer('span', { texte: l })]); })));
 }
@@ -6839,26 +6852,9 @@ async function creerArbre() {
         cols[ch.cle] = await ajouterColonne(tPers, colonneLibre(tPers, ch.id), ch.type, ch.label, ch.choix);
         await chargerMeta();
       }
-      if (b.liens === 'colonnes') {
-        var lc = await completerLiens(tPers, b.cols);
-        Object.keys(lc).forEach(function (k) { cols[k] = lc[k]; });
-        tUnions = null;
-      } else {
-      cols.parents = '';
-      tUnions = trouverTableModele(ID_UNIONS);
-      var refA = tUnions ? infoColonne(tUnions, 'PERSONNE_A') : null;
-      if (!tUnions || !refA || refA.type !== 'Ref:' + tPers) {
-        await chargerMeta();
-        var def = defUnions(tPers, false);
-        def.id = idTableLibre(ID_UNIONS);
-        def.libelle = tUnions ? LABEL_UNIONS.replace(' ⚡', ' ' + libelleTable(tPers).toUpperCase() + ' ⚡') : LABEL_UNIONS;
-        tUnions = (await creerTables([def]))[0];
-      }
-      var parents = colonnesDe(tPers).filter(function (c) { return c.type === 'Ref:' + tUnions && !c.formule; })[0];
-      cols.parents = parents ? parents.colId : await ajouterColonne(tPers, colonneLibre(tPers, COL_PARENTS.id), 'Ref:' + tUnions, COL_PARENTS.label);
-      await poserAffichageRef(tUnions, 'PERSONNE_A', tPers, cols.nom);
-      await poserAffichageRef(tUnions, 'PERSONNE_B', tPers, cols.nom);
-      }
+      var lc = await completerLiens(tPers, b.cols);
+      Object.keys(lc).forEach(function (k) { cols[k] = lc[k]; });
+      tUnions = null;
     }
     await chargerMeta();
     var tCousins = null;
@@ -6938,7 +6934,7 @@ async function sauvegarderParametres() {
    téléphone) : on peut lire l'aide en se servant de l'arbre. */
 var AIDE = {
   quoi: [
-    ['p', 'Gristfamily dessine votre arbre à partir d’une seule table de personnes : chacune indique ses deux parents et ses conjoints. Familles recomposées, remariages, demi-frères et sœurs se déduisent tout seuls. Une seconde table, 💞 UNIONS ⚡, n’est créée que si vous voulez noter le détail des unions (mariage, dates, séparation).'],
+    ['p', 'Gristfamily dessine votre arbre à partir de deux tables : 👪 GÉNÉALOGIE ⚡ pour les personnes, et 💞 UNIONS ⚡ pour les couples (type d’union, dates, séparation). Chaque enfant est rattaché à l’union de ses parents : familles recomposées, remariages, demi-frères et sœurs se déduisent tout seuls. Si votre famille est déjà dans une table du document, le widget peut aussi la reprendre telle quelle.'],
     ['h', 'Les vues'],
     ['li', ['Arbre : la personne au centre, ses ascendants au-dessus, ses descendants en dessous, sa fratrie à côté.',
       'Ascendance : l’éventail des ancêtres, jusqu’à six générations.',
@@ -6947,7 +6943,7 @@ var AIDE = {
       'Carte : où vit la famille, et où sont vos cousins ADN.',
       'Cousins ADN (en option) : vos correspondances ADN, même sans savoir où les placer.']],
     ['h', 'Plusieurs arbres'],
-    ['p', 'Chaque onglet est une façon de regarder la même famille : par exemple un arbre centré sur vous, un autre sur votre conjoint. Les personnes ne sont saisies qu’une fois.']
+    ['p', 'Un nouvel onglet peut reprendre la même famille, par exemple un arbre centré sur vous et un autre sur votre conjoint : les personnes ne sont saisies qu’une fois. Il peut aussi démarrer une généalogie à part, avec ses propres tables : aucune donnée n’est alors partagée.']
   ],
   pas: [
     ['li', ['Créez l’arbre (bouton « Créer mon arbre ») et indiquez la personne au centre, en général vous-même.',

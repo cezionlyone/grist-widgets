@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.31.0
+  Version     : 1.31.1
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.31.1 - 14/11/2026 - madeXcé - Sécurité : info-bulle de la carte construite sans HTML.
   1.31.0 - 14/11/2026 - madeXcé - « Nouvelle généalogie vide » : toutes les tables de l'arbre (personnes, unions, documents, recherches, cousins) sont créées à son nom ; documents et recherches disponibles.
   1.30.0 - 14/11/2026 - madeXcé - Nouvel arbre : choix « Nouvelle généalogie vide » (tables indépendantes, sans partage de personnes).
   1.29.2 - 14/11/2026 - madeXcé - Exemples de saisie neutres (plus aucun nom ni lieu réel dans le code).
@@ -666,7 +667,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.31.0</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.31.1</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -702,7 +703,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.31.0';
+var VERSION = '1.31.1';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -6493,7 +6494,7 @@ function rendreCarte(zone) {
         l.personnes.forEach(function (pid) { pop.appendChild(creer('div', { attrs: { style: 'margin:.25rem 0' } }, [avecPhoto(pid, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(pid); } }, [nomAffiche(pers(pid))])), texteAgeApres(pid, l)])); });
         l.cousins.forEach(function (cid) { var c = etat.donnees.cousins.filter(function (x) { return x.id === cid; })[0]; if (c) { pop.appendChild(creer('div', { texte: 'ADN : ' + ((c.prenom + ' ' + c.nom).trim() || 'Sans nom') + (c.cm ? ' (' + formaterNombre(c.cm, 0) + ' cM)' : '') })); } });
         m.bindPopup(pop);
-        m.bindTooltip(l.nom + ' : ' + nb);
+        m.bindTooltip(creer('span', { texte: l.nom + ' : ' + nb }));
         m.addTo(couche);
       });
       if (points.length && !etat.carteCadree) { carte.fitBounds(points, { padding: [40, 40], maxZoom: 9 }); etat.carteCadree = true; }
