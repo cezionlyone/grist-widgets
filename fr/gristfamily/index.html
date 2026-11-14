@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.31.4
+  Version     : 1.31.5
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.31.5 - 14/11/2026 - madeXcé - Cartes de l'arbre : une ligne par information avec un emoji (naissance, décès, lieu de vie, profession), commune seule (lieu complet au survol), plus de « conjoint de ».
   1.31.4 - 14/11/2026 - madeXcé - Cœur d'union cliquable dans l'arbre (résumé au survol, fenêtre des dates et du lieu au clic) ; durée de l'union ; noms en majuscules et prénoms avec majuscules à la saisie, et bouton de mise en forme des fiches existantes dans les paramètres.
   1.31.3 - 14/11/2026 - madeXcé - Unions : lieu de l'union (colonne LIEU ajoutée), champs nommés selon le type (date du mariage, date du divorce...), bouton « Dates et lieu de l'union » dans la fiche, remariage possible avec la même personne une fois la première union terminée.
   1.31.2 - 14/11/2026 - madeXcé - Recherches : chaque carte reprend d'elle-même ce que l'arbre sait de la personne (naissance, décès, lieux, nom de naissance, parents, conjoint).
@@ -390,7 +391,6 @@ textarea.saisie { resize: vertical; }
 .source-carte__tete { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
 .source-carte__lien { font-weight: 700; overflow-wrap: anywhere; }
 .cadre-fratrie { position: absolute; background: rgba(76, 132, 216, .06); border: 1px dashed #B8C6DD; border-radius: 14px; pointer-events: none; }
-.carte__allie { font-style: italic; }
 .monde--focus .noeud { opacity: .28; transition: opacity .15s; }
 .monde--focus .noeud.noeud--vif { opacity: 1; }
 .monde--focus .liens path { opacity: .12; }
@@ -671,7 +671,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.31.4</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.31.5</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -707,7 +707,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.31.4';
+var VERSION = '1.31.5';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -2099,22 +2099,26 @@ function classeCouleur(p, br) {
 }
 
 /* Ligne d'information d'une carte : années, lieu ou profession. */
-function infoCarte(p) {
+/* Lignes d'information d'une carte de l'arbre, chacune repérée par un
+   emoji : 👶 naissance, 🕊️ décès, 🏠 lieu de vie, 💼 profession. Sur la
+   carte, un lieu se limite à la commune (avant la première virgule). */
+function communeSeule(l) { return String(l || '').split(',')[0].trim(); }
+function lignesCarte(p) {
   var a = etat.config.affichage.carte;
-  var morceaux = [];
-  if (a.annees) {
-    var n = anneeAffichee(p.naissance, p.naissanceApprox);
-    var d = anneeAffichee(p.deces, p.decesApprox);
-    if (n && d) { morceaux.push(n + ' - ' + d); }
-    else if (n) { morceaux.push(estDecede(p) ? n + ' - ?' : n); }
-    else if (d) { morceaux.push('? - ' + d); }
-    else if (estDecede(p)) { morceaux.push(accord(p, 'décédé', 'décédée', 'décès')); }
-    var ag = texteAge(p);
-    if (ag && morceaux.length) { morceaux[morceaux.length - 1] += ' (' + ag + ')'; }
-  }
-  if (a.lieu && p.naissanceLieu) { morceaux.push(p.naissanceLieu); }
-  if (a.profession && p.profession) { morceaux.push(p.profession); }
-  return morceaux.join(' · ');
+  var L = [];
+  var ligne = function (emoji, morceaux) { morceaux = morceaux.filter(Boolean); if (morceaux.length) { L.push(emoji + ' ' + morceaux.join(' · ')); } };
+  var mort = estDecede(p);
+  var age = a.annees ? texteAge(p).replace(/ /g, '\u00a0') : '';
+  ligne('👶', [a.annees ? anneeAffichee(p.naissance, p.naissanceApprox) : '', a.lieu ? communeSeule(p.naissanceLieu) : '', mort ? '' : age]);
+  if (mort) { ligne('🕊️', [a.annees ? anneeAffichee(p.deces, p.decesApprox) : '', a.lieu ? communeSeule(p.decesLieu) : '', age]); }
+  else if (a.lieu && p.residence) { ligne('🏠', [communeSeule(p.residence)]); }
+  if (a.profession && p.profession) { ligne('💼', [p.profession]); }
+  return L;
+}
+function infoCarte(p) { return lignesCarte(p).join(', '); }
+/* Lieux complets, pour la bulle au survol de la carte. */
+function lieuxComplets(p) {
+  return [p.naissanceLieu ? 'Naissance : ' + p.naissanceLieu : '', estDecede(p) && p.decesLieu ? 'Décès : ' + p.decesLieu : '', !estDecede(p) && p.residence ? 'Lieu de vie : ' + p.residence : ''].filter(Boolean).join('\n');
 }
 
 /* Estimation de la parenté d'après l'ADN partagé (moyennes publiées par
@@ -3582,18 +3586,12 @@ function noeudCarte(n, centre, br) {
   var aff = etat.config.affichage.carte;
   var nom = nomComplet(p);
   var sous = aff.nomNaissance && p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom) ? accord(p, 'né ', 'née ', 'naissance : ') + p.nomNaissance : '';
-  var infoBr = br && br.parId ? br.parId[p.id] : null;
-  var allieDe = '';
-  if (infoBr && infoBr.branche === 'allie' && n.pid !== centre) {
-    var cjs = unionsPersonne(n.pid).map(function (uid) { return conjointDans(uid, n.pid); }).filter(function (x) { return x && pers(x); });
-    if (cjs.length) { allieDe = accord(p, 'conjoint de ', 'conjointe de ', 'union avec ') + (pers(cjs[0]).prenom || nomComplet(pers(cjs[0]))); }
-  }
   var marq = marquesCarte(p);
   var etiquette = nom + (info ? ', ' + info : '') + (n.pid === centre ? ', au centre de l’arbre' : '') + (estDecede(p) ? ', ' + accord(p, 'décédé', 'décédée', 'décès') : '') + (n.dup ? ', déjà présente ailleurs dans l’arbre' : '') + (p.verifiee ? ', vérifiée' : '') + (p.aVerifier ? ', à vérifier' : '') + (p.erronee ? ', branche erronée' : '') + marq.texte;
-  var carte = creer('button', { classe: classes.join(' '), attrs: { 'data-pid': n.pid, 'aria-label': etiquette + '. Ouvrir la fiche' },
+  var carte = creer('button', { classe: classes.join(' '), attrs: { 'data-pid': n.pid, 'aria-label': etiquette + '. Ouvrir la fiche', title: lieuxComplets(p) || null },
     clic: function () { ouvrirFiche(n.pid); } }, [
     avatar(p, classeCouleur(p, br)),
-    creer('span', { classe: 'carte__txt' }, [creer('span', { classe: 'carte__nom' }, [nomAffiche(p)]), sous ? creer('span', { classe: 'carte__info', texte: sous }) : null, allieDe ? creer('span', { classe: 'carte__info carte__allie', texte: allieDe }) : null, info ? creer('span', { classe: 'carte__info', texte: info }) : null])
+    creer('span', { classe: 'carte__txt' }, [creer('span', { classe: 'carte__nom' }, [nomAffiche(p)]), sous ? creer('span', { classe: 'carte__info', texte: sous }) : null].concat(lignesCarte(p).map(function (l) { return creer('span', { classe: 'carte__info', texte: l }); })))
   ]);
   carte.addEventListener('dblclick', function () { etat.centreSession = n.pid; rendre(); centrerSur(n.pid, true); });
   var noeud = creer('div', { classe: 'noeud', attrs: { style: 'left:' + Math.round(n.x) + 'px;top:' + Math.round(n.y) + 'px' } }, [carte]);
@@ -7062,7 +7060,7 @@ function etapeCartes(z, poserApercu) {
     caseACocher('cPhoto', 'Photo (ou initiales)', c.photo, function (v) { c.photo = v; maj(); }),
     caseACocher('cAnnees', 'Années de naissance et de décès', c.annees, function (v) { c.annees = v; maj(); }),
     caseACocher('cNomN', 'Nom de naissance, s’il diffère', c.nomNaissance, function (v) { c.nomNaissance = v; maj(); }),
-    caseACocher('cLieu', 'Lieu de naissance', c.lieu, function (v) { c.lieu = v; maj(); }),
+    caseACocher('cLieu', 'Lieux (naissance, décès, lieu de vie)', c.lieu, function (v) { c.lieu = v; maj(); }),
     caseACocher('cProf', 'Profession', c.profession, function (v) { c.profession = v; maj(); }),
     caseACocher('cSexe', 'Liseré bleu (homme) ou rose (femme)', c.sexeCouleur !== false, function (v) { c.sexeCouleur = v; maj(); }),
     caseACocher('cMarques', 'Icônes des notes et des documents', c.marques !== false, function (v) { c.marques = v; maj(); })
@@ -7082,12 +7080,11 @@ function etapeCartes(z, poserApercu) {
     etat.config = { affichage: b.affichage };
     [{ prenom: 'Claire', nom: 'Moreau', nomNaissance: 'Lefèvre', naissance: { a: 1966, m: 4, j: 2 }, naissanceLieu: 'Angers', profession: 'Architecte', photo: [], br: 'b' },
       { prenom: 'Jean', nom: 'Moreau', nomNaissance: '', naissance: { a: 1932 }, deces: { a: 2011 }, naissanceLieu: 'Villeurbanne', profession: 'Ébéniste', photo: [], br: 'a' }].forEach(function (p) {
-      var info = infoCarte(p);
       var sous = c.nomNaissance && p.nomNaissance ? 'née ' + p.nomNaissance : '';
       var coul = b.affichage.couleur === 'aucune' ? 'br-aucune' : (b.affichage.couleur === 'generation' ? (p.br === 'a' ? 'gen-2' : 'gen-1') : classeBranche(p.br));
       ap.appendChild(creer('div', { classe: 'noeud', attrs: { style: 'position:relative' } }, [creer('div', { classe: 'carte' + (estDecede(p) ? ' carte--mort' : '') }, [
         creer('span', { classe: 'avatar ' + coul, texte: initiales(p) }),
-        creer('span', { classe: 'carte__txt' }, [creer('span', { classe: 'carte__nom' }, [nomAffiche(p)]), sous ? creer('span', { classe: 'carte__info', texte: sous }) : null, info ? creer('span', { classe: 'carte__info', texte: info }) : null])
+        creer('span', { classe: 'carte__txt' }, [creer('span', { classe: 'carte__nom' }, [nomAffiche(p)]), sous ? creer('span', { classe: 'carte__info', texte: sous }) : null].concat(lignesCarte(p).map(function (l) { return creer('span', { classe: 'carte__info', texte: l }); })))
       ])]));
     });
     etat.config = ancienne;
