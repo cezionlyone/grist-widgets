@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.4.0
+  Version     : 1.4.1
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -51,6 +51,7 @@
 
   HISTORIQUE
   ----------
+  1.4.1 - 14/11/2026 - madeXcé - Nettoyage : retrait du code inutilisé (fonction, icônes, styles, branche de création jamais atteinte).
   1.4.0 - 14/11/2026 - madeXcé - Cousins ADN : retrait du collage de fiche et de l'import groupé, saisie manuelle uniquement.
   1.3.0 - 14/11/2026 - madeXcé - Création d'un arbre : la table des unions est toujours créée, plus de question à ce sujet.
   1.2.0 - 14/11/2026 - madeXcé - « Nouvelle généalogie vide » : toutes les tables de l'arbre (personnes, unions, documents, recherches, cousins) sont créées à son nom ; documents et recherches disponibles.
@@ -125,7 +126,7 @@
   --------
   - Ni exécution de code dynamique, ni accès au cadre parent
   - Aucune donnée insérée comme HTML : DOM construit avec textContent et
-    setAttribute ; echapperHTML() fait partie du socle commun
+    setAttribute
   - Photos : fichiers récupérés en Blob, jeton d'accès demandé au moment
     de l'appel, limité au document, jamais stocké ni journalisé ; images
     seulement (jpg, jpeg, png, gif, webp), 10 Mo au plus
@@ -180,7 +181,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .ico { width: 1.125rem; height: 1.125rem; flex: none; }
 .ico--s { width: 1rem; height: 1rem; }
-.ico--l { width: 1.5rem; height: 1.5rem; }
 
 /* === Boutons === */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: .375rem; min-height: 2.25rem; padding: 0 .875rem; border: 1px solid var(--trait); border-radius: var(--r-m);
@@ -433,7 +433,6 @@ table.tableau { width: 100%; border-collapse: collapse; }
 /* === Fiche === */
 .fiche__id { display: flex; flex-direction: column; align-items: center; gap: .375rem; text-align: center; padding-bottom: 1rem; border-bottom: 1px solid #EEEEF2; margin-bottom: 1rem; }
 .fiche__nom { margin: .25rem 0 0; font-size: 1.125rem; }
-.fiche__ligne { margin: 0; color: var(--gris); }
 .fil { list-style: none; margin: 0; padding: 0 0 0 .75rem; border-left: 2px solid #D9E7DF; }
 .fil__ev { position: relative; display: flex; flex-direction: column; padding: .25rem 0 .5rem .5rem; }
 .fil__ev::before { content: ""; position: absolute; left: -1.1rem; top: .6rem; width: .5rem; height: .5rem; border-radius: 50%; background: var(--vert); }
@@ -582,7 +581,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
   input, select, textarea, .saisie { font-size: 1rem; }
   .source-carte .btn, .btn--s { min-height: 2.75rem; }
   .source-carte__lien, .lien-personne, .rs-recherches .carte a, .rs-sources a { display: inline-block; padding: .3125rem 0; }
-  .source-carte, .carte-recherche { -webkit-tap-highlight-color: transparent; }
+  .source-carte { -webkit-tap-highlight-color: transparent; }
   .onglet { min-height: 3rem; }
   .page { -webkit-overflow-scrolling: touch; }
 }
@@ -618,7 +617,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.4.0</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.4.1</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -654,7 +653,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.4.0';
+var VERSION = '1.4.1';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -853,15 +852,12 @@ var ICONES = {
   eventail: 'M3 18a9 9 0 0 1 18 0M7 18a5 5 0 0 1 10 0M12 9v4M5.6 11.6l2.8 2.8M18.4 11.6l-2.8 2.8',
   arbre: 'M12 3v5M8 8h8M8 8v4M16 8v4M5 12h6M13 12h6M5 12v4M11 12v4M13 12v4M19 12v4',
   utilisateur: 'M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 21c0-4 4-6 8-6s8 2 8 6',
-  maison: 'M4 11l8-7 8 7v9H4zM10 20v-6h4v6',
-  chevron: 'M9 6l6 6-6 6',
   bas: 'M6 9l6 6 6-6',
   haut: 'M6 15l6-6 6 6',
   lien: 'M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1',
   globe: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18',
   table: 'M3 5h18v14H3zM3 10h18M9 10v9',
-  carte: 'M9 4L3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14',
-  repere: 'M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21zM12 7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z'
+  carte: 'M9 4L3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14'
 };
 
 /* === SECTION : ÉTAT === */
@@ -949,13 +945,6 @@ function relayer(promesse, quoi) {
     promesse.catch(function (e) { logSecurite('WARNING', quoi, e); });
   }
   return promesse;
-}
-
-function echapperHTML(texte) {
-  if (!texte && texte !== 0) return '';
-  var div = document.createElement('div');
-  div.textContent = String(texte);
-  return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function estTableExclue(tid) {
@@ -6678,7 +6667,7 @@ function etapeRecap(z) {
     if (b.liens === 'unions') {
       lignes.push(pers ? 'Tables ' + LABEL_PERS + ' et 💞 UNIONS ⚡ du document réutilisées : leurs données restent.' : 'Création des tables ' + LABEL_PERS + ' et 💞 UNIONS ⚡.');
     } else {
-      lignes.push(pers ? 'Table ' + LABEL_PERS + ' du document réutilisée : ses données restent. Aucune table créée.' : 'Création d’une seule table : ' + LABEL_PERS + '.');
+      lignes.push('Table ' + LABEL_PERS + ' du document réutilisée : ses données restent. Aucune table créée.');
     }
   } else {
     var aCreer = CHAMPS_PERS.filter(function (ch) { return !b.cols[ch.cle]; }).map(function (ch) { return ch.label; })
@@ -6811,11 +6800,8 @@ async function creerArbre() {
       await chargerMeta();
       cols = idsParDefaut(CHAMPS_PERS);
       cols.parents = COL_PARENTS.id;
-    } else if (b.source === 'modele' && b.liens === 'colonnes') {
+    } else if (b.source === 'modele' && b.liens === 'colonnes' && tableGenealogie()) {
       tPers = tableGenealogie();
-      if (!tPers) {
-        tPers = (await creerTables([defPersonnesSeule()]))[0];
-      }
       await chargerMeta();
       await completerColonnes(tPers, defPersonnesSeule().colonnes);
       await completerLiens(tPers, null);
