@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.1.0
+  Version     : 1.2.0
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -51,6 +51,7 @@
 
   HISTORIQUE
   ----------
+  1.2.0 - 14/11/2026 - madeXcé - « Nouvelle généalogie vide » : toutes les tables de l'arbre (personnes, unions, documents, recherches, cousins) sont créées à son nom ; documents et recherches disponibles.
   1.1.0 - 14/11/2026 - madeXcé - Nouvel arbre : choix « Nouvelle généalogie vide » (tables indépendantes, sans partage de personnes).
   1.0.0 - 14/11/2026 - madeXcé - Première édition publique en français.
 
@@ -617,7 +618,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.1.0</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.2.0</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -653,7 +654,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.1.0';
+var VERSION = '1.2.0';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -3725,17 +3726,77 @@ async function envoyerPhoto(fichier) {
 }
 
 /* === SECTION : DOCUMENTS ET SOURCES === */
+function slugArbre(nom) {
+  var s = normaliser(nom).replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toUpperCase().slice(0, 24);
+  return s || 'ARBRE';
+}
+function idTableArbre(base, nom) { return idTableLibre(base + slugArbre(nom)); }
+function libelleArbre(libelle, nom) { return libelle.replace(' ⚡', ' ' + String(nom || '').toUpperCase().slice(0, 24) + ' ⚡'); }
+
+/* La table des sources (sites utiles) ne concerne aucune personne : elle est commune à tous les arbres. */
+async function assurerSourcesCommunes() {
+  if (etat.tSources) { return; }
+  await creerTables([{ id: ID_SOURCES, libelle: LABEL_SOURCES, colonnes: [
+    { id: 'LIBELLE', type: 'Text', label: 'LIBELLE' }, { id: 'URL', type: 'Text', label: 'URL' },
+    { id: 'CATEGORIE', type: 'Text', label: 'CATEGORIE' }, { id: 'NOTES', type: 'Text', label: 'NOTES' }].concat(COLONNES_META) }]);
+  etat.tSources = trouverTableModele(ID_SOURCES);
+  if (etat.tSources) {
+    await agir(SOURCES_DEPART.map(function (x) { return ['AddRecord', etat.tSources, null, { LIBELLE: x[0], URL: x[1], CATEGORIE: x[2], NOTES: x[3] }]; }));
+  }
+}
+
+/* Recherches puis documents, au nom de l'arbre ; les identifiants sont gardés dans ses réglages. */
+async function creerAnnexesDediees(cfg) {
+  await chargerMeta();
+  var nom = cfg.nom || 'Arbre';
+  if (!etat.tRech) {
+    var colsR = [{ id: 'PERSONNE', type: 'Ref:' + cfg.tables.pers, label: 'PERSONNE' }, { id: 'DOCUMENT', type: 'Text', label: 'DOCUMENT' }];
+    if (etat.tSources) { colsR.push({ id: 'SOURCE', type: 'RefList:' + etat.tSources, label: 'SOURCES' }); }
+    colsR.push({ id: 'STATUT', type: 'Choice', label: 'STATUT', choix: STATUTS_RECH });
+    colsR.push({ id: 'NOTES', type: 'Text', label: 'NOTES' });
+    colsR.push({ id: 'INFOS', type: 'Text', label: 'INFOS' });
+    colsR.push({ id: 'ETAPES', type: 'Text', label: 'ETAPES' });
+    var tR = (await creerTables([{ id: idTableArbre(ID_RECH, nom), libelle: libelleArbre(LABEL_RECH, nom), colonnes: colsR.concat(COLONNES_META) }]))[0];
+    cfg.tables.rech = tR;
+    etat.tRech = tR;
+    await ecrireConfig(cfg);
+  }
+  if (!etat.tDocs) {
+    var colsD = [{ id: 'PERSONNE', type: 'Ref:' + cfg.tables.pers, label: 'PERSONNE' }];
+    if (cfg.tables.unions && cfg.liens !== 'colonnes') { colsD.push({ id: 'UNION_LIEE', type: 'Ref:' + cfg.tables.unions, label: 'UNION LIEE' }); }
+    colsD.push({ id: 'TYPE', type: 'Choice', label: 'TYPE', choix: DOC_TYPES.map(function (t) { return t.cle; }) });
+    colsD.push({ id: 'LIBELLE', type: 'Text', label: 'LIBELLE' });
+    colsD.push({ id: 'FICHIER', type: 'Attachments', label: 'FICHIER' });
+    colsD.push({ id: 'RECHERCHE', type: 'Ref:' + etat.tRech, label: 'RECHERCHE' });
+    var tD = (await creerTables([{ id: idTableArbre(ID_DOCS, nom), libelle: libelleArbre(LABEL_DOCS, nom), colonnes: colsD.concat(COLONNES_META) }]))[0];
+    cfg.tables.docs = tD;
+    etat.tDocs = tD;
+    await ecrireConfig(cfg);
+  }
+}
+
 async function assurerTablesAnnexes(cfg) {
   try {
     await chargerMeta();
-    etat.tDocs = trouverTableModele(ID_DOCS);
     etat.tSources = trouverTableModele(ID_SOURCES);
-    etat.tRech = trouverTableModele(ID_RECH);
-    /* Documents et recherches pointent vers la table des personnes du premier
-       arbre : un arbre aux tables indépendantes ne s'y relie pas. */
-    var etrangere = function (t) { var c = t ? infoColonne(t, 'PERSONNE') : null; return !!c && c.type !== 'Ref:' + cfg.tables.pers; };
-    etat.annexesAutreArbre = etrangere(etat.tDocs) || etrangere(etat.tRech);
-    if (etat.annexesAutreArbre) { etat.tDocs = null; etat.tRech = null; return; }
+    /* Un arbre dont les personnes ne sont pas celles des tables partagées a ses
+       propres tables de documents et de recherches, créées à son nom. */
+    var propreD = cfg.tables.docs && etat.meta.tables[cfg.tables.docs] ? cfg.tables.docs : null;
+    var propreR = cfg.tables.rech && etat.meta.tables[cfg.tables.rech] ? cfg.tables.rech : null;
+    var partD = trouverTableModele(ID_DOCS);
+    var partR = trouverTableModele(ID_RECH);
+    var refOk = function (t) { if (!t) { return true; } var c = infoColonne(t, 'PERSONNE'); return !!c && c.type === 'Ref:' + cfg.tables.pers; };
+    var dedie = !!(cfg.tables.docs || cfg.tables.rech) || cfg.source === 'vide' || !(refOk(partD) && refOk(partR));
+    if (dedie) {
+      etat.tDocs = propreD;
+      etat.tRech = propreR;
+      if (!etat.peutModifier) { return; }
+      await assurerSourcesCommunes();
+      await creerAnnexesDediees(cfg);
+      return;
+    }
+    etat.tDocs = partD;
+    etat.tRech = partR;
     if (!etat.peutModifier) { return; }
     var defs = [];
     var colsDocs = [{ id: 'PERSONNE', type: 'Ref:' + cfg.tables.pers, label: 'PERSONNE' }];
@@ -4316,8 +4377,7 @@ function rendreRecherches(zone) {
     creer('h2', { classe: 'page__titre' }, ['Recherches', badge(pluriel(nbOuv, 'ouverte', 'ouvertes'))]),
     etat.peutModifier && etat.tRech ? bouton('Ajouter une recherche', 'p', 'plus', function () { ouvrirFormRecherche(null); }, { classe: 'no-print' }) : null
   ]));
-  if (!etat.tRech && etat.annexesAutreArbre) { colG.appendChild(alerte('info', 'Les recherches et les documents sont liés aux personnes du premier arbre du document : ils ne sont pas disponibles pour un arbre aux tables indépendantes.')); }
-  else if (!etat.tRech) { colG.appendChild(alerte('info', 'La table des recherches n’existe pas encore. Elle se crée toute seule quand l’arbre est ouvert avec un compte qui peut modifier le document.')); }
+  if (!etat.tRech) { colG.appendChild(alerte('info', 'La table des recherches n’existe pas encore. Elle se crée toute seule quand l’arbre est ouvert avec un compte qui peut modifier le document.')); }
   var opts = [{ valeur: 'ouvertes', libelle: 'Ouvertes (à faire et en cours)' }, { valeur: 'toutes', libelle: 'Toutes' }].concat(STATUTS_RECH.map(function (x) { return { valeur: x, libelle: x }; }));
   var sel = liste('rechFiltre', opts, f);
   sel.addEventListener('change', function () { etat.filtreRech = sel.value; rendre(); });
@@ -6636,7 +6696,7 @@ function etapeGeneral(z) {
       tuiles.appendChild(tuile('Je n’ai pas encore de données', 'Le widget crée une seule table, 👪 GÉNÉALOGIE ⚡. Vous ajoutez ensuite votre famille depuis l’arbre.', b.source === 'modele', choisirModele));
     }
     if (modele) {
-      tuiles.appendChild(tuile('Nouvelle généalogie vide', 'Le widget crée de nouvelles tables, indépendantes de celles des autres arbres : aucune personne n’est partagée. Les documents et les recherches ne sont pas disponibles pour cet arbre.', b.source === 'vide', function () { b.source = 'vide'; b.tablePers = ''; b.liens = 'unions'; b.cols = idsParDefaut(CHAMPS_PERS); rendre(); }));
+      tuiles.appendChild(tuile('Nouvelle généalogie vide', 'Le widget crée de nouvelles tables au nom de l’arbre (personnes, unions, documents, recherches), indépendantes de celles des autres arbres : aucune donnée n’est partagée.', b.source === 'vide', function () { b.source = 'vide'; b.tablePers = ''; b.liens = 'unions'; b.cols = idsParDefaut(CHAMPS_PERS); rendre(); }));
     }
     var possibles = tablesPersonnesPossibles().filter(function (t) { return t !== modele; });
     tuiles.appendChild(tuile('J’ai déjà mes données', possibles.length ? 'Vous choisissez la table qui contient votre famille et vous fléchez ses colonnes. Aucune table n’est créée.' : 'Aucune autre table dans ce document.', b.source === 'existant', function () { b.source = 'existant'; b.tablePers = ''; b.liens = 'colonnes'; rendre(); }, !possibles.length));
@@ -6870,7 +6930,7 @@ function etapeRecap(z) {
   var unions = trouverTableModele(ID_UNIONS);
   lignes.push('Arbre « ' + b.nom.trim() + ' », dans un nouvel onglet.');
   if (b.source === 'vide') {
-    lignes.push('Création de nouvelles tables 👪 GÉNÉALOGIE et 💞 UNIONS, indépendantes des autres arbres : aucune donnée n’est partagée.');
+    lignes.push('Création de tables à son nom : 👪 GÉNÉALOGIE, 💞 UNIONS, 📎 DOCUMENTS et 🔎 RECHERCHES « ' + b.nom.trim() + ' », indépendantes des autres arbres : aucune donnée n’est partagée.');
   } else if (b.source === 'modele') {
     if (b.liens === 'unions') {
       lignes.push(pers ? 'Tables ' + LABEL_PERS + ' et 💞 UNIONS ⚡ du document réutilisées : leurs données restent.' : 'Création des tables ' + LABEL_PERS + ' et 💞 UNIONS ⚡.');
@@ -6962,8 +7022,8 @@ function colonnesCousins(tc) {
 async function creerCousinsDedies(idPers, nomArbre) {
   await chargerMeta();
   var d = defCousins(idPers);
-  d.id = idTableLibre(ID_COUSINS);
-  d.libelle = LABEL_COUSINS.replace(' ⚡', ' ' + nomArbre.toUpperCase().slice(0, 24) + ' ⚡');
+  d.id = idTableArbre(ID_COUSINS, nomArbre);
+  d.libelle = libelleArbre(LABEL_COUSINS, nomArbre);
   var tc = (await creerTables([d]))[0];
   await poserAffichageRef(tc, 'ANCETRE_PROBABLE', idPers, 'NOM_COMPLET');
   return tc;
@@ -6992,15 +7052,14 @@ async function creerArbre() {
     var tPers, tUnions;
     var cols;
     if (b.source === 'vide') {
-      var suffixe = ' ' + b.nom.trim().toUpperCase().slice(0, 24);
-      var idUv = idTableLibre(ID_UNIONS);
-      var idPv = idTableLibre(ID_PERS);
+      var idUv = idTableArbre(ID_UNIONS, b.nom);
+      var idPv = idTableArbre(ID_PERS, b.nom);
       var dUv = defUnions(idPv, true);
       dUv.id = idUv;
-      dUv.libelle = LABEL_UNIONS.replace(' ⚡', suffixe + ' ⚡');
+      dUv.libelle = libelleArbre(LABEL_UNIONS, b.nom.trim());
       var dPv = defPersonnes(idUv);
       dPv.id = idPv;
-      dPv.libelle = LABEL_PERS.replace(' ⚡', suffixe + ' ⚡');
+      dPv.libelle = libelleArbre(LABEL_PERS, b.nom.trim());
       var idsV = await creerTables([dPv, dUv]);
       tPers = idsV[0]; tUnions = idsV[1];
       await poserAffichageRef(tUnions, 'PERSONNE_A', tPers, 'NOM_COMPLET');
