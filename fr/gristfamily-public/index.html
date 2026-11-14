@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.4.7
+  Version     : 1.4.8
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -53,6 +53,7 @@
 
   HISTORIQUE
   ----------
+  1.4.8 - 14/11/2026 - madeXcé - Liens web d'une personne : colonne LIENS (ajoutée toute seule), saisie dans la fiche, liens cliquables (https ou http seulement).
   1.4.7 - 14/11/2026 - madeXcé - Ajout d'un conjoint : il peut compléter l'union qui porte déjà les enfants (plus d'union en double) ; parcours de vie : décès du père et de la mère, avec les âges.
   1.4.6 - 14/11/2026 - madeXcé - Cartes de l'arbre : une ligne par information avec un emoji (naissance, décès, lieu de vie, profession), commune seule (lieu complet au survol), plus de « conjoint de ».
   1.4.5 - 14/11/2026 - madeXcé - Cœur d'union cliquable dans l'arbre (résumé au survol, fenêtre des dates et du lieu au clic) ; durée de l'union ; noms en majuscules et prénoms avec majuscules à la saisie, et bouton de mise en forme des fiches existantes dans les paramètres.
@@ -632,7 +633,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.4.7</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.4.8</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -668,7 +669,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.4.7';
+var VERSION = '1.4.8';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -788,6 +789,7 @@ var CHAMPS_PERS = [
   { cle: 'verifiee', id: 'VERIFIEE', label: 'VERIFIEE', type: 'Bool', genre: 'oui', nom: 'Vérifiée' },
   { cle: 'aVerifier', id: 'A_VERIFIER', label: 'A VERIFIER', type: 'Bool', genre: 'oui', nom: 'À vérifier' },
   { cle: 'photoUrl', id: 'PHOTO_URL', label: 'PHOTO URL', type: 'Text', genre: 'texte', nom: 'Portrait illustré (adresse)' },
+  { cle: 'liensWeb', id: 'LIENS', label: 'LIENS', type: 'Text', genre: 'texte', nom: 'Liens web' },
   { cle: 'erronee', id: 'BRANCHE_ERRONEE', label: 'BRANCHE ERRONEE', type: 'Bool', genre: 'oui', nom: 'Branche erronée' }
 ];
 var COL_PARENTS = { id: 'PARENTS', label: 'PARENTS' };
@@ -2454,11 +2456,11 @@ async function assurerColonnesVerifiee(cfg) {
       var tid = jobs[i][0];
       var cols = jobs[i][1];
       if (!tid || !cols || !etat.meta || !etat.meta.tables[tid]) { continue; }
-      var marques = [['verifiee', 'VERIFIEE', 'Bool'], ['aVerifier', 'A_VERIFIER', 'Bool'], ['photoUrl', 'PHOTO_URL', 'Text'], ['professions', 'PROFESSIONS', 'Text'], ['erronee', 'BRANCHE_ERRONEE', 'Bool']];
+      var marques = [['verifiee', 'VERIFIEE', 'Bool'], ['aVerifier', 'A_VERIFIER', 'Bool'], ['photoUrl', 'PHOTO_URL', 'Text'], ['professions', 'PROFESSIONS', 'Text'], ['erronee', 'BRANCHE_ERRONEE', 'Bool'], ['liensWeb', 'LIENS', 'Text']];
       for (var m = 0; m < marques.length; m++) {
         var cle = marques[m][0];
         var idCol = marques[m][1];
-        if ((cle === 'photoUrl' || cle === 'erronee' || cle === 'professions') && i === 1) { continue; }
+        if ((cle === 'photoUrl' || cle === 'erronee' || cle === 'professions' || cle === 'liensWeb') && i === 1) { continue; }
         if (cols[cle] && infoColonne(tid, cols[cle])) { continue; }
         if (infoColonne(tid, idCol)) { cols[cle] = idCol; continue; }
         if (!etat.peutModifier) { continue; }
@@ -4128,6 +4130,16 @@ function ouvrirFormDocument(p, opt) {
 }
 
 function urlSure(u) { return /^https?:\/\/[^\s]+$/i.test(u || ''); }
+/* Liens web d'une personne : une ligne « Titre : https://… » ou une adresse seule. */
+function liensWebDe(p) {
+  return String((p && p.liensWeb) || '').split(/\n/).map(function (l) { return l.trim(); }).filter(Boolean).map(function (l) {
+    var m = /^(.*?)\s*:\s*(https?:\/\/\S+)$/i.exec(l);
+    var url = m ? m[2] : l;
+    if (!urlSure(url)) { return null; }
+    var titre = m && m[1] ? m[1] : url.replace(/^https?:\/\/(www\.)?/i, '').split('/')[0];
+    return { titre: titre, url: url };
+  }).filter(Boolean);
+}
 
 function rechOuverte(r) { return r.statut !== 'Trouvé' && r.statut !== 'Introuvable'; }
 function sourcesDe(r) { return (r.sources || []).map(function (id) { return (etat.sources || []).filter(function (x) { return x.id === id; })[0]; }).filter(function (x) { return x; }); }
@@ -4916,6 +4928,12 @@ function rendreFiche() {
   }
   ajouterA(corps, sectionDocuments(p));
   ajouterA(corps, sectionRecherches(p));
+  var liensW = liensWebDe(p);
+  if (liensW.length) {
+    ajouterA(corps, sectionFiche('LIENS', [creer('ul', { attrs: { style: 'margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.25rem' } }, liensW.map(function (x) {
+      return creer('li', {}, [creer('a', { texte: x.titre, attrs: { href: x.url, target: '_blank', rel: 'noopener noreferrer', title: x.url } })]);
+    }))]));
+  }
   if (p.notes) { ajouterA(corps, sectionFiche('NOTES', [creer('p', { texte: p.notes, attrs: { style: 'margin:0;white-space:pre-line' } })])); }
   var meta = [];
   if (p.creeLe) { meta.push('Ajoutée le ' + formaterHorodatage(p.creeLe) + (p.creePar ? ' par ' + p.creePar : '')); }
@@ -5085,6 +5103,7 @@ function ouvrirFormPersonne(o) {
   zoneNouv.appendChild(champ('Lieu de vie', saisie('fResidence', p ? p.residence : '', { max: 160, indice: 'Ville, pays' }), { facultatif: true }));
   zoneNouv.appendChild(champ('Profession', saisie('fProfession', p ? p.profession : '', { max: 160 }), { facultatif: true }));
   if (etat.config.cols.professions) {
+    zoneNouv.appendChild(champ('Liens web, un par ligne', saisie('fLiensWeb', p ? p.liensWeb : '', { multiligne: true, lignes: 3, indice: 'Fiche matricule : https://…\nhttps://www.geneanet.org/…' }), { facultatif: true, plein: true, indice: 'Titre facultatif devant l’adresse, sous la forme « Titre : https://… ». Seules les adresses https ou http sont gardées.' }));
     zoneNouv.appendChild(champ('Professions datées, une par ligne', saisie('fProfessions', p ? p.professions : '', { multiligne: true, lignes: 3, indice: '1954 : cultivateur (acte de mariage)\n1961 : ouvrier (naissance de son fils)' }), { facultatif: true, plein: true }));
   }
   var zoneDeces = creer('div', { classe: 'grille2 plein', attrs: { hidden: !(p && estDecede(p)) } }, [
@@ -5189,7 +5208,7 @@ async function validerFormPersonne(o, etatForm, btn) {
     if (colonnePersEstDate('naissance') && n.date && (!n.date.j || n.approx)) { marquerInvalide('fNaissance', 'La colonne de votre table attend une date complète : jour, mois et année.'); return; }
     if (n.date && d.date && comparerDates(d.date, n.date) < 0) { marquerInvalide('fDeces', 'Le décès ne peut pas précéder la naissance.'); return; }
     v = { prenom: val('fPrenom'), nom: val('fNom'), nomNaissance: val('fNomNaissance'), sexe: val('fSexe'),
-      naissance: n.date, naissanceApprox: n.approx, naissanceLieu: val('fNaissanceLieu'), residence: val('fResidence'), profession: val('fProfession'), professions: document.getElementById('fProfessions') ? document.getElementById('fProfessions').value.trim() : undefined,
+      naissance: n.date, naissanceApprox: n.approx, naissanceLieu: val('fNaissanceLieu'), residence: val('fResidence'), profession: val('fProfession'), professions: document.getElementById('fProfessions') ? document.getElementById('fProfessions').value.trim() : undefined, liensWeb: document.getElementById('fLiensWeb') ? document.getElementById('fLiensWeb').value.trim() : undefined,
       decede: decede, deces: decede ? d.date : null, decesApprox: decede ? d.approx : false, decesLieu: decede ? val('fDecesLieu') : '', notes: val('fNotes'), verifiee: document.getElementById('fVerifiee').checked, aVerifier: document.getElementById('fAVerifier').checked, erronee: document.getElementById('fErronee').checked };
     if (document.getElementById('fFiliation')) { v.filiation = val('fFiliation'); }
   }
