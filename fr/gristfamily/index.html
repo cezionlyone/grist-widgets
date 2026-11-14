@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.29.1
+  Version     : 1.29.2
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.29.2 - 14/11/2026 - madeXcé - Exemples de saisie neutres (plus aucun nom ni lieu réel dans le code).
   1.29.1 - 14/11/2026 - madeXcé - Le bandeau affiche maintenant le vrai numéro de version (il restait figé sur 1.20.3).
   1.29.0 - 14/11/2026 - madeXcé - Page Recherches : suggestions calculées depuis l'arbre (actes de naissance, décès, mariage, conjoints à identifier), bouton « Suivre cette recherche ».
   1.28.0 - 14/11/2026 - madeXcé - Carte : lieux des vivants et des ancêtres (naissance, décès, vie), pins de couleurs différentes ; la fenêtre d'un pin ne se ferme plus (1.28.1).
@@ -663,7 +664,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.29.1</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.29.2</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -699,7 +700,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.29.1';
+var VERSION = '1.29.2';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -729,7 +730,6 @@ var DOC_TYPES = [
 var EXT_DOCS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'];
 var TAILLE_MAX_DOC = 15 * 1024 * 1024;
 var SOURCES_DEPART = [
-  ['Archives départementales du Val-d’Oise', 'https://archives.valdoise.fr', 'Archives', 'État civil en ligne (1900-1932 pour toutes les communes), recensements, tables décennales.'],
   ['Archives de Paris', 'https://archives.paris.fr', 'Archives', 'État civil parisien, état civil reconstitué avant 1860.'],
   ['FranceArchives', 'https://francearchives.gouv.fr', 'Archives', 'Portail des archives françaises : trouver le bon service d’archives (départemental, communal, national).'],
   ['Archives nationales', 'https://www.archives-nationales.culture.gouv.fr', 'Archives', 'Fonds nationaux, notaires parisiens, naturalisations, grandes institutions.'],
@@ -3990,7 +3990,7 @@ function ouvrirFormDocument(p, opt) {
   var corps = [creer('div', { classe: 'grille2' }, [
     champ('Type de document', selType),
     unions.length ? champ('Concerne', selConcerne) : null,
-    champ('Titre', saisie('docLibelle', opt.titre || '', { max: 160, indice: 'Ex. : Acte de mariage, Us, 1913' }), { facultatif: true, plein: true }),
+    champ('Titre', saisie('docLibelle', opt.titre || '', { max: 160, indice: 'Ex. : Acte de mariage, Lyon, 1913' }), { facultatif: true, plein: true }),
     champ('Fichier', fichier, { plein: true, indice: 'Image ou PDF, 15 Mo au plus. Plusieurs fichiers possibles (pages d’un même acte).' }),
     opt.recherche ? creer('div', { classe: 'plein' }, [caseACocher('docTrouve', 'Marquer la recherche « ' + (opt.recherche.doc || 'sans titre') + ' » comme trouvée', true)]) : null
   ])];
@@ -4408,11 +4408,11 @@ function ouvrirFormRecherche(r, pidDefaut) {
     return caseACocher('rechSrc' + i, x.libelle || x.url, cochees.indexOf(x.id) !== -1);
   })));
   var corps = [creer('div', { classe: 'grille2' }, [
-    champ('Document à trouver', saisie('rechDoc', r ? r.doc : '', { max: 160, indice: 'Ex. : Acte de naissance du 02/06/1929' }), { obligatoire: true, plein: true }),
+    champ('Document à trouver', saisie('rechDoc', r ? r.doc : '', { max: 160, indice: 'Ex. : Acte de naissance du 02/06/1905' }), { obligatoire: true, plein: true }),
     champ('Personne concernée', selPers),
     champ('Statut', selSt),
     zoneSrc,
-    champ('Ce qu’on sait (une info par ligne, sous la forme « Titre : valeur »)', saisie('rechInfos', r ? r.infos : '', { multiligne: true, lignes: 6, indice: 'Priorité : 1\nÉpoux : Albert MASSON, né le 05/04/1895\nMariage : entre 1915 et 1929\nLieu : à trouver' }), { facultatif: true, plein: true }),
+    champ('Ce qu’on sait (une info par ligne, sous la forme « Titre : valeur »)', saisie('rechInfos', r ? r.infos : '', { multiligne: true, lignes: 6, indice: 'Priorité : 1\nÉpoux : Jean DUPONT, né le 05/04/1880\nMariage : entre 1900 et 1905\nLieu : à trouver' }), { facultatif: true, plein: true }),
     champ('Marche à suivre (une étape par ligne)', saisie('rechEtapes', r ? r.etapes : '', { multiligne: true, lignes: 4, indice: 'Chercher le couple sur Geneanet\nOuvrir l’état civil aux Archives' }), { facultatif: true, plein: true }),
     champ('Mes notes', saisie('rechNotes', r ? r.notes : '', { multiligne: true, lignes: 4, indice: 'Vos remarques personnelles sur cette recherche' }), { facultatif: true, plein: true })
   ])];
@@ -5885,7 +5885,7 @@ function dessinerCarteCousins(boite, statut, enregistrer, filtrer) {
       if (points.length && cadrer) { carte.fitBounds(points, { padding: [60, 60], maxZoom: 7 }); cadrer = false; }
       statut.textContent = (dernier.sans ? (dernier.sans > 1 ? dernier.sans + ' cousins sans ville ni pays ne sont pas placés. ' : '1 cousin sans ville ni pays n’est pas placé. ') : '') +
         (attente ? 'Recherche de ' + pluriel(attente, 'lieu', 'lieux') + ' en cours… ' : '') +
-        (introuvables.length ? 'Lieux introuvables : ' + introuvables.join(' ; ') + '. Précisez-les, par exemple « Rezé, France ».' : '');
+        (introuvables.length ? 'Lieux introuvables : ' + introuvables.join(' ; ') + '. Précisez-les, par exemple « Villeurbanne, France ».' : '');
     };
     var maj = function (liste) {
       dernier = lieuxDe(liste);
@@ -6394,7 +6394,7 @@ function rendreCarte(zone) {
     tb
   ]));
   if (!lieux.length) {
-    page.appendChild(creer('div', { classe: 'vide' }, [creer('h2', { texte: 'Aucun lieu à placer' }), creer('p', { texte: 'Indiquez un lieu de vie, de naissance ou de décès dans les fiches (« Nantes, France »), ou la ville et le pays des cousins ADN.' })]));
+    page.appendChild(creer('div', { classe: 'vide' }, [creer('h2', { texte: 'Aucun lieu à placer' }), creer('p', { texte: 'Indiquez un lieu de vie, de naissance ou de décès dans les fiches (« Lyon, France »), ou la ville et le pays des cousins ADN.' })]));
   } else {
     page.appendChild(listeLieux);
   }
@@ -6430,7 +6430,7 @@ function rendreCarte(zone) {
         m.addTo(couche);
       });
       if (points.length && !etat.carteCadree) { carte.fitBounds(points, { padding: [40, 40], maxZoom: 9 }); etat.carteCadree = true; }
-      statut.textContent = (attente ? 'Recherche de ' + pluriel(attente, 'lieu', 'lieux') + ' en cours… ' : '') + (introuvables.length ? 'Lieux introuvables : ' + introuvables.join(' ; ') + '. Précisez-les, par exemple « Rezé, France ».' : '');
+      statut.textContent = (attente ? 'Recherche de ' + pluriel(attente, 'lieu', 'lieux') + ' en cours… ' : '') + (introuvables.length ? 'Lieux introuvables : ' + introuvables.join(' ; ') + '. Précisez-les, par exemple « Villeurbanne, France ».' : '');
     };
     etat.carteCadree = false;
     placer();
@@ -6831,7 +6831,7 @@ function etapeCartes(z, poserApercu) {
     var ancienne = etat.config;
     etat.config = { affichage: b.affichage };
     [{ prenom: 'Claire', nom: 'Moreau', nomNaissance: 'Lefèvre', naissance: { a: 1966, m: 4, j: 2 }, naissanceLieu: 'Angers', profession: 'Architecte', photo: [], br: 'b' },
-      { prenom: 'Jean', nom: 'Moreau', nomNaissance: '', naissance: { a: 1932 }, deces: { a: 2011 }, naissanceLieu: 'Rezé', profession: 'Ébéniste', photo: [], br: 'a' }].forEach(function (p) {
+      { prenom: 'Jean', nom: 'Moreau', nomNaissance: '', naissance: { a: 1932 }, deces: { a: 2011 }, naissanceLieu: 'Villeurbanne', profession: 'Ébéniste', photo: [], br: 'a' }].forEach(function (p) {
       var info = infoCarte(p);
       var sous = c.nomNaissance && p.nomNaissance ? 'née ' + p.nomNaissance : '';
       var coul = b.affichage.couleur === 'aucune' ? 'br-aucune' : (b.affichage.couleur === 'generation' ? (p.br === 'a' ? 'gen-2' : 'gen-1') : classeBranche(p.br));
