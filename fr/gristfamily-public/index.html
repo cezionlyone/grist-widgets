@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.4.8
+  Version     : 1.4.9
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -53,6 +53,7 @@
 
   HISTORIQUE
   ----------
+  1.4.9 - 14/11/2026 - madeXcé - Modifier une personne : champ « Parents » pour choisir le couple dont elle est l'enfant (conjoint connu ou autre parent inconnu) ; l'union devenue vide est supprimée.
   1.4.8 - 14/11/2026 - madeXcé - Liens web d'une personne : colonne LIENS (ajoutée toute seule), saisie dans la fiche, liens cliquables (https ou http seulement).
   1.4.7 - 14/11/2026 - madeXcé - Ajout d'un conjoint : il peut compléter l'union qui porte déjà les enfants (plus d'union en double) ; parcours de vie : décès du père et de la mère, avec les âges.
   1.4.6 - 14/11/2026 - madeXcé - Cartes de l'arbre : une ligne par information avec un emoji (naissance, décès, lieu de vie, profession), commune seule (lieu complet au survol), plus de « conjoint de ».
@@ -633,7 +634,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.4.8</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.4.9</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -669,7 +670,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.4.8';
+var VERSION = '1.4.9';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -5112,6 +5113,15 @@ function ouvrirFormPersonne(o) {
   ]);
   zoneNouv.appendChild(creer('div', { classe: 'plein' }, [caseACocher('fDecede', accord(p, 'Décédé', 'Décédée', 'Personne décédée'), !!(p && estDecede(p)), function (v) { zoneDeces.hidden = !v; })]));
   zoneNouv.appendChild(zoneDeces);
+  /* Parents d'une personne déjà saisie : changer l'autre parent (un conjoint
+     connu du parent, ou « inconnu »), par exemple quand les enfants ont été
+     saisis avant le conjoint. */
+  if (p && !modeColonnes()) {
+    var choixP = choixParents(p);
+    if (choixP.length > 1) {
+      zoneNouv.appendChild(champ('Parents', liste('fParentsUnion', choixP, p.parents ? 'u' + p.parents : ''), { facultatif: true, plein: true, indice: 'Choisissez le couple dont cette personne est l’enfant.' }));
+    }
+  }
   if (o.mode === 'enfant' || o.mode === 'fratrie' || (p && p.parents)) {
     zoneNouv.appendChild(champ('Filiation', liste('fFiliation', CHOIX_FILIATION.map(function (s) { return { valeur: s, libelle: s }; }), p ? (p.filiation || 'Naissance') : 'Naissance'), { facultatif: true }));
   }
@@ -5232,6 +5242,8 @@ async function validerFormPersonne(o, etatForm, btn) {
     if (o.mode === 'modifier') {
       await modifierPersonne(o.id, v);
       cible = o.id;
+      var selPU = document.getElementById('fParentsUnion');
+      if (selPU && selPU.value !== (pers(o.id).parents ? 'u' + pers(o.id).parents : '')) { await changerParents(o.id, selPU.value); }
       message = nomComplet({ prenom: v.prenom, nom: v.nom }) + ' : modifications enregistrées.';
     } else {
       if (!cible) { cible = await ajouterPersonne(v); }
@@ -5248,6 +5260,45 @@ async function validerFormPersonne(o, etatForm, btn) {
     btn.disabled = false;
     if (e && e.message === 'LIEN') { return; }
     afficherErreur(messageEchec(e, 'L’enregistrement a échoué. Réessayez.'), e);
+  }
+}
+
+/* Couples possibles pour les parents d'une personne : toutes les unions de
+   ses parents actuels, plus « autre parent inconnu » pour chacun d'eux. */
+function libelleCouple(uid) {
+  var u = unionDe(uid);
+  if (!u) { return ''; }
+  var a = u.a ? nomComplet(pers(u.a)) : '', b = u.b ? nomComplet(pers(u.b)) : '';
+  return a && b ? a + ' et ' + b : (a || b) + ', autre parent inconnu';
+}
+function choixParents(p) {
+  var u = unionDe(p.parents);
+  var parents = u ? [u.a, u.b].filter(Boolean) : [];
+  var vus = {}, out = [];
+  if (!u) { out.push({ valeur: '', libelle: 'Parents inconnus' }); }
+  parents.forEach(function (x) {
+    unionsPersonne(x).forEach(function (uid) {
+      if (vus[uid] || (unionDe(uid) || {}).virtuelle) { return; }
+      vus[uid] = true;
+      out.push({ valeur: 'u' + uid, libelle: libelleCouple(uid) });
+    });
+    if (!unionsPersonne(x).some(function (uid) { return !conjointDans(uid, x); })) {
+      out.push({ valeur: 's' + x, libelle: nomComplet(pers(x)) + ', autre parent inconnu' });
+    }
+  });
+  return out;
+}
+/* Rattache une personne à un autre couple de parents ; l'ancienne union,
+   devenue sans enfant et sans couple, est supprimée. */
+async function changerParents(pid, valeur) {
+  var ancienne = pers(pid).parents;
+  var nouvelle = 0;
+  if (valeur.charAt(0) === 'u') { nouvelle = Number(valeur.slice(1)); }
+  else if (valeur.charAt(0) === 's') { nouvelle = await ajouterUnion({ a: Number(valeur.slice(1)) }); }
+  await modifierPersonne(pid, { parents: nouvelle });
+  var u = unionDe(ancienne);
+  if (u && !(u.a && u.b) && !enfantsUnion(ancienne).some(function (e) { return e !== pid; })) {
+    await agir([['RemoveRecord', etat.config.tables.unions, ancienne]]);
   }
 }
 
