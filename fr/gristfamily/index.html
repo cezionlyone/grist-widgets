@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.31.2
+  Version     : 1.31.3
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.31.3 - 14/11/2026 - madeXcé - Unions : lieu de l'union (colonne LIEU ajoutée), champs nommés selon le type (date du mariage, date du divorce...), bouton « Dates et lieu de l'union » dans la fiche, remariage possible avec la même personne une fois la première union terminée.
   1.31.2 - 14/11/2026 - madeXcé - Recherches : chaque carte reprend d'elle-même ce que l'arbre sait de la personne (naissance, décès, lieux, nom de naissance, parents, conjoint).
   1.31.1 - 14/11/2026 - madeXcé - Sécurité : info-bulle de la carte construite sans HTML.
   1.31.0 - 14/11/2026 - madeXcé - « Nouvelle généalogie vide » : toutes les tables de l'arbre (personnes, unions, documents, recherches, cousins) sont créées à son nom ; documents et recherches disponibles.
@@ -668,7 +669,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.31.2</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.31.3</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -704,7 +705,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.31.2';
+var VERSION = '1.31.3';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -834,6 +835,7 @@ var CHAMPS_UNIONS = [
   { cle: 'b', id: 'PERSONNE_B', label: 'PERSONNE B', type: 'REF_PERS' },
   { cle: 'type', id: 'TYPE', label: 'TYPE', type: 'Choice', choix: CHOIX_UNION },
   { cle: 'debut', id: 'DEBUT', label: 'DEBUT', type: 'Text' },
+  { cle: 'lieu', id: 'LIEU', label: 'LIEU', type: 'Text' },
   { cle: 'fin', id: 'FIN', label: 'FIN', type: 'Text' },
   { cle: 'separes', id: 'SEPARES', label: 'SEPARES', type: 'Bool' },
   { cle: 'notes', id: 'NOTES', label: 'NOTES', type: 'Text' }
@@ -1808,7 +1810,7 @@ async function chargerDonnees() {
   for (var j = 0; j < (du.id || []).length; j++) {
     var u = { id: du.id[j], a: idRef(col(du, cu.a, j)), b: idRef(col(du, cu.b, j)), type: texteCellule(col(du, cu.type, j)),
       debut: lireDate(valeurCellule(col(du, cu.debut, j))), fin: lireDate(valeurCellule(col(du, cu.fin, j))),
-      separes: valeurCellule(col(du, cu.separes, j)) === true, notes: texteCellule(col(du, cu.notes, j)) };
+      separes: valeurCellule(col(du, cu.separes, j)) === true, notes: texteCellule(col(du, cu.notes, j)), lieu: texteCellule(col(du, cu.lieu, j)).trim() };
     if (u.a && !P[u.a]) { u.a = 0; }
     if (u.b && !P[u.b]) { u.b = 0; }
     if (!u.a && u.b) { u.a = u.b; u.b = 0; u.inverse = true; }
@@ -2232,6 +2234,36 @@ async function lierConjoints(a, b, lier) {
   await agir(actions);
 }
 
+/* Libellés des champs d'une union selon son type (mariage, PACS...). */
+var LIBELLES_UNION = {
+  'Mariage': { debut: 'Date du mariage', lieu: 'Lieu du mariage', fin: 'Date du divorce', separes: 'Divorcés', finCourt: 'divorce', separesCourt: 'divorcés', evenementFin: 'Divorce' },
+  'PACS': { debut: 'Date du PACS', lieu: 'Lieu d’enregistrement du PACS', fin: 'Date de dissolution du PACS', separes: 'PACS dissous', finCourt: 'dissolution', separesCourt: 'PACS dissous', evenementFin: 'Dissolution du PACS' },
+  'Fiançailles': { debut: 'Date des fiançailles', lieu: 'Lieu des fiançailles', fin: 'Date de la rupture', separes: 'Fiançailles rompues', finCourt: 'rupture', separesCourt: 'fiançailles rompues', evenementFin: 'Rupture des fiançailles' }
+};
+function libellesUnion(type) {
+  return LIBELLES_UNION[type] || { debut: 'Début de l’union', lieu: 'Lieu de l’union', fin: 'Fin de l’union', separes: 'Séparés', finCourt: 'séparation', separesCourt: 'séparés', evenementFin: 'Séparation' };
+}
+/* « le 15 juin 1991 » ou « en 1991 » selon la précision de la date. */
+function texteQuand(d) { return d ? (d.j ? 'le ' : 'en ') + formaterDate(d) : ''; }
+/* Résumé d'une union : « Mariage le 15 juin 1991 à Nantes, divorce le 3 mars 2004 ». */
+function texteUnion(u, sansType) {
+  var L = libellesUnion(u.type);
+  var debut = [sansType ? '' : (u.type || 'Union'), texteQuand(u.debut), u.lieu ? 'à ' + u.lieu : ''].filter(Boolean).join(' ');
+  var fin = u.fin ? L.finCourt + ' ' + texteQuand(u.fin) : (u.separes ? L.separesCourt : '');
+  return [debut, fin].filter(Boolean).join(', ');
+}
+/* Change le libellé d'un champ déjà affiché (étiquette ou case à cocher). */
+function renommerChamp(id, texte) {
+  var l = document.querySelector('label[for="' + id + '"]');
+  if (!l) { return; }
+  var cible = l.classList.contains('case') ? l.querySelector('span') : l;
+  if (cible && cible.firstChild && cible.firstChild.nodeType === 3) { cible.firstChild.nodeValue = texte; }
+}
+function renommerChampsUnion(type, ids) {
+  var L = libellesUnion(type);
+  ['debut', 'lieu', 'fin', 'separes'].forEach(function (k) { if (ids[k]) { renommerChamp(ids[k], L[k]); } });
+}
+
 async function modifierUnion(id, v) {
   if (modeColonnes()) { return; }
   await agir([['UpdateRecord', etat.config.tables.unions, id, versColonnesUnion(v)]]);
@@ -2456,6 +2488,12 @@ async function assurerColonnesVerifiee(cfg) {
         cfg.colsCousins[def.cle] = await ajouterColonne(tc, colonneLibre(tc, def.id), 'Text', def.label);
         await chargerMeta();
       }
+    }
+    /* Lieu de l'union, ajouté aux tables des unions créées avant la 1.31.3 */
+    var tu = cfg.liens === 'unions' ? cfg.tables.unions : null;
+    if (tu && cfg.colsUnions && etat.meta && etat.meta.tables[tu] && !(cfg.colsUnions.lieu && infoColonne(tu, cfg.colsUnions.lieu))) {
+      if (infoColonne(tu, 'LIEU')) { cfg.colsUnions.lieu = 'LIEU'; }
+      else if (etat.peutModifier) { cfg.colsUnions.lieu = await ajouterColonne(tu, colonneLibre(tu, 'LIEU'), 'Text', 'LIEU'); await chargerMeta(); }
     }
   } catch (e) { logSecurite('WARNING', 'Colonne Vérifiée non ajoutée', e); }
 }
@@ -4145,6 +4183,12 @@ function infosConnues(pid) {
   ajout('nomNaissance', 'Nom de naissance', p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom) ? p.nomNaissance : '');
   ajout('parents', 'Parents', parents);
   ajout('conjoint', 'Conjoint' + (conjoints.indexOf(',') !== -1 ? 's' : ''), conjoints);
+  unionsPersonne(pid).forEach(function (uid) {
+    var u = unionDe(uid);
+    if (!u || u.virtuelle || !(u.debut || u.lieu || u.fin)) { return; }
+    var cj = conjointDans(uid, pid);
+    ajout('union', u.type || 'Union', texteUnion(u, true) + (cj ? ' (avec ' + nom(pers(cj)) + ')' : ''));
+  });
   return L;
 }
 var TITRES_INFOS = {
@@ -4154,7 +4198,8 @@ var TITRES_INFOS = {
   decesLieu: /^(lieu|lieu de deces|lieu du deces)$/,
   nomNaissance: /^(nom|nom de naissance|nee)$/,
   parents: /^(parents?|pere|mere)(?![a-z])/,
-  conjoint: /^(conjoints?|epoux|epouse|mari|femme|union)(?![a-z])/
+  conjoint: /^(conjoints?|epoux|epouse|mari|femme)(?![a-z])/,
+  union: /^(mariage|union|pacs|fiancailles|divorce)(?![a-z])/
 };
 function blocInfosRecherche(r) {
   var L = lignesInfos(r.infos);
@@ -4253,8 +4298,9 @@ function recherchesAuto() {
       if (u.debut || (p.naissance && pers(cj).naissance)) {
         ajouter(pid, 'Acte de mariage de ' + nom(p) + ' et ' + nom(pers(cj)), [
           info('Mariage', u.debut ? formaterDate(u.debut) : '?'),
+          info('Lieu', u.lieu),
           info('Époux', nom(p) + ', ' + nom(pers(cj)))
-        ], ['Chercher dans la commune de résidence des époux', 'Relever les parents et les témoins cités dans l’acte'], prio);
+        ], [u.lieu ? 'Chercher l’acte dans les archives de ' + u.lieu : 'Chercher dans la commune de résidence des époux', 'Relever les parents et les témoins cités dans l’acte'], prio);
       }
     });
     /* personne sans dates */
@@ -4719,10 +4765,10 @@ function evenementsVie(p) {
       var duree = null;
       if (bout) { duree = ecartAnnees(u.debut, bout); finTexte = bout === fin ? '' : (bout === (pc && pc.deces) ? ' jusqu’au décès ' + accord(pc, 'de son conjoint', 'de sa conjointe', 'du conjoint') : ' jusqu’au décès'); }
       else if (!u.separes && !estDecede(p) && (!pc || !estDecede(pc))) { duree = ecartAnnees(u.debut, aujourdhui()); finTexte = ' à ce jour'; }
-      ev.push({ d: u.debut, titre: (mar ? 'Mariage' : 'Union') + (pc ? ' avec ' + nomComplet(pc) : '') + (age ? ', à ' + texteEcart(age) : ''),
+      ev.push({ d: u.debut, titre: (mar ? 'Mariage' : 'Union') + (pc ? ' avec ' + nomComplet(pc) : '') + (u.lieu ? ' à ' + u.lieu : '') + (age ? ', à ' + texteEcart(age) : ''),
         sous: duree ? (mar ? 'Mariés' : 'Ensemble') + ' pendant ' + texteEcart(duree) + finTexte : '' });
     }
-    if (u.fin && u.separes) { ev.push({ d: u.fin, titre: 'Séparation' + (pc ? ' d’avec ' + prem(pc) : '') }); }
+    if (u.fin) { ev.push({ d: u.fin, titre: libellesUnion(u.type).evenementFin + (pc ? ' d’avec ' + prem(pc) : '') }); }
     if (pc && estDecede(pc) && pc.deces && (!estDecede(p) || !p.deces || cleDate(pc.deces) < cleDate(p.deces))) {
       ev.push({ d: pc.deces, titre: 'Décès ' + accord(pc, 'de son conjoint', 'de sa conjointe', 'du conjoint') + ' ' + prem(pc), sous: ecartAnnees(p.naissance, pc.deces) ? 'À ' + texteEcart(ecartAnnees(p.naissance, pc.deces)) : '' });
     }
@@ -4824,7 +4870,7 @@ function rendreFiche() {
   var u0 = unionDe(p.parents);
   ajouterA(corps, sectionFiche('PARENTS', par.map(function (x) { return lienPersonne(x); }).concat([
     !par.length ? creer('p', { classe: 'indice', texte: 'Aucun parent indiqué.' }) : null,
-    u0 && u0.type ? creer('p', { classe: 'indice', texte: u0.type + (u0.debut ? ' en ' + u0.debut.a : '') + (u0.separes ? ', séparés' : '') }) : null
+    u0 && (u0.type || u0.debut || u0.lieu) ? creer('p', { classe: 'indice', texte: texteUnion(u0) }) : null
   ])));
   /* Unions et enfants */
   var unions = unionsPersonne(p.id);
@@ -4832,14 +4878,14 @@ function rendreFiche() {
     ajouterA(corps, sectionFiche(unions.length > 1 ? 'UNIONS ET ENFANTS' : 'UNION ET ENFANTS', unions.map(function (uid) {
       var u = unionDe(uid);
       var cj = conjointDans(uid, p.id);
-      var desc = [u.type || 'Union', u.debut ? 'depuis ' + formaterDate(u.debut) : '', u.fin ? 'jusqu’en ' + u.fin.a : '', u.separes ? 'séparés' : ''].filter(function (x) { return x; }).join(', ');
+      var desc = texteUnion(u);
       var enf = enfantsUnion(uid);
       return creer('div', { classe: 'union-bloc' }, [
         creer('div', { classe: 'union-bloc__tete' }, [
-          cj ? creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(cj); } }, [nomAffiche(pers(cj))]) : creer('span', { classe: 'indice', texte: 'Autre parent inconnu' }),
-          etat.peutModifier ? bouton('Modifier cette union', 'ico', 'modifier', function () { ouvrirFormUnion(uid); }, { petit: true }) : null
+          cj ? creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(cj); } }, [nomAffiche(pers(cj))]) : creer('span', { classe: 'indice', texte: 'Autre parent inconnu' })
         ]),
-        creer('p', { classe: 'indice', texte: desc, attrs: { style: 'margin:0 0 .375rem' } })
+        creer('p', { classe: 'indice', texte: desc, attrs: { style: 'margin:0 0 .375rem' } }),
+        etat.peutModifier ? creer('p', { classe: 'no-print', attrs: { style: 'margin:0 0 .5rem' } }, [bouton(modeColonnes() ? 'Voir l’union' : 'Dates et lieu de l’union', '', 'modifier', function () { ouvrirFormUnion(uid); }, { petit: true })]) : null
       ].concat(enf.map(function (e) { return lienPersonne(e); })).concat([!enf.length ? creer('p', { classe: 'indice', texte: 'Pas d’enfant indiqué.', attrs: { style: 'margin:0' } }) : null]));
     })));
   }
@@ -5074,10 +5120,15 @@ function ouvrirFormPersonne(o) {
     if (!unions.some(function (uid) { return !conjointDans(uid, o.de); })) { opts.push({ valeur: 'inconnu', libelle: 'Autre parent inconnu' }); }
     zoneLien = champ('Autre parent', liste('fAutreParent', opts, opts.length ? opts[0].valeur : 'inconnu'), {});
   } else if (o.mode === 'conjoint' && !modeColonnes()) {
+    var Lu = libellesUnion('Mariage');
+    var selTypeU = liste('fTypeUnion', CHOIX_UNION.map(function (s) { return { valeur: s, libelle: s }; }), 'Mariage');
+    selTypeU.addEventListener('change', function () { renommerChampsUnion(selTypeU.value, { debut: 'fDebutUnion', lieu: 'fLieuUnion', fin: 'fFinUnion', separes: 'fSepares' }); });
     zoneLien = creer('div', { classe: 'grille2' }, [
-      champ('Type d’union', liste('fTypeUnion', CHOIX_UNION.map(function (s) { return { valeur: s, libelle: s }; }), 'Mariage'), {}),
-      champ('Date de l’union', saisie('fDebutUnion', '', { max: 40 }), { facultatif: true }),
-      creer('div', { classe: 'plein' }, [caseACocher('fSepares', 'Séparés ou divorcés', false)])
+      champ('Type d’union', selTypeU, {}),
+      champ(Lu.debut, saisie('fDebutUnion', '', { max: 40 }), { facultatif: true, indice: 'Exemples : 1991, 06/1991, 15/06/1991.' }),
+      champ(Lu.lieu, saisie('fLieuUnion', '', { max: 120 }), { facultatif: true }),
+      champ(Lu.fin, saisie('fFinUnion', '', { max: 40 }), { facultatif: true }),
+      creer('div', { classe: 'plein' }, [caseACocher('fSepares', Lu.separes, false)])
     ]);
   }
   if (zoneLien) { corps.push(zoneLien); }
@@ -5128,8 +5179,11 @@ async function validerFormPersonne(o, etatForm, btn) {
       decede: decede, deces: decede ? d.date : null, decesApprox: decede ? d.approx : false, decesLieu: decede ? val('fDecesLieu') : '', notes: val('fNotes'), verifiee: document.getElementById('fVerifiee').checked, aVerifier: document.getElementById('fAVerifier').checked, erronee: document.getElementById('fErronee').checked };
     if (document.getElementById('fFiliation')) { v.filiation = val('fFiliation'); }
   }
-  var debutUnion = null;
-  if (o.mode === 'conjoint' && !modeColonnes()) { var du = lireDateChamp('fDebutUnion'); if (!du) { return; } debutUnion = du.date; }
+  var debutUnion = null, finUnion = null;
+  if (o.mode === 'conjoint' && !modeColonnes()) {
+    var du = lireDateChamp('fDebutUnion'); if (!du) { return; } debutUnion = du.date;
+    var fu = lireDateChamp('fFinUnion'); if (!fu) { return; } finUnion = fu.date;
+  }
   btn.disabled = true;
   afficherLoader('Enregistrement…');
   try {
@@ -5148,7 +5202,7 @@ async function validerFormPersonne(o, etatForm, btn) {
       message = nomComplet({ prenom: v.prenom, nom: v.nom }) + ' : modifications enregistrées.';
     } else {
       if (!cible) { cible = await ajouterPersonne(v); }
-      await relier(o, cible, { type: val('fTypeUnion'), debut: debutUnion, separes: document.getElementById('fSepares') ? document.getElementById('fSepares').checked : false, autre: val('fAutreParent') });
+      await relier(o, cible, { type: val('fTypeUnion'), debut: debutUnion, separes: (document.getElementById('fSepares') ? document.getElementById('fSepares').checked : false) || !!finUnion, fin: finUnion, lieu: document.getElementById('fLieuUnion') ? val('fLieuUnion') : '', autre: val('fAutreParent') });
       message = (v ? nomComplet({ prenom: v.prenom, nom: v.nom }) : nomComplet(pers(cible))) + (existant ? ' : lien ajouté.' : ' est dans l’arbre.');
       if (o.premiere && cible) { etat.config.centre = cible; await ecrireConfig(etat.config); }
     }
@@ -5192,11 +5246,11 @@ async function relier(o, cible, opt) {
       throw new Error('LIEN');
     }
   } else if (o.mode === 'conjoint') {
-    if (unionsPersonne(de.id).some(function (uid) { return conjointDans(uid, de.id) === cible; })) {
-      afficherErreur('Cette union existe déjà.');
+    if (unionsPersonne(de.id).some(function (uid) { var x = unionDe(uid); return conjointDans(uid, de.id) === cible && !(x && (x.separes || x.fin)); })) {
+      afficherErreur('Une union en cours existe déjà avec cette personne. Pour un remariage, indiquez d’abord la fin de la première union (bouton « Dates et lieu de l’union »).');
       throw new Error('LIEN');
     }
-    await ajouterUnion({ a: de.id, b: cible, type: opt.type || '', debut: opt.debut, separes: !!opt.separes });
+    await ajouterUnion({ a: de.id, b: cible, type: opt.type || '', debut: opt.debut, fin: opt.fin || null, lieu: opt.lieu || '', separes: !!opt.separes });
   } else if (o.mode === 'enfant') {
     var uid = 0;
     if (opt.autre && opt.autre.charAt(0) === 'u') { uid = parseInt(opt.autre.slice(1), 10); }
@@ -5305,11 +5359,15 @@ function ouvrirFormUnion(uid) {
   if (modeColonnes()) { ouvrirFormUnionColonnes(uid); return; }
   var u = unionDe(uid);
   var noms = [u.a, u.b].filter(function (x) { return x; }).map(function (x) { return nomComplet(pers(x)); }).join(' et ');
+  var L = libellesUnion(u.type);
+  var selType = liste('uType', CHOIX_UNION.map(function (s) { return { valeur: s, libelle: s }; }), u.type, { vide: 'Non précisé' });
+  selType.addEventListener('change', function () { renommerChampsUnion(selType.value, { debut: 'uDebut', lieu: 'uLieu', fin: 'uFin', separes: 'uSepares' }); });
   var corps = [creer('div', { classe: 'grille2' }, [
-    champ('Type d’union', liste('uType', CHOIX_UNION.map(function (s) { return { valeur: s, libelle: s }; }), u.type, { vide: 'Non précisé' })),
-    champ('Début', saisie('uDebut', dateVersSaisie(u.debut), { max: 40 }), { facultatif: true, indice: 'Exemples : 1991, 06/1991, 15/06/1991.' }),
-    champ('Fin', saisie('uFin', dateVersSaisie(u.fin), { max: 40 }), { facultatif: true }),
-    creer('div', { classe: 'champ' }, [creer('span', { classe: 'etiq', texte: 'Situation' }), caseACocher('uSepares', 'Séparés ou divorcés', u.separes)]),
+    champ('Type d’union', selType),
+    champ(L.debut, saisie('uDebut', dateVersSaisie(u.debut), { max: 40 }), { facultatif: true, indice: 'Exemples : 1991, 06/1991, 15/06/1991.' }),
+    champ(L.lieu, saisie('uLieu', u.lieu || '', { max: 120 }), { facultatif: true, indice: 'La commune, par exemple : Nantes.' }),
+    champ(L.fin, saisie('uFin', dateVersSaisie(u.fin), { max: 40 }), { facultatif: true, indice: 'Divorce ou séparation, si elle a eu lieu.' }),
+    creer('div', { classe: 'champ' }, [creer('span', { classe: 'etiq', texte: 'Situation' }), caseACocher('uSepares', L.separes, u.separes)]),
     champ('Notes', saisie('uNotes', u.notes, { multiligne: true, lignes: 2 }), { facultatif: true, plein: true })
   ])];
   var enf = enfantsUnion(uid);
@@ -5324,13 +5382,14 @@ function ouvrirFormUnion(uid) {
   var ok = bouton('Enregistrer', 'p', null, async function () {
     var d1 = lireDateChamp('uDebut'); if (!d1) { return; }
     var d2 = lireDateChamp('uFin'); if (!d2) { return; }
+    var sep = document.getElementById('uSepares').checked || !!d2.date;
     try {
-      await modifierUnion(uid, { type: document.getElementById('uType').value, debut: d1.date, fin: d2.date, separes: document.getElementById('uSepares').checked, notes: document.getElementById('uNotes').value.trim() });
+      await modifierUnion(uid, { type: document.getElementById('uType').value, debut: d1.date, lieu: document.getElementById('uLieu').value.trim(), fin: d2.date, separes: sep, notes: document.getElementById('uNotes').value.trim() });
       fermerModale();
       await apresEcriture('Union enregistrée.');
     } catch (e) { afficherErreur(messageEchec(e, 'L’enregistrement a échoué.'), e); }
   });
-  ouvrirModale({ titre: 'Union', sousTitre: noms, corps: corps, pied: [supprimer, bouton('Annuler', '', null, fermerModale), ok] });
+  ouvrirModale({ titre: 'Dates et lieu de l’union', sousTitre: noms, corps: corps, pied: [supprimer, bouton('Annuler', '', null, fermerModale), ok] });
 }
 
 /* === SECTION : VUE ASCENDANCE (éventail) === */
