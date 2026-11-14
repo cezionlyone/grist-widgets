@@ -6601,6 +6601,38 @@ ACA.ASTUCES = { 1: { cle: "mgp-compagnon-astuce-deplacer", titre: "Astuce : dép
 ACA.astuce = function(m) {
   return m && ACA.ASTUCES[m.carte] || null;
 };
+ACA.cpVoisins = function(meta) {
+  var vue = ACA.cp.vue, moi = ACA.cp.section;
+  if (!vue || !meta) {
+    return null;
+  }
+  var v = (meta.vues || []).filter(function(x) {
+    return x.id === vue;
+  })[0] || {}, spec = ACA.lireSpec(v.layoutSpec);
+  var reduites = spec && spec.collapsed ? spec.collapsed.map(function(c) {
+    return c.leaf;
+  }) : [];
+  var autres = (meta.sections || []).filter(function(s) {
+    return s.parentId === vue && s.id !== moi && reduites.indexOf(s.id) < 0;
+  });
+  var nom = P.tableCompagnon(ACA.cp.m), t = nom && meta.tables ? P.trouverTable(meta, nom) : null;
+  return { ouvertes: autres.length, table: !!t && autres.some(function(s) {
+    return s.tableRef === t.id;
+  }) };
+};
+ACA.astuceSelonPage = function(m, vo) {
+  var as = ACA.astuce(m);
+  if (!as || !vo) {
+    return as && !vo ? null : as;
+  }
+  if (m.carte === 1 && !vo.table) {
+    return null;
+  }
+  if (m.carte === 2 && !vo.ouvertes) {
+    return Object.assign({}, as, { texte: "Grist ne réduit une vue que si une autre vue reste ouverte sur la page. Ici, « 🎓 Mission en cours » est seule : affichez d’abord une autre vue sur cette page (par exemple votre table), puis ouvrez le menu ⋮ en haut à droite de cette vue et choisissez « Réduire la vue ». Elle se range dans le bandeau en haut de la page ; cliquez sur son titre pour l’ouvrir par-dessus la page, et « Ajouter à la page » la remet à sa place." });
+  }
+  return as;
+};
 ACA.CP_TEMPS = Object.assign({ pas: 3e3, lent: 15e3, calme: 12e4, rebond: 400 }, window.MGP_COMPAGNON_TEMPS || {});
 ACA.choix = null;
 ACA.cpEtat = null;
@@ -6987,7 +7019,7 @@ ACA.ouvrirDepuisCompagnon = function() {
   ACA.ouvrirCarte(v.id, "mission");
   return true;
 };
-ACA.cp = { m: null, res: null, sig: "", niveaux: {}, timer: null, fini: false, enCours: false, encore: false, montrerKo: false, calmeDepuis: 0, nbVerifs: 0, vue: null, note: null, points: 0, etat: "" };
+ACA.cp = { m: null, res: null, sig: "", niveaux: {}, timer: null, fini: false, enCours: false, encore: false, montrerKo: false, calmeDepuis: 0, nbVerifs: 0, vue: null, section: null, voisins: null, note: null, points: 0, etat: "" };
 ACA.cpDemarrer = async function() {
   ACA.mode = "compagnon";
   document.getElementById("ac-page").hidden = true;
@@ -7040,6 +7072,7 @@ ACA.cpDemarrer = async function() {
   try {
     var s = await MGP.g.sectionCourante();
     ACA.cp.vue = s ? s.parentId : null;
+    ACA.cp.section = s ? s.id : null;
   } catch (e) {
     logSecurite("page du compagnon", e);
   }
@@ -7115,6 +7148,7 @@ ACA.cpVerifier = async function(manuel) {
       cp.montrerKo = true;
     }
     cp.note = ACA.cpNoteAilleurs(meta);
+    cp.voisins = ACA.cpVoisins(meta);
     var nouveaux = avant ? res.map(function(r, k) {
       return r.ok && !(avant[k] && avant[k].ok) ? k : -1;
     }).filter(function(k) {
@@ -7244,7 +7278,7 @@ ACA.cpRendre = function(nouveaux) {
   }
   var note = cp.note && !cp.fini ? '<div class="cp-note"><p>' + echapperHTML("Votre table « " + cp.note.table + " » est sur la page « " + cp.note.nomPage + " ».") + '</p><button type="button" class="btn sec" data-cp-placer="' + echapperHTML(m.id) + '">📌 Me placer à côté d’elle</button></div>' : "";
   var plan = cp.plan ? '<div class="cp-note"><p>' + echapperHTML("La mission de la carte " + cp.plan.carte + " porte sur la page « " + cp.plan.nomPage + " » : elle s’y place, ouvrez ensuite cette page dans le menu de gauche.") + '</p><button type="button" class="btn" data-cp-placer="' + echapperHTML(cp.plan.module) + '">' + echapperHTML("📌 Placer la mission sur « " + cp.plan.nomPage + " »") + "</button></div>" : "";
-  var astuce = "", as = ACA.astuce(m);
+  var astuce = "", as = ACA.astuceSelonPage(m, cp.voisins);
   if (as) {
     var vue = false;
     try {
