@@ -3,8 +3,8 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.20.3
-  Date        : 11/11/2026
+  Version     : 1.29.1
+  Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
   Plateforme  : Grist (vue personnalisée)
@@ -52,6 +52,11 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.29.1 - 14/11/2026 - madeXcé - Le bandeau affiche maintenant le vrai numéro de version (il restait figé sur 1.20.3).
+  1.29.0 - 14/11/2026 - madeXcé - Page Recherches : suggestions calculées depuis l'arbre (actes de naissance, décès, mariage, conjoints à identifier), bouton « Suivre cette recherche ».
+  1.28.0 - 14/11/2026 - madeXcé - Carte : lieux des vivants et des ancêtres (naissance, décès, vie), pins de couleurs différentes ; la fenêtre d'un pin ne se ferme plus (1.28.1).
+  1.27.0 - 14/11/2026 - madeXcé - Liste : croix devant l'âge au décès, lignes des décédés grisées, tri par âge et par lieu de vie.
+  1.21.0 à 1.26.4 - 13/11/2026 - madeXcé - Fiche réorganisée avec fil de vie, prénoms transmis, notes et marche à suivre des recherches, tablette et smartphone, liens des frères et sœurs dans l'arbre.
   1.20.3 - 13/11/2026 - madeXcé - Vue Ascendance : les dates sont gardées en priorité, le texte rétrécit un peu plutôt que de les retirer.
   1.20.2 - 13/11/2026 - madeXcé - Vue Ascendance : quand l’éventail est zoomé, on se déplace en glissant, à la molette ou au pavé tactile, comme dans l’arbre.
   1.20.1 - 13/11/2026 - madeXcé - Vue Ascendance : l’éventail est recadré sur la partie dessinée, sans grand espace vide autour.
@@ -658,7 +663,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version">v1.20.3</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.29.1</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -694,7 +699,8 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.29.0';
+var VERSION = '1.29.1';
+(function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
 var DELAI_ACTUALISATION_MS = 20000;
