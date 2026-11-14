@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.4.4
+  Version     : 1.4.5
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -53,6 +53,7 @@
 
   HISTORIQUE
   ----------
+  1.4.5 - 14/11/2026 - madeXcé - Cœur d'union cliquable dans l'arbre (résumé au survol, fenêtre des dates et du lieu au clic) ; durée de l'union ; noms en majuscules et prénoms avec majuscules à la saisie, et bouton de mise en forme des fiches existantes dans les paramètres.
   1.4.4 - 14/11/2026 - madeXcé - Unions : lieu de l'union (colonne LIEU ajoutée), champs nommés selon le type (date du mariage, date du divorce...), bouton « Dates et lieu de l'union » dans la fiche, remariage possible avec la même personne une fois la première union terminée.
   1.4.3 - 14/11/2026 - madeXcé - Recherches : chaque carte reprend d'elle-même ce que l'arbre sait de la personne (naissance, décès, lieux, nom de naissance, parents, conjoint).
   1.4.2 - 14/11/2026 - madeXcé - Sécurité : info-bulle de la carte construite sans HTML. Aide et notice mises à jour (deux tables, généalogies indépendantes). Carte et cousins rafraîchis aussi après une erreur réseau.
@@ -303,7 +304,8 @@ textarea.saisie { resize: vertical; }
 .liens path { fill: none; stroke: var(--trait-fort); stroke-width: 2; }
 .liens .adopte { stroke-dasharray: 6 5; }
 .liens .erronee { stroke: #C9190B; stroke-dasharray: 6 5; }
-.liens .coeur { fill: #E1000F; stroke: none; }
+.liens .coeur { fill: #E1000F; stroke: none; pointer-events: auto; cursor: pointer; }
+.liens .coeur:hover, .liens .coeur:focus-visible { transform-box: fill-box; filter: drop-shadow(0 0 2px rgba(0,0,0,.45)); outline: none; }
 .liens .coeur--separe { fill: var(--trait-fort); }
 .noeud { position: absolute; width: var(--carte-l); min-height: var(--carte-h); display: flex; }
 .carte { width: 100%; min-height: var(--carte-h); display: flex; align-items: center; gap: .625rem; padding: .5rem .625rem .5rem .75rem; background: var(--blanc); border: 1px solid var(--trait); border-radius: var(--r-l);
@@ -629,7 +631,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.4.4</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.4.5</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -665,7 +667,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.4.4';
+var VERSION = '1.4.5';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -2089,6 +2091,20 @@ function colonnePersEstDate(cle) {
   return !!(c && /^Date/.test(c.type));
 }
 
+/* Mise en forme des noms : NOM DE FAMILLE en majuscules, Prénom avec une
+   majuscule à chaque mot (Jean-Pierre, Marie Josée). */
+function formaterNom(t) { return String(t || '').trim().replace(/\s+/g, ' ').toLocaleUpperCase('fr-FR'); }
+function formaterPrenom(t) {
+  return String(t || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('fr-FR')
+    .replace(/(^|[\s\-'’])(\p{L})/gu, function (m, sep, l) { return sep + l.toLocaleUpperCase('fr-FR'); });
+}
+function formaterChampNom(cle, val) {
+  if (typeof val !== 'string') { return val; }
+  if (cle === 'nom' || cle === 'nomNaissance') { return formaterNom(val); }
+  if (cle === 'prenom') { return formaterPrenom(val); }
+  return val;
+}
+
 /* Valeurs d'un formulaire (clés du modèle) vers les colonnes de la table. */
 function versColonnesPers(v) {
   var cols = etat.config.cols;
@@ -2105,7 +2121,7 @@ function versColonnesPers(v) {
     var colId = cle === 'parents' ? cols.parents : cols[cle];
     if (!colId || !infoColonne(etat.config.tables.pers, colId)) { return; }
     var ch = infoChampPers(cle);
-    var val = v[cle];
+    var val = formaterChampNom(cle, v[cle]);
     if (ch && ch.genre === 'date') {
       val = colonnePersEstDate(cle) ? dateVersSecondes(val) : dateVersTexteStocke(val);
     } else if (ch && ch.genre === 'pj') {
@@ -2202,6 +2218,23 @@ function texteUnion(u, sansType) {
   var fin = u.fin ? L.finCourt + ' ' + texteQuand(u.fin) : (u.separes ? L.separesCourt : '');
   return [debut, fin].filter(Boolean).join(', ');
 }
+/* Durée d'une union : jusqu'à sa fin, au premier décès, ou à ce jour. */
+function dureeUnion(u) {
+  if (!u || !u.debut) { return ''; }
+  var deux = [pers(u.a), pers(u.b)].filter(Boolean);
+  var morts = deux.filter(function (q) { return estDecede(q) && q.deces; }).map(function (q) { return q.deces; }).sort(function (x, y) { return cleDate(x) - cleDate(y); });
+  var bout = u.fin || morts[0] || null;
+  var enCours = false;
+  if (!bout) {
+    if (u.separes || deux.some(function (q) { return estDecede(q); })) { return ''; }
+    bout = aujourdhui(); enCours = true;
+  }
+  var e = ecartAnnees(u.debut, bout);
+  if (!e) { return ''; }
+  var mar = u.type === 'Mariage';
+  return (mar ? 'mariés ' : 'ensemble ') + (enCours ? 'depuis ' : 'pendant ') + texteEcart(e);
+}
+
 /* Change le libellé d'un champ déjà affiché (étiquette ou case à cocher). */
 function renommerChamp(id, texte) {
   var l = document.querySelector('label[for="' + id + '"]');
@@ -3439,6 +3472,19 @@ function dessinerLiens(disp) {
     var p = document.createElementNS(ns, 'path');
     p.setAttribute('class', 'coeur' + (c.separe ? ' coeur--separe' : ''));
     if (c.uid) { p.setAttribute('data-uid', c.uid); }
+    var uc = c.uid ? unionDe(c.uid) : null;
+    if (uc) {
+      var resume = [texteUnion(uc), dureeUnion(uc)].filter(Boolean).join(', ');
+      var titre = document.createElementNS(ns, 'title');
+      titre.textContent = resume + (etat.peutModifier ? ' (cliquer pour modifier)' : '');
+      p.appendChild(titre);
+      p.setAttribute('role', 'button');
+      p.setAttribute('tabindex', '0');
+      p.setAttribute('aria-label', resume);
+      var ouvrir = function (e) { e.stopPropagation(); if (etat.peutModifier) { ouvrirFormUnion(c.uid); } else { afficherSucces(resume); } };
+      p.addEventListener('click', ouvrir);
+      p.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ouvrir(e); } });
+    }
     p.setAttribute('transform', 'translate(' + (c.x - 8) + ' ' + (c.y - 7) + ') scale(0.8)');
     p.setAttribute('d', 'M10 18 C10 18 0 11.5 0 5.5 C0 2.5 2.4 0 5.2 0 C7.2 0 8.9 1.2 10 3 C11.1 1.2 12.8 0 14.8 0 C17.6 0 20 2.5 20 5.5 C20 11.5 10 18 10 18 Z');
     svg.appendChild(p);
@@ -3621,7 +3667,7 @@ function brancherNavigation(vue, monde) {
   var pointeurs = {};
   var depart = null;
   var pincement = null;
-  var estFond = function (cible) { return !cible.closest('.noeud, .commandes, .legende, .titre-vue, .menu-plus'); };
+  var estFond = function (cible) { return !cible.closest('.noeud, .commandes, .legende, .titre-vue, .menu-plus, .coeur'); };
   vue.addEventListener('pointerdown', function (e) {
     if (!estFond(e.target)) { return; }
     pointeurs[e.pointerId] = { x: e.clientX, y: e.clientY };
@@ -4828,7 +4874,7 @@ function rendreFiche() {
     ajouterA(corps, sectionFiche(unions.length > 1 ? 'UNIONS ET ENFANTS' : 'UNION ET ENFANTS', unions.map(function (uid) {
       var u = unionDe(uid);
       var cj = conjointDans(uid, p.id);
-      var desc = texteUnion(u);
+      var desc = [texteUnion(u), dureeUnion(u)].filter(Boolean).join(', ');
       var enf = enfantsUnion(uid);
       return creer('div', { classe: 'union-bloc' }, [
         creer('div', { classe: 'union-bloc__tete' }, [
@@ -5312,7 +5358,8 @@ function ouvrirFormUnion(uid) {
   var L = libellesUnion(u.type);
   var selType = liste('uType', CHOIX_UNION.map(function (s) { return { valeur: s, libelle: s }; }), u.type, { vide: 'Non précisé' });
   selType.addEventListener('change', function () { renommerChampsUnion(selType.value, { debut: 'uDebut', lieu: 'uLieu', fin: 'uFin', separes: 'uSepares' }); });
-  var corps = [creer('div', { classe: 'grille2' }, [
+  var duree = dureeUnion(u);
+  var corps = [duree ? creer('p', { classe: 'indice', texte: duree.charAt(0).toUpperCase() + duree.slice(1) + '.', attrs: { style: 'margin:0 0 .5rem' } }) : null, creer('div', { classe: 'grille2' }, [
     champ('Type d’union', selType),
     champ(L.debut, saisie('uDebut', dateVersSaisie(u.debut), { max: 40 }), { facultatif: true, indice: 'Exemples : 1991, 06/1991, 15/06/1991.' }),
     champ(L.lieu, saisie('uLieu', u.lieu || '', { max: 120 }), { facultatif: true, indice: 'La commune, par exemple : Nantes.' }),
@@ -6554,6 +6601,7 @@ function etapeGeneral(z) {
     void nbModele;
   } else {
     z.appendChild(blocDroits());
+    z.appendChild(blocMiseEnFormeNoms());
     z.appendChild(blocSupprimer());
   }
 }
@@ -6573,6 +6621,35 @@ function blocDroits() {
     creer('p', { attrs: { style: 'margin:0' } }, ['Paramétrage : ', creer('code', { classe: 'formule', texte: 'rec.CLE == "ACCES_PARAMETRAGE" and user.Access != OWNER' })]),
     creer('p', { attrs: { style: 'margin:0' } }, ['Ajouts et modifications : ', creer('code', { classe: 'formule', texte: 'rec.CLE == "ACCES_EDITION" and user.Access != OWNER' })]),
     creer('p', { classe: 'indice', texte: 'Le widget masque alors les commandes correspondantes. La protection réelle vient des règles d’accès du document.', attrs: { style: 'margin:0' } })
+  ]);
+}
+
+/* Met en forme d'un coup les noms et prénoms déjà saisis. */
+function blocMiseEnFormeNoms() {
+  return creer('div', { classe: 'bloc' }, [
+    creer('h3', { texte: 'Mettre en forme les noms' }),
+    creer('p', { classe: 'indice', texte: 'Les noms de famille passent en majuscules (DUPONT) et les prénoms prennent une majuscule à chaque mot (Jean-Pierre). Les nouvelles saisies sont déjà mises en forme ; ce bouton corrige les fiches existantes.', attrs: { style: 'margin:0' } }),
+    creer('div', {}, [bouton('Mettre en forme les noms et prénoms', '', 'modifier', async function () {
+      if (!etat.donnees || !etat.config) { return; }
+      var cols = etat.config.cols;
+      var cles = ['prenom', 'nom', 'nomNaissance'].filter(function (k) { return cols[k] && infoColonne(etat.config.tables.pers, cols[k]); });
+      var actions = [];
+      etat.donnees.ordre.forEach(function (pid) {
+        var p = pers(pid);
+        var x = {};
+        cles.forEach(function (k) { var avant = p[k] || ''; var apres = formaterChampNom(k, avant); if (apres !== avant) { x[cols[k]] = apres; } });
+        if (Object.keys(x).length) { actions.push(['UpdateRecord', etat.config.tables.pers, pid, x]); }
+      });
+      if (!actions.length) { afficherSucces('Tous les noms et prénoms sont déjà mis en forme.'); return; }
+      var ok = await confirmerAction('Mettre en forme ' + pluriel(actions.length, 'fiche', 'fiches') + ' ?', 'Les noms de famille passeront en majuscules et les prénoms auront une majuscule à chaque mot. Rien d’autre ne change.', 'Mettre en forme');
+      if (!ok) { return; }
+      try {
+        afficherLoader('Mise en forme des noms…');
+        for (var i = 0; i < actions.length; i += 200) { await agir(actions.slice(i, i + 200)); }
+        masquerLoader();
+        await apresEcriture(pluriel(actions.length, 'fiche mise en forme', 'fiches mises en forme') + '.');
+      } catch (e) { masquerLoader(); afficherErreur(messageEchec(e, 'La mise en forme a échoué.'), e); }
+    })])
   ]);
 }
 
