@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.7.7
+  Version     : 1.8.0
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -53,6 +53,7 @@
 
   HISTORIQUE
   ----------
+  1.8.0 - 15/11/2026 - madeXcé - Fil de vie : cartes à la taille de leur contenu (cœur d'union au niveau des noms), tous les enfants affichés, décès des parents et grands-parents et petits-enfants dans le fil ; Paramètres, bloc « Fil de vie » pour choisir les événements des cartes et de la fiche ; fiche : fil dès un seul événement daté, « Décédée » sans « ? » ; bouton « Moi » (et touche Début) pour revenir à soi.
   1.7.7 - 15/11/2026 - madeXcé - Fil de vie : hauteur des cartes calculée rangée par rangée sur leur contenu réel (fini l'espace vide) ; âge approximatif en italique sans « ~ » et colonne d'âge élargie ; photo fixée en haut à gauche.
   1.7.6 - 15/11/2026 - madeXcé - Cartes : croix † après le nom des personnes décédées retirée (le décès figure déjà sur la carte).
   1.7.5 - 15/11/2026 - madeXcé - Mini fil des cartes : divorce (💔), décès du conjoint et décès des enfants survenus de son vivant (✝️).
@@ -401,6 +402,8 @@ textarea.saisie { resize: vertical; }
 .menu-plus button { display: flex; align-items: center; gap: .5rem; min-height: 2.5rem; padding: 0 .625rem; border: 0; border-radius: var(--r-m); background: transparent; text-align: left; cursor: pointer; }
 .menu-plus button:hover, .menu-plus button:focus-visible { background: var(--ecume); }
 .menu-plus button:disabled { color: #767676; cursor: not-allowed; background: transparent; }
+.btn-moi { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 3px 2px 2px; border: 1.5px solid var(--vert); border-radius: var(--r-m, 6px); background: var(--blanc); cursor: pointer; font-size: .625rem; font-weight: 700; color: var(--vert-f); }
+.btn-moi:hover, .btn-moi:focus-visible { background: #E1F5EE; }
 .commandes { position: absolute; right: 1rem; bottom: 1rem; display: flex; flex-direction: column; gap: 2px; padding: 3px; background: var(--blanc); border: 1px solid var(--trait); border-radius: var(--r-l); box-shadow: var(--ombre); }
 .legende { position: absolute; left: 1rem; bottom: 1rem; right: 5rem; display: flex; flex-wrap: wrap; align-items: center; gap: .375rem .75rem; padding: .5rem .75rem; background: rgba(255, 255, 255, .94); border: 1px solid var(--trait); border-radius: var(--r-l); font-size: .75rem; width: max-content; max-width: calc(100% - 6rem); }
 .pastille { width: .75rem; height: .75rem; border-radius: 50%; display: inline-block; vertical-align: -1px; margin-right: .25rem; border: 1px solid rgba(0, 0, 0, .15); }
@@ -440,13 +443,19 @@ textarea.saisie { resize: vertical; }
 .vue-arbre--precis .carte { align-items: flex-start; }
 .fc__ev--court { padding-bottom: .125rem; }
 .fc__ev--court::before { width: .375rem; height: .375rem; left: -.9rem; top: .35rem; background: #5DCAA5; }
-.fc__ev--plus::before { display: none; }
 .fc { position: relative; display: flex; flex-direction: column; margin: .25rem 0 .125rem 3.1rem; padding-left: .625rem; border-left: 2px solid #9FE1CB; }
 .fc__ev { position: relative; display: flex; flex-direction: column; padding: .0625rem 0 .3125rem; font-size: .6875rem; line-height: 1.35; color: var(--encre); }
 .fc__ev::before { content: ""; position: absolute; left: -.97rem; top: .3rem; width: .5rem; height: .5rem; border-radius: 50%; background: #1D9E75; }
 .fc__ev--vide::before { background: #fff; border: 1.5px dashed #BA7517; width: .4rem; height: .4rem; }
 .fc__age { position: absolute; left: -3.95rem; top: .0625rem; width: 2.8rem; text-align: right; font-weight: 700; color: var(--vert-f); white-space: nowrap; }
 .fc__lib { color: var(--gris); }
+.table-fil { border-collapse: collapse; font-size: .8125rem; max-width: 30rem; width: 100%; }
+.table-fil th, .table-fil td { padding: .25rem .5rem; border-bottom: 1px solid var(--trait); text-align: left; font-weight: 400; }
+.table-fil tr:first-child th { font-weight: 700; color: var(--gris); }
+.table-fil th[scope="row"] { font-weight: 700; vertical-align: top; }
+.table-fil .c { text-align: center; width: 4.5rem; }
+.table-fil input { accent-color: var(--vert-f); width: 1rem; height: 1rem; cursor: pointer; }
+.bloc-fil { display: flex; flex-direction: column; gap: .5rem; }
 .age--env { font-style: italic; font-weight: 600; color: #3B9C78; }
 .fc__trou { color: var(--peche-f); border: 1px dashed #EF9F27; border-radius: 3px; padding: 0 .1875rem; font-weight: 600; white-space: nowrap; }
 .noeud--estompe { opacity: .25; }
@@ -697,7 +706,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.7.7</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.8.0</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -733,7 +742,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.7.7';
+var VERSION = '1.8.0';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -1691,7 +1700,7 @@ function idsParDefaut(champs) {
 function affichageParDefaut() {
   return { ascendants: 3, descendants: 3, fratrie: true, tout: true, couleur: 'branche',
     carte: { photo: true, annees: true, lieu: false, nomNaissance: true, profession: false, sexeCouleur: true, marques: true },
-    souvenirs: false, unionsAnniv: true, cousins: false };
+    souvenirs: false, unionsAnniv: true, cousins: false, fil: filParDefaut() };
 }
 
 function completerConfig(cfg) {
@@ -1709,6 +1718,10 @@ function completerConfig(cfg) {
   cfg.affichage = cfg.affichage || {};
   Object.keys(def).forEach(function (k) { if (cfg.affichage[k] === undefined) { cfg.affichage[k] = def[k]; } });
   Object.keys(def.carte).forEach(function (k) { if (cfg.affichage.carte[k] === undefined) { cfg.affichage.carte[k] = def.carte[k]; } });
+  ['carte', 'fiche'].forEach(function (ou) {
+    cfg.affichage.fil[ou] = cfg.affichage.fil[ou] || {};
+    Object.keys(def.fil[ou]).forEach(function (k) { if (typeof cfg.affichage.fil[ou][k] !== 'boolean') { cfg.affichage.fil[ou][k] = def.fil[ou][k]; } });
+  });
   return cfg;
 }
 
@@ -2126,6 +2139,40 @@ function communeSeule(l) { return String(l || '').split(',')[0].trim(); }
    recherches) : 🆕 naissance, 💍 union, 👶 naissance d'un enfant,
    ✝️ décès, 💔 fin d'union, 💼 métier, 🏠 lieu de vie. */
 var EMO = { naissance: '🆕', union: '💍', enfant: '👶', deces: '✝️', fin: '💔', metier: '💼', vie: '🏠' };
+/* Événements du fil de vie, réglables séparément pour les cartes et la fiche. */
+var FIL_EVTS = [
+  ['La personne', [['naissance', 'Naissance'], ['deces', 'Décès'], ['metier', 'Métier'], ['residence', 'Résidence']]],
+  ['Couple', [['union', 'Union'], ['fin', 'Divorce ou séparation'], ['decesConjoint', 'Décès du conjoint']]],
+  ['Enfants', [['enfants', 'Naissance (tous)'], ['decesEnfants', 'Décès']]],
+  ['Petits-enfants', [['petitsEnfants', 'Naissance'], ['decesPetitsEnfants', 'Décès']]],
+  ['Ascendants', [['decesParents', 'Décès des parents'], ['decesGrandsParents', 'Décès des grands-parents']]]
+];
+var FIL_HORS_CARTE = { petitsEnfants: true, decesPetitsEnfants: true, decesParents: true, decesGrandsParents: true };
+function filParDefaut() {
+  var o = { carte: {}, fiche: {} };
+  FIL_EVTS.forEach(function (g) { g[1].forEach(function (e) { o.carte[e[0]] = !FIL_HORS_CARTE[e[0]]; o.fiche[e[0]] = true; }); });
+  return o;
+}
+function filReglage(ou) {
+  var f = etat.config && etat.config.affichage && etat.config.affichage.fil;
+  return (f && f[ou]) || filParDefaut()[ou];
+}
+/* Un événement survenu du vivant de la personne. */
+function dansSaVie(p, d) {
+  if (!d) { return false; }
+  if (p.naissance && cleDate(d) < cleDate(p.naissance)) { return false; }
+  return !(estDecede(p) && p.deces && cleDate(d) > cleDate(p.deces));
+}
+function petitsEnfantsDe(pid) {
+  var vus = {}, l = [];
+  tousEnfants(pid).forEach(function (e) { tousEnfants(e).forEach(function (x) { if (!vus[x] && pers(x)) { vus[x] = true; l.push(pers(x)); } }); });
+  return l;
+}
+function grandsParentsDe(pid) {
+  var l = [];
+  parentsDe(pid).forEach(function (x) { parentsDe(x).forEach(function (y) { if (pers(y) && l.indexOf(pers(y)) === -1) { l.push(pers(y)); } }); });
+  return l;
+}
 
 /* Réglages d'affichage des cartes : ceux de l'arbre par défaut, puis ceux
    de la barre au-dessus de l'arbre (propres à chaque utilisateur). */
@@ -2202,7 +2249,8 @@ function texteLigneCarte(l) { return l.emoji + ' ' + l.segs.map(function (x) { r
 function infoCarte(p, reglage) { return lignesCarte(p, reglage).map(texteLigneCarte).join(', '); }
 /* Mode « Infos à compléter » : mini fil de vie (naissance, unions, décès),
    âge à gauche de chaque point, manques en étiquettes. */
-function filCarte(p, a) {
+function filCarte(p) {
+  var r = filReglage('carte');
   var evs = [];
   var trou = function (t) { return creer('span', { classe: 'fc__trou', texte: t }); };
   var manques = function (d, approx, lieu) {
@@ -2215,30 +2263,38 @@ function filCarte(p, a) {
     var m = manques(d, approx, lieu);
     evs.push({ ordre: ordre, d: d, approx: approx, lib: lib, lieu: lieu, extra: extra, manques: m });
   };
-  ajoutEv(0, p.naissance, p.naissanceApprox, EMO.naissance, p.naissanceLieu, '');
+  var prem = function (x) { return (x.prenom || '').split(/\s+/)[0]; };
+  var court = function (ordre, d, approx, lib, extra, deces) { evs.push({ ordre: ordre, d: d, approx: approx, lib: lib, extra: extra, court: true, manques: [], deces: deces || '' }); };
+  var mortDansSaVie = function (x) { return estDecede(x) && x.deces && dansSaVie(p, x.deces); };
+  if (r.naissance) { ajoutEv(0, p.naissance, p.naissanceApprox, EMO.naissance, p.naissanceLieu, ''); }
   unionsPersonne(p.id).forEach(function (uid) {
     var u = unionDe(uid);
     var cj = u && !u.virtuelle ? conjointDans(uid, p.id) : null;
     if (!cj) { return; }
     var q = pers(cj);
-    ajoutEv(1, u.debut, false, EMO.union, u.lieu, q ? ((q.prenom || '').split(/\s+/)[0] + ' ' + (q.nom || '')).trim() : '');
-    var prenomQ = q ? (q.prenom || '').split(/\s+/)[0] : '';
+    if (r.union) { ajoutEv(1, u.debut, false, EMO.union, u.lieu, q ? (prem(q) + ' ' + (q.nom || '')).trim() : ''); }
+    var prenomQ = q ? prem(q) : '';
     /* Divorce ou séparation datée */
-    if (u.fin) { evs.push({ ordre: 1.7, d: u.fin, approx: false, lib: EMO.fin, extra: prenomQ, court: true, manques: [] }); }
+    if (u.fin && r.fin) { court(1.7, u.fin, false, EMO.fin, prenomQ); }
     /* Décès du conjoint, de son vivant */
-    if (q && estDecede(q) && q.deces && !(estDecede(p) && p.deces && cleDate(q.deces) > cleDate(p.deces))) {
-      evs.push({ ordre: 1.8, d: q.deces, approx: q.decesApprox, lib: EMO.deces, extra: prenomQ, court: true, manques: [] });
-    }
+    if (q && r.decesConjoint && mortDansSaVie(q)) { court(1.8, q.deces, q.decesApprox, EMO.deces, prenomQ); }
   });
-  /* Naissance des enfants : une ligne courte chacun, 6 au plus */
-  var enfs = tousEnfants(p.id).map(pers).filter(Boolean).sort(function (x, y) { return comparerDates(x.naissance, y.naissance); });
-  enfs.slice(0, 6).forEach(function (e) {
-    /* Décès de l'enfant de son vivant : sur la même ligne, « 👶 1726 Madeleine ✝️ 1728 » */
-    var mortJeune = estDecede(e) && e.deces && !(estDecede(p) && p.deces && cleDate(e.deces) > cleDate(p.deces));
-    evs.push({ ordre: 1.5, d: e.naissance, approx: e.naissanceApprox, lib: EMO.enfant, extra: (e.prenom || '').split(/\s+/)[0], court: true, manques: [],
-      deces: mortJeune ? EMO.deces + ' ' + (anneeAffichee(e.deces, e.decesApprox) || '?') : '' });
-  });
-  if (estDecede(p)) { ajoutEv(2, p.deces, p.decesApprox, EMO.deces, p.decesLieu, ''); }
+  /* Enfants puis petits-enfants : une ligne courte chacun, tous affichés.
+     Un décès de son vivant se met sur la même ligne, « 👶 1726 Madeleine ✝️ 1728 ». */
+  var lignee = function (liste, cleN, cleD, ordre, prefixe) {
+    liste.sort(function (x, y) { return comparerDates(x.naissance, y.naissance); }).forEach(function (e) {
+      var nom = prefixe(e) + prem(e);
+      var mort = r[cleD] && mortDansSaVie(e) ? EMO.deces + ' ' + (anneeAffichee(e.deces, e.decesApprox) || '?') : '';
+      if (r[cleN]) { court(ordre, e.naissance, e.naissanceApprox, EMO.enfant, nom, mort); }
+      else if (mort) { court(ordre + 0.1, e.deces, e.decesApprox, EMO.deces, nom); }
+    });
+  };
+  lignee(tousEnfants(p.id).map(pers).filter(Boolean), 'enfants', 'decesEnfants', 1.5, function () { return ''; });
+  lignee(petitsEnfantsDe(p.id).filter(function (e) { return dansSaVie(p, e.naissance); }), 'petitsEnfants', 'decesPetitsEnfants', 1.9, function (e) { return accord(e, 'petit-fils ', 'petite-fille ', 'petit-enfant '); });
+  /* Décès des parents et des grands-parents, de son vivant */
+  if (r.decesParents) { parentsDe(p.id).map(pers).filter(Boolean).forEach(function (q) { if (mortDansSaVie(q)) { court(0.5, q.deces, q.decesApprox, EMO.deces, accord(q, 'père ', 'mère ', 'parent ') + prem(q)); } }); }
+  if (r.decesGrandsParents) { grandsParentsDe(p.id).forEach(function (q) { if (mortDansSaVie(q)) { court(0.4, q.deces, q.decesApprox, EMO.deces, accord(q, 'grand-père ', 'grand-mère ', 'grand-parent ') + prem(q)); } }); }
+  if (estDecede(p) && r.deces) { ajoutEv(2, p.deces, p.decesApprox, EMO.deces, p.decesLieu, ''); }
   evs.sort(function (x, y) { return x.d && y.d ? comparerDates(x.d, y.d) : x.ordre - y.ordre; });
   var lignes = evs.map(function (e) {
     var ag = e.d && e.ordre > 0 ? ecartAnnees(p.naissance, e.d) : null;
@@ -2258,15 +2314,14 @@ function filCarte(p, a) {
       creer('span', { classe: 'fc__l' }, l2)
     ]);
   });
-  if (enfs.length > 6) { lignes.push(creer('span', { classe: 'fc__ev fc__ev--court fc__ev--plus' }, [creer('span', { classe: 'fc__lib', texte: '+ ' + (enfs.length - 6) + ' autre' + (enfs.length - 6 > 1 ? 's' : '') + ' enfant' + (enfs.length - 6 > 1 ? 's' : '') })])); }
   var res = [creer('span', { classe: 'fc' }, lignes)];
-  if (!estDecede(p) && p.residence) { res.push(creer('span', { classe: 'carte__info', texte: EMO.vie + ' ' + communeSeule(p.residence) })); }
-  if (a.profession && p.profession) { res.push(creer('span', { classe: 'carte__info', texte: EMO.metier + ' ' + p.profession })); }
+  if (r.residence && !estDecede(p) && p.residence) { res.push(creer('span', { classe: 'carte__info', texte: EMO.vie + ' ' + communeSeule(p.residence) })); }
+  if (r.metier && p.profession) { res.push(creer('span', { classe: 'carte__info', texte: EMO.metier + ' ' + p.profession })); }
   return res;
 }
 function noeudsLignesCarte(p, reglage) {
   var r = reglage || barreArbre();
-  if (r.mode === 'precis' && p.id) { return filCarte(p, r.aff); }
+  if (r.mode === 'precis' && p.id) { return filCarte(p); }
   return lignesCarte(p, reglage).map(function (l) {
     var enfants = [l.emoji + ' '];
     l.segs.forEach(function (x, i) { if (i) { enfants.push(' · '); } enfants.push(x.manque ? creer('span', { classe: 'manque', texte: x.t }) : x.t); });
@@ -3495,7 +3550,10 @@ function calculerDispositionGraphe(garder) {
   var yRang = {};
   for (var gi = g0, cumul = 0; gi <= gens[gens.length - 1]; gi++) { yRang[gi] = cumul; cumul += (hRang[gi] || DIM.H) + DIM.GY; }
   var Y = function (x) { return yRang[gen[x]]; };
-  var H = function (x) { return hRang[gen[x]] || DIM.H; };
+  /* Chaque carte garde la hauteur de son contenu, alignée en haut de sa
+     rangée ; le cœur d'union se place à hauteur des noms. */
+  var H = function (x) { return (DIM.hauteurs && DIM.hauteurs[x]) || DIM.H; };
+  var yCoeur = function (x) { return DIM.hauteurs ? 26 : H(x) / 2; };
   ids.forEach(function (x) { sortie.noeuds.push({ pid: x, x: centreP(x) - DIM.L / 2, y: Y(x), h: H(x), dup: false }); });
 
   var barres = {};
@@ -3514,7 +3572,7 @@ function calculerDispositionGraphe(garder) {
         var ua = uniteDe[a];
         var adjacents = ua === uniteDe[b] && membres[ua].indexOf(b) - membres[ua].indexOf(a) === 1;
         if (adjacents) {
-          var ym = Y(a) + H(a) / 2;
+          var ym = Y(a) + yCoeur(a);
           var xa = centreP(a) + DIM.L / 2;
           var xb = centreP(b) - DIM.L / 2;
           sortie.traits.push({ pts: [[xa, ym], [xb, ym]], uid: uid });
@@ -3610,9 +3668,8 @@ function rendreArbre(zone, garderCamera) {
   var precis = barreArbre().mode === 'precis';
   DIM.L = precis ? 270 : 220;
   DIM.H = 100;
-  /* Fil de vie : chaque rangée prend la hauteur de sa carte la plus remplie,
-     mesurée sur le contenu réel (et non sur la personne la plus chargée de
-     tout l'arbre). */
+  /* Fil de vie : chaque carte a la hauteur de son contenu, mesurée avant la
+     disposition ; l'écart entre rangées suit la plus haute de chacune. */
   DIM.hauteurs = precis ? mesurerCartes(zone, centre, br) : null;
   var disp;
   if (etat.config.affichage.tout !== false) { disp = calculerDispositionGraphe(null); }
@@ -3645,6 +3702,7 @@ function rendreArbre(zone, garderCamera) {
   vue.appendChild(titre);
   vue.appendChild(barreOutilsArbre(br, disp));
   vue.appendChild(creer('div', { classe: 'commandes no-print' }, [
+    boutonMoi(),
     bouton('Zoomer', 'ico', 'plus', function () { zoomer(1.2); }),
     bouton('Dézoomer', 'ico', 'moins', function () { zoomer(1 / 1.2); }),
     bouton('Tout voir', 'ico', 'ajuster', function () { ajuster(); }),
@@ -3746,7 +3804,7 @@ function cadresFratries(disp) {
     if (gene) { return; }
     var u = unionDe(fr.uid);
     var noms = u ? [u.a, u.b].filter(function (x) { return x && pers(x); }).map(function (x) { return pers(x).prenom || nomComplet(pers(x)); }).join(' et ') : '';
-    cadres.push({ x: x0 - 10, y: y - 10, w: x1 - x0 + 20, h: (l[0].h || DIM.H) + 20, titre: noms ? 'Enfants de ' + noms : 'Frères et sœurs (parents inconnus)' });
+    cadres.push({ x: x0 - 10, y: y - 10, w: x1 - x0 + 20, h: Math.max.apply(null, l.map(function (n) { return n.h || DIM.H; })) + 20, titre: noms ? 'Enfants de ' + noms : 'Frères et sœurs (parents inconnus)' });
   });
   return cadres;
 }
@@ -3815,6 +3873,26 @@ function avecPhoto(pid, noeud) {
   return creer('span', { classe: 'avec-photo' }, [petitAvatar(pid), noeud]);
 }
 
+/* « Moi » : la personne de référence de l'arbre (Paramètres, Personne au
+   centre). Un clic y ramène, même après avoir recentré l'arbre ailleurs. */
+function moi() { return etat.config.centre && pers(etat.config.centre) ? etat.config.centre : (etat.donnees && etat.donnees.ordre[0]) || 0; }
+function revenirAMoi() {
+  var m = moi();
+  if (!m) { return; }
+  var change = etat.centreSession && etat.centreSession !== m;
+  etat.centreSession = null;
+  etat.trouve = m;
+  if (change) { rendre(); }
+  else { var c = document.querySelector('.carte[data-pid="' + m + '"]'); if (c) { c.classList.add('carte--trouve'); } }
+  centrerSur(m, true);
+  setTimeout(function () { etat.trouve = null; var n = document.querySelector('.carte--trouve'); if (n) { n.classList.remove('carte--trouve'); } }, 2000);
+}
+function boutonMoi() {
+  var p = pers(moi());
+  if (!p) { return null; }
+  return creer('button', { classe: 'btn-moi', attrs: { type: 'button', title: 'Revenir à ' + nomComplet(p) + ' (touche Début)', 'aria-label': 'Revenir à ' + nomComplet(p) }, clic: revenirAMoi },
+    [avatar(p, '', 'avatar--petit'), creer('span', { texte: 'Moi', attrs: { 'aria-hidden': 'true' } })]);
+}
 function mesurerCartes(zone, centre, br) {
   var boite = creer('div', { classe: 'vue-arbre vue-arbre--precis', attrs: { 'aria-hidden': 'true', style: 'position:absolute;left:-99999px;top:0;visibility:hidden;width:300px;height:10px;overflow:visible' } });
   var l = etat.donnees.ordre.map(function (id) { var nd = noeudCarte({ pid: id, x: 0, y: 0 }, centre, br); boite.appendChild(nd); return [id, nd]; });
@@ -3850,7 +3928,7 @@ function noeudCarte(n, centre, br) {
   ]);
   carte.addEventListener('dblclick', function () { etat.centreSession = n.pid; rendre(); centrerSur(n.pid, true); });
   var ev = barreArbre().evidence;
-  var noeud = creer('div', { classe: 'noeud' + (ev && !correspondEvidence(p, ev, br) ? ' noeud--estompe' : ''), attrs: { style: 'left:' + Math.round(n.x) + 'px;top:' + Math.round(n.y) + 'px' + (n.h ? ';--carte-h:' + n.h + 'px' : '') } }, [carte]);
+  var noeud = creer('div', { classe: 'noeud' + (ev && !correspondEvidence(p, ev, br) ? ' noeud--estompe' : ''), attrs: { style: 'left:' + Math.round(n.x) + 'px;top:' + Math.round(n.y) + 'px' } }, [carte]);
   if (p.verifiee) { noeud.appendChild(cocheVerifiee('coche-verif--coin')); }
   if (cohP.length) { noeud.appendChild(pastilleCoh(cohP, 'coh--coin')); }
   var impC = texteImplexe(p.id);
@@ -4032,6 +4110,7 @@ function brancherNavigation(vue, monde) {
     else if (e.key === '+' || e.key === '=') { zoomer(1.2); e.preventDefault(); return; }
     else if (e.key === '-') { zoomer(1 / 1.2); e.preventDefault(); return; }
     else if (e.key === '0') { ajuster(); e.preventDefault(); return; }
+    else if (e.key === 'Home') { revenirAMoi(); e.preventDefault(); return; }
     else { return; }
     e.preventDefault();
     appliquerCamera();
@@ -5268,7 +5347,8 @@ function professionsDatees(p) {
 function evenementsVie(p) {
   var ev = [];
   var prem = function (x) { return ((x && x.prenom) || '').trim().split(/\s+/)[0] || nomComplet(x); };
-  if (p.naissance || p.naissanceLieu) {
+  var r = filReglage('fiche');
+  if (r.naissance && (p.naissance || p.naissanceLieu)) {
     ev.push({ emo: EMO.naissance, d: p.naissance, approx: p.naissanceApprox, titre: accord(p, 'Né', 'Née', 'Naissance') + (p.naissanceLieu ? ' à ' + p.naissanceLieu : '') });
   }
   var enfants = [];
@@ -5279,7 +5359,7 @@ function evenementsVie(p) {
     if (!cj && !enfantsUnion(uid).length) { return; }
     var pc = cj ? pers(cj) : null;
     var mar = u.type === 'Mariage';
-    if (u.debut) {
+    if (u.debut && r.union) {
       var fin = u.fin || null;
       var finTexte = '';
       var morts = [];
@@ -5293,21 +5373,21 @@ function evenementsVie(p) {
       ev.push({ emo: EMO.union, d: u.debut, titre: (mar ? 'Mariage' : 'Union') + (pc ? ' avec ' + nomProche(pc) : '') + (u.lieu ? ' à ' + u.lieu : ''),
         sous: duree ? (mar ? 'Mariés' : 'Ensemble') + ' pendant ' + texteDuree(duree) + finTexte : '' });
     }
-    if (u.fin) { ev.push({ emo: EMO.fin, d: u.fin, titre: libellesUnion(u.type).evenementFin + (pc ? ' d’avec ' + nomProche(pc) : '') }); }
-    if (pc && estDecede(pc) && pc.deces && (!estDecede(p) || !p.deces || cleDate(pc.deces) < cleDate(p.deces))) {
+    if (u.fin && r.fin) { ev.push({ emo: EMO.fin, d: u.fin, titre: libellesUnion(u.type).evenementFin + (pc ? ' d’avec ' + nomProche(pc) : '') }); }
+    if (r.decesConjoint && pc && estDecede(pc) && pc.deces && (!estDecede(p) || !p.deces || cleDate(pc.deces) < cleDate(p.deces))) {
       ev.push({ emo: EMO.deces, d: pc.deces, titre: 'Décès ' + accord(pc, 'de son conjoint', 'de sa conjointe', 'du conjoint') + ' ' + nomProche(pc) });
     }
     enfantsUnion(uid).forEach(function (e) { if (pers(e)) { enfants.push(pers(e)); } });
   });
-  professionsDatees(p).datees.forEach(function (x) {
+  (r.metier ? professionsDatees(p).datees : []).forEach(function (x) {
     ev.push({ emo: EMO.metier, d: x.d, titre: 'Profession : ' + x.txt });
   });
   enfants.sort(function (a, b) { return cleDate(a.naissance) - cleDate(b.naissance); });
   enfants.forEach(function (e, i) {
-    if (!e.naissance) { return; }
+    if (!e.naissance || !r.enfants) { return; }
     ev.push({ emo: EMO.enfant, d: e.naissance, approx: e.naissanceApprox, titre: 'Naissance ' + accord(e, 'de son fils ', 'de sa fille ', 'de son enfant ') + nomProche(e) + ' (' + (i === 0 ? '1er' : (i + 1) + 'e') + ' enfant)' });
   });
-  parentsDe(p.id).forEach(function (x) {
+  (r.decesParents ? parentsDe(p.id) : []).forEach(function (x) {
     var q = pers(x);
     if (!q || !estDecede(q) || !q.deces) { return; }
     if (p.naissance && cleDate(q.deces) < cleDate(p.naissance)) { return; }
@@ -5316,9 +5396,27 @@ function evenementsVie(p) {
     ev.push({ emo: EMO.deces, d: q.deces, approx: q.decesApprox, titre: 'Décès ' + accord(q, 'de son père', 'de sa mère', 'd’un parent') + ' ' + nomProche(q),
       sous: agQ ? prem(q) + ' avait ' + texteEcart(agQ) : '' });
   });
+  /* Décès de ses grands-parents, de son vivant */
+  (r.decesGrandsParents ? grandsParentsDe(p.id) : []).forEach(function (q) {
+    if (!estDecede(q) || !dansSaVie(p, q.deces)) { return; }
+    var agQ = ecartAnnees(q.naissance, q.deces);
+    ev.push({ emo: EMO.deces, d: q.deces, approx: q.decesApprox, titre: 'Décès ' + accord(q, 'de son grand-père', 'de sa grand-mère', 'd’un grand-parent') + ' ' + nomProche(q),
+      sous: agQ ? prem(q) + ' avait ' + texteEcart(agQ) : '' });
+  });
+  /* Petits-enfants : naissances et décès, de son vivant */
+  petitsEnfantsDe(p.id).forEach(function (e) {
+    if (r.petitsEnfants && dansSaVie(p, e.naissance)) {
+      ev.push({ emo: EMO.enfant, d: e.naissance, approx: e.naissanceApprox, titre: 'Naissance ' + accord(e, 'de son petit-fils ', 'de sa petite-fille ', 'de son petit-enfant ') + nomProche(e) });
+    }
+    if (r.decesPetitsEnfants && estDecede(e) && dansSaVie(p, e.deces)) {
+      var agP = ecartAnnees(e.naissance, e.deces);
+      ev.push({ emo: EMO.deces, d: e.deces, approx: e.decesApprox, titre: 'Décès ' + accord(e, 'de son petit-fils', 'de sa petite-fille', 'de son petit-enfant') + ' ' + nomProche(e),
+        sous: agP ? prem(e) + ' avait ' + texteEcart(agP) : '' });
+    }
+  });
   /* Décès de ses enfants, survenus de son vivant */
   var vusEnf = {};
-  unionsPersonne(p.id).forEach(function (uid) {
+  (r.decesEnfants ? unionsPersonne(p.id) : []).forEach(function (uid) {
     enfantsUnion(uid).forEach(function (x) {
       if (vusEnf[x]) { return; }
       vusEnf[x] = true;
@@ -5330,7 +5428,7 @@ function evenementsVie(p) {
         sous: agE ? prem(e) + ' avait ' + texteEcart(agE) : '' });
     });
   });
-  if (estDecede(p) && (p.deces || p.decesLieu)) {
+  if (r.deces && estDecede(p) && (p.deces || p.decesLieu)) {
     ev.push({ emo: EMO.deces, d: p.deces, approx: p.decesApprox, titre: accord(p, 'Décédé', 'Décédée', 'Décès') + (p.decesLieu ? ' à ' + p.decesLieu : '') });
   }
   ev.sort(function (a, b) { return cleDate(a.d) - cleDate(b.d); });
@@ -5339,7 +5437,7 @@ function evenementsVie(p) {
 
 function sectionFilDeVie(p) {
   var ev = evenementsVie(p).filter(function (e) { return e.d; });
-  if (ev.length < 2) { return null; }
+  if (!ev.length) { return null; }
   var li = ev.map(function (e) {
     var ag = ecartAnnees(p.naissance, e.d);
     var envAge = !!(ag && (ag.approx || e.approx || p.naissanceApprox));
@@ -5377,12 +5475,13 @@ function rendreFiche() {
   var cohF = coherence()[p.id] || [];
   var impF = texteImplexe(p.id);
   var ligneNaiss = (p.naissance ? (p.naissance.j ? 'le ' : 'en ') + formaterDate(p.naissance, p.naissanceApprox) : '') + (p.naissanceLieu ? (p.naissance ? ' à ' : 'à ') + p.naissanceLieu : '');
-  if (ligneNaiss && !fil) { rangs.push([accord(p, 'Né', 'Née', 'Naissance'), ligneNaiss]); }
+  var rf = filReglage('fiche');
+  if (ligneNaiss && !(fil && rf.naissance && p.naissance)) { rangs.push([accord(p, 'Né', 'Née', 'Naissance'), ligneNaiss]); }
   var age = !estDecede(p) ? ageEntre(p.naissance, aujourdhui()) : ageEntre(p.naissance, p.deces);
   var avecAge = age !== null && !p.naissanceApprox;
   if (estDecede(p)) {
     var ligneDeces = (p.deces ? (p.deces.j ? 'le ' : 'en ') + formaterDate(p.deces, p.decesApprox) : '') + (p.decesLieu ? (p.deces ? ' à ' : 'à ') + p.decesLieu : '') + (avecAge ? (p.deces || p.decesLieu ? ', à ' : 'à ') + age + ' ans' : '');
-    if (!fil) { rangs.push([accord(p, 'Décédé', 'Décédée', 'Décès'), ligneDeces || '?']); }
+    if (!(fil && rf.deces && p.deces)) { rangs.push([accord(p, 'Décédé', 'Décédée', 'Décès'), ligneDeces]); }
   }
   var pd = professionsDatees(p);
   var profAff = p.profession || (pd.datees.length ? pd.datees[pd.datees.length - 1].txt : '') || pd.libres.join(', ');
@@ -5412,7 +5511,7 @@ function rendreFiche() {
   corps.appendChild(creer('div', { classe: 'fiche__id' }, [
     av,
     creer('h3', { classe: 'fiche__nom' }, [nomAffiche(p)]),
-    neeSous(p) || (!estDecede(p) && (p.residence || avecAge)) ? creer('p', { classe: 'indice fiche__sous-nom', texte: [neeSous(p), !estDecede(p) && avecAge ? age + ' ans' : '', !estDecede(p) && p.residence ? 'vit à ' + p.residence : ''].filter(Boolean).join(' · ') }) : null,
+    neeSous(p) || (!estDecede(p) && ((p.residence && rf.residence) || avecAge)) ? creer('p', { classe: 'indice fiche__sous-nom', texte: [neeSous(p), !estDecede(p) && avecAge ? age + ' ans' : '', !estDecede(p) && p.residence && rf.residence ? 'vit à ' + p.residence : ''].filter(Boolean).join(' · ') }) : null,
     info ? creer('div', { classe: 'compteurs', attrs: { style: 'justify-content:center' } }, [badge(libelleBranche(info.branche, br.noms), classeBranche(info.branche)), info.branche !== 'centre' && libelleParente(p.id, br, idCentre()) ? badge(libelleParente(p.id, br, idCentre()) + ' de ' + (pers(idCentre()).prenom || nomComplet(pers(idCentre())))) : null]) : null
   ].concat([p.filiation === 'Adoption' ? badge(accord(p, 'Adopté', 'Adoptée', 'Adoption')) : null, p.verifiee ? badge('Vérifiée', 'br-b') : null, p.aVerifier ? badge('À vérifier', 'br-a') : null, p.erronee ? badge('Branche erronée', 'br-err') : null, impF ? creer('span', { classe: 'badge br-implexe', texte: '⟲ ' + impF }) : null, actions])));
   if (cohF.length) {
@@ -5421,7 +5520,7 @@ function rendreFiche() {
     }))]));
   }
   /* Informations */
-  if (rangs.length) { ajouterA(corps, sectionFiche(fil ? 'PROFESSION' : 'INFORMATIONS', [creer('dl', { classe: 'fiche__infos' }, rangs.reduce(function (acc, r) { acc.push(creer('dt', { texte: r[0] }), creer('dd', { texte: r[1], attrs: { style: 'white-space:pre-line' } })); return acc; }, []))])); }
+  if (rangs.length) { ajouterA(corps, sectionFiche(rangs.every(function (x) { return /^Profession/.test(x[0]); }) ? 'PROFESSION' : 'INFORMATIONS', [creer('dl', { classe: 'fiche__infos' }, rangs.reduce(function (acc, r) { acc.push(creer('dt', { texte: r[0] }), creer('dd', { texte: r[1], attrs: { style: 'white-space:pre-line' } })); return acc; }, []))])); }
   ajouterA(corps, fil);
   /* Parents */
   var par = parentsDe(p.id);
@@ -7490,6 +7589,7 @@ function etapeCartes(z, poserApercu) {
     caseACocher('cSexe', 'Liseré bleu (homme) ou rose (femme)', c.sexeCouleur !== false, function (v) { c.sexeCouleur = v; maj(); }),
     caseACocher('cMarques', 'Icônes des notes et des documents', c.marques !== false, function (v) { c.marques = v; maj(); })
   ]));
+  z.appendChild(blocFilDeVie(b.affichage, maj));
   z.appendChild(creer('h3', { texte: 'Couleur des cartes', attrs: { style: 'margin:0;font-size:1rem' } }));
   var t = creer('div', { classe: 'tuiles' });
   [['branche', 'Par branche', 'Une couleur pour le côté de chaque parent, une pour les descendants.'], ['generation', 'Par génération', 'Une couleur par génération.'], ['aucune', 'Aucune', 'Toutes les pastilles en gris.']].forEach(function (o) {
@@ -7517,6 +7617,29 @@ function etapeCartes(z, poserApercu) {
   };
   majApercu();
   poserApercu(ap);
+}
+
+/* Fil de vie : événements montrés sur les cartes (mode « Infos à compléter »)
+   et dans la fiche de chaque personne. */
+function blocFilDeVie(aff, maj) {
+  if (!aff.fil) { aff.fil = filParDefaut(); }
+  var lignes = [creer('tr', {}, [creer('th', { texte: 'Cercle', attrs: { scope: 'col' } }), creer('th', { texte: 'Événement', attrs: { scope: 'col' } }), creer('th', { classe: 'c', texte: 'Cartes', attrs: { scope: 'col' } }), creer('th', { classe: 'c', texte: 'Fiche', attrs: { scope: 'col' } })])];
+  FIL_EVTS.forEach(function (g) {
+    g[1].forEach(function (e, i) {
+      var cell = function (ou) {
+        var cb = creer('input', { attrs: { type: 'checkbox', id: 'fil_' + ou + '_' + e[0], 'aria-label': g[0] + ', ' + e[1] + ' : ' + (ou === 'carte' ? 'cartes' : 'fiche') } });
+        cb.checked = aff.fil[ou][e[0]] !== false;
+        cb.addEventListener('change', function () { aff.fil[ou][e[0]] = cb.checked; maj(); });
+        return creer('td', { classe: 'c' }, [cb]);
+      };
+      lignes.push(creer('tr', {}, [i === 0 ? creer('th', { texte: g[0], attrs: { scope: 'row', rowspan: String(g[1].length) } }) : null, creer('td', { texte: e[1] }), cell('carte'), cell('fiche')]));
+    });
+  });
+  return creer('div', { classe: 'bloc-fil' }, [
+    creer('h3', { texte: 'Fil de vie', attrs: { style: 'margin:0;font-size:1rem' } }),
+    creer('p', { classe: 'indice', texte: 'Les événements montrés sur les cartes (mode « Infos à compléter ») et dans la fiche. Pour les proches, seuls ceux survenus du vivant de la personne apparaissent.', attrs: { style: 'margin:0' } }),
+    creer('table', { classe: 'table-fil' }, lignes)
+  ]);
 }
 
 /* Étape 5 : affichage, personne au centre, cousins ADN. */
