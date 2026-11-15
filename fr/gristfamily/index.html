@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.35.7
+  Version     : 1.35.8
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.35.8 - 15/11/2026 - madeXcé - Cartes : petit 🔗 en bas à droite quand la personne a au moins un lien web (avec les notes, recherches et documents).
   1.35.7 - 15/11/2026 - madeXcé - Mettre en évidence : « Fiches à vérifier » met en évidence toutes les cartes sans la coche verte Vérifiée (filtre en double retiré).
   1.35.6 - 15/11/2026 - madeXcé - Mettre en évidence : nouveau filtre « Fiches non vérifiées » (cartes sans la coche verte Vérifiée).
   1.35.5 - 15/11/2026 - madeXcé - Jehan et Jehane rattachés au groupe Jean pour les prénoms transmis ; tous les ancêtres restent dépliés, sans repli au-delà de 3.
@@ -762,7 +763,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.35.7</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.35.8</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -798,7 +799,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.35.7';
+var VERSION = '1.35.8';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -4404,6 +4405,7 @@ function marquesCarte(p) {
   if (etat.config.affichage.carte.marques === false) { return { noeud: null, texte: '' }; }
   var items = [];
   if (p.notes) { items.push(['📝', 'Notes']); }
+  if (liensWebDe(p).length) { items.push(['🔗', 'Lien web']); }
   if ((etat.recherches || []).some(function (r) { return r.pers === p.id && rechOuverte(r); })) { items.push(['🔎', 'Recherche en cours']); }
   var presents = {};
   docsDePersonne(p.id).forEach(function (x) { presents[x.doc.type] = true; });
