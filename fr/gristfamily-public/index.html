@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.7.1
+  Version     : 1.7.2
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -53,6 +53,7 @@
 
   HISTORIQUE
   ----------
+  1.7.2 - 15/11/2026 - madeXcé - Fiche : âge à côté de chaque point du fil de vie, proches avec tous leurs prénoms et leur nom de naissance, boutons avec icônes distinctes et libellés, partie Informations réduite à la profession (née, âge, lieu de vie et implexe en tête de fiche).
   1.7.1 - 15/11/2026 - madeXcé - Même nom dans le formulaire : boutons « C'est lui / elle » dès l'ouverture, personne de départ retirée, lien indiqué pour les personnes non sélectionnables.
   1.7.0 - 15/11/2026 - madeXcé - Même nom dans l'arbre (formulaire et fiche, bouton « C'est elle » pour relier) ; implexes : ancêtres atteints par plusieurs chemins repérés (⟲ sur la carte, fiche, mise en évidence).
   1.6.4 - 15/11/2026 - madeXcé - Recherche : tous les prénoms, nom de naissance, noms de mariage, années et lieux de naissance et de décès, mots dans n'importe quel ordre ; suggestions plus complètes (née, années, époux).
@@ -413,6 +414,10 @@ textarea.saisie { resize: vertical; }
 .meme-nom { margin-top: -.25rem; padding: .375rem .625rem; background: var(--fond-doux, #F6F6F6); border: 1px solid var(--trait); border-radius: var(--r-m); font-size: .8125rem; }
 .meme-nom summary { cursor: pointer; font-weight: 600; }
 .meme-nom ul, .meme-nom__liste { margin: .375rem 0 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: .1875rem; max-height: 14rem; overflow: auto; }
+.fiche__act { display: flex; flex-direction: column; align-items: center; gap: .125rem; }
+.fiche__act-lib { font-size: .625rem; color: var(--gris); line-height: 1.1; }
+.fiche__sous-nom { margin: -.25rem 0 .25rem; text-align: center; }
+.br-implexe { background: var(--lavande); color: var(--lavande-f); }
 .form-bloc { margin: .75rem 0 0; padding-bottom: .25rem; border-bottom: 1px solid var(--trait); font-size: .75rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--gris); }
 .form-bloc:first-child { margin-top: 0; }
 .barre-arbre { position: absolute; left: 1rem; top: 3rem; z-index: 6; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .375rem .5rem; background: rgba(255, 255, 255, .96); border: 1px solid var(--trait); border-radius: var(--r-l); box-shadow: var(--ombre); font-size: .8125rem; max-width: calc(100% - 6rem); }
@@ -491,7 +496,8 @@ table.tableau { width: 100%; border-collapse: collapse; }
 /* === Fiche === */
 .fiche__id { display: flex; flex-direction: column; align-items: center; gap: .375rem; text-align: center; padding-bottom: 1rem; border-bottom: 1px solid #EEEEF2; margin-bottom: 1rem; }
 .fiche__nom { margin: .25rem 0 0; font-size: 1.125rem; }
-.fil { list-style: none; margin: 0; padding: 0 0 0 .75rem; border-left: 2px solid #D9E7DF; }
+.fil { list-style: none; margin: 0 0 0 3.5rem; padding: 0 0 0 .75rem; border-left: 2px solid #D9E7DF; }
+.fil__age { position: absolute; left: -5.1rem; top: .3rem; width: 3.25rem; text-align: right; font-size: .75rem; font-weight: 700; color: var(--vert-f); white-space: nowrap; }
 .fil__ev { position: relative; display: flex; flex-direction: column; padding: .25rem 0 .5rem .5rem; }
 .fil__ev::before { content: ""; position: absolute; left: -1.1rem; top: .6rem; width: .5rem; height: .5rem; border-radius: 50%; background: var(--vert); }
 .fil__date { font-size: .75rem; color: var(--gris); }
@@ -675,7 +681,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.7.1</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.7.2</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -711,7 +717,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.7.1';
+var VERSION = '1.7.2';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -905,6 +911,8 @@ var ICONES = {
   retour: 'M10 6l-6 6 6 6M4 12h16',
   ok: 'M5 12l5 5 9-10',
   attention: 'M12 3l10 17H2zM12 10v4M12 17.5v.01',
+  question: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17v.01',
+  maillon: 'M10 14l-1.5 1.5a3 3 0 0 1-4.2-4.2L6 9.5M14 10l1.5-1.5a3 3 0 0 1 4.2 4.2L18 14.5M8 4v2M4 8h2M16 20v-2M20 16h-2',
   info: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v6M12 7.5v.01',
   adn: 'M7 3c0 6 10 6 10 12s-10 6-10 6M17 3c0 6-10 6-10 12M17 21c0-2-1-3-2-4M8 7h8M8 17h8',
   liste: 'M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01',
@@ -4970,11 +4978,14 @@ function fermerFiche(silencieux) {
   if (!silencieux && avant) { var c = document.querySelector('.carte[data-pid="' + avant + '"]'); if (c) { c.focus(); } }
 }
 
+function neeSous(x) { return x && x.nomNaissance && normaliser(x.nomNaissance) !== normaliser(x.nom) ? accord(x, 'né ', 'née ', 'né(e) ') + x.nomNaissance : ''; }
+function nomProche(x) { var n = neeSous(x); return nomComplet(x) + (n ? ', ' + n : ''); }
 function lienPersonne(pid, sous) {
   var p = pers(pid);
   if (!p) { return null; }
+  var nee = neeSous(p);
   return creer('div', { classe: 'rel' }, [
-    avecPhoto(pid, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(pid); } }, [nomAffiche(p)])),
+    avecPhoto(pid, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(pid); } }, [nomAffiche(p), nee ? creer('span', { classe: 'prenoms-suite', texte: ', ' + nee }) : null])),
     creer('span', { classe: 'rel__sous', texte: sous !== undefined ? sous : periodeVie(p) })
   ]);
 }
@@ -5165,7 +5176,6 @@ function evenementsVie(p) {
     var pc = cj ? pers(cj) : null;
     var mar = u.type === 'Mariage';
     if (u.debut) {
-      var age = ecartAnnees(p.naissance, u.debut);
       var fin = u.fin || null;
       var finTexte = '';
       var morts = [];
@@ -5176,34 +5186,31 @@ function evenementsVie(p) {
       var duree = null;
       if (bout) { duree = ecartAnnees(u.debut, bout); finTexte = bout === fin ? '' : (bout === (pc && pc.deces) ? ' jusqu’au décès ' + accord(pc, 'de son conjoint', 'de sa conjointe', 'du conjoint') : ' jusqu’au décès'); }
       else if (!u.separes && !estDecede(p) && (!pc || !estDecede(pc))) { duree = ecartAnnees(u.debut, aujourdhui()); finTexte = ' à ce jour'; }
-      ev.push({ d: u.debut, titre: (mar ? 'Mariage' : 'Union') + (pc ? ' avec ' + nomComplet(pc) : '') + (u.lieu ? ' à ' + u.lieu : '') + (age ? ', à ' + texteEcart(age) : ''),
+      ev.push({ d: u.debut, titre: (mar ? 'Mariage' : 'Union') + (pc ? ' avec ' + nomProche(pc) : '') + (u.lieu ? ' à ' + u.lieu : ''),
         sous: duree ? (mar ? 'Mariés' : 'Ensemble') + ' pendant ' + texteDuree(duree) + finTexte : '' });
     }
-    if (u.fin) { ev.push({ d: u.fin, titre: libellesUnion(u.type).evenementFin + (pc ? ' d’avec ' + prem(pc) : '') }); }
+    if (u.fin) { ev.push({ d: u.fin, titre: libellesUnion(u.type).evenementFin + (pc ? ' d’avec ' + nomProche(pc) : '') }); }
     if (pc && estDecede(pc) && pc.deces && (!estDecede(p) || !p.deces || cleDate(pc.deces) < cleDate(p.deces))) {
-      ev.push({ d: pc.deces, titre: 'Décès ' + accord(pc, 'de son conjoint', 'de sa conjointe', 'du conjoint') + ' ' + prem(pc), sous: ecartAnnees(p.naissance, pc.deces) ? 'À ' + texteEcart(ecartAnnees(p.naissance, pc.deces)) : '' });
+      ev.push({ d: pc.deces, titre: 'Décès ' + accord(pc, 'de son conjoint', 'de sa conjointe', 'du conjoint') + ' ' + nomProche(pc) });
     }
     enfantsUnion(uid).forEach(function (e) { if (pers(e)) { enfants.push(pers(e)); } });
   });
   professionsDatees(p).datees.forEach(function (x) {
-    var ag = ecartAnnees(p.naissance, x.d);
-    ev.push({ d: x.d, titre: 'Profession : ' + x.txt, sous: ag ? 'À ' + texteEcart(ag) : '' });
+    ev.push({ d: x.d, titre: 'Profession : ' + x.txt });
   });
   enfants.sort(function (a, b) { return cleDate(a.naissance) - cleDate(b.naissance); });
   enfants.forEach(function (e, i) {
     if (!e.naissance) { return; }
-    var age = ecartAnnees(p.naissance, e.naissance);
-    ev.push({ d: e.naissance, approx: e.naissanceApprox, titre: 'Naissance ' + accord(e, 'de son fils ', 'de sa fille ', 'de son enfant ') + prem(e) + ' (' + (i === 0 ? '1er' : (i + 1) + 'e') + ' enfant)', sous: age ? 'À ' + texteEcart(age) : '' });
+    ev.push({ d: e.naissance, approx: e.naissanceApprox, titre: 'Naissance ' + accord(e, 'de son fils ', 'de sa fille ', 'de son enfant ') + nomProche(e) + ' (' + (i === 0 ? '1er' : (i + 1) + 'e') + ' enfant)' });
   });
   parentsDe(p.id).forEach(function (x) {
     var q = pers(x);
     if (!q || !estDecede(q) || !q.deces) { return; }
     if (p.naissance && cleDate(q.deces) < cleDate(p.naissance)) { return; }
     if (estDecede(p) && p.deces && cleDate(q.deces) > cleDate(p.deces)) { return; }
-    var agP = ecartAnnees(p.naissance, q.deces);
     var agQ = ecartAnnees(q.naissance, q.deces);
-    ev.push({ d: q.deces, approx: q.decesApprox, titre: 'Décès ' + accord(q, 'de son père', 'de sa mère', 'd’un parent') + ' ' + prem(q),
-      sous: [agP ? 'À ' + texteEcart(agP) : '', agQ ? prem(q) + ' avait ' + texteEcart(agQ) : ''].filter(Boolean).join(' · ') });
+    ev.push({ d: q.deces, approx: q.decesApprox, titre: 'Décès ' + accord(q, 'de son père', 'de sa mère', 'd’un parent') + ' ' + nomProche(q),
+      sous: agQ ? prem(q) + ' avait ' + texteEcart(agQ) : '' });
   });
   /* Décès de ses enfants, survenus de son vivant */
   var vusEnf = {};
@@ -5215,14 +5222,12 @@ function evenementsVie(p) {
       if (!e || !estDecede(e) || !e.deces) { return; }
       if (estDecede(p) && p.deces && cleDate(e.deces) > cleDate(p.deces)) { return; }
       var agE = ecartAnnees(e.naissance, e.deces);
-      var agP2 = ecartAnnees(p.naissance, e.deces);
-      ev.push({ d: e.deces, approx: e.decesApprox, titre: 'Décès ' + accord(e, 'de son fils', 'de sa fille', 'de son enfant') + ' ' + prem(e),
-        sous: [agE ? prem(e) + ' avait ' + texteEcart(agE) : '', agP2 ? 'À ' + texteEcart(agP2) : ''].filter(Boolean).join(' · ') });
+      ev.push({ d: e.deces, approx: e.decesApprox, titre: 'Décès ' + accord(e, 'de son fils', 'de sa fille', 'de son enfant') + ' ' + nomProche(e),
+        sous: agE ? prem(e) + ' avait ' + texteEcart(agE) : '' });
     });
   });
   if (estDecede(p) && (p.deces || p.decesLieu)) {
-    var ad = ecartAnnees(p.naissance, p.deces);
-    ev.push({ d: p.deces, approx: p.decesApprox, titre: accord(p, 'Décédé', 'Décédée', 'Décès') + (p.decesLieu ? ' à ' + p.decesLieu : '') + (ad ? ', à ' + texteEcart(ad) : '') });
+    ev.push({ d: p.deces, approx: p.decesApprox, titre: accord(p, 'Décédé', 'Décédée', 'Décès') + (p.decesLieu ? ' à ' + p.decesLieu : '') });
   }
   ev.sort(function (a, b) { return cleDate(a.d) - cleDate(b.d); });
   return ev;
@@ -5232,7 +5237,10 @@ function sectionFilDeVie(p) {
   var ev = evenementsVie(p).filter(function (e) { return e.d; });
   if (ev.length < 2) { return null; }
   var li = ev.map(function (e) {
+    var ag = ecartAnnees(p.naissance, e.d);
+    var txtAge = ag && ag.n > 0 ? (ag.approx || e.approx || p.naissanceApprox ? '~' : '') + ag.n + ' an' + (ag.n > 1 ? 's' : '') : '';
     return creer('li', { classe: 'fil__ev' }, [
+      txtAge ? creer('span', { classe: 'fil__age', texte: txtAge, attrs: { 'aria-label': 'À ' + txtAge.replace('~', 'environ ') } }) : null,
       creer('span', { classe: 'fil__date', texte: formaterDate(e.d, e.approx) }),
       creer('span', { classe: 'fil__txt' }, [e.titre, e.sous ? creer('span', { classe: 'indice fil__sous', texte: e.sous }) : null])
     ]);
@@ -5260,17 +5268,17 @@ function rendreFiche() {
   var corps = creer('div', { classe: 'volet__corps' });
   var av = avatar(p, classeCouleur(p, br), 'avatar--xl');
   var rangs = [];
-  if (impF) { rangs.push(['Implexe', '⟲ ' + impF]); }
-  if (p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom)) { rangs.push([accord(p, 'Né sous le nom', 'Née sous le nom', 'Nom de naissance'), p.nomNaissance]); }
+  var fil = sectionFilDeVie(p);
+  var cohF = coherence()[p.id] || [];
+  var impF = texteImplexe(p.id);
   var ligneNaiss = (p.naissance ? (p.naissance.j ? 'le ' : 'en ') + formaterDate(p.naissance, p.naissanceApprox) : '') + (p.naissanceLieu ? (p.naissance ? ' à ' : 'à ') + p.naissanceLieu : '');
-  if (ligneNaiss) { rangs.push([accord(p, 'Né', 'Née', 'Naissance'), ligneNaiss, 'nd']); }
+  if (ligneNaiss && !fil) { rangs.push([accord(p, 'Né', 'Née', 'Naissance'), ligneNaiss]); }
   var age = !estDecede(p) ? ageEntre(p.naissance, aujourdhui()) : ageEntre(p.naissance, p.deces);
   var avecAge = age !== null && !p.naissanceApprox;
   if (estDecede(p)) {
     var ligneDeces = (p.deces ? (p.deces.j ? 'le ' : 'en ') + formaterDate(p.deces, p.decesApprox) : '') + (p.decesLieu ? (p.deces ? ' à ' : 'à ') + p.decesLieu : '') + (avecAge ? (p.deces || p.decesLieu ? ', à ' : 'à ') + age + ' ans' : '');
-    rangs.push([accord(p, 'Décédé', 'Décédée', 'Décès'), ligneDeces || '?', 'nd']);
-  } else if (avecAge) { rangs.push(['Âge', age + ' ans']); }
-  if (p.residence && !estDecede(p)) { rangs.push(['Lieu de vie', p.residence]); }
+    if (!fil) { rangs.push([accord(p, 'Décédé', 'Décédée', 'Décès'), ligneDeces || '?']); }
+  }
   var pd = professionsDatees(p);
   var profAff = p.profession || (pd.datees.length ? pd.datees[pd.datees.length - 1].txt : '') || pd.libres.join(', ');
   if (profAff) { rangs.push(['Profession', profAff]); }
@@ -5278,6 +5286,7 @@ function rendreFiche() {
     rangs.push(['Professions datées', pd.datees.map(function (x) { return (x.d.j ? formaterDate(x.d) : x.d.a) + ' : ' + x.txt; }).concat(p.profession ? pd.libres : []).join('\n')]);
   }
   var info = br.parId[p.id];
+  var libs = ['Centrer', 'Modifier', 'Vérifiée', 'À vérifier', 'Erronée', 'Supprimer'];
   var actions = creer('div', { classe: 'fiche__actions' }, [
     bouton('Centrer l’arbre sur cette personne', 'ico', 'cible', function () { etat.centreSession = p.id; etat.vue = etat.vue === 'ascendance' ? 'ascendance' : 'arbre'; rendre(); centrerSur(p.id, false); }, { petit: true, classe: 'btn--barre' }),
     etat.peutModifier ? bouton('Modifier la fiche', 'ico', 'modifier', function () { ouvrirFormPersonne({ mode: 'modifier', id: p.id }); }, { petit: true, classe: 'btn--barre' }) : null,
@@ -5285,31 +5294,29 @@ function rendreFiche() {
       try { await modifierPersonne(p.id, { verifiee: !p.verifiee }); await apresEcriture(p.verifiee ? 'Coche « Vérifiée » retirée.' : 'Fiche marquée comme vérifiée.', p.id); }
       catch (e) { afficherErreur(messageEchec(e, 'L’enregistrement a échoué.'), e); }
     }, { petit: true, classe: 'btn--barre' + (p.verifiee ? ' btn--actif-vert' : '') }) : null,
-    etat.peutModifier && etat.config.cols.aVerifier ? bouton(p.aVerifier ? 'Retirer « À vérifier »' : 'Marquer à vérifier', 'ico', 'attention', async function () {
+    etat.peutModifier && etat.config.cols.aVerifier ? bouton(p.aVerifier ? 'Retirer « À vérifier »' : 'Marquer à vérifier', 'ico', 'question', async function () {
       try { await modifierPersonne(p.id, { aVerifier: !p.aVerifier }); await apresEcriture(p.aVerifier ? 'Marque « À vérifier » retirée.' : 'Fiche marquée à vérifier.', p.id); }
       catch (e) { afficherErreur(messageEchec(e, 'L’enregistrement a échoué.'), e); }
     }, { petit: true, classe: 'btn--barre' + (p.aVerifier ? ' btn--actif-orange' : '') }) : null,
-    etat.peutModifier && etat.config.cols.erronee ? bouton(p.erronee ? 'Retirer « Branche erronée »' : 'Marquer comme branche erronée', 'ico', 'attention', async function () {
+    etat.peutModifier && etat.config.cols.erronee ? bouton(p.erronee ? 'Retirer « Branche erronée »' : 'Marquer comme branche erronée', 'ico', 'maillon', async function () {
       try { await modifierPersonne(p.id, { erronee: !p.erronee }); await apresEcriture(p.erronee ? 'Marque « Branche erronée » retirée.' : 'Personne marquée comme branche erronée.', p.id); }
       catch (e) { afficherErreur(messageEchec(e, 'L’enregistrement a échoué.'), e); }
     }, { petit: true, classe: 'btn--barre' + (p.erronee ? ' btn--actif-rouge' : '') }) : null,
     etat.peutModifier ? bouton('Supprimer ' + nomComplet(p), 'ico', 'supprimer', function () { return supprimerPersonne(p.id); }, { petit: true, classe: 'btn--barre btn--danger' }) : null
-  ]);
+  ].map(function (b, i) { return b ? creer('div', { classe: 'fiche__act' }, [b, creer('span', { classe: 'fiche__act-lib', texte: libs[i], attrs: { 'aria-hidden': 'true' } })]) : null; }));
   corps.appendChild(creer('div', { classe: 'fiche__id' }, [
     av,
     creer('h3', { classe: 'fiche__nom' }, [nomAffiche(p)]),
+    neeSous(p) || (!estDecede(p) && (p.residence || avecAge)) ? creer('p', { classe: 'indice fiche__sous-nom', texte: [neeSous(p), !estDecede(p) && avecAge ? age + ' ans' : '', !estDecede(p) && p.residence ? 'vit à ' + p.residence : ''].filter(Boolean).join(' · ') }) : null,
     info ? creer('div', { classe: 'compteurs', attrs: { style: 'justify-content:center' } }, [badge(libelleBranche(info.branche, br.noms), classeBranche(info.branche)), info.branche !== 'centre' && libelleParente(p.id, br, idCentre()) ? badge(libelleParente(p.id, br, idCentre()) + ' de ' + (pers(idCentre()).prenom || nomComplet(pers(idCentre())))) : null]) : null
-  ].concat([p.filiation === 'Adoption' ? badge(accord(p, 'Adopté', 'Adoptée', 'Adoption')) : null, p.verifiee ? badge('Vérifiée', 'br-b') : null, p.aVerifier ? badge('À vérifier', 'br-a') : null, p.erronee ? badge('Branche erronée', 'br-err') : null, actions])));
-  var fil = sectionFilDeVie(p);
-  var cohF = coherence()[p.id] || [];
-  var impF = texteImplexe(p.id);
+  ].concat([p.filiation === 'Adoption' ? badge(accord(p, 'Adopté', 'Adoptée', 'Adoption')) : null, p.verifiee ? badge('Vérifiée', 'br-b') : null, p.aVerifier ? badge('À vérifier', 'br-a') : null, p.erronee ? badge('Branche erronée', 'br-err') : null, impF ? creer('span', { classe: 'badge br-implexe', texte: '⟲ ' + impF }) : null, actions])));
   if (cohF.length) {
     ajouterA(corps, sectionFiche('INCOHÉRENCES', [creer('ul', { classe: 'coh-liste' }, cohF.map(function (x) {
       return creer('li', { classe: 'coh-liste--' + x.niveau }, [creer('strong', { texte: NIVEAUX_COH[x.niveau] + ' : ' }), x.texte]);
     }))]));
   }
   /* Informations */
-  if (rangs.length || !fil) { ajouterA(corps, sectionFiche('INFORMATIONS', rangs.length ? [creer('dl', { classe: 'fiche__infos' }, rangs.reduce(function (acc, r) { acc.push(creer('dt', { texte: r[0] }), creer('dd', { texte: r[1], attrs: { style: 'white-space:pre-line' } })); return acc; }, []))] : [creer('p', { classe: 'indice', texte: 'Aucune information renseignée.' })])); }
+  if (rangs.length) { ajouterA(corps, sectionFiche(fil ? 'PROFESSION' : 'INFORMATIONS', [creer('dl', { classe: 'fiche__infos' }, rangs.reduce(function (acc, r) { acc.push(creer('dt', { texte: r[0] }), creer('dd', { texte: r[1], attrs: { style: 'white-space:pre-line' } })); return acc; }, []))])); }
   ajouterA(corps, fil);
   /* Parents */
   var par = parentsDe(p.id);
