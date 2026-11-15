@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.5.1
+  Version     : 1.5.2
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -53,6 +53,7 @@
 
   HISTORIQUE
   ----------
+  1.5.2 - 15/11/2026 - madeXcé - Formulaire d'une personne rangé par blocs (identité, naissance, décès, vie, famille, recherche) ; fiche : naissance et décès toujours ensemble, professions datées sous la profession ; liens web visibles même sans colonne des professions datées.
   1.5.1 - 14/11/2026 - madeXcé - Mode « Infos à compléter » (anciennement Datas précises) ; option « Fiches incomplètes » dans la mise en évidence.
   1.5.0 - 14/11/2026 - madeXcé - Barre au-dessus de l'arbre : mode Épuré ou Datas précises (dates et lieux complets, unions, infos manquantes signalées), choix des données affichées, mise en évidence (infos à compléter, à vérifier, vérifiées, branche, vivants, décédés) ; réglages propres à chaque utilisateur.
   1.4.9 - 14/11/2026 - madeXcé - Modifier une personne : champ « Parents » pour choisir le couple dont elle est l'enfant (conjoint connu ou autre parent inconnu) ; l'union devenue vide est supprimée.
@@ -390,6 +391,8 @@ textarea.saisie { resize: vertical; }
 .commandes { position: absolute; right: 1rem; bottom: 1rem; display: flex; flex-direction: column; gap: 2px; padding: 3px; background: var(--blanc); border: 1px solid var(--trait); border-radius: var(--r-l); box-shadow: var(--ombre); }
 .legende { position: absolute; left: 1rem; bottom: 1rem; right: 5rem; display: flex; flex-wrap: wrap; align-items: center; gap: .375rem .75rem; padding: .5rem .75rem; background: rgba(255, 255, 255, .94); border: 1px solid var(--trait); border-radius: var(--r-l); font-size: .75rem; width: max-content; max-width: calc(100% - 6rem); }
 .pastille { width: .75rem; height: .75rem; border-radius: 50%; display: inline-block; vertical-align: -1px; margin-right: .25rem; border: 1px solid rgba(0, 0, 0, .15); }
+.form-bloc { margin: .75rem 0 0; padding-bottom: .25rem; border-bottom: 1px solid var(--trait); font-size: .75rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--gris); }
+.form-bloc:first-child { margin-top: 0; }
 .barre-arbre { position: absolute; left: 1rem; top: 3rem; z-index: 6; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .375rem .5rem; background: rgba(255, 255, 255, .96); border: 1px solid var(--trait); border-radius: var(--r-l); box-shadow: var(--ombre); font-size: .8125rem; max-width: calc(100% - 6rem); }
 .barre-arbre .saisie { width: auto; min-height: 0; padding: .1875rem .5rem; font-size: .8125rem; }
 .segment { display: inline-flex; border: 1px solid var(--trait); border-radius: 999px; overflow: hidden; }
@@ -650,7 +653,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.5.1</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.5.2</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -686,7 +689,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.5.1';
+var VERSION = '1.5.2';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -4996,6 +4999,7 @@ function rendreFiche() {
   var corps = creer('div', { classe: 'volet__corps' });
   var av = avatar(p, classeCouleur(p, br), 'avatar--xl');
   var rangs = [];
+  if (p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom)) { rangs.push([accord(p, 'Né sous le nom', 'Née sous le nom', 'Nom de naissance'), p.nomNaissance]); }
   var ligneNaiss = (p.naissance ? (p.naissance.j ? 'le ' : 'en ') + formaterDate(p.naissance, p.naissanceApprox) : '') + (p.naissanceLieu ? (p.naissance ? ' à ' : 'à ') + p.naissanceLieu : '');
   if (ligneNaiss) { rangs.push([accord(p, 'Né', 'Née', 'Naissance'), ligneNaiss, 'nd']); }
   var age = !estDecede(p) ? ageEntre(p.naissance, aujourdhui()) : ageEntre(p.naissance, p.deces);
@@ -5004,11 +5008,13 @@ function rendreFiche() {
     var ligneDeces = (p.deces ? (p.deces.j ? 'le ' : 'en ') + formaterDate(p.deces, p.decesApprox) : '') + (p.decesLieu ? (p.deces ? ' à ' : 'à ') + p.decesLieu : '') + (avecAge ? (p.deces || p.decesLieu ? ', à ' : 'à ') + age + ' ans' : '');
     rangs.push([accord(p, 'Décédé', 'Décédée', 'Décès'), ligneDeces || '?', 'nd']);
   } else if (avecAge) { rangs.push(['Âge', age + ' ans']); }
-  if (p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom)) { rangs.push([accord(p, 'Né sous le nom', 'Née sous le nom', 'Nom de naissance'), p.nomNaissance]); }
+  if (p.residence && !estDecede(p)) { rangs.push(['Lieu de vie', p.residence]); }
   var pd = professionsDatees(p);
   var profAff = p.profession || (pd.datees.length ? pd.datees[pd.datees.length - 1].txt : '') || pd.libres.join(', ');
   if (profAff) { rangs.push(['Profession', profAff]); }
-  if (p.residence && !estDecede(p)) { rangs.push(['Lieu de vie', p.residence]); }
+  if (pd.datees.length || (p.profession && pd.libres.length)) {
+    rangs.push(['Professions datées', pd.datees.map(function (x) { return (x.d.j ? formaterDate(x.d) : x.d.a) + ' : ' + x.txt; }).concat(p.profession ? pd.libres : []).join('\n')]);
+  }
   var info = br.parId[p.id];
   var actions = creer('div', { classe: 'fiche__actions' }, [
     bouton('Centrer l’arbre sur cette personne', 'ico', 'cible', function () { etat.centreSession = p.id; etat.vue = etat.vue === 'ascendance' ? 'ascendance' : 'arbre'; rendre(); centrerSur(p.id, false); }, { petit: true, classe: 'btn--barre' }),
@@ -5033,9 +5039,8 @@ function rendreFiche() {
     info ? creer('div', { classe: 'compteurs', attrs: { style: 'justify-content:center' } }, [badge(libelleBranche(info.branche, br.noms), classeBranche(info.branche)), info.branche !== 'centre' && libelleParente(p.id, br, idCentre()) ? badge(libelleParente(p.id, br, idCentre()) + ' de ' + (pers(idCentre()).prenom || nomComplet(pers(idCentre())))) : null]) : null
   ].concat([p.filiation === 'Adoption' ? badge(accord(p, 'Adopté', 'Adoptée', 'Adoption')) : null, p.verifiee ? badge('Vérifiée', 'br-b') : null, p.aVerifier ? badge('À vérifier', 'br-a') : null, p.erronee ? badge('Branche erronée', 'br-err') : null, actions])));
   var fil = sectionFilDeVie(p);
-  if (fil) { rangs = rangs.filter(function (r) { return r[2] !== 'nd'; }); }
   /* Informations */
-  if (rangs.length || !fil) { ajouterA(corps, sectionFiche('INFORMATIONS', rangs.length ? [creer('dl', { classe: 'fiche__infos' }, rangs.reduce(function (acc, r) { acc.push(creer('dt', { texte: r[0] }), creer('dd', { texte: r[1] })); return acc; }, []))] : [creer('p', { classe: 'indice', texte: 'Aucune information renseignée.' })])); }
+  if (rangs.length || !fil) { ajouterA(corps, sectionFiche('INFORMATIONS', rangs.length ? [creer('dl', { classe: 'fiche__infos' }, rangs.reduce(function (acc, r) { acc.push(creer('dt', { texte: r[0] }), creer('dd', { texte: r[1], attrs: { style: 'white-space:pre-line' } })); return acc; }, []))] : [creer('p', { classe: 'indice', texte: 'Aucune information renseignée.' })])); }
   ajouterA(corps, fil);
   /* Parents */
   var par = parentsDe(p.id);
@@ -5248,37 +5253,14 @@ function ouvrirFormPersonne(o) {
   var zoneNouv = creer('div', { classe: 'grille2' });
   var nomDefaut = '';
   if (!p && de && (o.mode === 'enfant' || o.mode === 'fratrie')) { nomDefaut = de.nom; }
+  /* Champs rangés par blocs : identité, naissance, décès, vie, famille,
+     recherche ; date et lieu côte à côte. */
+  var bloc = function (titre) { zoneNouv.appendChild(creer('h3', { classe: 'form-bloc plein', texte: titre })); };
+  bloc('Identité');
   zoneNouv.appendChild(champ('Prénom', saisie('fPrenom', p ? p.prenom : '', { max: 120 })));
   zoneNouv.appendChild(champ('Nom', saisie('fNom', p ? p.nom : nomDefaut, { max: 120 })));
   zoneNouv.appendChild(champ('Nom de naissance', saisie('fNomNaissance', p ? p.nomNaissance : '', { max: 120 }), { facultatif: true, indice: 'S’il diffère du nom d’usage.' }));
   zoneNouv.appendChild(champ('Sexe', liste('fSexe', CHOIX_SEXE.map(function (s) { return { valeur: s, libelle: s }; }), p ? p.sexe : '', { vide: 'Non précisé' }), { facultatif: true }));
-  var dateEstComplete = colonnePersEstDate('naissance');
-  zoneNouv.appendChild(champ('Date de naissance', saisie('fNaissance', p ? dateVersSaisie(p.naissance, p.naissanceApprox) : '', { max: 40 }), { indice: dateEstComplete ? 'Jour, mois et année : 12/03/1963.' : 'Exemples : 1963, 03/1963, 12/03/1963, vers 1963.' }));
-  zoneNouv.appendChild(champ('Lieu de naissance', saisie('fNaissanceLieu', p ? p.naissanceLieu : '', { max: 160, indice: 'Ville, pays' })));
-  zoneNouv.appendChild(champ('Lieu de vie', saisie('fResidence', p ? p.residence : '', { max: 160, indice: 'Ville, pays' }), { facultatif: true }));
-  zoneNouv.appendChild(champ('Profession', saisie('fProfession', p ? p.profession : '', { max: 160 }), { facultatif: true }));
-  if (etat.config.cols.professions) {
-    zoneNouv.appendChild(champ('Liens web, un par ligne', saisie('fLiensWeb', p ? p.liensWeb : '', { multiligne: true, lignes: 3, indice: 'Fiche matricule : https://…\nhttps://www.geneanet.org/…' }), { facultatif: true, plein: true, indice: 'Titre facultatif devant l’adresse, sous la forme « Titre : https://… ». Seules les adresses https ou http sont gardées.' }));
-    zoneNouv.appendChild(champ('Professions datées, une par ligne', saisie('fProfessions', p ? p.professions : '', { multiligne: true, lignes: 3, indice: '1954 : cultivateur (acte de mariage)\n1961 : ouvrier (naissance de son fils)' }), { facultatif: true, plein: true }));
-  }
-  var zoneDeces = creer('div', { classe: 'grille2 plein', attrs: { hidden: !(p && estDecede(p)) } }, [
-    champ('Date de décès', saisie('fDeces', p ? dateVersSaisie(p.deces, p.decesApprox) : '', { max: 40 }), { facultatif: true }),
-    champ('Lieu de décès', saisie('fDecesLieu', p ? p.decesLieu : '', { max: 160 }), { facultatif: true })
-  ]);
-  zoneNouv.appendChild(creer('div', { classe: 'plein' }, [caseACocher('fDecede', accord(p, 'Décédé', 'Décédée', 'Personne décédée'), !!(p && estDecede(p)), function (v) { zoneDeces.hidden = !v; })]));
-  zoneNouv.appendChild(zoneDeces);
-  /* Parents d'une personne déjà saisie : changer l'autre parent (un conjoint
-     connu du parent, ou « inconnu »), par exemple quand les enfants ont été
-     saisis avant le conjoint. */
-  if (p && !modeColonnes()) {
-    var choixP = choixParents(p);
-    if (choixP.length > 1) {
-      zoneNouv.appendChild(champ('Parents', liste('fParentsUnion', choixP, p.parents ? 'u' + p.parents : ''), { facultatif: true, plein: true, indice: 'Choisissez le couple dont cette personne est l’enfant.' }));
-    }
-  }
-  if (o.mode === 'enfant' || o.mode === 'fratrie' || (p && p.parents)) {
-    zoneNouv.appendChild(champ('Filiation', liste('fFiliation', CHOIX_FILIATION.map(function (s) { return { valeur: s, libelle: s }; }), p ? (p.filiation || 'Naissance') : 'Naissance'), { facultatif: true }));
-  }
   /* Photo */
   var apercu = creer('div', { classe: 'avatar avatar--xl avatar--carre' }, [p ? initiales(p) : '?']);
   if (etatForm.photo) { apercu.setAttribute('data-photo', etatForm.photo); afficherPhoto(apercu, etatForm.photo); }
@@ -5297,6 +5279,41 @@ function ouvrirFormPersonne(o) {
   var btnRetirer = bouton('Retirer la photo', 'disc', null, function () { etatForm.photo = 0; etatForm.nouvellePhoto = null; fichier.value = ''; vider(apercu); apercu.textContent = p ? initiales(p) : '?'; btnRetirer.hidden = true; }, { petit: true });
   btnRetirer.hidden = !etatForm.photo;
   zoneNouv.appendChild(creer('div', { classe: 'plein', attrs: { style: 'display:flex;align-items:center;gap:1rem;flex-wrap:wrap' } }, [apercu, creer('div', { attrs: { style: 'display:flex;flex-direction:column;gap:.375rem' } }, [creer('span', { classe: 'etiq', texte: 'Photo' }), fichier, btnChoisir, btnRetirer])]));
+  bloc('Naissance');
+  var dateEstComplete = colonnePersEstDate('naissance');
+  zoneNouv.appendChild(champ('Date de naissance', saisie('fNaissance', p ? dateVersSaisie(p.naissance, p.naissanceApprox) : '', { max: 40 }), { indice: dateEstComplete ? 'Jour, mois et année : 12/03/1963.' : 'Exemples : 1963, 03/1963, 12/03/1963, vers 1963.' }));
+  zoneNouv.appendChild(champ('Lieu de naissance', saisie('fNaissanceLieu', p ? p.naissanceLieu : '', { max: 160, indice: 'Ville, pays' })));
+  bloc('Décès');
+  var zoneDeces = creer('div', { classe: 'grille2 plein', attrs: { hidden: !(p && estDecede(p)) } }, [
+    champ('Date de décès', saisie('fDeces', p ? dateVersSaisie(p.deces, p.decesApprox) : '', { max: 40 }), { facultatif: true }),
+    champ('Lieu de décès', saisie('fDecesLieu', p ? p.decesLieu : '', { max: 160 }), { facultatif: true })
+  ]);
+  zoneNouv.appendChild(creer('div', { classe: 'plein' }, [caseACocher('fDecede', accord(p, 'Décédé', 'Décédée', 'Personne décédée'), !!(p && estDecede(p)), function (v) { zoneDeces.hidden = !v; })]));
+  zoneNouv.appendChild(zoneDeces);
+  bloc('Vie');
+  zoneNouv.appendChild(champ('Lieu de vie', saisie('fResidence', p ? p.residence : '', { max: 160, indice: 'Ville, pays' }), { facultatif: true }));
+  zoneNouv.appendChild(champ('Profession', saisie('fProfession', p ? p.profession : '', { max: 160 }), { facultatif: true }));
+  if (etat.config.cols.professions) {
+    zoneNouv.appendChild(champ('Professions datées, une par ligne', saisie('fProfessions', p ? p.professions : '', { multiligne: true, lignes: 3, indice: '1954 : cultivateur (acte de mariage)\n1961 : ouvrier (naissance de son fils)' }), { facultatif: true, plein: true }));
+  }
+  var aFamille = (p && !modeColonnes() && choixParents(p).length > 1) || o.mode === 'enfant' || o.mode === 'fratrie' || (p && p.parents);
+  if (aFamille) { bloc('Famille'); }
+  /* Parents d'une personne déjà saisie : changer l'autre parent (un conjoint
+     connu du parent, ou « inconnu »), par exemple quand les enfants ont été
+     saisis avant le conjoint. */
+  if (p && !modeColonnes()) {
+    var choixP = choixParents(p);
+    if (choixP.length > 1) {
+      zoneNouv.appendChild(champ('Parents', liste('fParentsUnion', choixP, p.parents ? 'u' + p.parents : ''), { facultatif: true, plein: true, indice: 'Choisissez le couple dont cette personne est l’enfant.' }));
+    }
+  }
+  if (o.mode === 'enfant' || o.mode === 'fratrie' || (p && p.parents)) {
+    zoneNouv.appendChild(champ('Filiation', liste('fFiliation', CHOIX_FILIATION.map(function (s) { return { valeur: s, libelle: s }; }), p ? (p.filiation || 'Naissance') : 'Naissance'), { facultatif: true }));
+  }
+  bloc('Recherche');
+  if (etat.config.cols.liensWeb) {
+    zoneNouv.appendChild(champ('Liens web, un par ligne', saisie('fLiensWeb', p ? p.liensWeb : '', { multiligne: true, lignes: 3, indice: 'Fiche matricule : https://…\nhttps://www.geneanet.org/…' }), { facultatif: true, plein: true, indice: 'Titre facultatif devant l’adresse, sous la forme « Titre : https://… ». Seules les adresses https ou http sont gardées.' }));
+  }
   zoneNouv.appendChild(champ('Notes', saisie('fNotes', p ? p.notes : '', { multiligne: true, lignes: 3 }), { facultatif: true, plein: true }));
   zoneNouv.appendChild(creer('div', { classe: 'plein' }, [caseACocher('fVerifiee', 'Vérifiée (données contrôlées à la main)', !!(p && p.verifiee)), caseACocher('fAVerifier', 'À vérifier (un doute est noté dans les notes)', !!(p && p.aVerifier)), caseACocher('fErronee', 'Branche erronée (rattachée par erreur, affichée en rouge pointillé)', !!(p && p.erronee))]));
   corps.push(zoneNouv);
