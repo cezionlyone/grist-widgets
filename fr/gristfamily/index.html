@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.34.6
+  Version     : 1.34.7
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.34.7 - 15/11/2026 - madeXcé - Fil de vie : hauteur des cartes calculée rangée par rangée sur leur contenu réel (fini l'espace vide) ; âge approximatif en italique sans « ~ » et colonne d'âge élargie ; photo fixée en haut à gauche.
   1.34.6 - 15/11/2026 - madeXcé - Cartes : croix † après le nom des personnes décédées retirée (le décès figure déjà sur la carte).
   1.34.5 - 15/11/2026 - madeXcé - Mini fil des cartes : divorce (💔), décès du conjoint et décès des enfants survenus de son vivant (✝️).
   1.34.4 - 15/11/2026 - madeXcé - Emojis harmonisés partout (🆕 naissance, 💍 union, 👶 enfant, ✝️ décès, 💔 fin d'union, 💼 métier, 🏠 lieu de vie) ; naissance des enfants sur le mini fil des cartes (6 au plus) ; hauteur des cartes adaptée au contenu.
@@ -475,15 +476,17 @@ textarea.saisie { resize: vertical; }
 .barre__evidence { color: var(--gris); }
 .manque { color: var(--peche-f); background: var(--peche); border-radius: 3px; padding: 0 .1875rem; font-weight: 600; }
 .vue-arbre--precis { --carte-l: 270px; }
+.vue-arbre--precis .carte { align-items: flex-start; }
 .fc__ev--court { padding-bottom: .125rem; }
 .fc__ev--court::before { width: .375rem; height: .375rem; left: -.9rem; top: .35rem; background: #5DCAA5; }
 .fc__ev--plus::before { display: none; }
-.fc { position: relative; display: flex; flex-direction: column; margin: .25rem 0 .125rem 2.6rem; padding-left: .625rem; border-left: 2px solid #9FE1CB; }
+.fc { position: relative; display: flex; flex-direction: column; margin: .25rem 0 .125rem 3.1rem; padding-left: .625rem; border-left: 2px solid #9FE1CB; }
 .fc__ev { position: relative; display: flex; flex-direction: column; padding: .0625rem 0 .3125rem; font-size: .6875rem; line-height: 1.35; color: var(--encre); }
 .fc__ev::before { content: ""; position: absolute; left: -.97rem; top: .3rem; width: .5rem; height: .5rem; border-radius: 50%; background: #1D9E75; }
 .fc__ev--vide::before { background: #fff; border: 1.5px dashed #BA7517; width: .4rem; height: .4rem; }
-.fc__age { position: absolute; left: -3.35rem; top: .0625rem; width: 2.45rem; text-align: right; font-weight: 700; color: var(--vert-f); white-space: nowrap; }
+.fc__age { position: absolute; left: -3.95rem; top: .0625rem; width: 2.8rem; text-align: right; font-weight: 700; color: var(--vert-f); white-space: nowrap; }
 .fc__lib { color: var(--gris); }
+.age--env { font-style: italic; font-weight: 600; color: #3B9C78; }
 .fc__trou { color: var(--peche-f); border: 1px dashed #EF9F27; border-radius: 3px; padding: 0 .1875rem; font-weight: 600; white-space: nowrap; }
 .noeud--estompe { opacity: .25; }
 .titre-vue { position: absolute; left: 1rem; top: .75rem; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; pointer-events: none; }
@@ -734,7 +737,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.34.6</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.34.7</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -770,7 +773,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.34.6';
+var VERSION = '1.34.7';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -2289,16 +2292,18 @@ function filCarte(p, a) {
   evs.sort(function (x, y) { return x.d && y.d ? comparerDates(x.d, y.d) : x.ordre - y.ordre; });
   var lignes = evs.map(function (e) {
     var ag = e.d && e.ordre > 0 ? ecartAnnees(p.naissance, e.d) : null;
-    var txtAge = ag && ag.n > 0 ? (ag.approx || e.approx || p.naissanceApprox ? '~' : '') + ag.n + ' ans' : '';
+    var envAge = !!(ag && (ag.approx || e.approx || p.naissanceApprox));
+    var txtAge = ag && ag.n > 0 ? ag.n + ' an' + (ag.n > 1 ? 's' : '') : '';
+    var bulleAge = function () { return creer('span', { classe: 'fc__age' + (envAge ? ' age--env' : ''), texte: txtAge, attrs: envAge ? { title: 'Environ ' + txtAge } : null }); };
     if (e.court) {
-      return creer('span', { classe: 'fc__ev fc__ev--court' }, [txtAge ? creer('span', { classe: 'fc__age', texte: txtAge }) : null,
+      return creer('span', { classe: 'fc__ev fc__ev--court' }, [txtAge ? bulleAge() : null,
         creer('span', { classe: 'fc__l' }, [e.lib + ' ' + (e.d ? anneeAffichee(e.d, e.approx) + ' ' : ''), creer('span', { classe: 'fc__lib', texte: e.extra }), e.deces ? ' ' + e.deces : ''])]);
     }
     var l1 = [e.lib + ' ', e.d ? formaterDate(e.d, e.approx) : ''];
     var bas = [communeSeule(e.lieu), e.extra].filter(Boolean).join(' · ');
     var l2 = [bas ? creer('span', { classe: 'fc__lib', texte: bas }) : null].concat(e.manques.filter(function (m) { return !(m === 'lieu ?' && e.lieu); }).map(function (m) { return [' ', trou(m)]; }).reduce(function (acc, x) { return acc.concat(x); }, []));
     return creer('span', { classe: 'fc__ev' + (e.manques.length ? ' fc__ev--vide' : '') }, [
-      txtAge ? creer('span', { classe: 'fc__age', texte: txtAge }) : null,
+      txtAge ? bulleAge() : null,
       creer('span', { classe: 'fc__l' }, l1),
       creer('span', { classe: 'fc__l' }, l2)
     ]);
@@ -3099,7 +3104,7 @@ function calculerDisposition(centre) {
   });
   /* Recadrage : tout en coordonnées positives, avec une marge. */
   var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  sortie.noeuds.forEach(function (n) { minX = Math.min(minX, n.x); minY = Math.min(minY, n.y); maxX = Math.max(maxX, n.x + DIM.L); maxY = Math.max(maxY, n.y + DIM.H); });
+  sortie.noeuds.forEach(function (n) { minX = Math.min(minX, n.x); minY = Math.min(minY, n.y); maxX = Math.max(maxX, n.x + DIM.L); maxY = Math.max(maxY, n.y + (n.h || DIM.H)); });
   sortie.traits.forEach(function (t) { t.pts.forEach(function (q) { minY = Math.min(minY, q[1]); }); });
   var dx = DIM.MARGE - minX;
   var dy = DIM.MARGE + 40 - minY;
@@ -3534,10 +3539,14 @@ function calculerDispositionGraphe(garder) {
   if (retourne) { ajusterTout(15); }
 
   /* 5. Cartes et traits */
-  var pas = DIM.H + DIM.GY;
   var g0 = gens[0];
-  var Y = function (x) { return (gen[x] - g0) * pas; };
-  ids.forEach(function (x) { sortie.noeuds.push({ pid: x, x: centreP(x) - DIM.L / 2, y: Y(x), dup: false }); });
+  var hRang = {};
+  ids.forEach(function (x) { hRang[gen[x]] = Math.max(hRang[gen[x]] || 0, (DIM.hauteurs && DIM.hauteurs[x]) || DIM.H); });
+  var yRang = {};
+  for (var gi = g0, cumul = 0; gi <= gens[gens.length - 1]; gi++) { yRang[gi] = cumul; cumul += (hRang[gi] || DIM.H) + DIM.GY; }
+  var Y = function (x) { return yRang[gen[x]]; };
+  var H = function (x) { return hRang[gen[x]] || DIM.H; };
+  ids.forEach(function (x) { sortie.noeuds.push({ pid: x, x: centreP(x) - DIM.L / 2, y: Y(x), h: H(x), dup: false }); });
 
   var barres = {};
   var ancres = {};
@@ -3555,7 +3564,7 @@ function calculerDispositionGraphe(garder) {
         var ua = uniteDe[a];
         var adjacents = ua === uniteDe[b] && membres[ua].indexOf(b) - membres[ua].indexOf(a) === 1;
         if (adjacents) {
-          var ym = Y(a) + DIM.H / 2;
+          var ym = Y(a) + H(a) / 2;
           var xa = centreP(a) + DIM.L / 2;
           var xb = centreP(b) - DIM.L / 2;
           sortie.traits.push({ pts: [[xa, ym], [xb, ym]], uid: uid });
@@ -3571,10 +3580,10 @@ function calculerDispositionGraphe(garder) {
           var mx = 0;
           en.forEach(function (e) { mx += centreP(e); });
           var proche = en.length && Math.abs(centreP(b) - mx / en.length) < Math.abs(centreP(a) - mx / en.length) ? b : a;
-          ancres[uid] = [centreP(proche), Y(proche) + DIM.H];
+          ancres[uid] = [centreP(proche), Y(proche) + H(proche)];
         }
       } else {
-        ancres[uid] = [centreP(m[0]), Y(m[0]) + DIM.H];
+        ancres[uid] = [centreP(m[0]), Y(m[0]) + H(m[0])];
       }
       var enf = enfantsDeU(uid).filter(function (e) { return gen[e] > gen[m[0]]; });
       if (!enf.length) { return; }
@@ -3603,7 +3612,7 @@ function calculerDispositionGraphe(garder) {
       b.voie = v;
     });
     var nv = fins.length;
-    var base = (Number(gk) - g0) * pas - DIM.GY / 2;
+    var base = yRang[Number(gk)] - DIM.GY / 2;
     l.forEach(function (b) {
       var yb = base + (nv > 1 ? (b.voie - (nv - 1) / 2) * Math.min(12, (DIM.GY - 24) / (nv - 1)) : 0);
       var a = ancres[b.uid];
@@ -3619,7 +3628,7 @@ function calculerDispositionGraphe(garder) {
 
   /* Recadrage */
   var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  sortie.noeuds.forEach(function (n) { minX = Math.min(minX, n.x); minY = Math.min(minY, n.y); maxX = Math.max(maxX, n.x + DIM.L); maxY = Math.max(maxY, n.y + DIM.H); });
+  sortie.noeuds.forEach(function (n) { minX = Math.min(minX, n.x); minY = Math.min(minY, n.y); maxX = Math.max(maxX, n.x + DIM.L); maxY = Math.max(maxY, n.y + (n.h || DIM.H)); });
   sortie.traits.forEach(function (t) { t.pts.forEach(function (q) { minY = Math.min(minY, q[1]); minX = Math.min(minX, q[0]); maxX = Math.max(maxX, q[0]); }); });
   if (!isFinite(minX)) { minX = 0; minY = 0; maxX = 0; maxY = 0; }
   var dx = DIM.MARGE - minX;
@@ -3651,14 +3660,10 @@ function rendreArbre(zone, garderCamera) {
   var precis = barreArbre().mode === 'precis';
   DIM.L = precis ? 270 : 220;
   DIM.H = 100;
-  if (precis) {
-    var maxU = 0, maxE = 0;
-    etat.donnees.ordre.forEach(function (id) {
-      maxU = Math.max(maxU, unionsPersonne(id).filter(function (uid) { return conjointDans(uid, id); }).length);
-      maxE = Math.max(maxE, Math.min(7, tousEnfants(id).length));
-    });
-    DIM.H = 120 + 47 * Math.min(maxU, 3) + 17 * maxE;
-  }
+  /* Fil de vie : chaque rangée prend la hauteur de sa carte la plus remplie,
+     mesurée sur le contenu réel (et non sur la personne la plus chargée de
+     tout l'arbre). */
+  DIM.hauteurs = precis ? mesurerCartes(zone, centre, br) : null;
   var disp;
   if (etat.config.affichage.tout !== false) { disp = calculerDispositionGraphe(null); }
   else {
@@ -3669,7 +3674,7 @@ function rendreArbre(zone, garderCamera) {
     disp = calculerDispositionGraphe(garder);
   }
   etat.disposition = disp;
-  var vue = creer('div', { classe: 'vue-arbre' + (precis ? ' vue-arbre--precis' : ''), id: 'vueArbre', attrs: { style: precis ? '--carte-h:' + DIM.H + 'px' : null, tabindex: '0', role: 'region',
+  var vue = creer('div', { classe: 'vue-arbre' + (precis ? ' vue-arbre--precis' : ''), id: 'vueArbre', attrs: { tabindex: '0', role: 'region',
     'aria-label': 'Arbre centré sur ' + nomComplet(pers(centre)) + '. Flèches pour se déplacer, plus et moins pour zoomer, zéro pour tout voir.' } });
   var monde = creer('div', { classe: 'monde', id: 'monde', attrs: { style: 'width:' + disp.largeur + 'px;height:' + disp.hauteur + 'px' } });
   cadresFratries(disp).forEach(function (c) {
@@ -3791,7 +3796,7 @@ function cadresFratries(disp) {
     if (gene) { return; }
     var u = unionDe(fr.uid);
     var noms = u ? [u.a, u.b].filter(function (x) { return x && pers(x); }).map(function (x) { return pers(x).prenom || nomComplet(pers(x)); }).join(' et ') : '';
-    cadres.push({ x: x0 - 10, y: y - 10, w: x1 - x0 + 20, h: DIM.H + 20, titre: noms ? 'Enfants de ' + noms : 'Frères et sœurs (parents inconnus)' });
+    cadres.push({ x: x0 - 10, y: y - 10, w: x1 - x0 + 20, h: (l[0].h || DIM.H) + 20, titre: noms ? 'Enfants de ' + noms : 'Frères et sœurs (parents inconnus)' });
   });
   return cadres;
 }
@@ -3860,6 +3865,15 @@ function avecPhoto(pid, noeud) {
   return creer('span', { classe: 'avec-photo' }, [petitAvatar(pid), noeud]);
 }
 
+function mesurerCartes(zone, centre, br) {
+  var boite = creer('div', { classe: 'vue-arbre vue-arbre--precis', attrs: { 'aria-hidden': 'true', style: 'position:absolute;left:-99999px;top:0;visibility:hidden;width:300px;height:10px;overflow:visible' } });
+  var l = etat.donnees.ordre.map(function (id) { var nd = noeudCarte({ pid: id, x: 0, y: 0 }, centre, br); boite.appendChild(nd); return [id, nd]; });
+  zone.appendChild(boite);
+  var h = {};
+  l.forEach(function (x) { h[x[0]] = Math.ceil(x[1].offsetHeight) || DIM.H; });
+  zone.removeChild(boite);
+  return h;
+}
 function noeudCarte(n, centre, br) {
   var p = pers(n.pid);
   var info = infoCarte(p);
@@ -3886,7 +3900,7 @@ function noeudCarte(n, centre, br) {
   ]);
   carte.addEventListener('dblclick', function () { etat.centreSession = n.pid; rendre(); centrerSur(n.pid, true); });
   var ev = barreArbre().evidence;
-  var noeud = creer('div', { classe: 'noeud' + (ev && !correspondEvidence(p, ev, br) ? ' noeud--estompe' : ''), attrs: { style: 'left:' + Math.round(n.x) + 'px;top:' + Math.round(n.y) + 'px' } }, [carte]);
+  var noeud = creer('div', { classe: 'noeud' + (ev && !correspondEvidence(p, ev, br) ? ' noeud--estompe' : ''), attrs: { style: 'left:' + Math.round(n.x) + 'px;top:' + Math.round(n.y) + 'px' + (n.h ? ';--carte-h:' + n.h + 'px' : '') } }, [carte]);
   if (p.verifiee) { noeud.appendChild(cocheVerifiee('coche-verif--coin')); }
   if (cohP.length) { noeud.appendChild(pastilleCoh(cohP, 'coh--coin')); }
   var impC = texteImplexe(p.id);
@@ -3917,7 +3931,7 @@ function ouvrirMenuPlus(n, boutonPlus) {
   menu.appendChild(creer('button', { attrs: { role: 'menuitem' }, clic: function () { fermerMenuPlus(); ouvrirFiche(n.pid); } }, [icone('utilisateur', 'ico--s'), 'Ouvrir la fiche']));
   var monde = document.getElementById('monde');
   var x = n.x + DIM.L + 6;
-  var y = n.y + DIM.H - 40;
+  var y = n.y + (n.h || DIM.H) - 40;
   if (x + 240 > monde.offsetWidth) { x = n.x - 240; }
   menu.style.left = Math.max(4, x) + 'px';
   menu.style.top = Math.max(4, y) + 'px';
@@ -3991,7 +4005,7 @@ function centrerSur(pid, garderZoom) {
   var c = camera();
   if (!garderZoom) { c.z = v.clientWidth < 600 ? 0.75 : 1; }
   c.x = v.clientWidth / 2 - (n.x + DIM.L / 2) * c.z;
-  c.y = v.clientHeight / 2 - (n.y + DIM.H / 2) * c.z;
+  c.y = v.clientHeight / 2 - (n.y + (n.h || DIM.H) / 2) * c.z;
   appliquerCamera();
 }
 
@@ -5378,9 +5392,10 @@ function sectionFilDeVie(p) {
   if (ev.length < 2) { return null; }
   var li = ev.map(function (e) {
     var ag = ecartAnnees(p.naissance, e.d);
-    var txtAge = ag && ag.n > 0 ? (ag.approx || e.approx || p.naissanceApprox ? '~' : '') + ag.n + ' an' + (ag.n > 1 ? 's' : '') : '';
+    var envAge = !!(ag && (ag.approx || e.approx || p.naissanceApprox));
+    var txtAge = ag && ag.n > 0 ? ag.n + ' an' + (ag.n > 1 ? 's' : '') : '';
     return creer('li', { classe: 'fil__ev' }, [
-      txtAge ? creer('span', { classe: 'fil__age', texte: txtAge, attrs: { 'aria-label': 'À ' + txtAge.replace('~', 'environ ') } }) : null,
+      txtAge ? creer('span', { classe: 'fil__age' + (envAge ? ' age--env' : ''), texte: txtAge, attrs: { 'aria-label': (envAge ? 'Vers ' : 'À ') + txtAge, title: envAge ? 'Environ ' + txtAge : null } }) : null,
       creer('span', { classe: 'fil__date', texte: formaterDate(e.d, e.approx) }),
       creer('span', { classe: 'fil__txt' }, [e.emo ? e.emo + ' ' : '', e.titre, e.sous ? creer('span', { classe: 'indice fil__sous', texte: e.sous }) : null])
     ]);
