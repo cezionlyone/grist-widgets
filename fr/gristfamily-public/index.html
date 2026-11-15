@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.8.3
+  Version     : 1.8.4
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -53,6 +53,7 @@
 
   HISTORIQUE
   ----------
+  1.8.4 - 15/11/2026 - madeXcé - Croix rouge pour le décès de la personne elle-même, l'emoji violet réservé au deuil ; veuf ou veuve indiqué au décès du conjoint ; naissance de la personne en bébé 👶, naissance de ses enfants en biberon 🍼.
   1.8.3 - 15/11/2026 - madeXcé - Décès de la personne elle-même marqué d'une croix † ; l'emoji ✝️ reste pour le décès d'un proche.
   1.8.2 - 15/11/2026 - madeXcé - Fil de vie : seuls les événements survenus du vivant de la personne (un enfant né après sa mort n'apparaît plus) ; décès d'un enfant ou d'un petit-enfant indiqué par son âge (« ✝️ à 2 ans », « à 3 mois ») au lieu de l'année.
   1.8.1 - 15/11/2026 - madeXcé - Cartes du fil de vie : photo et nom sur la même ligne en haut, fil de vie sur toute la largeur de la carte, date et lieu sur la même ligne, résidence et métier aussi (moins de retours à la ligne, cartes moins hautes).
@@ -718,7 +719,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.8.3</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.8.4</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -754,7 +755,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.8.3';
+var VERSION = '1.8.4';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -2150,7 +2151,7 @@ function communeSeule(l) { return String(l || '').split(',')[0].trim(); }
 /* Emojis des événements, les mêmes partout (cartes, fiche, formulaires,
    recherches) : 🆕 naissance, 💍 union, 👶 naissance d'un enfant,
    ✝️ décès, 💔 fin d'union, 💼 métier, 🏠 lieu de vie. */
-var EMO = { naissance: '🆕', union: '💍', enfant: '👶', deces: '✝️', mort: '†', fin: '💔', metier: '💼', vie: '🏠' };
+var EMO = { naissance: '👶', union: '💍', enfant: '🍼', deces: '✝️', mort: '❌', fin: '💔', metier: '💼', vie: '🏠' };
 /* Événements du fil de vie, réglables séparément pour les cartes et la fiche. */
 var FIL_EVTS = [
   ['La personne', [['naissance', 'Naissance'], ['deces', 'Décès'], ['metier', 'Métier'], ['residence', 'Résidence']]],
@@ -2304,7 +2305,7 @@ function filCarte(p) {
     /* Divorce ou séparation datée */
     if (u.fin && r.fin) { court(1.7, u.fin, false, EMO.fin, prenomQ); }
     /* Décès du conjoint, de son vivant */
-    if (q && r.decesConjoint && mortDansSaVie(q)) { court(1.8, q.deces, q.decesApprox, EMO.deces, prenomQ); }
+    if (q && r.decesConjoint && mortDansSaVie(q)) { court(1.8, q.deces, q.decesApprox, EMO.deces, prenomQ + ' · ' + accord(p, 'veuf', 'veuve', 'veuf')); }
   });
   /* Enfants puis petits-enfants : une ligne courte chacun, tous affichés.
      Un décès de son vivant se met sur la même ligne, « 👶 1726 Madeleine ✝️ 1728 ». */
@@ -5404,7 +5405,7 @@ function evenementsVie(p) {
     }
     if (u.fin && r.fin) { ev.push({ emo: EMO.fin, d: u.fin, titre: libellesUnion(u.type).evenementFin + (pc ? ' d’avec ' + nomProche(pc) : '') }); }
     if (r.decesConjoint && pc && estDecede(pc) && pc.deces && (!estDecede(p) || !p.deces || cleDate(pc.deces) < cleDate(p.deces))) {
-      ev.push({ emo: EMO.deces, d: pc.deces, titre: 'Décès ' + accord(pc, 'de son conjoint', 'de sa conjointe', 'du conjoint') + ' ' + nomProche(pc) });
+      ev.push({ emo: EMO.deces, d: pc.deces, titre: 'Décès ' + accord(pc, 'de son conjoint', 'de sa conjointe', 'du conjoint') + ' ' + nomProche(pc), sous: accord(p, 'Veuf', 'Veuve', 'Veuf') });
     }
     enfantsUnion(uid).forEach(function (e) { if (pers(e)) { enfants.push(pers(e)); } });
   });
