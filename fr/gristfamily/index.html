@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.35.0
+  Version     : 1.35.1
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.35.1 - 15/11/2026 - madeXcé - Cartes du fil de vie : photo et nom sur la même ligne en haut, fil de vie sur toute la largeur de la carte, date et lieu sur la même ligne, résidence et métier aussi (moins de retours à la ligne, cartes moins hautes).
   1.35.0 - 15/11/2026 - madeXcé - Fil de vie : cartes à la taille de leur contenu (cœur d'union au niveau des noms), tous les enfants affichés, décès des parents et grands-parents et petits-enfants dans le fil ; Paramètres, bloc « Fil de vie » pour choisir les événements des cartes et de la fiche ; fiche : fil dès un seul événement daté, « Décédée » sans « ? » ; bouton « Moi » (et touche Début) pour revenir à soi.
   1.34.7 - 15/11/2026 - madeXcé - Fil de vie : hauteur des cartes calculée rangée par rangée sur leur contenu réel (fini l'espace vide) ; âge approximatif en italique sans « ~ » et colonne d'âge élargie ; photo fixée en haut à gauche.
   1.34.6 - 15/11/2026 - madeXcé - Cartes : croix † après le nom des personnes décédées retirée (le décès figure déjà sur la carte).
@@ -479,7 +480,16 @@ textarea.saisie { resize: vertical; }
 .barre__evidence { color: var(--gris); }
 .manque { color: var(--peche-f); background: var(--peche); border-radius: 3px; padding: 0 .1875rem; font-weight: 600; }
 .vue-arbre--precis { --carte-l: 270px; }
-.vue-arbre--precis .carte { align-items: flex-start; }
+.vue-arbre--precis .carte { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: .5rem; row-gap: 0; align-items: center; align-content: start; }
+.vue-arbre--precis .carte .avatar { width: 2.125rem; height: 2.125rem; font-size: .75rem; grid-column: 1; grid-row: 1; }
+.vue-arbre--precis .carte:has(.carte__sous) .avatar { grid-row: 1 / span 2; }
+.vue-arbre--precis .carte__txt { display: contents; }
+.vue-arbre--precis .carte__txt > * { grid-column: 1 / -1; }
+.vue-arbre--precis .carte__txt > .carte__nom, .vue-arbre--precis .carte__txt > .carte__sous { grid-column: 2; }
+.vue-arbre--precis .carte__txt > .fc { margin-top: .3125rem; }
+.vue-arbre--precis .fc__ev { display: block; }
+.vue-arbre--precis .fc__l { display: inline; }
+.vue-arbre--precis .fc__l + .fc__l:not(:empty)::before { content: " · "; color: var(--gris); }
 .fc__ev--court { padding-bottom: .125rem; }
 .fc__ev--court::before { width: .375rem; height: .375rem; left: -.9rem; top: .35rem; background: #5DCAA5; }
 .fc { position: relative; display: flex; flex-direction: column; margin: .25rem 0 .125rem 3.1rem; padding-left: .625rem; border-left: 2px solid #9FE1CB; }
@@ -746,7 +756,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.35.0</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.35.1</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -782,7 +792,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.35.0';
+var VERSION = '1.35.1';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -2365,8 +2375,9 @@ function filCarte(p) {
     ]);
   });
   var res = [creer('span', { classe: 'fc' }, lignes)];
-  if (r.residence && !estDecede(p) && p.residence) { res.push(creer('span', { classe: 'carte__info', texte: EMO.vie + ' ' + communeSeule(p.residence) })); }
-  if (r.metier && p.profession) { res.push(creer('span', { classe: 'carte__info', texte: EMO.metier + ' ' + p.profession })); }
+  /* Résidence et métier partagent une ligne quand la place le permet. */
+  var bas = [r.residence && !estDecede(p) && p.residence ? EMO.vie + ' ' + communeSeule(p.residence) : '', r.metier && p.profession ? EMO.metier + ' ' + p.profession : ''].filter(Boolean);
+  if (bas.length) { res.push(creer('span', { classe: 'carte__info', texte: bas.join(' · ') })); }
   return res;
 }
 function noeudsLignesCarte(p, reglage) {
@@ -3974,7 +3985,7 @@ function noeudCarte(n, centre, br) {
   var carte = creer('button', { classe: classes.join(' '), attrs: { 'data-pid': n.pid, 'aria-label': etiquette + '. Ouvrir la fiche', title: titreCarte || null },
     clic: function () { ouvrirFiche(n.pid); } }, [
     avatar(aff.photo ? p : Object.assign({}, p, { photo: [], photoUrl: '' }), classeCouleur(p, br)),
-    creer('span', { classe: 'carte__txt' }, [creer('span', { classe: 'carte__nom' }, [nomAffiche(p)]), sous ? creer('span', { classe: 'carte__info', texte: sous }) : null].concat(noeudsLignesCarte(p)))
+    creer('span', { classe: 'carte__txt' }, [creer('span', { classe: 'carte__nom' }, [nomAffiche(p)]), sous ? creer('span', { classe: 'carte__info carte__sous', texte: sous }) : null].concat(noeudsLignesCarte(p)))
   ]);
   carte.addEventListener('dblclick', function () { etat.centreSession = n.pid; rendre(); centrerSur(n.pid, true); });
   var ev = barreArbre().evidence;
