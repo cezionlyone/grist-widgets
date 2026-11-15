@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.33.4
+  Version     : 1.34.0
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.34.0 - 15/11/2026 - madeXcé - Même nom dans l'arbre (formulaire et fiche, bouton « C'est elle » pour relier) ; implexes : ancêtres atteints par plusieurs chemins repérés (⟲ sur la carte, fiche, mise en évidence).
   1.33.4 - 15/11/2026 - madeXcé - Recherche : tous les prénoms, nom de naissance, noms de mariage, années et lieux de naissance et de décès, mots dans n'importe quel ordre ; suggestions plus complètes (née, années, époux).
   1.33.3 - 15/11/2026 - madeXcé - Ajout d'un frère ou d'une sœur : nom repris du père commun (ou du nom de naissance), et non du nom d'épouse.
   1.33.2 - 15/11/2026 - madeXcé - Supprimer une personne supprime aussi ses unions sans enfant (plus de « mariage sans conjoint ») ; ces unions orphelines n'apparaissent plus dans le fil de vie ; durée écrite « pendant environ 28 ans ».
@@ -446,6 +447,10 @@ textarea.saisie { resize: vertical; }
 .coh-liste--rouge strong { color: var(--erreur); }
 .coh-liste--orange strong { color: #B45309; }
 .coh-liste--bleu strong { color: var(--lavande-f); }
+.implexe-coin { position: absolute; top: -9px; left: 50%; transform: translateX(-50%); z-index: 2; pointer-events: none; display: inline-flex; align-items: center; justify-content: center; width: 1.25rem; height: 1.25rem; border-radius: 50%; background: var(--lavande-f); color: #fff; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); font-size: .75rem; line-height: 1; }
+.meme-nom { margin-top: -.25rem; padding: .375rem .625rem; background: var(--fond-doux, #F6F6F6); border: 1px solid var(--trait); border-radius: var(--r-m); font-size: .8125rem; }
+.meme-nom summary { cursor: pointer; font-weight: 600; }
+.meme-nom ul, .meme-nom__liste { margin: .375rem 0 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: .1875rem; max-height: 14rem; overflow: auto; }
 .form-bloc { margin: .75rem 0 0; padding-bottom: .25rem; border-bottom: 1px solid var(--trait); font-size: .75rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--gris); }
 .form-bloc:first-child { margin-top: 0; }
 .barre-arbre { position: absolute; left: 1rem; top: 3rem; z-index: 6; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .375rem .5rem; background: rgba(255, 255, 255, .96); border: 1px solid var(--trait); border-radius: var(--r-l); box-shadow: var(--ombre); font-size: .8125rem; max-width: calc(100% - 6rem); }
@@ -709,7 +714,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.33.4</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.34.0</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -745,7 +750,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.33.4';
+var VERSION = '1.34.0';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -2236,6 +2241,7 @@ function correspondEvidence(p, ev, br) {
   if (!ev) { return true; }
   if (ev === 'manque') { return infosManquantes(p) > 0; }
   if (ev === 'incoherences') { return !!(coherence()[p.id] || []).length; }
+  if (ev === 'implexes') { return !!implexes()[p.id]; }
   if (ev === 'aVerifier') { return !!p.aVerifier; }
   if (ev === 'verifiee') { return !!p.verifiee; }
   if (ev === 'vivants') { return !estDecede(p); }
@@ -3624,7 +3630,7 @@ function barreOutilsArbre(br, disp) {
     }))
   ]);
   menu.addEventListener('toggle', function () { etat.barreMenuOuvert = menu.open; });
-  var opts = [{ valeur: '', libelle: 'Rien' }, { valeur: 'manque', libelle: 'Fiches incomplètes' }, { valeur: 'incoherences', libelle: 'Incohérences' }, { valeur: 'aVerifier', libelle: 'Fiches à vérifier' }, { valeur: 'verifiee', libelle: 'Fiches vérifiées' }];
+  var opts = [{ valeur: '', libelle: 'Rien' }, { valeur: 'manque', libelle: 'Fiches incomplètes' }, { valeur: 'incoherences', libelle: 'Incohérences' }, { valeur: 'implexes', libelle: 'Implexes (ancêtres communs)' }, { valeur: 'aVerifier', libelle: 'Fiches à vérifier' }, { valeur: 'verifiee', libelle: 'Fiches vérifiées' }];
   if (br && br.noms) { ['a', 'b'].forEach(function (k) { if (br.noms[k]) { opts.push({ valeur: k, libelle: br.noms[k] }); } }); }
   opts.push({ valeur: 'vivants', libelle: 'Personnes vivantes' }, { valeur: 'decedes', libelle: 'Personnes décédées' });
   var sel = liste('barreEvidence', opts, b.evidence);
@@ -3773,7 +3779,7 @@ function noeudCarte(n, centre, br) {
   var etiquette = nom + (info ? ', ' + info : '') + (n.pid === centre ? ', au centre de l’arbre' : '') + (estDecede(p) ? ', ' + accord(p, 'décédé', 'décédée', 'décès') : '') + (n.dup ? ', déjà présente ailleurs dans l’arbre' : '') + (p.verifiee ? ', vérifiée' : '') + (p.aVerifier ? ', à vérifier' : '') + (p.erronee ? ', branche erronée' : '') + marq.texte;
   var cohP = coherence()[p.id] || [];
   if (cohP.length) { etiquette += ', incohérence : ' + texteCoh(cohP); }
-  var titreCarte = [lieuxComplets(p), cohP.length ? texteCoh(cohP) : ''].filter(Boolean).join('\n');
+  var titreCarte = [lieuxComplets(p), texteImplexe(p.id), cohP.length ? texteCoh(cohP) : ''].filter(Boolean).join('\n');
   var carte = creer('button', { classe: classes.join(' '), attrs: { 'data-pid': n.pid, 'aria-label': etiquette + '. Ouvrir la fiche', title: titreCarte || null },
     clic: function () { ouvrirFiche(n.pid); } }, [
     avatar(aff.photo ? p : Object.assign({}, p, { photo: [], photoUrl: '' }), classeCouleur(p, br)),
@@ -3784,6 +3790,8 @@ function noeudCarte(n, centre, br) {
   var noeud = creer('div', { classe: 'noeud' + (ev && !correspondEvidence(p, ev, br) ? ' noeud--estompe' : ''), attrs: { style: 'left:' + Math.round(n.x) + 'px;top:' + Math.round(n.y) + 'px' } }, [carte]);
   if (p.verifiee) { noeud.appendChild(cocheVerifiee('coche-verif--coin')); }
   if (cohP.length) { noeud.appendChild(pastilleCoh(cohP, 'coh--coin')); }
+  var impC = texteImplexe(p.id);
+  if (impC) { noeud.appendChild(creer('span', { classe: 'implexe-coin', texte: '⟲', attrs: { title: impC, 'aria-label': impC, role: 'img' } })); }
   if (p.aVerifier) { noeud.appendChild(pointAVerifier('point-verif--coin')); }
   if (marq.noeud) { noeud.appendChild(marq.noeud); }
   if (etat.peutModifier) {
@@ -4365,6 +4373,63 @@ function ouvrirFormDocument(p, opt) {
 }
 
 function urlSure(u) { return /^https?:\/\/[^\s]+$/i.test(u || ''); }
+/* === Même nom et implexes ===
+   Porteurs d'un nom (nom actuel ou de naissance), et ancêtres de la
+   personne au centre atteints par plusieurs chemins (implexe). */
+function porteursDuNom(nom, sauf) {
+  var k = normaliser(nom);
+  if (!k) { return []; }
+  return etat.donnees.ordre.map(pers).filter(function (x) {
+    return x && x.id !== sauf && (normaliser(x.nom) === k || normaliser(x.nomNaissance) === k);
+  }).sort(function (a, b) { return comparerDates(a.naissance, b.naissance) || nomComplet(a).localeCompare(nomComplet(b), 'fr'); });
+}
+function cotePers(pid) {
+  var br = etat.branches;
+  var x = br && br.parId ? br.parId[pid] : null;
+  return x && br.noms && br.noms[x.branche] ? br.noms[x.branche].replace(/^Côté /, 'côté ') : '';
+}
+function resumePorteur(x) {
+  var vie = [anneeAffichee(x.naissance, x.naissanceApprox), estDecede(x) ? anneeAffichee(x.deces, x.decesApprox) : ''].filter(Boolean).join(' - ');
+  var nee = x.nomNaissance && normaliser(x.nomNaissance) !== normaliser(x.nom) ? accord(x, 'né ', 'née ', 'né(e) ') + x.nomNaissance : '';
+  return [nee, vie, communeSeule(x.naissanceLieu), cotePers(x.id)].filter(Boolean).join(' · ');
+}
+function implexes() {
+  var centre = idCentre();
+  if (!etat.donnees || !centre) { return {}; }
+  if (etat._implexe && etat._implexe.donnees === etat.donnees && etat._implexe.centre === centre) { return etat._implexe.res; }
+  var monter = function (depart) {
+    var chem = {}, front = {};
+    front[depart] = 1;
+    for (var tour = 0; tour < 60 && Object.keys(front).length; tour++) {
+      var suiv = {};
+      Object.keys(front).forEach(function (k) {
+        var c = front[k];
+        chem[k] = (chem[k] || 0) + c;
+        parentsDe(Number(k)).forEach(function (q) { suiv[q] = (suiv[q] || 0) + c; });
+      });
+      front = suiv;
+    }
+    return chem;
+  };
+  var par = parentsDe(centre);
+  var c1 = par[0] ? monter(par[0]) : {}, c2 = par[1] ? monter(par[1]) : {};
+  var res = {};
+  Object.keys(c1).concat(Object.keys(c2)).forEach(function (k) {
+    var n = (c1[k] || 0) + (c2[k] || 0);
+    if (n >= 2 && !res[k]) { res[k] = { chemins: n, deuxCotes: !!(c1[k] && c2[k]) }; }
+  });
+  etat._implexe = { donnees: etat.donnees, centre: centre, res: res };
+  return res;
+}
+function texteImplexe(pid) {
+  var x = implexes()[pid];
+  if (!x) { return ''; }
+  var br = etat.branches || { noms: {} };
+  return x.deuxCotes
+    ? 'Ancêtre commun aux deux côtés' + (br.noms.a && br.noms.b ? ' (' + br.noms.a.replace(/^Côté /, '') + ' et ' + br.noms.b.replace(/^Côté /, '') + ')' : '') + ', par ' + x.chemins + ' chemins'
+    : 'Ancêtre par ' + x.chemins + ' chemins différents';
+}
+
 /* Noms de famille de ses conjoints (pour une femme : ses noms de mariage). */
 function nomsDeMariage(p) {
   var vus = {};
@@ -5244,6 +5309,7 @@ function rendreFiche() {
   var corps = creer('div', { classe: 'volet__corps' });
   var av = avatar(p, classeCouleur(p, br), 'avatar--xl');
   var rangs = [];
+  if (impF) { rangs.push(['Implexe', '⟲ ' + impF]); }
   if (p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom)) { rangs.push([accord(p, 'Né sous le nom', 'Née sous le nom', 'Nom de naissance'), p.nomNaissance]); }
   var ligneNaiss = (p.naissance ? (p.naissance.j ? 'le ' : 'en ') + formaterDate(p.naissance, p.naissanceApprox) : '') + (p.naissanceLieu ? (p.naissance ? ' à ' : 'à ') + p.naissanceLieu : '');
   if (ligneNaiss) { rangs.push([accord(p, 'Né', 'Née', 'Naissance'), ligneNaiss, 'nd']); }
@@ -5285,6 +5351,7 @@ function rendreFiche() {
   ].concat([p.filiation === 'Adoption' ? badge(accord(p, 'Adopté', 'Adoptée', 'Adoption')) : null, p.verifiee ? badge('Vérifiée', 'br-b') : null, p.aVerifier ? badge('À vérifier', 'br-a') : null, p.erronee ? badge('Branche erronée', 'br-err') : null, actions])));
   var fil = sectionFilDeVie(p);
   var cohF = coherence()[p.id] || [];
+  var impF = texteImplexe(p.id);
   if (cohF.length) {
     ajouterA(corps, sectionFiche('INCOHÉRENCES', [creer('ul', { classe: 'coh-liste' }, cohF.map(function (x) {
       return creer('li', { classe: 'coh-liste--' + x.niveau }, [creer('strong', { texte: NIVEAUX_COH[x.niveau] + ' : ' }), x.texte]);
@@ -5344,6 +5411,16 @@ function rendreFiche() {
     ajouterA(corps, sectionFiche('LIENS', [creer('ul', { attrs: { style: 'margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.25rem' } }, liensW.map(function (x) {
       return creer('li', {}, [creer('a', { texte: x.titre, attrs: { href: x.url, target: '_blank', rel: 'noopener noreferrer', title: x.url } })]);
     }))]));
+  }
+  var memes = [];
+  [p.nom, p.nomNaissance].forEach(function (n) { porteursDuNom(n, p.id).forEach(function (x) { if (memes.indexOf(x) === -1) { memes.push(x); } }); });
+  if (memes.length) {
+    ajouterA(corps, sectionFiche('MÊME NOM DANS L’ARBRE', [creer('details', {}, [
+      creer('summary', { texte: pluriel(memes.length, 'personne', 'personnes') + ' : ' + [p.nom, p.nomNaissance].filter(function (n, i, t) { return n && t.map(normaliser).indexOf(normaliser(n)) === i; }).join(', ') }),
+      creer('ul', { classe: 'meme-nom__liste' }, memes.slice(0, 60).map(function (x) {
+        return creer('li', {}, [creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(x.id); } }, [nomAffiche(x)]), ' ', creer('span', { classe: 'indice', texte: resumePorteur(x) })]);
+      }))
+    ])]));
   }
   if (p.notes) { ajouterA(corps, sectionFiche('NOTES', [creer('p', { texte: p.notes, attrs: { style: 'margin:0;white-space:pre-line' } })])); }
   var meta = [];
@@ -5640,6 +5717,33 @@ function ouvrirFormPersonne(o) {
     zoneDoublon.hidden = false;
   };
   ['fPrenom', 'fNom'].forEach(function (id) { var el = zoneNouv.querySelector('#' + id); el.addEventListener('blur', verifierDoublon); });
+  /* Même nom dans l'arbre : aide à repérer les branches qui se rejoignent */
+  var champNom = zoneNouv.querySelector('#fNom');
+  var zoneMemeNom = creer('div', { classe: 'plein meme-nom', attrs: { hidden: true } });
+  champNom.closest('.champ').insertAdjacentElement('afterend', zoneMemeNom);
+  var majMemeNom = function () {
+    vider(zoneMemeNom);
+    var liste = porteursDuNom(champNom.value, p ? p.id : null);
+    if (!liste.length) { zoneMemeNom.hidden = true; return; }
+    var lignes = liste.slice(0, 40).map(function (x) {
+      var enfants = [creer('strong', {}, [nomAffiche(x)]), ' ', creer('span', { classe: 'indice', texte: resumePorteur(x) })];
+      var opt = zoneExistant ? document.querySelector('#fExistant option[value="' + x.id + '"]') : null;
+      if (!p && opt) {
+        enfants.push(' ', creer('button', { classe: 'lien-personne', texte: accord(x, 'C’est lui', 'C’est elle', 'C’est cette personne'), attrs: { type: 'button' },
+          clic: function () { var sl = document.getElementById('fExistant'); sl.value = String(x.id); sl.dispatchEvent(new Event('change')); sl.focus(); } }));
+      }
+      return creer('li', {}, enfants);
+    });
+    zoneMemeNom.appendChild(creer('details', {}, [
+      creer('summary', { texte: pluriel(liste.length, 'personne porte', 'personnes portent') + ' déjà ce nom dans l’arbre' }),
+      creer('ul', {}, lignes),
+      liste.length > 40 ? creer('p', { classe: 'indice', texte: 'Les 40 premières sont affichées.' }) : null
+    ]));
+    zoneMemeNom.hidden = false;
+  };
+  var minuterieNom = null;
+  champNom.addEventListener('input', function () { clearTimeout(minuterieNom); minuterieNom = setTimeout(majMemeNom, 250); });
+  majMemeNom();
   var enregistrer = bouton(o.mode === 'modifier' ? 'Enregistrer' : 'Ajouter', 'p', null, function () { return validerFormPersonne(o, etatForm, enregistrer); });
   ouvrirModale({ titre: t[0], sousTitre: t[1], corps: corps, pied: [bouton('Annuler', '', null, fermerModale), enregistrer], focus: zoneExistant ? 'fPrenom' : null });
 }
