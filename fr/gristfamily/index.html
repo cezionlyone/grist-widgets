@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.35.2
+  Version     : 1.35.3
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.35.3 - 15/11/2026 - madeXcé - Décès de la personne elle-même marqué d'une croix † ; l'emoji ✝️ reste pour le décès d'un proche.
   1.35.2 - 15/11/2026 - madeXcé - Fil de vie : seuls les événements survenus du vivant de la personne (un enfant né après sa mort n'apparaît plus) ; décès d'un enfant ou d'un petit-enfant indiqué par son âge (« ✝️ à 2 ans », « à 3 mois ») au lieu de l'année.
   1.35.1 - 15/11/2026 - madeXcé - Cartes du fil de vie : photo et nom sur la même ligne en haut, fil de vie sur toute la largeur de la carte, date et lieu sur la même ligne, résidence et métier aussi (moins de retours à la ligne, cartes moins hautes).
   1.35.0 - 15/11/2026 - madeXcé - Fil de vie : cartes à la taille de leur contenu (cœur d'union au niveau des noms), tous les enfants affichés, décès des parents et grands-parents et petits-enfants dans le fil ; Paramètres, bloc « Fil de vie » pour choisir les événements des cartes et de la fiche ; fiche : fil dès un seul événement daté, « Décédée » sans « ? » ; bouton « Moi » (et touche Début) pour revenir à soi.
@@ -757,7 +758,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.35.2</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.35.3</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -793,7 +794,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.35.2';
+var VERSION = '1.35.3';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -2199,7 +2200,7 @@ function communeSeule(l) { return String(l || '').split(',')[0].trim(); }
 /* Emojis des événements, les mêmes partout (cartes, fiche, formulaires,
    recherches) : 🆕 naissance, 💍 union, 👶 naissance d'un enfant,
    ✝️ décès, 💔 fin d'union, 💼 métier, 🏠 lieu de vie. */
-var EMO = { naissance: '🆕', union: '💍', enfant: '👶', deces: '✝️', fin: '💔', metier: '💼', vie: '🏠' };
+var EMO = { naissance: '🆕', union: '💍', enfant: '👶', deces: '✝️', mort: '†', fin: '💔', metier: '💼', vie: '🏠' };
 /* Événements du fil de vie, réglables séparément pour les cartes et la fiche. */
 var FIL_EVTS = [
   ['La personne', [['naissance', 'Naissance'], ['deces', 'Décès'], ['metier', 'Métier'], ['residence', 'Résidence']]],
@@ -2303,12 +2304,12 @@ function lignesCarte(p, reglage) {
   var prenomCj = function (uid) { return unions.length > 1 ? seg(((pers(conjointDans(uid, p.id)) || {}).prenom || '').split(/\s+/)[0] + ' :') : null; };
   if (precis) {
     ligne(EMO.naissance, datePrecise(p.naissance, p.naissanceApprox).concat(lieuPrecis(p.naissanceLieu), [mort ? null : seg(age)]));
-    if (mort) { ligne(EMO.deces, datePrecise(p.deces, p.decesApprox).concat(lieuPrecis(p.decesLieu), [seg(age)])); }
+    if (mort) { ligne(EMO.mort, datePrecise(p.deces, p.decesApprox).concat(lieuPrecis(p.decesLieu), [seg(age)])); }
     else if (p.residence) { ligne(EMO.vie, [seg(p.residence)]); }
     unions.forEach(function (uid) { var u = unionDe(uid); ligne(EMO.union, [prenomCj(uid)].concat(datePrecise(u.debut), lieuPrecis(u.lieu))); });
   } else {
     ligne(EMO.naissance, [seg(a.dates ? anneeAffichee(p.naissance, p.naissanceApprox) : ''), seg(a.lieux ? communeSeule(p.naissanceLieu) : ''), seg(mort ? '' : age)]);
-    if (mort) { ligne(EMO.deces, [seg(a.dates ? anneeAffichee(p.deces, p.decesApprox) : ''), seg(a.lieux ? communeSeule(p.decesLieu) : ''), seg(age)]); }
+    if (mort) { ligne(EMO.mort, [seg(a.dates ? anneeAffichee(p.deces, p.decesApprox) : ''), seg(a.lieux ? communeSeule(p.decesLieu) : ''), seg(age)]); }
     else if (a.lieux && p.residence) { ligne(EMO.vie, [seg(communeSeule(p.residence))]); }
     if (a.mariages) {
       unions.forEach(function (uid) {
@@ -2371,7 +2372,7 @@ function filCarte(p) {
   /* Décès des parents et des grands-parents, de son vivant */
   if (r.decesParents) { parentsDe(p.id).map(pers).filter(Boolean).forEach(function (q) { if (mortDansSaVie(q)) { court(0.5, q.deces, q.decesApprox, EMO.deces, accord(q, 'père ', 'mère ', 'parent ') + prem(q)); } }); }
   if (r.decesGrandsParents) { grandsParentsDe(p.id).forEach(function (q) { if (mortDansSaVie(q)) { court(0.4, q.deces, q.decesApprox, EMO.deces, accord(q, 'grand-père ', 'grand-mère ', 'grand-parent ') + prem(q)); } }); }
-  if (estDecede(p) && r.deces) { ajoutEv(2, p.deces, p.decesApprox, EMO.deces, p.decesLieu, ''); }
+  if (estDecede(p) && r.deces) { ajoutEv(2, p.deces, p.decesApprox, EMO.mort, p.decesLieu, ''); }
   evs.sort(function (x, y) { return x.d && y.d ? comparerDates(x.d, y.d) : x.ordre - y.ordre; });
   var lignes = evs.map(function (e) {
     var ag = e.d && e.ordre > 0 ? ecartAnnees(p.naissance, e.d) : null;
@@ -5505,7 +5506,7 @@ function evenementsVie(p) {
     });
   });
   if (r.deces && estDecede(p) && (p.deces || p.decesLieu)) {
-    ev.push({ emo: EMO.deces, d: p.deces, approx: p.decesApprox, titre: accord(p, 'Décédé', 'Décédée', 'Décès') + (p.decesLieu ? ' à ' + p.decesLieu : '') });
+    ev.push({ emo: EMO.mort, d: p.deces, approx: p.decesApprox, titre: accord(p, 'Décédé', 'Décédée', 'Décès') + (p.decesLieu ? ' à ' + p.decesLieu : '') });
   }
   ev.sort(function (a, b) { return cleDate(a.d) - cleDate(b.d); });
   return ev;
@@ -5855,7 +5856,7 @@ function ouvrirFormPersonne(o) {
   var dateEstComplete = colonnePersEstDate('naissance');
   zoneNouv.appendChild(champ('Date de naissance', saisie('fNaissance', p ? dateVersSaisie(p.naissance, p.naissanceApprox) : '', { max: 40 }), { indice: dateEstComplete ? 'Jour, mois et année : 12/03/1963.' : 'Exemples : 1963, 03/1963, 12/03/1963, vers 1963.' }));
   zoneNouv.appendChild(champ('Lieu de naissance', saisie('fNaissanceLieu', p ? p.naissanceLieu : '', { max: 160, indice: 'Ville, pays' })));
-  bloc(EMO.deces + ' Décès');
+  bloc(EMO.mort + ' Décès');
   var zoneDeces = creer('div', { classe: 'grille2 plein', attrs: { hidden: !(p && estDecede(p)) } }, [
     champ('Date de décès', saisie('fDeces', p ? dateVersSaisie(p.deces, p.decesApprox) : '', { max: 40 }), { facultatif: true }),
     champ('Lieu de décès', saisie('fDecesLieu', p ? p.decesLieu : '', { max: 160 }), { facultatif: true })
