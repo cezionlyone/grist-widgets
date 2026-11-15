@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.32.3
+  Version     : 1.33.0
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.33.0 - 15/11/2026 - madeXcé - Contrôles de cohérence : dates impossibles (rouge), improbables (orange), doublons possibles (bleu) ; pastille sur les cartes, partie INCOHÉRENCES dans la fiche, mise en évidence et filtre de la Liste, avertissement à l'enregistrement.
   1.32.3 - 15/11/2026 - madeXcé - Ajout d'un enfant : nom et nom de naissance repris du père du couple choisi (modifiables, mis à jour si l'autre parent change).
   1.32.2 - 15/11/2026 - madeXcé - Formulaire d'une personne rangé par blocs (identité, naissance, décès, vie, famille, recherche) ; fiche : naissance et décès toujours ensemble, professions datées sous la profession ; liens web visibles même sans colonne des professions datées.
   1.32.1 - 14/11/2026 - madeXcé - Mode « Infos à compléter » (anciennement Datas précises) ; option « Fiches incomplètes » dans la mise en évidence.
@@ -431,6 +432,16 @@ textarea.saisie { resize: vertical; }
 .commandes { position: absolute; right: 1rem; bottom: 1rem; display: flex; flex-direction: column; gap: 2px; padding: 3px; background: var(--blanc); border: 1px solid var(--trait); border-radius: var(--r-l); box-shadow: var(--ombre); }
 .legende { position: absolute; left: 1rem; bottom: 1rem; right: 5rem; display: flex; flex-wrap: wrap; align-items: center; gap: .375rem .75rem; padding: .5rem .75rem; background: rgba(255, 255, 255, .94); border: 1px solid var(--trait); border-radius: var(--r-l); font-size: .75rem; width: max-content; max-width: calc(100% - 6rem); }
 .pastille { width: .75rem; height: .75rem; border-radius: 50%; display: inline-block; vertical-align: -1px; margin-right: .25rem; border: 1px solid rgba(0, 0, 0, .15); }
+.coh { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 1.25rem; height: 1.25rem; border-radius: 50%; color: #fff; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); font-size: .6875rem; line-height: 1; }
+.coh--rouge { background: var(--erreur); }
+.coh--orange { background: #B45309; }
+.coh--bleu { background: var(--lavande-f); }
+.coh--coin { position: absolute; bottom: -8px; left: -8px; z-index: 2; pointer-events: none; }
+.coh--ligne { margin-right: .375rem; vertical-align: middle; }
+.coh-liste { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: .25rem; }
+.coh-liste--rouge strong { color: var(--erreur); }
+.coh-liste--orange strong { color: #B45309; }
+.coh-liste--bleu strong { color: var(--lavande-f); }
 .form-bloc { margin: .75rem 0 0; padding-bottom: .25rem; border-bottom: 1px solid var(--trait); font-size: .75rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--gris); }
 .form-bloc:first-child { margin-top: 0; }
 .barre-arbre { position: absolute; left: 1rem; top: 3rem; z-index: 6; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .375rem .5rem; background: rgba(255, 255, 255, .96); border: 1px solid var(--trait); border-radius: var(--r-l); box-shadow: var(--ombre); font-size: .8125rem; max-width: calc(100% - 6rem); }
@@ -694,7 +705,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.32.3</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.33.0</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -719,7 +730,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 <div class="voile" id="wConfirm">
   <div class="dialogue dialogue--etroit" role="alertdialog" aria-modal="true" aria-labelledby="wConfirmTitre" aria-describedby="wConfirmMsg">
     <div class="dialogue__tete"><h2 class="dialogue__titre" id="wConfirmTitre"></h2></div>
-    <div class="dialogue__corps"><p id="wConfirmMsg" style="margin:0"></p></div>
+    <div class="dialogue__corps"><p id="wConfirmMsg" style="margin:0;white-space:pre-line"></p></div>
     <div class="dialogue__pied"><button type="button" class="btn" id="wConfirmNon">Annuler</button><button type="button" class="btn btn--plein-danger" id="wConfirmOui">Confirmer</button></div>
   </div>
 </div>
@@ -730,7 +741,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.32.3';
+var VERSION = '1.33.0';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -2220,6 +2231,7 @@ function infosManquantes(p) {
 function correspondEvidence(p, ev, br) {
   if (!ev) { return true; }
   if (ev === 'manque') { return infosManquantes(p) > 0; }
+  if (ev === 'incoherences') { return !!(coherence()[p.id] || []).length; }
   if (ev === 'aVerifier') { return !!p.aVerifier; }
   if (ev === 'verifiee') { return !!p.verifiee; }
   if (ev === 'vivants') { return !estDecede(p); }
@@ -3602,7 +3614,7 @@ function barreOutilsArbre(br, disp) {
     }))
   ]);
   menu.addEventListener('toggle', function () { etat.barreMenuOuvert = menu.open; });
-  var opts = [{ valeur: '', libelle: 'Rien' }, { valeur: 'manque', libelle: 'Fiches incomplètes' }, { valeur: 'aVerifier', libelle: 'Fiches à vérifier' }, { valeur: 'verifiee', libelle: 'Fiches vérifiées' }];
+  var opts = [{ valeur: '', libelle: 'Rien' }, { valeur: 'manque', libelle: 'Fiches incomplètes' }, { valeur: 'incoherences', libelle: 'Incohérences' }, { valeur: 'aVerifier', libelle: 'Fiches à vérifier' }, { valeur: 'verifiee', libelle: 'Fiches vérifiées' }];
   if (br && br.noms) { ['a', 'b'].forEach(function (k) { if (br.noms[k]) { opts.push({ valeur: k, libelle: br.noms[k] }); } }); }
   opts.push({ valeur: 'vivants', libelle: 'Personnes vivantes' }, { valeur: 'decedes', libelle: 'Personnes décédées' });
   var sel = liste('barreEvidence', opts, b.evidence);
@@ -3749,7 +3761,10 @@ function noeudCarte(n, centre, br) {
   var sous = aff.nomNaissance && p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom) ? accord(p, 'né ', 'née ', 'naissance : ') + p.nomNaissance : '';
   var marq = marquesCarte(p);
   var etiquette = nom + (info ? ', ' + info : '') + (n.pid === centre ? ', au centre de l’arbre' : '') + (estDecede(p) ? ', ' + accord(p, 'décédé', 'décédée', 'décès') : '') + (n.dup ? ', déjà présente ailleurs dans l’arbre' : '') + (p.verifiee ? ', vérifiée' : '') + (p.aVerifier ? ', à vérifier' : '') + (p.erronee ? ', branche erronée' : '') + marq.texte;
-  var carte = creer('button', { classe: classes.join(' '), attrs: { 'data-pid': n.pid, 'aria-label': etiquette + '. Ouvrir la fiche', title: lieuxComplets(p) || null },
+  var cohP = coherence()[p.id] || [];
+  if (cohP.length) { etiquette += ', incohérence : ' + texteCoh(cohP); }
+  var titreCarte = [lieuxComplets(p), cohP.length ? texteCoh(cohP) : ''].filter(Boolean).join('\n');
+  var carte = creer('button', { classe: classes.join(' '), attrs: { 'data-pid': n.pid, 'aria-label': etiquette + '. Ouvrir la fiche', title: titreCarte || null },
     clic: function () { ouvrirFiche(n.pid); } }, [
     avatar(aff.photo ? p : Object.assign({}, p, { photo: [], photoUrl: '' }), classeCouleur(p, br)),
     creer('span', { classe: 'carte__txt' }, [creer('span', { classe: 'carte__nom' }, [nomAffiche(p)]), sous ? creer('span', { classe: 'carte__info', texte: sous }) : null].concat(noeudsLignesCarte(p)))
@@ -3758,6 +3773,7 @@ function noeudCarte(n, centre, br) {
   var ev = barreArbre().evidence;
   var noeud = creer('div', { classe: 'noeud' + (ev && !correspondEvidence(p, ev, br) ? ' noeud--estompe' : ''), attrs: { style: 'left:' + Math.round(n.x) + 'px;top:' + Math.round(n.y) + 'px' } }, [carte]);
   if (p.verifiee) { noeud.appendChild(cocheVerifiee('coche-verif--coin')); }
+  if (cohP.length) { noeud.appendChild(pastilleCoh(cohP, 'coh--coin')); }
   if (p.aVerifier) { noeud.appendChild(pointAVerifier('point-verif--coin')); }
   if (marq.noeud) { noeud.appendChild(marq.noeud); }
   if (etat.peutModifier) {
@@ -4944,6 +4960,144 @@ function ecartAnnees(d1, d2) {
   return n >= 0 && n < 130 ? { n: n, approx: true } : null;
 }
 function texteEcart(e, avant) { return e ? (e.approx ? 'vers ' : '') + e.n + ' an' + (e.n > 1 ? 's' : '') : ''; }
+/* === SECTION : CONTRÔLES DE COHÉRENCE ===
+   Repère les dates impossibles (rouge), improbables (orange) et les doublons
+   possibles (bleu). Les dates partielles ou approximatives (± 5 ans) sont
+   traitées comme des intervalles : on ne signale que ce qui est sûr. */
+var NIVEAUX_COH = { rouge: 'Impossible', orange: 'À vérifier', bleu: 'Doublon possible' };
+function bornesDate(d, approx) {
+  if (!d || !d.a) { return null; }
+  var e = approx ? 5 : 0;
+  var mMin = d.m || 1, mMax = d.m || 12;
+  var jMax = d.j || new Date(Date.UTC(d.a + e, mMax, 0)).getUTCDate();
+  return { min: Date.UTC(d.a - e, mMin - 1, d.j || 1) / 864e5, max: Date.UTC(d.a + e, mMax - 1, jMax) / 864e5 };
+}
+function controlesCoherence(remplace) {
+  var d = etat.donnees;
+  var res = {};
+  if (!d) { return res; }
+  var P = function (id) { return remplace && remplace.id === id ? remplace : pers(id); };
+  var ajout = function (id, niveau, texte) {
+    if (!id) { return; }
+    var l = res[id] = res[id] || [];
+    if (!l.some(function (x) { return x.texte === texte; })) { l.push({ niveau: niveau, texte: texte }); }
+  };
+  var AN = 365.25;
+  var auj = aujourdhui();
+  var jAuj = Date.UTC(auj.a, auj.m - 1, auj.j) / 864e5;
+  var nom = function (x) { return nomComplet(x); };
+  var quand = function (dd, ap) { return dd ? formaterDate(dd, ap) : ''; };
+  d.ordre.forEach(function (id) {
+    var p = P(id);
+    if (!p) { return; }
+    var bn = bornesDate(p.naissance, p.naissanceApprox), bd = bornesDate(p.deces, p.decesApprox);
+    if (bn && bn.min > jAuj) { ajout(id, 'rouge', 'Naissance dans le futur (' + quand(p.naissance, p.naissanceApprox) + ').'); }
+    if (bd && bd.min > jAuj) { ajout(id, 'rouge', 'Décès dans le futur (' + quand(p.deces, p.decesApprox) + ').'); }
+    if (bn && bd && bd.max < bn.min) { ajout(id, 'rouge', 'Décès (' + quand(p.deces, p.decesApprox) + ') avant la naissance (' + quand(p.naissance, p.naissanceApprox) + ').'); }
+    if (bn) {
+      var fin = bd || (estDecede(p) ? null : { min: jAuj, max: jAuj });
+      if (fin && fin.min - bn.max > 105 * AN) { ajout(id, 'orange', estDecede(p) ? 'Décès à plus de 105 ans.' : 'Plus de 105 ans et toujours en vie : aucun décès n’est noté.'); }
+    }
+    if (ancetresDe(id)[id]) { ajout(id, 'rouge', 'Boucle dans les liens : cette personne est notée comme son propre ancêtre.'); }
+    parentsDe(id).forEach(function (qid) {
+      var q = P(qid);
+      if (!q) { return; }
+      var bq = bornesDate(q.naissance, q.naissanceApprox);
+      if (bn && bq) {
+        var maxE = bn.max - bq.min, minE = bn.min - bq.max;
+        if (maxE < 0) {
+          ajout(id, 'rouge', accord(p, 'Né', 'Née', 'Naissance') + ' (' + quand(p.naissance, p.naissanceApprox) + ') avant son parent ' + nom(q) + ' (' + quand(q.naissance, q.naissanceApprox) + ').');
+          ajout(qid, 'rouge', accord(q, 'Né', 'Née', 'Naissance') + ' (' + quand(q.naissance, q.naissanceApprox) + ') après son enfant ' + nom(p) + ' (' + quand(p.naissance, p.naissanceApprox) + ').');
+        } else {
+          if (maxE < 14 * AN) { ajout(qid, 'orange', 'Moins de 14 ans à la naissance de ' + nom(p) + '.'); }
+          var lim = q.sexe === 'Femme' ? 50 : (q.sexe === 'Homme' ? 75 : 60);
+          if (minE > lim * AN) {
+            ajout(qid, 'orange', 'Plus de ' + lim + ' ans à la naissance de ' + nom(p) + ' : une date est peut-être fausse.');
+            ajout(id, 'orange', 'Plus de ' + lim + ' ans d’écart avec son parent ' + nom(q) + ' : une date est peut-être fausse.');
+          }
+        }
+      }
+      var bqd = bornesDate(q.deces, q.decesApprox);
+      if (bn && bqd) {
+        var apres = bn.min - bqd.max;
+        if (q.sexe === 'Femme') {
+          if (apres > 0) { ajout(id, 'rouge', accord(p, 'Né', 'Née', 'Naissance') + ' après le décès de sa mère ' + nom(q) + ' (' + quand(q.deces, q.decesApprox) + ').'); }
+        } else if (apres > 365) {
+          ajout(id, 'rouge', accord(p, 'Né', 'Née', 'Naissance') + ' plus d’un an après le décès de son père ' + nom(q) + ' (' + quand(q.deces, q.decesApprox) + ').');
+        } else if (apres > 300) {
+          ajout(id, 'orange', accord(p, 'Né', 'Née', 'Naissance') + ' plus de 10 mois après le décès de son père ' + nom(q) + '.');
+        }
+      }
+    });
+  });
+  /* Unions */
+  var paires = {};
+  Object.keys(d.U).forEach(function (k) {
+    var u = d.U[k];
+    if (!u || u.virtuelle || !u.a || !u.b) { return; }
+    var cle = Math.min(u.a, u.b) + '-' + Math.max(u.a, u.b);
+    (paires[cle] = paires[cle] || []).push(u);
+    var bdeb = bornesDate(u.debut), bfin = bornesDate(u.fin);
+    var L = libellesUnion(u.type);
+    var mot = (u.type || 'Union');
+    if (bdeb && bdeb.min > jAuj) { ajout(u.a, 'rouge', mot + ' dans le futur.'); ajout(u.b, 'rouge', mot + ' dans le futur.'); }
+    if (bdeb && bfin && bfin.max < bdeb.min) { ajout(u.a, 'rouge', L.fin + ' avant le début de l’union.'); ajout(u.b, 'rouge', L.fin + ' avant le début de l’union.'); }
+    [[u.a, u.b], [u.b, u.a]].forEach(function (c) {
+      var x = P(c[0]), y = P(c[1]);
+      if (!x || !y || !bdeb) { return; }
+      var bx = bornesDate(x.naissance, x.naissanceApprox), bxd = bornesDate(x.deces, x.decesApprox);
+      if (bx && bdeb.max < bx.min) { ajout(c[0], 'rouge', mot + ' avec ' + nom(y) + ' (' + quand(u.debut) + ') avant sa naissance.'); }
+      else if (bx && bdeb.max - bx.min < 15 * AN) { ajout(c[0], 'orange', mot + ' avec ' + nom(y) + ' avant 15 ans.'); }
+      if (bxd && bdeb.min > bxd.max) { ajout(c[0], 'rouge', mot + ' avec ' + nom(y) + ' (' + quand(u.debut) + ') après son décès.'); }
+    });
+    /* Enfants du couple nés à moins de 9 mois d'écart (jumeaux exclus) */
+    var enf = enfantsUnion(u.id).map(P).filter(function (e) { return e && e.naissance && e.naissance.j && !e.naissanceApprox; })
+      .sort(function (e1, e2) { return comparerDates(e1.naissance, e2.naissance); });
+    for (var i = 1; i < enf.length; i++) {
+      var ecart = bornesDate(enf[i].naissance).min - bornesDate(enf[i - 1].naissance).min;
+      if (ecart > 1 && ecart < 270) {
+        ajout(enf[i].id, 'orange', accord(enf[i], 'Né', 'Née', 'Naissance') + ' moins de 9 mois après ' + nom(enf[i - 1]) + '.');
+        ajout(enf[i - 1].id, 'orange', accord(enf[i - 1], 'Né', 'Née', 'Naissance') + ' moins de 9 mois avant ' + nom(enf[i]) + '.');
+      }
+    }
+  });
+  Object.keys(paires).forEach(function (cle) {
+    var enCours = paires[cle].filter(function (u) { return !u.fin && !u.separes; });
+    if (enCours.length > 1) {
+      var u = enCours[0];
+      ajout(u.a, 'bleu', 'Deux unions en cours avec ' + nom(P(u.b)) + '.');
+      ajout(u.b, 'bleu', 'Deux unions en cours avec ' + nom(P(u.a)) + '.');
+    }
+  });
+  /* Doublons : même prénom, même nom, même année de naissance */
+  var groupes = {};
+  d.ordre.forEach(function (id) {
+    var p = P(id);
+    if (!p || !p.naissance || !(p.prenom || '').trim()) { return; }
+    var cle = normaliser(p.prenom) + '|' + normaliser(p.nom) + '|' + p.naissance.a;
+    (groupes[cle] = groupes[cle] || []).push(id);
+  });
+  Object.keys(groupes).forEach(function (cle) {
+    var g = groupes[cle];
+    if (g.length < 2) { return; }
+    g.forEach(function (id) { g.forEach(function (autre) { if (autre !== id) { ajout(id, 'bleu', 'Même nom et même année de naissance qu’une autre fiche (' + nom(P(autre)) + ', ' + quand(P(autre).naissance, P(autre).naissanceApprox) + ').'); } }); });
+  });
+  return res;
+}
+/* Résultats gardés tant que les données ne changent pas. */
+function coherence() {
+  if (!etat.donnees) { return {}; }
+  if (etat._coh && etat._coh.donnees === etat.donnees) { return etat._coh.res; }
+  etat._coh = { donnees: etat.donnees, res: controlesCoherence(null) };
+  return etat._coh.res;
+}
+function niveauCoh(liste) { return liste.some(function (x) { return x.niveau === 'rouge'; }) ? 'rouge' : (liste.some(function (x) { return x.niveau === 'orange'; }) ? 'orange' : 'bleu'); }
+function texteCoh(liste) { return liste.map(function (x) { return NIVEAUX_COH[x.niveau] + ' : ' + x.texte; }).join('\n'); }
+function pastilleCoh(liste, classe) {
+  if (!liste || !liste.length) { return null; }
+  return creer('span', { classe: 'coh coh--' + niveauCoh(liste) + (classe ? ' ' + classe : ''), texte: '⚠', attrs: { title: texteCoh(liste), role: 'img', 'aria-label': 'Incohérence : ' + texteCoh(liste) } });
+}
+
 function cleDate(d) { return d ? d.a * 10000 + (d.m || 6) * 100 + (d.j || 15) : 99999999; }
 
 function professionsDatees(p) {
@@ -5090,6 +5244,12 @@ function rendreFiche() {
     info ? creer('div', { classe: 'compteurs', attrs: { style: 'justify-content:center' } }, [badge(libelleBranche(info.branche, br.noms), classeBranche(info.branche)), info.branche !== 'centre' && libelleParente(p.id, br, idCentre()) ? badge(libelleParente(p.id, br, idCentre()) + ' de ' + (pers(idCentre()).prenom || nomComplet(pers(idCentre())))) : null]) : null
   ].concat([p.filiation === 'Adoption' ? badge(accord(p, 'Adopté', 'Adoptée', 'Adoption')) : null, p.verifiee ? badge('Vérifiée', 'br-b') : null, p.aVerifier ? badge('À vérifier', 'br-a') : null, p.erronee ? badge('Branche erronée', 'br-err') : null, actions])));
   var fil = sectionFilDeVie(p);
+  var cohF = coherence()[p.id] || [];
+  if (cohF.length) {
+    ajouterA(corps, sectionFiche('INCOHÉRENCES', [creer('ul', { classe: 'coh-liste' }, cohF.map(function (x) {
+      return creer('li', { classe: 'coh-liste--' + x.niveau }, [creer('strong', { texte: NIVEAUX_COH[x.niveau] + ' : ' }), x.texte]);
+    }))]));
+  }
   /* Informations */
   if (rangs.length || !fil) { ajouterA(corps, sectionFiche('INFORMATIONS', rangs.length ? [creer('dl', { classe: 'fiche__infos' }, rangs.reduce(function (acc, r) { acc.push(creer('dt', { texte: r[0] }), creer('dd', { texte: r[1], attrs: { style: 'white-space:pre-line' } })); return acc; }, []))] : [creer('p', { classe: 'indice', texte: 'Aucune information renseignée.' })])); }
   ajouterA(corps, fil);
@@ -5466,6 +5626,15 @@ async function validerFormPersonne(o, etatForm, btn) {
     var du = lireDateChamp('fDebutUnion'); if (!du) { return; } debutUnion = du.date;
     var fu = lireDateChamp('fFinUnion'); if (!fu) { return; } finUnion = fu.date;
   }
+  if (v && o.mode === 'modifier') {
+    var avant = (coherence()[o.id] || []).map(function (x) { return x.texte; });
+    var simule = Object.assign({}, pers(o.id), v, { id: o.id });
+    var nouveaux = (controlesCoherence(simule)[o.id] || []).filter(function (x) { return avant.indexOf(x.texte) === -1; });
+    if (nouveaux.length) {
+      var okCoh = await confirmerAction('Incohérence possible', texteCoh(nouveaux) + '\n\nVérifiez les dates saisies. Vous pouvez aussi enregistrer quand même.', 'Enregistrer quand même');
+      if (!okCoh) { return; }
+    }
+  }
   btn.disabled = true;
   afficherLoader('Enregistrement…');
   try {
@@ -5494,6 +5663,8 @@ async function validerFormPersonne(o, etatForm, btn) {
     masquerLoader();
     fermerModale();
     await apresEcriture(message, cible);
+    var cohN = o.mode !== 'modifier' && cible ? (coherence()[cible] || []).filter(function (x) { return x.niveau !== 'bleu'; }) : [];
+    if (cohN.length) { afficherErreur('Incohérence possible pour ' + nomComplet(pers(cible)) + '. ' + cohN.map(function (x) { return x.texte; }).join(' ')); }
   } catch (e) {
     masquerLoader();
     btn.disabled = false;
@@ -6071,8 +6242,11 @@ function rendreListe(zone) {
   var selB = liste('listeBranche', ['a', 'b', 'centre', 'fratrie', 'desc', 'allie', 'aucune'].filter(function (b) { return branches[b]; }).map(function (b) { return { valeur: b, libelle: libelleBranche(b, br.noms) }; }), f.branche, { vide: 'Toutes' });
   selB.addEventListener('change', function () { f.branche = selB.value; majCorps(); });
   var nbAV = tous.filter(function (p) { return p.aVerifier; }).length;
+  var cohL = coherence();
+  var nbCoh = tous.filter(function (p) { return (cohL[p.id] || []).length; }).length;
+  var caseCoh = caseACocher('listeCoh', 'Incohérences seulement (' + nbCoh + ')', !!f.coh, function (v) { f.coh = v; majCorps(); });
   var caseAV = caseACocher('listeAVerifier', 'À vérifier seulement (' + nbAV + ')', f.aVerifier, function (v) { f.aVerifier = v; majCorps(); });
-  page.appendChild(creer('div', { classe: 'filtres no-print' }, [champ('Filtrer', recherche), champ('Branche', selB), nbAV || f.aVerifier ? creer('div', { classe: 'champ' }, [creer('span', { classe: 'etiq', texte: 'Doutes' }), caseAV]) : null]));
+  page.appendChild(creer('div', { classe: 'filtres no-print' }, [champ('Filtrer', recherche), champ('Branche', selB), nbAV || f.aVerifier || nbCoh || f.coh ? creer('div', { classe: 'champ' }, [creer('span', { classe: 'etiq', texte: 'Doutes' }), nbAV || f.aVerifier ? caseAV : null, nbCoh || f.coh ? caseCoh : null]) : null]));
   var tbody = creer('tbody');
   var compteur = creer('p', { classe: 'indice', attrs: { 'aria-live': 'polite' } });
   var table = creer('table', { classe: 'tableau' }, [
@@ -6087,6 +6261,7 @@ function rendreListe(zone) {
       var i = br.parId[p.id];
       if (f.branche && (i ? i.branche : 'aucune') !== f.branche) { return false; }
       if (f.aVerifier && !p.aVerifier) { return false; }
+      if (f.coh && !(cohL[p.id] || []).length) { return false; }
       if (!q) { return true; }
       return normaliser([nomComplet(p), p.nomNaissance, p.naissanceLieu, p.decesLieu, p.residence, p.profession, p.naissance ? p.naissance.a : '', p.deces ? p.deces.a : ''].join(' ')).indexOf(q) !== -1;
     });
@@ -6112,7 +6287,7 @@ function rendreListe(zone) {
     l.forEach(function (p) {
       var i = br.parId[p.id];
       tbody.appendChild(creer('tr', { classe: estDecede(p) ? 'ligne--decede' : '' }, [
-        creer('td', {}, [p.verifiee ? cocheVerifiee('coche-verif--ligne') : null, p.aVerifier ? pointAVerifier('point-verif--ligne') : null, avecPhoto(p.id, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(p.id); } }, [nomAffiche(p)])),
+        creer('td', {}, [p.verifiee ? cocheVerifiee('coche-verif--ligne') : null, p.aVerifier ? pointAVerifier('point-verif--ligne') : null, pastilleCoh(cohL[p.id], 'coh--ligne'), avecPhoto(p.id, creer('button', { classe: 'lien-personne', clic: function () { ouvrirFiche(p.id); } }, [nomAffiche(p)])),
           p.nomNaissance && normaliser(p.nomNaissance) !== normaliser(p.nom) ? creer('div', { classe: 'indice', texte: accord(p, 'né ', 'née ', 'naissance : ') + p.nomNaissance }) : null]),
         creer('td', {}, [p.naissance ? formaterDate(p.naissance, p.naissanceApprox) : '?', p.naissanceLieu ? creer('div', { classe: 'indice', texte: p.naissanceLieu }) : null]),
         creer('td', {}, [p.deces ? formaterDate(p.deces, p.decesApprox) : (estDecede(p) ? '?' : ''), p.decesLieu ? creer('div', { classe: 'indice', texte: p.decesLieu }) : null]),
