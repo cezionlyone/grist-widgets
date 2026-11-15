@@ -3,7 +3,7 @@
   ============================================================================
   LISEZ-MOI - Gristfamily
   ============================================================================
-  Version     : 1.35.1
+  Version     : 1.35.2
   Date        : 14/11/2026
   Auteur      : madeXcé
   Licence     : MIT
@@ -52,6 +52,7 @@
   HISTORIQUE
   ----------
   1.9.0 - 12/11/2026 - madeXcé - Marque « À vérifier » (colonne A_VERIFIER ajoutée toute seule) pour les personnes et les cousins ADN : point orange sur les cartes, bouton dans la fiche, case dans les formulaires, filtre « À vérifier seulement » dans la liste.
+  1.35.2 - 15/11/2026 - madeXcé - Fil de vie : seuls les événements survenus du vivant de la personne (un enfant né après sa mort n'apparaît plus) ; décès d'un enfant ou d'un petit-enfant indiqué par son âge (« ✝️ à 2 ans », « à 3 mois ») au lieu de l'année.
   1.35.1 - 15/11/2026 - madeXcé - Cartes du fil de vie : photo et nom sur la même ligne en haut, fil de vie sur toute la largeur de la carte, date et lieu sur la même ligne, résidence et métier aussi (moins de retours à la ligne, cartes moins hautes).
   1.35.0 - 15/11/2026 - madeXcé - Fil de vie : cartes à la taille de leur contenu (cœur d'union au niveau des noms), tous les enfants affichés, décès des parents et grands-parents et petits-enfants dans le fil ; Paramètres, bloc « Fil de vie » pour choisir les événements des cartes et de la fiche ; fiche : fil dès un seul événement daté, « Décédée » sans « ? » ; bouton « Moi » (et touche Début) pour revenir à soi.
   1.34.7 - 15/11/2026 - madeXcé - Fil de vie : hauteur des cartes calculée rangée par rangée sur leur contenu réel (fini l'espace vide) ; âge approximatif en italique sans « ~ » et colonne d'âge élargie ; photo fixée en haut à gauche.
@@ -756,7 +757,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
     <span class="bandeau__logo" id="bandeau-logo"></span>
     <span class="bandeau__sep" aria-hidden="true"></span>
     <span class="bandeau__nom">Gristfamily</span>
-    <span class="bandeau__version" id="bandeauVersion">v1.35.1</span>
+    <span class="bandeau__version" id="bandeauVersion">v1.35.2</span>
     <span class="bandeau__arbre" id="bandeauArbre"></span>
   </div>
   <div class="bandeau__d" id="bandeauDroite"></div>
@@ -792,7 +793,7 @@ table.tableau { width: 100%; border-collapse: collapse; }
 'use strict';
 
 /* === SECTION : CONSTANTES [MODIFIABLE : libellés des tables et listes de choix] === */
-var VERSION = '1.35.1';
+var VERSION = '1.35.2';
 (function () { var bv = document.getElementById('bandeauVersion'); if (bv) { bv.textContent = 'v' + VERSION; } })();
 var DELAI_API_MS = 45000;
 var DELAI_ENVOI_MS = 120000;
@@ -2223,6 +2224,21 @@ function dansSaVie(p, d) {
   if (p.naissance && cleDate(d) < cleDate(p.naissance)) { return false; }
   return !(estDecede(p) && p.deces && cleDate(d) > cleDate(p.deces));
 }
+/* Âge au décès : « 2 ans », « 3 mois », « avant 1 an » ; vide si inconnu. */
+function ageAuDeces(e) {
+  var ag = ecartAnnees(e.naissance, e.deces);
+  if (!ag) { return ''; }
+  if (ag.n >= 1) { return texteEcart(ag); }
+  var a = e.naissance, b = e.deces;
+  if (!ag.approx && a.m && b.m) {
+    var m = (b.a - a.a) * 12 + b.m - a.m - (a.j && b.j && b.j < a.j ? 1 : 0);
+    if (m >= 1) { return m + ' mois'; }
+    if (a.j && b.j) { return 'moins d’un mois'; }
+  }
+  return 'avant 1 an';
+}
+/* Naissance d'un descendant de son vivant (une date inconnue n'exclut rien). */
+function neDeSonVivant(p, e) { return !e.naissance || dansSaVie(p, e.naissance); }
 function petitsEnfantsDe(pid) {
   var vus = {}, l = [];
   tousEnfants(pid).forEach(function (e) { tousEnfants(e).forEach(function (x) { if (!vus[x] && pers(x)) { vus[x] = true; l.push(pers(x)); } }); });
@@ -2344,9 +2360,10 @@ function filCarte(p) {
   var lignee = function (liste, cleN, cleD, ordre, prefixe) {
     liste.sort(function (x, y) { return comparerDates(x.naissance, y.naissance); }).forEach(function (e) {
       var nom = prefixe(e) + prem(e);
-      var mort = r[cleD] && mortDansSaVie(e) ? EMO.deces + ' ' + (anneeAffichee(e.deces, e.decesApprox) || '?') : '';
-      if (r[cleN]) { court(ordre, e.naissance, e.naissanceApprox, EMO.enfant, nom, mort); }
-      else if (mort) { court(ordre + 0.1, e.deces, e.decesApprox, EMO.deces, nom); }
+      var agD = mortDansSaVie(e) ? ageAuDeces(e) : '';
+      var mort = r[cleD] && mortDansSaVie(e) ? EMO.deces + ' ' + (agD ? 'à ' + agD : anneeAffichee(e.deces, e.decesApprox) || '?') : '';
+      if (r[cleN] && neDeSonVivant(p, e)) { court(ordre, e.naissance, e.naissanceApprox, EMO.enfant, nom, mort); }
+      else if (mort) { court(ordre + 0.1, e.deces, e.decesApprox, EMO.deces, nom + (agD ? ', à ' + agD : '')); }
     });
   };
   lignee(tousEnfants(p.id).map(pers).filter(Boolean), 'enfants', 'decesEnfants', 1.5, function () { return ''; });
@@ -5445,7 +5462,7 @@ function evenementsVie(p) {
   });
   enfants.sort(function (a, b) { return cleDate(a.naissance) - cleDate(b.naissance); });
   enfants.forEach(function (e, i) {
-    if (!e.naissance || !r.enfants) { return; }
+    if (!e.naissance || !r.enfants || !dansSaVie(p, e.naissance)) { return; }
     ev.push({ emo: EMO.enfant, d: e.naissance, approx: e.naissanceApprox, titre: 'Naissance ' + accord(e, 'de son fils ', 'de sa fille ', 'de son enfant ') + nomProche(e) + ' (' + (i === 0 ? '1er' : (i + 1) + 'e') + ' enfant)' });
   });
   (r.decesParents ? parentsDe(p.id) : []).forEach(function (x) {
@@ -5470,9 +5487,8 @@ function evenementsVie(p) {
       ev.push({ emo: EMO.enfant, d: e.naissance, approx: e.naissanceApprox, titre: 'Naissance ' + accord(e, 'de son petit-fils ', 'de sa petite-fille ', 'de son petit-enfant ') + nomProche(e) });
     }
     if (r.decesPetitsEnfants && estDecede(e) && dansSaVie(p, e.deces)) {
-      var agP = ecartAnnees(e.naissance, e.deces);
-      ev.push({ emo: EMO.deces, d: e.deces, approx: e.decesApprox, titre: 'Décès ' + accord(e, 'de son petit-fils', 'de sa petite-fille', 'de son petit-enfant') + ' ' + nomProche(e),
-        sous: agP ? prem(e) + ' avait ' + texteEcart(agP) : '' });
+      var agP = ageAuDeces(e);
+      ev.push({ emo: EMO.deces, d: e.deces, approx: e.decesApprox, titre: 'Décès ' + accord(e, 'de son petit-fils', 'de sa petite-fille', 'de son petit-enfant') + ' ' + nomProche(e) + (agP ? ', à ' + agP : '') });
     }
   });
   /* Décès de ses enfants, survenus de son vivant */
@@ -5484,9 +5500,8 @@ function evenementsVie(p) {
       var e = pers(x);
       if (!e || !estDecede(e) || !e.deces) { return; }
       if (estDecede(p) && p.deces && cleDate(e.deces) > cleDate(p.deces)) { return; }
-      var agE = ecartAnnees(e.naissance, e.deces);
-      ev.push({ emo: EMO.deces, d: e.deces, approx: e.decesApprox, titre: 'Décès ' + accord(e, 'de son fils', 'de sa fille', 'de son enfant') + ' ' + nomProche(e),
-        sous: agE ? prem(e) + ' avait ' + texteEcart(agE) : '' });
+      var agE = ageAuDeces(e);
+      ev.push({ emo: EMO.deces, d: e.deces, approx: e.decesApprox, titre: 'Décès ' + accord(e, 'de son fils', 'de sa fille', 'de son enfant') + ' ' + nomProche(e) + (agE ? ', à ' + agE : '') });
     });
   });
   if (r.deces && estDecede(p) && (p.deces || p.decesLieu)) {
