@@ -24,6 +24,8 @@ Pour les services publics français : interface en français, Système de design
 | [Gristcity](dsfr/gristcity/) | Dessine une table sous la forme d'une ville en 3D isométrique : chaque ligne devient un immeuble qui se construit au fil de ses étapes. | `https://cezionlyone.github.io/grist-widgets/dsfr/gristcity/` |
 | [Gristverse](dsfr/gristverse/) | Le bureau virtuel de l'équipe en pixel art : qui est au bureau, en télétravail ou absent, les réunions, les tâches et les projets. | `https://cezionlyone.github.io/grist-widgets/dsfr/gristverse/` |
 | [Gristkanban](dsfr/gristkanban/) | Des Kanbans pour tous, sans toucher à vos tables : onze modèles prêts à l'emploi, ou des Kanbans suggérés d'après les tables du document. | `https://cezionlyone.github.io/grist-widgets/dsfr/gristkanban/` |
+| [WuitDocumentation](dsfr/wuitdocumentation/) | La documentation du document tenue à jour (tables, colonnes, pages, règles d'accès) et des pages d'accueil composées de cartes et de boutons qui mènent aux pages et aux formulaires. | `https://cezionlyone.github.io/grist-widgets/dsfr/wuitdocumentation/` |
+| [WuitFusion](dsfr/wuitfusion/) | Chaque ligne d'une table devient un document à imprimer, comme un publipostage : courriers, convocations, attestations, en PDF ou en Word. | `https://cezionlyone.github.io/grist-widgets/dsfr/wuitfusion/` |
 
 > Les modalités d'utilisation du DSFR le réservent aux sites de l'État : vérifiez qu'elles s'appliquent à votre usage. Pour tout autre usage, prenez l'édition internationale.
 
